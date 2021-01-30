@@ -4,15 +4,22 @@ int main(int argc, char** argv) {
 
 	netp::app _app;
 
-	std::string url = "http://www.neea.edu.cn/";
+//	std::string url = "http://www.neea.edu.cn/";
+	std::string url = "http://www.163.com/";
+
 	NRP<netp::http::request_promise> rp = netp::http::get(url);
 	const std::tuple<int, NRP<netp::http::message>>& resp = rp->get();
 
 	if (std::get<0>(resp) != netp::OK) {
 		return std::get<0>(resp);
 	}
-	NETP_INFO("url: %s\n%s", url.c_str(), std::string((char*)std::get<1>(resp)->body->head(), std::get<1>(resp)->body->len()).c_str());
 
+	int httpcode = std::get<1>(resp)->code;
+	if (httpcode == 200) {
+		NETP_INFO("url: %s\n%s", url.c_str(), std::string((char*)std::get<1>(resp)->body->head(), std::get<1>(resp)->body->len()).c_str());
+	} else {
+		NETP_INFO("url: %s\nhttp response: %d %s", url.c_str(), (char*)std::get<1>(resp)->code, std::get<1>(resp)->status.c_str() );
+	}
 
 	std::string host = "http://127.0.0.1:80";
 	NRP<netp::http::client_dial_promise> dial_f = netp::http::dial(host);
