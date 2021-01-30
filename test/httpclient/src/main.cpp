@@ -4,10 +4,8 @@ int main(int argc, char** argv) {
 
 	netp::app _app;
 
-
-
-	std::string url = "http://www.163.com/";
-	NRP<netp::http::request_promise> rp = netp::http::get("http://www.163.com/");
+	std::string url = "http://www.neea.edu.cn/";
+	NRP<netp::http::request_promise> rp = netp::http::get(url);
 	const std::tuple<int, NRP<netp::http::message>>& resp = rp->get();
 
 	if (std::get<0>(resp) != netp::OK) {
@@ -41,11 +39,11 @@ int main(int argc, char** argv) {
 		});
 		rf->wait();
 
-		/*
-		NRP<netp::future<int>> close_f = http_client->close();
-		int close_rt = close_f->get();
-		NETP_INFO("close rt: %d", close_rt);
-		*/
+		//
+		//NRP<netp::future<int>> close_f = http_client->close();
+		//int close_rt = close_f->get();
+		//NETP_INFO("close rt: %d", close_rt);
+		//
 
 		nlohmann::json data;
 		data["device"] = "judge_client";
@@ -81,5 +79,6 @@ int main(int argc, char** argv) {
 	}
 
 	_app.run();
+
 	return 0;
 }

@@ -304,6 +304,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>
       </PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -338,6 +339,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>
       </PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>

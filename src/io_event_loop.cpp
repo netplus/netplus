@@ -254,7 +254,7 @@ namespace netp {
 			lock_guard<shared_mutex> lg(m_pollers_mtx[t]);
 			m_curr_poller_idx[t] = 0;
 			while (count-- > 0) {
-				NRP<io_event_loop> o = fn_maker != nullptr ?
+				NRP<io_event_loop> o = fn_maker == nullptr ?
 					default_poller_maker(t,cfg) : 
 					fn_maker(t,cfg);
 

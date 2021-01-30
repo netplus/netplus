@@ -117,7 +117,7 @@ namespace netp {
 			icmp_pack->write<u16_t>(echo.seq);
 			icmp_pack->write<u64_t>(echo.ts);
 
-			netp::address addr( ip, 0 , netp::s_family::F_AF_INET);
+			netp::address addr( ip, 0 , NETP_AF_INET);
 
 			int ec = netp::OK;
 			u32_t snd_c = m_so->sendto(icmp_pack->head(), (u32_t)icmp_pack->len(), addr, ec);
@@ -181,8 +181,8 @@ namespace netp {
 			if (m_so == nullptr) {
 				int creatert;
 				NRP<socket_create_cfg> cfg = netp::make_ref<socket_create_cfg>();
-				cfg->type = s_type::T_RAW;
-				cfg->proto = s_protocol::P_ICMP;
+				cfg->type = NETP_SOCK_RAW;
+				cfg->proto = NETP_PROTOCOL_ICMP;
 				std::tie(creatert, m_so) = netp::socket::create(cfg);
 				return creatert;
 			}

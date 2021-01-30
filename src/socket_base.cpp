@@ -214,14 +214,20 @@ namespace netp {
 		rt = _cfg_reuseport((m_option&u8_t(socket_option::OPTION_REUSEPORT))!=0);
 		NETP_RETURN_V_IF_MATCH(NETP_SOCKET_ERROR, rt == NETP_SOCKET_ERROR);
 #endif
+		
+		if (m_protocol == NETP_PROTOCOL_UDP) {
+			rt = _cfg_broadcast((opt & u16_t(socket_option::OPTION_BROADCAST)) != 0);
+			NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
+		}
 
-		rt = _cfg_broadcast((opt& u16_t(socket_option::OPTION_BROADCAST)) != 0);
-		NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
+		if (m_protocol == NETP_PROTOCOL_TCP) {
+			rt = _cfg_nodelay((opt & u16_t(socket_option::OPTION_NODELAY)) != 0);
+			NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
 
-		rt = _cfg_nodelay((opt& u16_t(socket_option::OPTION_NODELAY)) != 0);
-		NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
-
-		return _cfg_keepalive((opt& u16_t(socket_option::OPTION_KEEP_ALIVE)) != 0, kvals);
+			rt = _cfg_keepalive((opt & u16_t(socket_option::OPTION_KEEP_ALIVE)) != 0, kvals);
+			NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
+		}
+		return netp::OK;
 	}
 
 	int socket_base::open() {
