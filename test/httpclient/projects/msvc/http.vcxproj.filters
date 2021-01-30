@@ -21,13 +21,5 @@
     <ClCompile Include="..\..\src\main.cpp">
       <Filter>源文件\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\server.cpp">
-      <Filter>源文件\src</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\src\nlohmann\json.hpp">
-      <Filter>源文件\src</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

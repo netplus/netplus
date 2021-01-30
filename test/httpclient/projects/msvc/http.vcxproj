@@ -120,15 +120,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\main.cpp" />
-    <ClCompile Include="..\..\src\server.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\projects\msvc\netp.vcxproj">
-      <Project>{cdce0809-6c77-480b-8912-09c043b9c268}</Project>
+    <ProjectReference Include="..\..\..\..\projects\msvc\netplus.vcxproj">
+      <Project>{bbae246c-3639-4750-a212-e3a0b86e9bc3}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\src\nlohmann\json.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
