@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\3rd\getopt\getopt.h" />
+    <ClInclude Include="..\..\3rd\http_parser\http_parser.h" />
+    <ClInclude Include="..\..\3rd\stack_walker\StackWalker.h" />
+    <ClInclude Include="..\..\3rd\udns\0.4\config.h" />
+    <ClInclude Include="..\..\3rd\udns\0.4\udns.h" />
+    <ClInclude Include="..\..\include\netp.hpp" />
+    <ClInclude Include="..\..\include\netp\adapter.hpp" />
+    <ClInclude Include="..\..\include\netp\address.hpp" />
+    <ClInclude Include="..\..\include\netp\any.hpp" />
+    <ClInclude Include="..\..\include\netp\app.hpp" />
+    <ClInclude Include="..\..\include\netp\benchmark.hpp" />
+    <ClInclude Include="..\..\include\netp\bytes_helper.hpp" />
+    <ClInclude Include="..\..\include\netp\bytes_ringbuffer.hpp" />
+    <ClInclude Include="..\..\include\netp\channel.hpp" />
+    <ClInclude Include="..\..\include\netp\channel_handler.hpp" />
+    <ClInclude Include="..\..\include\netp\channel_handler_context.hpp" />
+    <ClInclude Include="..\..\include\netp\channel_pipeline.hpp" />
+    <ClInclude Include="..\..\include\netp\condition.hpp" />
+    <ClInclude Include="..\..\include\netp\constants.hpp" />
+    <ClInclude Include="..\..\include\netp\core.hpp" />
+    <ClInclude Include="..\..\include\netp\core\compiler\gcc_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\compiler\gcc_armv7a_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\compiler\gcc_x64_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\compiler\gcc_x86_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\compiler\msvc_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\compiler\msvc_x64_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\compiler\msvc_x86_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform\android_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform\android_armv7a_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform\gnu_linux_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform\gnu_linux_armv7a_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform\gnu_linux_x64_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform\gnu_linux_x86_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform\win_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform\win_x64_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform\win_x86_.hpp" />
+    <ClInclude Include="..\..\include\netp\CPUID.hpp" />
+    <ClInclude Include="..\..\include\netp\dns_resolver.hpp" />
+    <ClInclude Include="..\..\include\netp\epoll_poller.hpp" />
+    <ClInclude Include="..\..\include\netp\event_broker.hpp" />
+    <ClInclude Include="..\..\include\netp\exception.hpp" />
+    <ClInclude Include="..\..\include\netp\funcs.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\dh_symmetric_encrypt.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\dump_in_len.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\dump_in_text.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\dump_out_len.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\dump_out_text.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\echo.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\fragment.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\hlen.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\http.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\mux.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\symmetric_encrypt.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\tls.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\tls_credentials.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\websocket.hpp" />
+    <ClInclude Include="..\..\include\netp\heap.hpp" />
+    <ClInclude Include="..\..\include\netp\helper.hpp" />
+    <ClInclude Include="..\..\include\netp\http\client.hpp" />
+    <ClInclude Include="..\..\include\netp\http\message.hpp" />
+    <ClInclude Include="..\..\include\netp\http\parser.hpp" />
+    <ClInclude Include="..\..\include\netp\icmp.hpp" />
+    <ClInclude Include="..\..\include\netp\iocp_poller.hpp" />
+    <ClInclude Include="..\..\include\netp\io_event.hpp" />
+    <ClInclude Include="..\..\include\netp\io_event_loop.hpp" />
+    <ClInclude Include="..\..\include\netp\ipv4.hpp" />
+    <ClInclude Include="..\..\include\netp\ipv6.hpp" />
+    <ClInclude Include="..\..\include\netp\l2\m6.hpp" />
+    <ClInclude Include="..\..\include\netp\len_str.hpp" />
+    <ClInclude Include="..\..\include\netp\logger\android_log_print.hpp" />
+    <ClInclude Include="..\..\include\netp\logger\console_logger.hpp" />
+    <ClInclude Include="..\..\include\netp\logger\file_logger.hpp" />
+    <ClInclude Include="..\..\include\netp\logger\logger_abstract.hpp" />
+    <ClInclude Include="..\..\include\netp\logger\net_logger.hpp" />
+    <ClInclude Include="..\..\include\netp\logger\sys_logger.hpp" />
+    <ClInclude Include="..\..\include\netp\logger_broker.hpp" />
+    <ClInclude Include="..\..\include\netp\memory.hpp" />
+    <ClInclude Include="..\..\include\netp\mutex.hpp" />
+    <ClInclude Include="..\..\include\netp\os\api_wrapper.hpp" />
+    <ClInclude Include="..\..\include\netp\os\winsock_helper.hpp" />
+    <ClInclude Include="..\..\include\netp\packet.hpp" />
+    <ClInclude Include="..\..\include\netp\promise.hpp" />
+    <ClInclude Include="..\..\include\netp\ringbuffer.hpp" />
+    <ClInclude Include="..\..\include\netp\rpc.hpp" />
+    <ClInclude Include="..\..\include\netp\security\cipher_abstract.hpp" />
+    <ClInclude Include="..\..\include\netp\security\dh.hpp" />
+    <ClInclude Include="..\..\include\netp\security\fletcher.hpp" />
+    <ClInclude Include="..\..\include\netp\security\formula.hpp" />
+    <ClInclude Include="..\..\include\netp\security\murmurhash.hpp" />
+    <ClInclude Include="..\..\include\netp\security\obfuscate.hpp" />
+    <ClInclude Include="..\..\include\netp\security\xxtea.hpp" />
+    <ClInclude Include="..\..\include\netp\select_poller.hpp" />
+    <ClInclude Include="..\..\include\netp\signal_broker.hpp" />
+    <ClInclude Include="..\..\include\netp\singleton.hpp" />
+    <ClInclude Include="..\..\include\netp\smart_ptr.hpp" />
+    <ClInclude Include="..\..\include\netp\socket.hpp" />
+    <ClInclude Include="..\..\include\netp\socket_api.hpp" />
+    <ClInclude Include="..\..\include\netp\socket_base.hpp" />
+    <ClInclude Include="..\..\include\netp\string.hpp" />
+    <ClInclude Include="..\..\include\netp\task\runner.hpp" />
+    <ClInclude Include="..\..\include\netp\task\scheduler.hpp" />
+    <ClInclude Include="..\..\include\netp\task\task.hpp" />
+    <ClInclude Include="..\..\include\netp\test.hpp" />
+    <ClInclude Include="..\..\include\netp\thread.hpp" />
+    <ClInclude Include="..\..\include\netp\thread_impl\condition.hpp" />
+    <ClInclude Include="..\..\include\netp\thread_impl\mutex.hpp" />
+    <ClInclude Include="..\..\include\netp\thread_impl\mutex_basic.hpp" />
+    <ClInclude Include="..\..\include\netp\thread_impl\shared_mutex.hpp" />
+    <ClInclude Include="..\..\include\netp\thread_impl\spin_mutex.hpp" />
+    <ClInclude Include="..\..\include\netp\timer.hpp" />
+    <ClInclude Include="..\..\include\netp\tls.hpp" />
+    <ClInclude Include="..\..\include\netp\traffic\forwarder_detector.hpp" />
+    <ClInclude Include="..\..\include\netp\traffic\forwarder_iptcp.hpp" />
+    <ClInclude Include="..\..\include\netp\traffic\forwarder_iptcp_payload.hpp" />
+    <ClInclude Include="..\..\include\netp\traffic\forwarder_ipudp.hpp" />
+    <ClInclude Include="..\..\include\netp\traffic\forwarder_ipudp_payload.hpp" />
+    <ClInclude Include="..\..\include\netp\traffic\forwarder_l2.hpp" />
+    <ClInclude Include="..\..\include\netp\traffic\repeater.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\3rd\getopt\getopt.c" />
+    <ClCompile Include="..\..\3rd\http_parser\http_parser.c" />
+    <ClCompile Include="..\..\3rd\stack_walker\StackWalker.cpp" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_bl.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_codes.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_dn.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_dntosp.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_init.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_jran.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_misc.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_parse.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_resolver.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_rr_a.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_rr_mx.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_rr_naptr.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_rr_ptr.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_rr_srv.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_rr_txt.c" />
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_XtoX.c" />
+    <ClCompile Include="..\..\src\address.cpp" />
+    <ClCompile Include="..\..\src\app.cpp" />
+    <ClCompile Include="..\..\src\channel_handler.cpp" />
+    <ClCompile Include="..\..\src\channel_handler_context.cpp" />
+    <ClCompile Include="..\..\src\channel_pipeline.cpp" />
+    <ClCompile Include="..\..\src\CPUID.cpp" />
+    <ClCompile Include="..\..\src\dns_resolver.cpp" />
+    <ClCompile Include="..\..\src\exception.cpp" />
+    <ClCompile Include="..\..\src\funcs.cpp" />
+    <ClCompile Include="..\..\src\handler\dh_symmetric_encrypt.cpp" />
+    <ClCompile Include="..\..\src\handler\hlen.cpp" />
+    <ClCompile Include="..\..\src\handler\http.cpp" />
+    <ClCompile Include="..\..\src\handler\mux.cpp" />
+    <ClCompile Include="..\..\src\handler\tls.cpp" />
+    <ClCompile Include="..\..\src\handler\websocket.cpp" />
+    <ClCompile Include="..\..\src\helper.cpp" />
+    <ClCompile Include="..\..\src\http\client.cpp" />
+    <ClCompile Include="..\..\src\http\message.cpp" />
+    <ClCompile Include="..\..\src\http\parser.cpp" />
+    <ClCompile Include="..\..\src\io_event_loop.cpp" />
+    <ClCompile Include="..\..\src\logger\android_log_print.cpp" />
+    <ClCompile Include="..\..\src\logger\console_logger.cpp" />
+    <ClCompile Include="..\..\src\logger\file_logger.cpp" />
+    <ClCompile Include="..\..\src\logger\net_logger.cpp" />
+    <ClCompile Include="..\..\src\logger\sys_logger.cpp" />
+    <ClCompile Include="..\..\src\logger_broker.cpp" />
+    <ClCompile Include="..\..\src\memory.cpp" />
+    <ClCompile Include="..\..\src\os\api_wrapper_android.cpp" />
+    <ClCompile Include="..\..\src\os\api_wrapper_gnulinux.cpp" />
+    <ClCompile Include="..\..\src\os\api_wrapper_win.cpp" />
+    <ClCompile Include="..\..\src\rpc.cpp" />
+    <ClCompile Include="..\..\src\signal_broker.cpp" />
+    <ClCompile Include="..\..\src\socket.cpp" />
+    <ClCompile Include="..\..\src\socket_base.cpp" />
+    <ClCompile Include="..\..\src\task\runner.cpp" />
+    <ClCompile Include="..\..\src\task\scheduler.cpp" />
+    <ClCompile Include="..\..\src\thread.cpp" />
+    <ClCompile Include="..\..\src\thread_impl\mutex.cpp" />
+    <ClCompile Include="..\..\src\timer.cpp" />
+    <ClCompile Include="..\..\src\traffic\forwarder_detector.cpp" />
+    <ClCompile Include="..\..\src\traffic\forwarder_iptcp.cpp" />
+    <ClCompile Include="..\..\src\traffic\forwarder_iptcp_payload.cpp" />
+    <ClCompile Include="..\..\src\traffic\forwarder_ipudp.cpp" />
+    <ClCompile Include="..\..\src\traffic\forwarder_ipudp_payload.cpp" />
+    <ClCompile Include="..\..\src\traffic\forwarder_l2.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\3rd\udns\0.4\inet_XtoX.ci" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{bbae246c-3639-4750-a212-e3a0b86e9bc3}</ProjectGuid>
+    <RootNamespace>netplus</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="vsprops_local\common.props" />
+    <Import Project="vsprops_local\debug.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="vsprops_local\common.props" />
+    <Import Project="vsprops_local\release.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="vsprops_local\common.props" />
+    <Import Project="vsprops_local\debug.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="vsprops_local\common.props" />
+    <Import Project="vsprops_local\release.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <SubSystem>
+      </SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <SubSystem>
+      </SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <SubSystem>
+      </SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <SubSystem>
+      </SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

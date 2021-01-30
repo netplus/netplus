@@ -1,0 +1,220 @@
+#ifndef _NETP_CHANNEL_HANDLER_CONTEXT_HPP
+#define _NETP_CHANNEL_HANDLER_CONTEXT_HPP
+
+#include <netp/io_event_loop.hpp>
+#include <netp/channel_handler.hpp>
+#include <netp/address.hpp>
+
+/*head,tail never removed by iterate*/
+#define CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,DIR) \
+__ctx_iterate_begin: \
+	NETP_ASSERT(_ctx != nullptr); \
+	if (NETP_UNLIKELY(_ctx->H_FLAG&CH_CTX_REMOVED)) { \
+		_ctx->N->P = _ctx->P; \
+		_ctx->P->N = _ctx->N; \
+		_ctx = _ctx->DIR; \
+		goto __ctx_iterate_begin; \
+	} \
+	if(!(_ctx->H_FLAG&HANDLER_FLAG)) \
+	{ \
+		_ctx = _ctx->DIR; \
+		goto __ctx_iterate_begin; \
+	} \
+
+
+#define VOID_INVOKE_NEXT(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,N) \
+	_ctx->H->NAME(_ctx); \
+
+#define VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_0(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	inline void fire_##NAME() const { \
+		NETP_ASSERT(L->in_event_loop()); \
+		NRP<channel_handler_context>_ctx = N; \
+		VOID_INVOKE_NEXT(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME); \
+	} \
+	inline void invoke_##NAME() { \
+		NETP_ASSERT(L->in_event_loop()); \
+		NRP<channel_handler_context>_ctx = NRP<channel_handler_context>(this); \
+		VOID_INVOKE_NEXT(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME); \
+	}
+
+#define VOID_INVOKE_NEXT_INT_1(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,N) \
+	_ctx->H->NAME(_ctx,i); \
+
+#define VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_INT_1(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	inline void fire_##NAME( int i ) const { \
+		NETP_ASSERT(L->in_event_loop()); \
+		NRP<channel_handler_context>_ctx = N; \
+		VOID_INVOKE_NEXT_INT_1(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME); \
+	} \
+	inline void invoke_##NAME(int i) { \
+		NETP_ASSERT(L->in_event_loop()); \
+		NRP<channel_handler_context>_ctx = NRP<channel_handler_context>(this); \
+		VOID_INVOKE_NEXT_INT_1(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME); \
+	} \
+
+#define VOID_INVOKE_NEXT_PACKET(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,N) \
+	_ctx->H->NAME(_ctx,p); \
+
+
+#define VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_PACKET_1(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	inline void fire_##NAME( NRP<packet> const& p ) const { \
+		NETP_ASSERT(L->in_event_loop()); \
+		NRP<channel_handler_context>_ctx = N; \
+		VOID_INVOKE_NEXT_PACKET(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME); \
+	} \
+	inline void invoke_##NAME( NRP<packet> const& p ) { \
+		NETP_ASSERT(L->in_event_loop()); \
+		NRP<channel_handler_context>_ctx = NRP<channel_handler_context>(this); \
+		VOID_INVOKE_NEXT_PACKET(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME); \
+	} \
+
+#define VOID_INVOKE_NEXT_PACKET_ADDR(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,N) \
+	_ctx->H->NAME(_ctx,p,addr); \
+
+#define VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_PACKET_ADDR(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	inline void fire_##NAME( NRP<packet> const& p, address const& addr ) const { \
+		NETP_ASSERT(L->in_event_loop()); \
+		NRP<channel_handler_context>_ctx = N; \
+		VOID_INVOKE_NEXT_PACKET_ADDR(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME); \
+	} \
+	inline void invoke_##NAME( NRP<packet> const& p, address const& addr ) { \
+		NETP_ASSERT(L->in_event_loop()); \
+		NRP<channel_handler_context>_ctx = NRP<channel_handler_context>(this); \
+		VOID_INVOKE_NEXT_PACKET_ADDR(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME); \
+	} \
+
+//--T_TO_H--BEGIN
+#define CH_FUTURE_INVOKE_PREV_PACKET_CH_PROMISE(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	NRP<channel_handler_context>_ctx = P; \
+	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,P) \
+	_ctx->H->NAME(_ctx,p,chp); \
+
+#define CH_FUTURE_ACTION_HANDLER_CONTEXT_IMPL_T_TO_H_PACKET_CH_PROMISE(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+private:\
+	inline void __##NAME(NRP<packet> const& p, NRP<promise<int>> const& chp) { \
+		if( NETP_UNLIKELY(H_FLAG&CH_CTX_REMOVED) ) {\
+			chp->set(netp::E_CHANNEL_CONTEXT_REMOVED); \
+			return; \
+		} \
+		CH_FUTURE_INVOKE_PREV_PACKET_CH_PROMISE(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	} \
+public:\
+	inline void NAME(NRP<packet> const& p, NRP<promise<int>> const& chp) { \
+		L->execute([ctx=NRP<channel_handler_context>(this), p, chp]() { \
+			ctx->__##NAME(p, chp); \
+		}); \
+	} \
+	inline NRP<promise<int>> NAME(NRP<packet> const& p) { \
+		NRP<promise<int>> f = netp::make_ref<promise<int>>();\
+		NAME(p,f); \
+		return f; \
+	} \
+
+#define CH_FUTURE_INVOKE_PREV_PACKET_ADDR_CH_PROMISE(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	NRP<channel_handler_context>_ctx = P; \
+	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,P) \
+	_ctx->H->NAME(_ctx,p,to,chp); \
+
+#define CH_FUTURE_ACTION_HANDLER_CONTEXT_IMPL_T_TO_H_PACKET_ADDR_CH_PROMISE(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+private:\
+	inline void __##NAME(NRP<packet> const& p, address const& to, NRP<promise<int>> const& chp) { \
+		if( NETP_UNLIKELY(H_FLAG&CH_CTX_REMOVED) ) {\
+			chp->set(netp::E_CHANNEL_CONTEXT_REMOVED); \
+			return; \
+		} \
+		CH_FUTURE_INVOKE_PREV_PACKET_ADDR_CH_PROMISE(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	} \
+public:\
+	inline void NAME(NRP<packet> const& p, address const& to, NRP<promise<int>> const& chp) { \
+		L->execute([ctx=NRP<channel_handler_context>(this), p, to,chp]() { \
+			ctx->__##NAME(p,to, chp); \
+		}); \
+	} \
+	inline NRP<promise<int>> NAME(NRP<packet> const& p, address const& to) { \
+		NRP<promise<int>> f = netp::make_ref<promise<int>>();\
+		NAME(p,to,f); \
+		return f;\
+	} \
+
+#define CH_FUTURE_INVOKE_PREV_CH_PROMISE(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	NRP<channel_handler_context>_ctx = P; \
+	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,P) \
+	_ctx->H->NAME(_ctx,chp); \
+
+#define CH_FUTURE_ACTION_HANDLER_CONTEXT_IMPL_T_TO_H_PROMISE(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+private:\
+	inline void __##NAME(NRP<promise<int>> const& chp) { \
+		if( NETP_UNLIKELY(H_FLAG&CH_CTX_REMOVED) ) {\
+			chp->set(netp::E_CHANNEL_CONTEXT_REMOVED); \
+			return; \
+		} \
+		CH_FUTURE_INVOKE_PREV_CH_PROMISE(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	} \
+public:\
+	inline void NAME(NRP<promise<int>> const& chp) { \
+		L->execute([ctx=NRP<channel_handler_context>(this), chp]() { \
+			ctx->__##NAME(chp); \
+		}); \
+	} \
+	inline NRP<promise<int>> NAME() { \
+		NRP<promise<int>> f = netp::make_ref<promise<int>>();\
+		channel_handler_context::NAME(f); \
+		return f;\
+	} \
+
+#define CH_FUTURE_INVOKE_PREV(NAME,HANDLER_FLAG,HANDLER_CLASS_NAME) \
+	NRP<channel_handler_context>_ctx = P; \
+	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,P) \
+	_ctx->H->NAME(_ctx); \
+
+//--T_TO_H--END
+
+namespace netp {
+
+	class channel;
+	class channel_handler_context final:
+		public ref_base
+	{
+	public:
+		friend class channel_pipeline;
+		NRP<io_event_loop> L;
+		NRP<netp::channel> ch;
+	private:
+		u16_t H_FLAG;
+		NRP<channel_handler_context> P;
+		NRP<channel_handler_context> N;
+		NRP<channel_handler_abstract> H;
+
+	public:
+		channel_handler_context(NRP<netp::channel> const& ch_, NRP<channel_handler_abstract> const& h);
+
+		inline void do_remove_from_pipeline(NRP<netp::promise<int>> const& p) {
+			NETP_ASSERT(L->in_event_loop());
+			//HEAD,TAIL will never BE REMOVED from outside
+			NETP_ASSERT(P != nullptr && N != nullptr );
+			H_FLAG |= CH_CTX_REMOVED;
+			p->set(netp::OK);
+		}
+
+		VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_0(connected, CH_ACTIVITY_CONNECTED, channel_activity_handler_abstract)
+		VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_0(closed, CH_ACTIVITY_CLOSED, channel_activity_handler_abstract)
+		VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_0(read_closed, CH_ACTIVITY_READ_CLOSED, channel_activity_handler_abstract)
+		VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_0(write_closed, CH_ACTIVITY_WRITE_CLOSED, channel_activity_handler_abstract)
+		VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_INT_1(error, CH_ACTIVITY_ERROR, channel_activity_handler_abstract)
+		VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_PACKET_1(read, CH_INBOUND_READ, channel_inbound_handler_abstract)
+
+		VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_PACKET_ADDR(readfrom, CH_INBOUND_READ_FROM, channel_inbound_handler_abstract)
+
+		CH_FUTURE_ACTION_HANDLER_CONTEXT_IMPL_T_TO_H_PACKET_CH_PROMISE(write, CH_OUTBOUND_WRITE, channel_outbound_handler_abstract)
+		CH_FUTURE_ACTION_HANDLER_CONTEXT_IMPL_T_TO_H_PROMISE(close, CH_OUTBOUND_CLOSE, channel_outbound_handler_abstract)
+		CH_FUTURE_ACTION_HANDLER_CONTEXT_IMPL_T_TO_H_PROMISE(close_read, CH_OUTBOUND_CLOSE_READ, channel_outbound_handler_abstract)
+		CH_FUTURE_ACTION_HANDLER_CONTEXT_IMPL_T_TO_H_PROMISE(close_write, CH_OUTBOUND_CLOSE_WRITE, channel_outbound_handler_abstract)
+
+		CH_FUTURE_ACTION_HANDLER_CONTEXT_IMPL_T_TO_H_PACKET_ADDR_CH_PROMISE(write_to, CH_OUTBOUND_WRITE_TO, channel_outbound_handler_abstract);
+	};
+}
+#endif

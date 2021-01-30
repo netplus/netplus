@@ -1,0 +1,650 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="3rd">
+      <UniqueIdentifier>{c1f86665-f518-4657-97d5-04af63cb8979}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\netp">
+      <UniqueIdentifier>{8e6bd004-ed15-452c-ae59-632d0aa36f6d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\src">
+      <UniqueIdentifier>{027908db-4eca-4c88-ada8-b1e2427369d8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\src\handler">
+      <UniqueIdentifier>{a05ff002-ab70-4fe8-b212-0d389bad7390}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\src\http">
+      <UniqueIdentifier>{4f8e715d-14a0-4dfa-8a25-b092a80d704a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\src\logger">
+      <UniqueIdentifier>{21448550-31db-46e5-bc06-a37b6907af02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\src\os">
+      <UniqueIdentifier>{d4f1e5f0-5041-4949-bf83-074534896d9b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\src\task">
+      <UniqueIdentifier>{b68dd952-ad91-4391-b599-c46a39ab01e6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\src\thread_impl">
+      <UniqueIdentifier>{6acd9098-6d91-4353-a02a-44ebb1959640}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\src\traffic">
+      <UniqueIdentifier>{c2835b47-8d63-4a66-9407-1b73f58fcc24}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rd\getopt">
+      <UniqueIdentifier>{dafd47e5-7252-40de-8a44-b1002cd7d889}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rd\http_parser">
+      <UniqueIdentifier>{14117c91-1926-4b22-907b-d1b3c6cc935c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rd\stack_walker">
+      <UniqueIdentifier>{519c73f6-1732-4621-bd61-a18c206cc53c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rd\udns">
+      <UniqueIdentifier>{6dbb8b37-2b3e-41fc-b3c2-03f560292d37}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\netp\core">
+      <UniqueIdentifier>{0a81717e-4577-49e3-ba44-5343c8547c97}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\netp\handler">
+      <UniqueIdentifier>{991c3afc-78a3-4d1f-8bcd-20020c904977}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\netp\http">
+      <UniqueIdentifier>{529835b2-4d17-405c-83d3-fbb12e6eb3e6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\netp\logger">
+      <UniqueIdentifier>{0cb3f2c7-1f9b-4bf9-895d-779671823567}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\netp\os">
+      <UniqueIdentifier>{7bcf9b46-5b36-4314-99a9-5aa18bea1f89}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\netp\security">
+      <UniqueIdentifier>{d71763bf-3421-4924-be4d-e390d7d6bcab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\netp\task">
+      <UniqueIdentifier>{7c84c1cb-cd27-4ba9-8f67-49564d325521}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\netp\thread_impl">
+      <UniqueIdentifier>{f758b800-0e63-4783-9108-51bc57433e48}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\netp\traffic">
+      <UniqueIdentifier>{976f2edd-e1dd-4768-9676-588dc24c3f85}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\netp\core\compiler">
+      <UniqueIdentifier>{d8f6d7f0-c520-4a23-a1b8-7a9ef810b5be}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\netp\core\platform">
+      <UniqueIdentifier>{f5065627-b07f-46db-88f4-ad5527b1fba3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\netp\l2">
+      <UniqueIdentifier>{f9bf9034-a82f-461e-a563-8fa8d4970413}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\include\netp.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rd\getopt\getopt.h">
+      <Filter>3rd\getopt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rd\http_parser\http_parser.h">
+      <Filter>3rd\http_parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rd\udns\0.4\config.h">
+      <Filter>3rd\udns</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rd\udns\0.4\udns.h">
+      <Filter>3rd\udns</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rd\stack_walker\StackWalker.h">
+      <Filter>3rd\stack_walker</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\compiler\gcc_.hpp">
+      <Filter>Header Files\netp\core\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\compiler\gcc_armv7a_.hpp">
+      <Filter>Header Files\netp\core\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\compiler\gcc_x64_.hpp">
+      <Filter>Header Files\netp\core\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\compiler\gcc_x86_.hpp">
+      <Filter>Header Files\netp\core\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\compiler\msvc_.hpp">
+      <Filter>Header Files\netp\core\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\compiler\msvc_x64_.hpp">
+      <Filter>Header Files\netp\core\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\compiler\msvc_x86_.hpp">
+      <Filter>Header Files\netp\core\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform\android_.hpp">
+      <Filter>Header Files\netp\core\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform\android_armv7a_.hpp">
+      <Filter>Header Files\netp\core\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform\gnu_linux_.hpp">
+      <Filter>Header Files\netp\core\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform\gnu_linux_armv7a_.hpp">
+      <Filter>Header Files\netp\core\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform\gnu_linux_x64_.hpp">
+      <Filter>Header Files\netp\core\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform\gnu_linux_x86_.hpp">
+      <Filter>Header Files\netp\core\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform\win_.hpp">
+      <Filter>Header Files\netp\core\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform\win_x64_.hpp">
+      <Filter>Header Files\netp\core\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform\win_x86_.hpp">
+      <Filter>Header Files\netp\core\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\dh_symmetric_encrypt.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\dump_in_len.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\dump_in_text.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\dump_out_len.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\dump_out_text.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\echo.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\fragment.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\hlen.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\http.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\mux.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\symmetric_encrypt.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\tls.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\tls_credentials.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\websocket.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\http\client.hpp">
+      <Filter>Header Files\netp\http</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\http\message.hpp">
+      <Filter>Header Files\netp\http</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\http\parser.hpp">
+      <Filter>Header Files\netp\http</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\logger\android_log_print.hpp">
+      <Filter>Header Files\netp\logger</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\logger\console_logger.hpp">
+      <Filter>Header Files\netp\logger</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\logger\file_logger.hpp">
+      <Filter>Header Files\netp\logger</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\logger\logger_abstract.hpp">
+      <Filter>Header Files\netp\logger</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\logger\net_logger.hpp">
+      <Filter>Header Files\netp\logger</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\logger\sys_logger.hpp">
+      <Filter>Header Files\netp\logger</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\traffic\forwarder_detector.hpp">
+      <Filter>Header Files\netp\traffic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\traffic\forwarder_iptcp.hpp">
+      <Filter>Header Files\netp\traffic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\traffic\forwarder_iptcp_payload.hpp">
+      <Filter>Header Files\netp\traffic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\traffic\forwarder_ipudp.hpp">
+      <Filter>Header Files\netp\traffic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\traffic\forwarder_ipudp_payload.hpp">
+      <Filter>Header Files\netp\traffic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\traffic\forwarder_l2.hpp">
+      <Filter>Header Files\netp\traffic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\traffic\repeater.hpp">
+      <Filter>Header Files\netp\traffic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\thread_impl\condition.hpp">
+      <Filter>Header Files\netp\thread_impl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\thread_impl\mutex.hpp">
+      <Filter>Header Files\netp\thread_impl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\thread_impl\mutex_basic.hpp">
+      <Filter>Header Files\netp\thread_impl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\thread_impl\shared_mutex.hpp">
+      <Filter>Header Files\netp\thread_impl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\thread_impl\spin_mutex.hpp">
+      <Filter>Header Files\netp\thread_impl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\task\runner.hpp">
+      <Filter>Header Files\netp\task</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\task\scheduler.hpp">
+      <Filter>Header Files\netp\task</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\task\task.hpp">
+      <Filter>Header Files\netp\task</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\security\cipher_abstract.hpp">
+      <Filter>Header Files\netp\security</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\security\dh.hpp">
+      <Filter>Header Files\netp\security</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\security\fletcher.hpp">
+      <Filter>Header Files\netp\security</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\security\formula.hpp">
+      <Filter>Header Files\netp\security</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\security\murmurhash.hpp">
+      <Filter>Header Files\netp\security</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\security\obfuscate.hpp">
+      <Filter>Header Files\netp\security</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\security\xxtea.hpp">
+      <Filter>Header Files\netp\security</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\os\api_wrapper.hpp">
+      <Filter>Header Files\netp\os</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\os\winsock_helper.hpp">
+      <Filter>Header Files\netp\os</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\adapter.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\address.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\any.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\app.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\benchmark.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\bytes_helper.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\bytes_ringbuffer.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\channel.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\channel_handler.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\channel_handler_context.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\channel_pipeline.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\condition.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\constants.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\CPUID.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\dns_resolver.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\epoll_poller.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\event_broker.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\exception.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\funcs.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\heap.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\icmp.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\io_event.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\io_event_loop.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\iocp_poller.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\ipv4.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\ipv6.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\len_str.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\logger_broker.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\memory.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\mutex.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\packet.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\promise.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\ringbuffer.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\rpc.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\select_poller.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\signal_broker.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\singleton.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\smart_ptr.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\socket.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\socket_api.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\socket_base.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\string.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\test.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\thread.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\timer.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\tls.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\helper.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\l2\m6.hpp">
+      <Filter>Header Files\netp\l2</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\address.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\app.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\channel_handler.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\channel_handler_context.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\channel_pipeline.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\CPUID.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\dns_resolver.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\exception.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\funcs.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\io_event_loop.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\logger_broker.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\memory.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rpc.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\signal_broker.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\socket.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\socket_base.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\thread.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\timer.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\getopt\getopt.c">
+      <Filter>3rd\getopt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\http_parser\http_parser.c">
+      <Filter>3rd\http_parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_bl.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_codes.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_dn.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_dntosp.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_init.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_jran.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_misc.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_parse.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_resolver.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_rr_a.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_rr_mx.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_rr_naptr.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_rr_ptr.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_rr_srv.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_rr_txt.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\udns\0.4\udns_XtoX.c">
+      <Filter>3rd\udns</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\stack_walker\StackWalker.cpp">
+      <Filter>3rd\stack_walker</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\handler\dh_symmetric_encrypt.cpp">
+      <Filter>Source Files\src\handler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\handler\hlen.cpp">
+      <Filter>Source Files\src\handler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\handler\http.cpp">
+      <Filter>Source Files\src\handler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\handler\mux.cpp">
+      <Filter>Source Files\src\handler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\handler\tls.cpp">
+      <Filter>Source Files\src\handler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\handler\websocket.cpp">
+      <Filter>Source Files\src\handler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\http\client.cpp">
+      <Filter>Source Files\src\http</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\http\message.cpp">
+      <Filter>Source Files\src\http</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\http\parser.cpp">
+      <Filter>Source Files\src\http</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\logger\android_log_print.cpp">
+      <Filter>Source Files\src\logger</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\logger\console_logger.cpp">
+      <Filter>Source Files\src\logger</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\logger\file_logger.cpp">
+      <Filter>Source Files\src\logger</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\logger\net_logger.cpp">
+      <Filter>Source Files\src\logger</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\logger\sys_logger.cpp">
+      <Filter>Source Files\src\logger</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\traffic\forwarder_detector.cpp">
+      <Filter>Source Files\src\traffic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\traffic\forwarder_iptcp.cpp">
+      <Filter>Source Files\src\traffic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\traffic\forwarder_iptcp_payload.cpp">
+      <Filter>Source Files\src\traffic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\traffic\forwarder_ipudp.cpp">
+      <Filter>Source Files\src\traffic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\traffic\forwarder_ipudp_payload.cpp">
+      <Filter>Source Files\src\traffic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\traffic\forwarder_l2.cpp">
+      <Filter>Source Files\src\traffic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\thread_impl\mutex.cpp">
+      <Filter>Source Files\src\thread_impl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\task\runner.cpp">
+      <Filter>Source Files\src\task</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\task\scheduler.cpp">
+      <Filter>Source Files\src\task</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\os\api_wrapper_android.cpp">
+      <Filter>Source Files\src\os</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\os\api_wrapper_gnulinux.cpp">
+      <Filter>Source Files\src\os</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\os\api_wrapper_win.cpp">
+      <Filter>Source Files\src\os</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\helper.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\3rd\udns\0.4\inet_XtoX.ci">
+      <Filter>3rd\udns</Filter>
+    </None>
+  </ItemGroup>
+</Project>
