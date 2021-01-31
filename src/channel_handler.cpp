@@ -48,7 +48,7 @@ namespace netp {
 	VOID_FIRE_HANDLER_DEFAULT_IMPL_0(read_closed, CH_ACTIVITY_READ_CLOSED, channel_handler_abstract)
 	VOID_FIRE_HANDLER_DEFAULT_IMPL_0(write_closed, CH_ACTIVITY_WRITE_CLOSED, channel_handler_abstract)
 	
-		//VOID_FIRE_HANDLER_DEFAULT_IMPL_0(write_block, CH_ACTIVITY_WRITE_BLOCK, channel_handler_abstract)
+	//VOID_FIRE_HANDLER_DEFAULT_IMPL_0(write_block, CH_ACTIVITY_WRITE_BLOCK, channel_handler_abstract)
 	//VOID_FIRE_HANDLER_DEFAULT_IMPL_0(write_unblock, CH_ACTIVITY_WRITE_UNBLOCK, channel_handler_abstract)
 
 	void channel_handler_abstract::read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income) {

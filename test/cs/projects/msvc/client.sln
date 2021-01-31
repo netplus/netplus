@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.30907.101
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "client", "client.vcxproj", "{1B49B0E7-2936-4A7E-A2B6-DE859725A58B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "netplus", "..\..\..\..\projects\msvc\netplus.vcxproj", "{BBAE246C-3639-4750-A212-E3A0B86E9BC3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{1B49B0E7-2936-4A7E-A2B6-DE859725A58B}.Release|x64.Build.0 = Release|x64
 		{1B49B0E7-2936-4A7E-A2B6-DE859725A58B}.Release|x86.ActiveCfg = Release|Win32
 		{1B49B0E7-2936-4A7E-A2B6-DE859725A58B}.Release|x86.Build.0 = Release|Win32
+		{BBAE246C-3639-4750-A212-E3A0B86E9BC3}.Debug|x64.ActiveCfg = Debug|x64
+		{BBAE246C-3639-4750-A212-E3A0B86E9BC3}.Debug|x64.Build.0 = Debug|x64
+		{BBAE246C-3639-4750-A212-E3A0B86E9BC3}.Debug|x86.ActiveCfg = Debug|Win32
+		{BBAE246C-3639-4750-A212-E3A0B86E9BC3}.Debug|x86.Build.0 = Debug|Win32
+		{BBAE246C-3639-4750-A212-E3A0B86E9BC3}.Release|x64.ActiveCfg = Release|x64
+		{BBAE246C-3639-4750-A212-E3A0B86E9BC3}.Release|x64.Build.0 = Release|x64
+		{BBAE246C-3639-4750-A212-E3A0B86E9BC3}.Release|x86.ActiveCfg = Release|Win32
+		{BBAE246C-3639-4750-A212-E3A0B86E9BC3}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

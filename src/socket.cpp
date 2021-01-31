@@ -122,11 +122,11 @@ namespace netp {
 		});
 	}
 
-	NRP<promise<int>> socket::listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<socket_create_cfg> const& ccfg, int backlog) {
-		NRP<promise<int>> ch_p = make_ref<promise<int>>();
-		do_listen_on(addr, fn_accepted, ch_p, ccfg, backlog);
-		return ch_p;
-	}
+	//NRP<promise<int>> socket::listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<socket_create_cfg> const& ccfg, int backlog) {
+	//	NRP<promise<int>> ch_p = make_ref<promise<int>>();
+	//	do_listen_on(addr, fn_accepted, ch_p, ccfg, backlog);
+	//	return ch_p;
+	//}
 
 	void socket::do_dial(address const& addr, fn_channel_initializer_t const& initializer, NRP<promise<int>> const& so_dialf) {
 		NETP_ASSERT(L->in_event_loop());
@@ -144,6 +144,7 @@ namespace netp {
 		});
 	}
 
+	/*
 	NRP<promise<int>> socket::dial(address const& addr, fn_channel_initializer_t const& initializer) {
 		NRP<promise<int>> f = make_ref<promise<int>>();
 		if (L->in_event_loop()) {
@@ -155,6 +156,7 @@ namespace netp {
 		}
 		return f;
 	}
+	*/
 
 	SOCKET socket::accept( address& raddr ) {
 		NETP_ASSERT(L->in_event_loop());

@@ -11,7 +11,7 @@ namespace netp {
 
 #ifdef _NETP_ANDROID
 	void stack_trace(char stack_buffer[], u32_t const& s) {
-		__android_log_print(ANDROID_LOG_FATAL, "WAWO", "exception ..." );
+		__android_log_print(ANDROID_LOG_FATAL, "NETP", "exception ..." );
 	}
 #elif defined(_NETP_GNU_LINUX)
 	void stack_trace(char stack_buffer[], u32_t const& s) {

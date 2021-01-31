@@ -400,7 +400,7 @@ namespace netp {
 			return listenp;
 		}
 
-		static NRP<channel_listen_promise> listen_on(std::string& listenurl, fn_channel_initializer_t const& initializer, NRP<socket_create_cfg> const& cfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG) {
+		static NRP<channel_listen_promise> listen_on(std::string const& listenurl, fn_channel_initializer_t const& initializer, NRP<socket_create_cfg> const& cfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG) {
 			return socket::listen_on(listenurl.c_str(), listenurl.length(), initializer,cfg,backlog);
 		}
 
@@ -408,22 +408,20 @@ namespace netp {
 			return socket::listen_on(listenurl, len, initializer, netp::make_ref<socket_create_cfg>(), NETP_DEFAULT_LISTEN_BACKLOG);
 		}
 
-		static NRP<channel_listen_promise> listen_on(std::string& listenurl, fn_channel_initializer_t const& initializer) {
+		static NRP<channel_listen_promise> listen_on(std::string const& listenurl, fn_channel_initializer_t const& initializer) {
 			return socket::listen_on(listenurl.c_str(), listenurl.length() , initializer, netp::make_ref<socket_create_cfg>(), NETP_DEFAULT_LISTEN_BACKLOG);
 		}
 
 	private:
-		void do_listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<promise<int>> const& chp, NRP<socket_create_cfg> const& ccfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
 
-		//url example: tcp://0.0.0.0:80, udp://127.0.0.1:80
-		
+		//url example: tcp://0.0.0.0:80, udp://127.0.0.1:80		
 		//@todo
 		//tcp6://ipv6address
-
-		NRP<promise<int>> listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<socket_create_cfg> const& cfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
+		void do_listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<promise<int>> const& chp, NRP<socket_create_cfg> const& ccfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
+		//NRP<promise<int>> listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<socket_create_cfg> const& cfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
 
 		void do_dial(address const& addr, fn_channel_initializer_t const& initializer, NRP<promise<int>> const& chp);
-		NRP<promise<int>> dial(address const& addr, fn_channel_initializer_t const& initializer);
+		//NRP<promise<int>> dial(address const& addr, fn_channel_initializer_t const& initializer);
 
 		void _ch_do_close_read() {
 			if ((m_chflag&int(channel_flag::F_READ_SHUTDOWN))) { return; }
