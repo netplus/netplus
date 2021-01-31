@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.30907.101
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "heap", "heap.vcxproj", "{D64A235D-D222-41F6-BF1C-51BEB42DA319}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "netplus", "..\..\..\projects\msvc\netplus.vcxproj", "{BBAE246C-3639-4750-A212-E3A0B86E9BC3}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "netplus", "..\..\..\..\projects\msvc\netplus.vcxproj", "{BBAE246C-3639-4750-A212-E3A0B86E9BC3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,4 +1,5 @@
 #include <netp.hpp>
+#include <netp/benchmark.hpp>
 
 struct MyNode {
 	int v;
@@ -39,8 +40,7 @@ template <class HeapT, class NodeT>
 void test_heap(netp::u32_t const& max_v , bool increr_mode ) {
 
 	std::srand(0);
-	netp::u64_t begin = netp::time::curr_nanoseconds();
-
+	netp::benchmark bk("test_heap");
 	unsigned long _b = 1;
 	if (!increr_mode) {
 		_b = max_v ;
@@ -66,9 +66,6 @@ void test_heap(netp::u32_t const& max_v , bool increr_mode ) {
 
 		delete h;
 	}
-
-	netp::u64_t now = netp::time::curr_nanoseconds();
-	printf("total cost: %f ms\n", (now - begin)/1000000.0 );
 }
 
 typedef netp::binary_heap<MyNode> BinH;
@@ -76,7 +73,8 @@ typedef netp::binary_heap<MyNode> BinH;
 template <>
 void test_heap<BinH, MyNode>(netp::u32_t const& max_v , bool increr_mode ) {
 	std::srand(0);
-	netp::u64_t begin = netp::time::curr_nanoseconds();
+
+	netp::benchmark bk("test_heap, binary heap");
 
 	unsigned long _b = 1;
 	if (!increr_mode) {
@@ -99,16 +97,13 @@ void test_heap<BinH, MyNode>(netp::u32_t const& max_v , bool increr_mode ) {
 			h.pop();
 		}
 	}
-
-	netp::u64_t now = netp::time::curr_nanoseconds();
-	printf("total cost: %f ms\n", (now - begin) / 1000000.0);
 }
 
 template <>
 void test_heap<std::vector<MyNode>,MyNode>(netp::u32_t const& max_v, bool increr_mode) {
 
 	std::srand(0);
-	netp::u64_t begin = netp::time::curr_nanoseconds();
+	netp::benchmark bk("test_heap, std::vector");
 
 	unsigned long _b = 1;
 	if (!increr_mode) {
@@ -134,13 +129,11 @@ void test_heap<std::vector<MyNode>,MyNode>(netp::u32_t const& max_v, bool increr
 			hvec.pop_back();
 		}
 	}
-
-	netp::u64_t now = netp::time::curr_nanoseconds();
-	printf("total cost: %f ms\n", (now - begin) / 1000000.0);
 }
 
 int main(int argc, char** argv) {
 
+	netp::app _app;
 	const unsigned int size = 5000000;
 
 	test_heap<std::vector<MyNode>, MyNode>(size, false);
