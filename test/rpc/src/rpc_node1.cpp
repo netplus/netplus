@@ -15,12 +15,12 @@ class foo :
 {
 public:
 	void ping(NRP<netp::rpc> const& r, NRP<netp::packet> const& in, NRP<netp::rpc_call_promise> const& f) {
-		NRP<netp::packet> pong = netp::make_ref<netp::packet>(in->begin(), in->len());
+		NRP<netp::packet> pong = netp::make_ref<netp::packet>(in->head(), in->len());
 		f->set(std::make_tuple(netp::OK, pong));
 	}
 
 	void on_push(NRP<netp::rpc> const& r, NRP<netp::packet> const& in) {
-		NRP<netp::promise<int>> replyp =r->push(netp::make_ref<netp::packet>(in->begin(), in->len()));
+		NRP<netp::promise<int>> replyp =r->push(netp::make_ref<netp::packet>(in->head(), in->len()));
 		replyp->if_done([]( int const& rt ) {
 			NETP_ASSERT(rt == netp::OK);
 		});
@@ -49,13 +49,13 @@ struct benchmark {
 
 void _client_on_push(NRP<netp::rpc> const& r, NRP<netp::packet> const& inp) {
 	//NETP_ASSERT( inp->len() == 256*1024 );
-	if (netp::atomic_increment(&g_resp_count) == g_total-1) {
+	if (netp::atomic_incre(&g_resp_count) == g_total-1) {
 		::raise(SIGINT);
 	}
 }
 
 void push(NRP<netp::rpc> const& r , NRP<netp::packet> const& outp ) {
-	if ( netp::atomic_increment(&g_req_count) != g_total) {
+	if ( netp::atomic_incre(&g_req_count) != g_total) {
 		NRP<netp::promise<int>> pushp = netp::make_ref<netp::promise<int>>();
 		pushp->if_done([r, outp](int const& rt) {
 			if (rt == netp::OK) {
@@ -75,13 +75,13 @@ void call(NRP<netp::rpc> const& r, NRP<netp::packet> const& outp, long long rc) 
 			r->close();
 			return;
 		}
-		long lastc = netp::atomic_increment(&g_resp_count);
+		long long lastc = netp::atomic_incre(&g_resp_count);
 		if (lastc >= g_total) {
 			NETP_DEBUG("test done, rc: %lld", nrc );
 			r->close();
 
 			if (g_total_rpc == g_rpc_count_now) {
-				if (netp::atomic_increment(&g_signal_switch) == 0) {
+				if (netp::atomic_incre(&g_signal_switch) == 0) {
 					::raise(SIGINT);
 				}
 			}
@@ -97,7 +97,7 @@ void call(NRP<netp::rpc> const& r, NRP<netp::packet> const& outp, long long rc) 
 int main(int argc, char** argv) {
 	NSP<netp::app> _app = netp::make_shared<netp::app>();
 	g_total = 10000;
-	g_message_size = 128;
+	g_message_size = 64;
 	g_total_rpc = 1;
 	g_req_count = 0;
 	g_resp_count = 0;
@@ -126,20 +126,20 @@ int main(int argc, char** argv) {
 
 	NRP<netp::socket_create_cfg> cfg = netp::make_ref<netp::socket_create_cfg>();
 
-	NRP<netp::promise<int>> lf = netp::rpc::listen("tcp://0.0.0.0:21001", fn_bind_api, nullptr ,cfg );
-	int rt = lf->get();
+	NRP<netp::rpc_listen_promise> rpc_lf = netp::rpc::listen("tcp://0.0.0.0:21001", fn_bind_api, nullptr ,cfg );
+
+	int rt = std::get<0>(rpc_lf->get());
 	if (rt != netp::OK) {
 		NETP_INFO("[rpc_server]listen rpc service failed: %d", rt);
 		return -1;
 	}
-
 
 	benchmark bhm("test rpc call");
 
 	NRP<netp::rpc>* rpcs = new NRP<netp::rpc>[g_total_rpc];
 	for (int i = 0; i < g_total_rpc; ++i) {
 		NRP<netp::packet> outp = netp::make_ref<netp::packet>(g_message_size);
-		outp->forward_write_index(g_message_size);
+		outp->incre_write_idx(g_message_size);
 		NRP<netp::rpc_dial_promise> rdp = netp::rpc::dial("tcp://127.0.0.1:21001", nullptr, cfg);
 		rdp->if_done([outp, rpcs,i](std::tuple<int, NRP<netp::rpc>> const& tupr) {
 			if (std::get<0>(tupr) != netp::OK) {
@@ -148,7 +148,7 @@ int main(int argc, char** argv) {
 			}
 
 			NRP<netp::rpc> r = std::get<1>(tupr);
-			netp::atomic_increment(&g_rpc_count_now);
+			netp::atomic_incre(&g_rpc_count_now);
 			*(rpcs + i) = r;
 			call(r, outp,0);
 		});
@@ -176,6 +176,7 @@ int main(int argc, char** argv) {
 
 	NETP_INFO("total: %u, cost seconds: %lld, rate: %0.f/s, thp: %0.f kb/s", g_total, sec.count(), rate, thp);
 
+	std::get<1>(rpc_lf->get())->ch_close();
 
 	return 0;
 }

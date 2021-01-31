@@ -106,6 +106,8 @@ namespace netp {
 
 	class rpc;
 	typedef netp::promise<std::tuple<int, NRP<rpc>>> rpc_dial_promise;
+	typedef netp::channel_listen_promise rpc_listen_promise;
+
 
 	class rpc final:
 		public netp::channel_handler_abstract,
@@ -244,15 +246,15 @@ namespace netp {
 			return rpc::dial(host, nullptr);
 		}
 
-		static NRP<channel_listen_promise> listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_create_cfg> const& cfg);
+		static NRP<rpc_listen_promise> listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_create_cfg> const& cfg);
 
-		static NRP<channel_listen_promise> listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted, netp::fn_channel_initializer_t const& fn_ch_initializer) {
+		static NRP<rpc_listen_promise> listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted, netp::fn_channel_initializer_t const& fn_ch_initializer) {
 			return rpc::listen(host, fn_accepted, fn_ch_initializer, netp::make_ref<socket_create_cfg>());
 		}
-		static NRP<channel_listen_promise> listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted) {
+		static NRP<rpc_listen_promise> listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted) {
 			return rpc::listen(host, fn_accepted,nullptr, netp::make_ref<socket_create_cfg>());
 		}
-		static NRP<channel_listen_promise> listen(std::string const& host) {
+		static NRP<rpc_listen_promise> listen(std::string const& host) {
 			return rpc::listen(host, nullptr, nullptr, netp::make_ref<socket_create_cfg>());
 		}
 	};

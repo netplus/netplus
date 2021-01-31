@@ -477,11 +477,11 @@ namespace netp {
 		return tf;
 	}
 
-	netp::fn_channel_initializer_t rpc::__decorate_initializer(fn_rpc_activity_notify_t const& fn_notify_connected, fn_rpc_activity_notify_error_t const& fn_notify_err, netp::fn_channel_initializer_t const& fn_initializer ) {
+	netp::fn_channel_initializer_t rpc::__decorate_initializer(fn_rpc_activity_notify_t const& fn_notify_connected, fn_rpc_activity_notify_error_t const& fn_notify_err, netp::fn_channel_initializer_t const& fn_ch_initializer ) {
 
-		return [fn_notify_connected, fn_notify_err, fn_initializer](NRP<netp::channel> const& ch) {
-			if (fn_initializer != nullptr) {
-				fn_initializer(ch);
+		return [fn_notify_connected, fn_notify_err, fn_ch_initializer](NRP<netp::channel> const& ch) {
+			if (fn_ch_initializer != nullptr) {
+				fn_ch_initializer(ch);
 			}
 
 			NRP<netp::channel_handler_abstract> h_hlen = netp::make_ref<netp::handler::hlen>();
@@ -527,7 +527,7 @@ namespace netp {
 		return dial(host.c_str(), host.length(), fn_ch_initializer, cfg);
 	}
 
-	NRP<channel_listen_promise> rpc::listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_create_cfg> const& cfg ) {
+	NRP<rpc_listen_promise> rpc::listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_create_cfg> const& cfg ) {
 		return netp::socket::listen_on(host.c_str(), host.length(), __decorate_initializer(fn_accepted, nullptr, fn_ch_initializer), cfg);
 	}
 }

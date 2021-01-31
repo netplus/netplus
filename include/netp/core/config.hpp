@@ -103,37 +103,6 @@
 #define NETP_DEFAULT_TCP_KEEPALIVE_INTERVAL	(30)
 #define NETP_DEFAULT_TCP_KEEPALIVE_PROBES		(6)
 
-//#define NETP_ENABLE_PP_PACKET
-#ifdef NETP_ENABLE_PP_PACKET
-#define NETP_DEFAULT_PP_PACKET_EVENT_LOOP_COUNT 1
-#else
-#define NETP_DEFAULT_PP_PACKET_EVENT_LOOP_COUNT 0
-#endif
-
-
-#define NETP_DISABLE_BFR_TCP
-#ifndef NETP_DISABLE_BFR_TCP
-	#define NETP_ENABLE_BFR_TCP
-#endif
-
-#ifdef _NETP_WIN
-	#ifndef NETP_NPCAP_VERSION
-		#define NETP_NPCAP_VERSION 1.03
-	#endif
-
-	//relative to 3rd path
-	#define NETP_NPCAP_INCLUDE_PATH3(thirdrd,version,file) thirdrd/npcap/version/Include/pcap/file
-	#define NETP_NPCAP_FILE(thirdrd,file) NETP_QUOTE( NETP_NPCAP_INCLUDE_PATH3(thirdrd,NETP_NPCAP_VERSION,file))
-	
-	#ifdef _NETP_AM64
-		#define NETP_NPCAP_LIB_PATH2(version,file) npcap/version/Lib/x64/file
-	#else
-		#define NETP_NPCAP_LIB_PATH2(version,file) npcap/version/Lib/file
-	#endif
-	#define NETP_NPCAP_LIB(lib) NETP_QUOTE( NETP_NPCAP_LIB_PATH2(NETP_NPCAP_VERSION,lib))
-
-#endif
-
 #define NETP_RPC_QUEUE_SIZE (200)
 
 
@@ -161,7 +130,6 @@
 
 //#define NETP_ENABLE_TRACE_SOCKET
 //#define NETP_ENABLE_TRACE_IOE
-
 
 
 #ifdef NETP_ENABLE_TRACE_SOCKET_API
@@ -206,11 +174,6 @@
 #else
 	#define TRACE_RPC(...)
 #endif
-
-
-#define NETP_ENABLE_FEC_RQ
-
-
 
 
 #endif // end for _CONFIG_NETP_CONFIG_H_
