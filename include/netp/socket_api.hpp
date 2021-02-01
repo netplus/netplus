@@ -365,7 +365,7 @@ namespace netp { namespace socket_api {
 	inline int connect(socket_fn_cfg const& fn,SOCKET fd, address const& addr) {
 		sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
-		addr_in.sin_family = int(addr.family());
+		addr_in.sin_family = u16_t(addr.family());
 		addr_in.sin_port = addr.nport();
 		addr_in.sin_addr.s_addr = addr.nipv4();
 		return fn.connect(fd, (sockaddr*)(&addr_in), sizeof(addr_in));
@@ -374,7 +374,7 @@ namespace netp { namespace socket_api {
 	inline int bind(socket_fn_cfg const& fn,SOCKET fd, address const& addr) {
 		sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
-		addr_in.sin_family = int(addr.family());
+		addr_in.sin_family = u16_t(addr.family());
 		addr_in.sin_port = addr.nport();
 		addr_in.sin_addr.s_addr = addr.nipv4();
 		return fn.bind(fd, (sockaddr*)(&addr_in), sizeof(addr_in));
@@ -512,7 +512,7 @@ namespace netp { namespace socket_api {
 
 		sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
-		addr_in.sin_family = int(addr.family());
+		addr_in.sin_family = u16_t(addr.family());
 		addr_in.sin_port = addr.nport();
 		addr_in.sin_addr.s_addr = addr.nipv4();
 sendto:

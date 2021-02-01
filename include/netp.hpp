@@ -5,6 +5,7 @@
 #include "../3rd/nlohmann/include/nlohmann/json.hpp"
 
 #include <netp/core.hpp>
+#include <netp/CPUID.hpp>
 #include <netp/funcs.hpp>
 
 #include <netp/smart_ptr.hpp>
@@ -77,5 +78,9 @@
 
 #include <netp/signal_broker.hpp>
 #include <netp/app.hpp>
+
+
+#include <netp/benchmark.hpp>
+#include <netp/test.hpp>
 
 #endif

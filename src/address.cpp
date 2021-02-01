@@ -23,7 +23,7 @@ namespace netp {
 		0
 	};
 
-	const int DEF_protocol_str_to_proto(const char* protostr) {
+	const u8_t DEF_protocol_str_to_proto(const char* protostr) {
 		if (netp::iequals<string_t>(protostr, string_t("tcp"))) {
 			return NETP_PROTOCOL_TCP;
 		} else if (netp::iequals<string_t>(protostr, string_t("udp"))) {
@@ -223,6 +223,7 @@ namespace netp {
 		m_port(port),
 		m_family(u8_t(f))
 	{
+		NETP_ASSERT(f < 255);
 		NETP_ASSERT( ip != nullptr && netp::strlen(ip) );
 		m_ipv4  = dotiptoip(ip);
 	}

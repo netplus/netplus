@@ -106,7 +106,7 @@ namespace netp {
 		socket_base(SOCKET fd, int family, int sockt, int proto, address const& laddr, address const& raddr); //by pass a connected socket fd
 		~socket_base();
 
-		void cfg_socket_fn(socket_api::socket_fn_cfg const* const fncfg) { m_fn = m_fn; }
+		void cfg_socket_fn(socket_api::socket_fn_cfg* const fncfg) { m_fn = fncfg; }
 
 		__NETP_FORCE_INLINE int sock_family() const { return ((m_family)); };
 		__NETP_FORCE_INLINE int sock_type() const { return (m_type); };

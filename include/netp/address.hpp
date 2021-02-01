@@ -8,49 +8,36 @@
 #include <netp/ipv6.hpp>
 #include <netp/string.hpp>
 
+#define NETP_PF_INET 		PF_INET
+#define NETP_AF_INET		AF_INET
+#define NETP_AF_INET6		AF_INET6
+#define NETP_AF_UNIX		AF_UNIX
+#define NETP_PF_UNIX		PF_UNIX
+#define NETP_AF_UNSPEC	AF_UNSPEC
+#define NETP_AF_USER		(AF_MAX+2)
+
+
+#define NETP_SOCK_STREAM				SOCK_STREAM
+#define NETP_SOCK_DGRAM				SOCK_DGRAM
+#define NETP_SOCK_RAW					SOCK_RAW
+#define NETP_SOCK_RDM					SOCK_RDM
+#define NETP_SOCK_SEQPACKET		SOCK_SEQPACKET
+#define NETP_SOCK_USERPACKET		(SOCK_SEQPACKET+100)
+
+#define NETP_PROTOCOL_TCP		0
+#define NETP_PROTOCOL_UDP		1
+#define NETP_PROTOCOL_ICMP	2
+#define NETP_PROTOCOL_IGMP	3
+#define NETP_PROTOCOL_SCTP		4
+#define NETP_PROTOCOL_RAW		5
+#define NETP_PROTOCOL_USER		6
+#define NETP_PROTOCOL_MAX		7
+
 namespace netp {
-
-	#define NETP_PF_INET 		PF_INET
-	#define NETP_AF_INET		AF_INET
-	#define NETP_AF_INET6		AF_INET6
-	#define NETP_AF_UNIX		AF_UNIX
-	#define NETP_PF_UNIX		PF_UNIX
-	#define NETP_AF_UNSPEC	AF_UNSPEC
-	#define NETP_AF_USER		(~0)
-
-
-	#define NETP_SOCK_STREAM				SOCK_STREAM
-	#define NETP_SOCK_DGRAM				SOCK_DGRAM
-	#define NETP_SOCK_RAW					SOCK_RAW
-	#define NETP_SOCK_RDM					SOCK_RDM
-	#define NETP_SOCK_SEQPACKET		SOCK_SEQPACKET
-	#define NETP_SOCK_USERPACKET					(SOCK_SEQPACKET+100)
-/*
-	enum s_protocol {
-		P_TCP,
-		P_UDP,
-		P_ICMP,
-		P_IGMP,
-		P_SCTP,
-		P_RAW,
-		P_USER,
-		P_MAX
-	};
-	*/
-
-	#define NETP_PROTOCOL_TCP		0
-	#define NETP_PROTOCOL_UDP		1
-	#define NETP_PROTOCOL_ICMP	2
-	#define NETP_PROTOCOL_IGMP	3
-	#define NETP_PROTOCOL_SCTP		4
-	#define NETP_PROTOCOL_RAW		5
-	#define NETP_PROTOCOL_USER		6
-	#define NETP_PROTOCOL_MAX		7
-
 
 	extern const char* DEF_protocol_str[NETP_PROTOCOL_MAX];
 	extern const int OS_DEF_protocol[NETP_PROTOCOL_MAX];
-	extern const int DEF_protocol_str_to_proto(const char* protostr);
+	extern const u8_t DEF_protocol_str_to_proto(const char* protostr);
 
 	enum class addrinfo_filter {
 		AIF_ALL			= 0x0, //return all
@@ -94,8 +81,8 @@ namespace netp {
 			return !((*this) < addr);
 		}
 
-		inline int family() const {
-			return int(m_family);
+		inline u16_t family() const {
+			return u16_t(m_family);
 		}
 
 		const string_t dotip() const ;
@@ -124,7 +111,8 @@ namespace netp {
 		inline void setport(port_t port) {
 			m_port = port;
 		}
-		inline void setfamily(int f) {
+		inline void setfamily(u16_t f) {
+			NETP_ASSERT(f < 255);
 			m_family = u8_t(f);
 		}
 		string_t to_string() const;

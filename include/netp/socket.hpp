@@ -69,7 +69,7 @@ namespace netp {
 			break;
 			default:
 			{
-				family = NETP_AF_USER;
+				family = (NETP_AF_USER);
 				stype = NETP_SOCK_USERPACKET;
 			}
 		}

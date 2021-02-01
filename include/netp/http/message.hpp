@@ -69,7 +69,14 @@ namespace netp { namespace http {
 		};
 		const static inline netp::string_t H_key(netp::string_t const& field) {
 			netp::string_t _key(field);
+#ifdef _NETP_WIN
+#pragma warning(push)
+#pragma warning(disable:4244)
+#endif
 			std::transform(_key.begin(), _key.end(), _key.begin(), ::tolower);
+#ifdef _NETP_WIN
+#pragma warning(pop)
+#endif
 			return _key;
 		}
 
