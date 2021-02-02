@@ -180,9 +180,10 @@ namespace netp {
 		{
 			if (m_so == nullptr) {
 				int creatert;
-				NRP<socket_create_cfg> cfg = netp::make_ref<socket_create_cfg>();
+				NRP<socket_cfg> cfg = netp::make_ref<socket_cfg>();
 				cfg->type = NETP_SOCK_RAW;
 				cfg->proto = NETP_PROTOCOL_ICMP;
+				cfg->L = io_event_loop_group::instance()->next();
 				std::tie(creatert, m_so) = netp::socket::create(cfg);
 				return creatert;
 			}

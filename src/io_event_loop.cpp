@@ -51,16 +51,16 @@ namespace netp {
 	void io_event_loop::_do_poller_init() {
 		NETP_ASSERT(in_event_loop());
 
-		int rt = netp::socket_api::socketpair( int(NETP_AF_INET), int(NETP_SOCK_STREAM), int(NETP_PROTOCOL_TCP), m_signalfds);
+		int rt = netp::socketpair( int(NETP_AF_INET), int(NETP_SOCK_STREAM), int(NETP_PROTOCOL_TCP), m_signalfds);
 		NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
-		rt = netp::socket_api::turnon_nonblocking(socket_api::NETP_DEFAULT_SOCKET_API,m_signalfds[0]);
+		rt = netp::turnon_nonblocking(netp::NETP_DEFAULT_SOCKAPI,m_signalfds[0]);
 		NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
-		rt = netp::socket_api::turnon_nonblocking(socket_api::NETP_DEFAULT_SOCKET_API, m_signalfds[1]);
+		rt = netp::turnon_nonblocking(netp::NETP_DEFAULT_SOCKAPI, m_signalfds[1]);
 		NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
-		rt = netp::socket_api::turnon_nodelay(socket_api::NETP_DEFAULT_SOCKET_API, m_signalfds[1]);
+		rt = netp::turnon_nodelay(netp::NETP_DEFAULT_SOCKAPI, m_signalfds[1]);
 		NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
 		NETP_ASSERT(rt == netp::OK);
@@ -73,7 +73,7 @@ namespace netp {
 				byte_t tmp[1];
 				int ec = netp::OK;
 				do {
-					u32_t c = netp::socket_api::recv(socket_api::NETP_DEFAULT_SOCKET_API, fd, tmp, 1, ec, 0);
+					u32_t c = netp::recv(netp::NETP_DEFAULT_SOCKAPI, fd, tmp, 1, ec, 0);
 					if (c == 1) {
 						NETP_ASSERT(ec == netp::OK);
 						NETP_ASSERT(tmp[0] == 'i', "c: %d", tmp[0]);
@@ -104,7 +104,7 @@ namespace netp {
 		const static byte_t interrutp_a[1] = { (byte_t) 'i' };
 		NETP_ASSERT(interrutp_a[0] == 'i');
 
-		u32_t c = netp::socket_api::send(socket_api::NETP_DEFAULT_SOCKET_API, m_signalfds[1], interrutp_a, 1, ec, 0);
+		u32_t c = netp::send(netp::NETP_DEFAULT_SOCKAPI, m_signalfds[1], interrutp_a, 1, ec, 0);
 		if (NETP_UNLIKELY(ec != netp::OK)) {
 			NETP_WARN("[io_event_loop]interrupt send failed: %d", ec);
 		}
@@ -242,14 +242,14 @@ namespace netp {
 			//NETP_DEBUG("netp::io_event_loop_group::~io_event_loop_group()");
 		}
 
-		void io_event_loop_group::__notify_terminating(io_poller_type t) {
+		void io_event_loop_group::notify_terminating(io_poller_type t) {
 			shared_lock_guard<shared_mutex> slg(m_pollers_mtx[t]);
 			for(::size_t i=0;i<m_pollers[t].size();++i) {
 				m_pollers[t][i]->__notify_terminating();
 			}
 		}
 
-		void io_event_loop_group::alloc_poller(io_poller_type t, int count, poller_cfg const& cfg, fn_poller_maker_t const& fn_maker ) {
+		void io_event_loop_group::alloc_add_poller(io_poller_type t, int count, poller_cfg const& cfg, fn_poller_maker_t const& fn_maker ) {
 			NETP_DEBUG("[io_event_loop_group]alloc poller: %u, count: %u, ch_buf_size: %u, maxiumctx: %u", t, count, cfg.ch_buf_size, cfg.maxiumctx );
 			lock_guard<shared_mutex> lg(m_pollers_mtx[t]);
 			m_curr_poller_idx[t] = 0;
@@ -265,7 +265,7 @@ namespace netp {
 			}
 		}
 
-		void io_event_loop_group::__dealloc_poller(io_poller_type t) {
+		void io_event_loop_group::dealloc_remove_poller(io_poller_type t) {
 
 		__dealloc_begin:
 			std::vector<NRP<io_event_loop>> to_deattach;
@@ -314,7 +314,7 @@ namespace netp {
 		void io_event_loop_group::init(int count[io_poller_type::T_POLLER_MAX], poller_cfg cfgs[io_poller_type::T_POLLER_MAX]) {
 			for (int i = 0; i < T_POLLER_MAX; ++i) {
 				if (count[i] > 0) {
-					alloc_poller(io_poller_type(i), count[i], cfgs[i]);
+					alloc_add_poller(io_poller_type(i), count[i], cfgs[i]);
 				}
 			}
 		}
@@ -338,7 +338,7 @@ namespace netp {
 			for (int i= T_POLLER_MAX-1; i >=0; --i) {
 				if (m_pollers[i].size()) {
 					NETP_INFO("[io_event_loop]__notify_terminating, type: %d", io_poller_type(i) );
-					__notify_terminating(io_poller_type(i));
+					notify_terminating(io_poller_type(i));
 				}
 			}
 
@@ -346,7 +346,7 @@ namespace netp {
 			for (int i = T_POLLER_MAX - 1; i >= 0; --i) {
 				if (m_pollers[i].size()) {
 					NETP_INFO("[io_event_loop]__dealloc_poller, type: %d", io_poller_type(i));
-					__dealloc_poller(io_poller_type(i));
+					dealloc_remove_poller(io_poller_type(i));
 				}
 			}
 

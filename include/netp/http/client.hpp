@@ -72,7 +72,7 @@ namespace netp { namespace http {
 		bool dump_in;
 		bool dump_out;
 		tls_cfg tls;
-		NRP<socket_create_cfg> cfg;
+		NRP<socket_cfg> cfg;
 	};
 
 	class client;
@@ -194,10 +194,10 @@ namespace netp { namespace http {
 		NRP<netp::promise<int>> close();
 	};
 
-	extern void do_dial(const char* host, size_t len, NRP<client_dial_promise> const& dp, dial_cfg const& cfg = { true,true,{}, netp::make_ref<netp::socket_create_cfg>() });
+	extern void do_dial(const char* host, size_t len, NRP<client_dial_promise> const& dp, dial_cfg const& cfg = { true,true,{}, netp::make_ref<netp::socket_cfg>() });
 
-	extern NRP<client_dial_promise> dial(const char* host, size_t len, dial_cfg const& cfg = { true,true,{},netp::make_ref<netp::socket_create_cfg>() });
-	extern NRP<client_dial_promise> dial(std::string const& host, dial_cfg const& cfg = { true,true,{},netp::make_ref<netp::socket_create_cfg>() });
+	extern NRP<client_dial_promise> dial(const char* host, size_t len, dial_cfg const& cfg = { true,true,{},netp::make_ref<netp::socket_cfg>() });
+	extern NRP<client_dial_promise> dial(std::string const& host, dial_cfg const& cfg = { true,true,{},netp::make_ref<netp::socket_cfg>() });
 
 	extern void do_get(std::string const& url, NRP<netp::http::request_promise> const& reqp, std::chrono::seconds timeout = std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT));
 	extern NRP<netp::http::request_promise> get(std::string const& url , std::chrono::seconds timeout = std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT) );

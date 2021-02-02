@@ -15,7 +15,7 @@
 
 #define IS_ERRNO_EQUAL_CONNECTING(_errno) ((_errno==netp::E_EINPROGRESS)||(_errno==netp::E_WSAEWOULDBLOCK))
 
-namespace netp { namespace socket_api {
+namespace netp {
 
 	typedef SOCKET (*fn_socket)(int family, int type, int proto);
 	typedef int(*fn_connect)(SOCKET fd, const struct sockaddr* sockaddr, socklen_t len);
@@ -39,7 +39,7 @@ namespace netp { namespace socket_api {
 
 	typedef int (*fn_set_nonblocking)(SOCKET fd, bool onoff);
 
-	struct socket_fn_cfg {
+	struct socket_api {
 		fn_socket socket;	
 		fn_bind bind;
 		fn_connect connect;
@@ -338,7 +338,7 @@ namespace netp { namespace socket_api {
 #else 
 	#define __SOCKET_API_NS
 #endif
-	const socket_fn_cfg NETP_DEFAULT_SOCKET_API = {
+	const socket_api NETP_DEFAULT_SOCKAPI = {
 			__SOCKET_API_NS::socket,
 			__SOCKET_API_NS::bind,
 			__SOCKET_API_NS::connect,
@@ -358,11 +358,11 @@ namespace netp { namespace socket_api {
 			(fn_set_nonblocking)set_nonblocking
 	};
 	
-	inline SOCKET socket(socket_fn_cfg const& fn, int family, int type, int protocol) {
+	inline SOCKET open(socket_api const& fn, int family, int type, int protocol) {
 		return fn.socket(family, type, OS_DEF_protocol[protocol]);
 	}
 
-	inline int connect(socket_fn_cfg const& fn,SOCKET fd, address const& addr) {
+	inline int connect(socket_api const& fn,SOCKET fd, address const& addr) {
 		sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
 		addr_in.sin_family = u16_t(addr.family());
@@ -371,7 +371,7 @@ namespace netp { namespace socket_api {
 		return fn.connect(fd, (sockaddr*)(&addr_in), sizeof(addr_in));
 	}
 
-	inline int bind(socket_fn_cfg const& fn,SOCKET fd, address const& addr) {
+	inline int bind(socket_api const& fn,SOCKET fd, address const& addr) {
 		sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
 		addr_in.sin_family = u16_t(addr.family());
@@ -380,19 +380,19 @@ namespace netp { namespace socket_api {
 		return fn.bind(fd, (sockaddr*)(&addr_in), sizeof(addr_in));
 	}
 
-	inline int shutdown(socket_fn_cfg const& fn, SOCKET fd, int flag) {
+	inline int shutdown(socket_api const& fn, SOCKET fd, int flag) {
 		return  fn.shutdown(fd, flag);
 	}
 
-	inline int close(socket_fn_cfg const& fn, SOCKET fd) {
+	inline int close(socket_api const& fn, SOCKET fd) {
 		return fn.close(fd);
 	}
 
-	inline int listen(socket_fn_cfg const& fn, SOCKET fd, int backlog) {
+	inline int listen(socket_api const& fn, SOCKET fd, int backlog) {
 		return fn.listen(fd, backlog);
 	}
 
-	inline SOCKET accept(socket_fn_cfg const& fn, SOCKET fd, address& addr) {
+	inline SOCKET accept(socket_api const& fn, SOCKET fd, address& addr) {
 		sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
 		socklen_t len = sizeof(addr_in);
@@ -403,7 +403,7 @@ namespace netp { namespace socket_api {
 		return accepted_fd;
 	}
 
-	inline int getsockname(socket_fn_cfg const& fn,SOCKET fd, address& addr) {
+	inline int getsockname(socket_api const& fn,SOCKET fd, address& addr) {
 		sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
 
@@ -414,7 +414,7 @@ namespace netp { namespace socket_api {
 		return netp::OK;
 	}
 
-	inline int getpeername(socket_fn_cfg const& fn, SOCKET fd, address& addr) {
+	inline int getpeername(socket_api const& fn, SOCKET fd, address& addr) {
 		sockaddr_in addr_peer;
 		::memset(&addr_peer, 0, sizeof(addr_peer));
 		socklen_t len = sizeof(addr_peer);
@@ -424,7 +424,7 @@ namespace netp { namespace socket_api {
 		return netp::OK;
 	}
 
-	inline netp::u32_t send(socket_fn_cfg const& fn, SOCKET fd, byte_t const* const buf, netp::u32_t len, int& ec_o, int flag) {
+	inline netp::u32_t send(socket_api const& fn, SOCKET fd, byte_t const* const buf, netp::u32_t len, int& ec_o, int flag) {
 		NETP_ASSERT(buf != nullptr);
 		NETP_ASSERT(len > 0);
 
@@ -462,7 +462,7 @@ namespace netp { namespace socket_api {
 		return R;
 	}
 
-	inline netp::u32_t recv(socket_fn_cfg const& fn, SOCKET fd, byte_t* const buffer_o, netp::u32_t size, int& ec_o, int flag) {
+	inline netp::u32_t recv(socket_api const& fn, SOCKET fd, byte_t* const buffer_o, netp::u32_t size, int& ec_o, int flag) {
 		NETP_ASSERT(buffer_o != nullptr);
 		NETP_ASSERT(size > 0);
 
@@ -504,7 +504,7 @@ namespace netp { namespace socket_api {
 		return R;
 	}
 
-	inline netp::u32_t sendto(socket_fn_cfg const& fn, SOCKET fd, netp::byte_t const* const buff, netp::u32_t len, address const& addr, int& ec_o, int const& flag) {
+	inline netp::u32_t sendto(socket_api const& fn, SOCKET fd, netp::byte_t const* const buff, netp::u32_t len, address const& addr, int& ec_o, int const& flag) {
 
 		NETP_ASSERT(buff != nullptr);
 		NETP_ASSERT(len > 0);
@@ -538,12 +538,12 @@ sendto:
 		return 0;
 	}
 
-	inline netp::u32_t recvfrom(socket_fn_cfg const& fn, SOCKET fd, byte_t* const buff_o, netp::u32_t size, address& addr_o, int& ec_o, int const& flag) {
+	inline netp::u32_t recvfrom(socket_api const& api, SOCKET fd, byte_t* const buff_o, netp::u32_t size, address& addr_o, int& ec_o, int const& flag) {
 recvfrom:
 		sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
 		socklen_t socklen = sizeof(addr_in);
-		const int nbytes = fn.recvfrom(fd, reinterpret_cast<char*>(buff_o), (int)size, flag, reinterpret_cast<sockaddr*>(&addr_in), &socklen);
+		const int nbytes = api.recvfrom(fd, reinterpret_cast<char*>(buff_o), (int)size, flag, reinterpret_cast<sockaddr*>(&addr_in), &socklen);
 
 		if (NETP_LIKELY(nbytes > 0)) {
 			addr_o = address(addr_in);
@@ -565,48 +565,48 @@ recvfrom:
 		return 0;
 	}
 
-	inline int set_keepalive(socket_fn_cfg const& fn, SOCKET fd, bool onoff) {
+	inline int set_keepalive(socket_api const& api, SOCKET fd, bool onoff) {
 		int optval = onoff ? 1 : 0;
-		return fn.setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval));
+		return api.setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval));
 	}
 
-	inline int set_reuseaddr(socket_fn_cfg const& fn, SOCKET fd, bool onoff) {
+	inline int set_reuseaddr(socket_api const& api, SOCKET fd, bool onoff) {
 		int optval = onoff ? 1 : 0;
-		return fn.setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+		return api.setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 	}
 
-	inline int set_reuseport(socket_fn_cfg const& fn, SOCKET fd, bool onoff) {
+	inline int set_reuseport(socket_api const& api, SOCKET fd, bool onoff) {
 #ifdef _NETP_GNU_LINUX
 		int optval = onoff ? 1 : 0;
 		return fn.setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 #else
-		(void)fn;
+		(void)api;
 		(void)fd;
 		(void)onoff;
 		return netp::OK;
 #endif
 	}
-	inline int set_broadcast(socket_fn_cfg const& fn, SOCKET fd, bool onoff) {
+	inline int set_broadcast(socket_api const& api, SOCKET fd, bool onoff) {
 		int optval = onoff ? 1 : 0;
-		return fn.setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &optval, sizeof(optval));
+		return api.setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &optval, sizeof(optval));
 	}
 
-	inline int turnon_nonblocking(socket_fn_cfg const& fn, SOCKET fd) {
-		return fn.set_nonblocking(fd, true);
+	inline int turnon_nonblocking(socket_api const& api, SOCKET fd) {
+		return api.set_nonblocking(fd, true);
 	}
-	inline int turnoff_nonblocking(socket_fn_cfg const& fn,SOCKET fd) {
-		return fn.set_nonblocking(fd, false);
+	inline int turnoff_nonblocking(socket_api const& api,SOCKET fd) {
+		return api.set_nonblocking(fd, false);
 	}
 
-	inline int set_nodelay(socket_fn_cfg const& fn,SOCKET fd, bool onoff) {
+	inline int set_nodelay(socket_api const& api,SOCKET fd, bool onoff) {
 		int optval = onoff ? 1 : 0;
-		return fn.setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval));
+		return api.setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval));
 	}
-	inline int turnon_nodelay(socket_fn_cfg const& fn, SOCKET fd) {
-		return set_nodelay(fn,fd, true);
+	inline int turnon_nodelay(socket_api const& api, SOCKET fd) {
+		return set_nodelay(api,fd, true);
 	}
-	inline int turnoff_nodelay(socket_fn_cfg const& fn, SOCKET fd) {
-		return set_nodelay(fn,fd, false);
+	inline int turnoff_nodelay(socket_api const& api, SOCKET fd) {
+		return set_nodelay(api,fd, false);
 	}
 
 	inline int socketpair(int domain, int type, int protocol, SOCKET sv[2]) {
@@ -675,5 +675,5 @@ recvfrom:
 		NETP_CLOSE_SOCKET(listenfd);
 		return rt;
 	}
-}}
+}
 #endif

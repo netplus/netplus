@@ -577,9 +577,6 @@ namespace netp {
 		std::atomic<bye_event_loop_state> m_bye_state;
 		NRP<io_event_loop> m_bye_event_loop;
 
-		void __notify_terminating(io_poller_type t);
-		void alloc_poller(io_poller_type t, int count,  poller_cfg const& cfg, fn_poller_maker_t const& fn_maker = nullptr );
-		void __dealloc_poller(io_poller_type t);
 
 		void init( int count[io_poller_type::T_POLLER_MAX], poller_cfg cfgs[io_poller_type::T_POLLER_MAX]);
 		void deinit();
@@ -588,6 +585,9 @@ namespace netp {
 		io_event_loop_group();
 		~io_event_loop_group();
 
+		void notify_terminating(io_poller_type t);
+		void dealloc_remove_poller(io_poller_type t);
+		void alloc_add_poller(io_poller_type t, int count, poller_cfg const& cfg, fn_poller_maker_t const& fn_maker = nullptr);
 		io_poller_type query_available_custom_poller_type();
 		netp::size_t size(io_poller_type t);
 		NRP<io_event_loop> next(io_poller_type t, std::set<NRP<io_event_loop>> const& exclude_this_set_if_have_more);

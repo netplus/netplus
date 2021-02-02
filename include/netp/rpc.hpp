@@ -239,23 +239,23 @@ namespace netp {
 		NRP<netp::promise<int>> close();
 
 		static netp::fn_channel_initializer_t __decorate_initializer(fn_rpc_activity_notify_t const& fn_notify_connected, fn_rpc_activity_notify_error_t const& fn_notify_err, netp::fn_channel_initializer_t const& fn);
-		static NRP<rpc_dial_promise> dial(const char* host, size_t len, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_create_cfg> const& cfg = netp::make_ref<socket_create_cfg>());
-		static NRP<rpc_dial_promise> dial(std::string const& host, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_create_cfg> const& cfg = netp::make_ref<socket_create_cfg>() );
+		static NRP<rpc_dial_promise> dial(const char* host, size_t len, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_cfg> const& cfg = netp::make_ref<socket_cfg>());
+		static NRP<rpc_dial_promise> dial(std::string const& host, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_cfg> const& cfg = netp::make_ref<socket_cfg>() );
 
 		static NRP<rpc_dial_promise> dial(std::string const& host) {
 			return rpc::dial(host, nullptr);
 		}
 
-		static NRP<rpc_listen_promise> listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_create_cfg> const& cfg);
+		static NRP<rpc_listen_promise> listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_cfg> const& cfg);
 
 		static NRP<rpc_listen_promise> listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted, netp::fn_channel_initializer_t const& fn_ch_initializer) {
-			return rpc::listen(host, fn_accepted, fn_ch_initializer, netp::make_ref<socket_create_cfg>());
+			return rpc::listen(host, fn_accepted, fn_ch_initializer, netp::make_ref<socket_cfg>());
 		}
 		static NRP<rpc_listen_promise> listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted) {
-			return rpc::listen(host, fn_accepted,nullptr, netp::make_ref<socket_create_cfg>());
+			return rpc::listen(host, fn_accepted,nullptr, netp::make_ref<socket_cfg>());
 		}
 		static NRP<rpc_listen_promise> listen(std::string const& host) {
-			return rpc::listen(host, nullptr, nullptr, netp::make_ref<socket_create_cfg>());
+			return rpc::listen(host, nullptr, nullptr, netp::make_ref<socket_cfg>());
 		}
 	};
 }

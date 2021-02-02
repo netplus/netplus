@@ -61,14 +61,44 @@ namespace netp {
 
 	app::app(app_cfg const& cfg) :
 		m_should_exit(false),
-		m_cfg(cfg)
+		m_cfg(cfg),
+		m_app_startup_prev(cfg.app_startup_prev),
+		m_app_startup_post(cfg.app_startup_post),
+		m_app_exit_prev(cfg.app_startup_prev),
+		m_app_exit_post(cfg.app_startup_post)
 	{
+		int rt;
+		if (m_app_startup_prev != nullptr) {
+			rt = m_app_startup_prev();
+			if (rt != netp::OK) {
+				exit(rt);
+			}
+		}
 		_startup();
+		if (m_app_startup_post != nullptr) {
+			rt = m_app_startup_post();
+			if (rt != netp::OK) {
+				exit(rt);
+			}
+		}
 	}
 
 	app::~app()
 	{
+		int rt;
+		if (m_app_exit_prev != nullptr) {
+			rt = m_app_exit_prev();
+			if (rt != netp::OK) {
+				exit(rt);
+			}
+		}
 		_exit();
+		if (m_app_exit_post != nullptr) {
+			rt = m_app_exit_post();
+			if (rt != netp::OK) {
+				exit(rt);
+			}
+		}
 	}
 
 	void app::_init() {

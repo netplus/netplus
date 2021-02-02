@@ -26,7 +26,7 @@ namespace netp { namespace logger {
 
 		NETP_ASSERT(m_rpc == nullptr);
 		m_flag = u8_t(flag::f_connecting);
-		NRP<socket_create_cfg> cfg = netp::make_ref<socket_create_cfg>(m_loop);
+		NRP<socket_cfg> cfg = netp::make_ref<socket_cfg>(m_loop);
 		NRP<rpc_dial_promise> rpc_dp = rpc::dial(m_server.c_str(), m_server.length(),nullptr, cfg);
 
 		rpc_dp->if_done([logger=NRP<net_logger>(this),p](std::tuple<int, NRP<netp::rpc>> const& tupr) {

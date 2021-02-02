@@ -69,7 +69,7 @@ namespace netp {
 		m_tm_dnstimeout = netp::make_ref<netp::timer>(std::chrono::milliseconds(200), &dns_resolver::cb_dns_timeout, this, std::placeholders::_1);
 		//tm always finished before loop terminated
 
-		NRP<socket_create_cfg> cfg = netp::make_ref<socket_create_cfg>(m_loop);
+		NRP<socket_cfg> cfg = netp::make_ref<socket_cfg>(m_loop);
 		cfg->fd = fd;
 		cfg->family = NETP_AF_INET;
 		cfg->type = NETP_SOCK_DGRAM;

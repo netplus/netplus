@@ -312,7 +312,7 @@ namespace netp { namespace http {
 
 	NRP<netp::http::request_promise> get(std::string const& url, std::chrono::seconds timeout) {
 		NRP<request_promise> rp = netp::make_ref<request_promise>();
-		do_get(url, rp);
+		do_get(url, rp, timeout);
 		return rp;
 	}
 

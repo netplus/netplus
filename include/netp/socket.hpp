@@ -77,7 +77,7 @@ namespace netp {
 		return std::make_tuple(netp::OK, family,stype, sproto);
 	}
 
-	class socket_create_cfg final :
+	class socket_cfg final :
 		public ref_base
 	{
 	public:
@@ -90,12 +90,13 @@ namespace netp {
 		address laddr;
 		address raddr;
 
+		socket_api* sockapi;
 		u8_t option;
 		keep_alive_vals kvals;
 		channel_buf_cfg sock_buf;
 		u32_t bdlimit; //in bit (1kb == 1024b), 0 means no limit
-
-		socket_create_cfg( NRP<io_event_loop> const& L = nullptr ):
+		
+		socket_cfg( NRP<io_event_loop> const& L = nullptr ):
 			L(L),
 			fd(SOCKET(NETP_INVALID_SOCKET)),
 			family((NETP_AF_INET)),
@@ -103,6 +104,7 @@ namespace netp {
 			proto(NETP_PROTOCOL_TCP),
 			laddr(),
 			raddr(),
+			sockapi((netp::socket_api*)&netp::NETP_DEFAULT_SOCKAPI),
 			option(default_socket_option),
 			kvals(default_tcp_keep_alive_vals),
 			sock_buf({0}),
@@ -136,9 +138,9 @@ namespace netp {
 
 		void _tmcb_BDL(NRP<timer> const& t);
 	public:
-		socket( NRP<socket_create_cfg> const& cfg):
+		socket( NRP<socket_cfg> const& cfg):
 			channel(cfg->L),
-			socket_base(cfg->fd, cfg->family, cfg->type, cfg->proto, cfg->laddr, cfg->raddr),
+			socket_base(cfg->fd, cfg->family, cfg->type, cfg->proto, cfg->laddr, cfg->raddr, cfg->sockapi),
 			m_rcv_buf_ptr(cfg->L->channel_rcv_buf()->head()),
 			m_rcv_buf_size(u32_t(cfg->L->channel_rcv_buf()->left_right_capacity())),
 #ifdef NETP_IO_MODE_IOCP
@@ -163,10 +165,13 @@ namespace netp {
 		int connect(address const& addr);
 		void do_async_connect(address const& addr, NRP<promise<int>> const& p);
 
-		static std::tuple<int, NRP<socket>> create(NRP<socket_create_cfg> const& cfg) {
+		static std::tuple<int, NRP<socket>> create(NRP<socket_cfg> const& cfg) {
 			NETP_ASSERT(cfg->L != nullptr);
 			NETP_ASSERT(cfg->L->in_event_loop());
+			NETP_ASSERT(cfg->proto == NETP_PROTOCOL_USER ? cfg->L->type() != NETP_DEFAULT_POLLER_TYPE: true );
+
 			NRP<socket> so = netp::make_ref<socket>(cfg);
+
 			int rt;
 			if (cfg->fd == NETP_INVALID_SOCKET) {
 				rt = so->open();
@@ -187,7 +192,7 @@ namespace netp {
 			return std::make_tuple(rt, so);
 		}
 
-		static void do_async_create(NRP<netp::socket_create_cfg> const& cfg, NRP <netp::promise<std::tuple<int, NRP<socket>>>> const& p) {
+		static void do_async_create(NRP<netp::socket_cfg> const& cfg, NRP <netp::promise<std::tuple<int, NRP<socket>>>> const& p) {
 			if (cfg->L == nullptr) {
 				cfg->L = netp::io_event_loop_group::instance()->next(NETP_DEFAULT_POLLER_TYPE);
 			}
@@ -196,7 +201,7 @@ namespace netp {
 			});
 		}
 
-		static NRP<netp::promise<std::tuple<int, NRP<socket>>>> async_create(NRP<netp::socket_create_cfg> const& cfg) {
+		static NRP<netp::promise<std::tuple<int, NRP<socket>>>> async_create(NRP<netp::socket_cfg> const& cfg) {
 			NRP <netp::promise<std::tuple<int, NRP<socket>>>> p = netp::make_ref<netp::promise<std::tuple<int, NRP<socket>>>>();
 			if (cfg->L == nullptr) {
 				cfg->L = netp::io_event_loop_group::instance()->next(NETP_DEFAULT_POLLER_TYPE);
@@ -205,10 +210,10 @@ namespace netp {
 			return p;
 		}
 
-		static void do_dial( address const& addr, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_create_cfg> const& cfg ) {
+		static void do_dial( address const& addr, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_cfg> const& cfg ) {
 			if (cfg->L == nullptr) {
 				NETP_ASSERT(cfg->type != NETP_AF_USER );
-				cfg->L = io_event_loop_group::instance()->next(NETP_DEFAULT_POLLER_TYPE);
+				cfg->L = io_event_loop_group::instance()->next();
 			}
 			if (!cfg->L->in_event_loop()) {
 				cfg->L->schedule([addr,initializer,ch_dialf, cfg]() {
@@ -240,7 +245,7 @@ namespace netp {
 			so->do_dial(addr, initializer, so_dialf);
 		}
 
-		static void do_dial( netp::size_t idx, std::vector<address> const& addrs, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_create_cfg> const& cfg ) {
+		static void do_dial( netp::size_t idx, std::vector<address> const& addrs, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_cfg> const& cfg ) {
 			if (idx >= addrs.size() ) {
 				NETP_WARN("[socket]dail failed after try count: %u", idx );
 				ch_dialf->set(std::make_tuple(netp::E_SOCKET_NO_AVAILABLE_ADDR, nullptr));
@@ -262,7 +267,7 @@ namespace netp {
 		}
 
 	public:
-		static void do_dial(const char* dialurl, size_t len, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_create_cfg> const& cfg ) {
+		static void do_dial(const char* dialurl, size_t len, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_cfg> const& cfg ) {
 			socket_url_parse_info info;
 			int rt = parse_socket_url(dialurl, len, info);
 			if (rt != netp::OK) {
@@ -303,17 +308,17 @@ namespace netp {
 			});
 		}
 
-		static void do_dial(std::string const& dialurl, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_create_cfg> const& ccfg) {
+		static void do_dial(std::string const& dialurl, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_cfg> const& ccfg) {
 			socket::do_dial(dialurl.c_str(), dialurl.length(), initializer, ch_dialf, ccfg);
 		}
 
-		static NRP<channel_dial_promise> dial(const char* dialurl, size_t len, fn_channel_initializer_t const& initializer, NRP<socket_create_cfg> const& ccfg ) {
+		static NRP<channel_dial_promise> dial(const char* dialurl, size_t len, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& ccfg ) {
 			NRP<channel_dial_promise> f = netp::make_ref<channel_dial_promise>();
 			socket::do_dial(dialurl, len, initializer, f, ccfg );
 			return f;
 		}
 
-		static NRP<channel_dial_promise> dial(std::string const& dialurl, fn_channel_initializer_t const& initializer, NRP<socket_create_cfg> const& ccfg) {
+		static NRP<channel_dial_promise> dial(std::string const& dialurl, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& ccfg) {
 			NRP<channel_dial_promise> f = netp::make_ref<channel_dial_promise>();
 			socket::do_dial(dialurl.c_str(), dialurl.length(), initializer, f, ccfg);
 			return f;
@@ -321,7 +326,7 @@ namespace netp {
 
 		static NRP<channel_dial_promise> dial(std::string const& dialurl, fn_channel_initializer_t const& initializer) {
 			NRP<channel_dial_promise> f = netp::make_ref<channel_dial_promise>();
-			socket::do_dial(dialurl.c_str(), dialurl.length(), initializer, f, netp::make_ref<socket_create_cfg>());
+			socket::do_dial(dialurl.c_str(), dialurl.length(), initializer, f, netp::make_ref<socket_cfg>());
 			return f;
 		}
 
@@ -333,7 +338,7 @@ namespace netp {
 			});
 		*/
 
-		static void do_listen_on(NRP<channel_listen_promise> const& listenp, address const& laddr, fn_channel_initializer_t const& initializer, NRP<socket_create_cfg> const& cfg, int backlog) {
+		static void do_listen_on(NRP<channel_listen_promise> const& listenp, address const& laddr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg, int backlog) {
 			NETP_ASSERT(cfg->L != nullptr);
 			NETP_ASSERT(cfg->L->in_event_loop());
 
@@ -363,7 +368,7 @@ namespace netp {
 			so->do_listen_on(laddr, initializer, listen_f, cfg, backlog);
 		}
 
-		static NRP<channel_listen_promise> listen_on(const char* listenurl, size_t len, fn_channel_initializer_t const& initializer, NRP<socket_create_cfg> const& cfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG) {
+		static NRP<channel_listen_promise> listen_on(const char* listenurl, size_t len, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG) {
 			NRP<channel_listen_promise> listenp = netp::make_ref<channel_listen_promise>();
 
 			socket_url_parse_info info;
@@ -400,16 +405,16 @@ namespace netp {
 			return listenp;
 		}
 
-		static NRP<channel_listen_promise> listen_on(std::string const& listenurl, fn_channel_initializer_t const& initializer, NRP<socket_create_cfg> const& cfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG) {
+		static NRP<channel_listen_promise> listen_on(std::string const& listenurl, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG) {
 			return socket::listen_on(listenurl.c_str(), listenurl.length(), initializer,cfg,backlog);
 		}
 
 		static NRP<channel_listen_promise> listen_on(const char* listenurl, size_t len, fn_channel_initializer_t const& initializer) {
-			return socket::listen_on(listenurl, len, initializer, netp::make_ref<socket_create_cfg>(), NETP_DEFAULT_LISTEN_BACKLOG);
+			return socket::listen_on(listenurl, len, initializer, netp::make_ref<socket_cfg>(), NETP_DEFAULT_LISTEN_BACKLOG);
 		}
 
 		static NRP<channel_listen_promise> listen_on(std::string const& listenurl, fn_channel_initializer_t const& initializer) {
-			return socket::listen_on(listenurl.c_str(), listenurl.length() , initializer, netp::make_ref<socket_create_cfg>(), NETP_DEFAULT_LISTEN_BACKLOG);
+			return socket::listen_on(listenurl.c_str(), listenurl.length() , initializer, netp::make_ref<socket_cfg>(), NETP_DEFAULT_LISTEN_BACKLOG);
 		}
 
 	private:
@@ -417,8 +422,8 @@ namespace netp {
 		//url example: tcp://0.0.0.0:80, udp://127.0.0.1:80		
 		//@todo
 		//tcp6://ipv6address
-		void do_listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<promise<int>> const& chp, NRP<socket_create_cfg> const& ccfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
-		//NRP<promise<int>> listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<socket_create_cfg> const& cfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
+		void do_listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<promise<int>> const& chp, NRP<socket_cfg> const& ccfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
+		//NRP<promise<int>> listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<socket_cfg> const& cfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
 
 		void do_dial(address const& addr, fn_channel_initializer_t const& initializer, NRP<promise<int>> const& chp);
 		//NRP<promise<int>> dial(address const& addr, fn_channel_initializer_t const& initializer);
@@ -473,8 +478,8 @@ namespace netp {
 
 		void _do_dial_done_impl( int code , fn_channel_initializer_t const& initializer, NRP<promise<int>> const& chf );
 
-		void __do_create_accepted_socket(SOCKET nfd, address const& laddr, address const& raddr, fn_channel_initializer_t const& initializer, NRP<socket_create_cfg> const& cfg) {
-			NRP<socket_create_cfg> ccfg = netp::make_ref<socket_create_cfg>();
+		void __do_create_accepted_socket(SOCKET nfd, address const& laddr, address const& raddr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
+			NRP<socket_cfg> ccfg = netp::make_ref<socket_cfg>();
 			ccfg->fd = nfd;
 			ccfg->family = (m_family);
 			ccfg->type = (m_type);
@@ -482,7 +487,8 @@ namespace netp {
 			ccfg->laddr = laddr;
 			ccfg->raddr = raddr;
 
-			ccfg->L = io_event_loop_group::instance()->next(NETP_DEFAULT_POLLER_TYPE);
+			ccfg->L = io_event_loop_group::instance()->next(L->type());
+			ccfg->sockapi = cfg->sockapi;
 			ccfg->option = cfg->option;
 			ccfg->kvals = cfg->kvals;
 			ccfg->sock_buf = cfg->sock_buf;
@@ -541,7 +547,7 @@ namespace netp {
 			});
 		}
 
-		void __cb_aio_accept_impl(fn_channel_initializer_t const& fn_initializer, NRP<socket_create_cfg> const& ccfg, int code);
+		void __cb_aio_accept_impl(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& ccfg, int code);
 		void __cb_aio_read_impl(const int aiort_) ;
 		void __cb_aio_write_impl(const int aiort_);
 
@@ -672,7 +678,7 @@ namespace netp {
 		}
 
 	private:
-		inline void _do_aio_accept( fn_channel_initializer_t const& fn_accepted_initializer, NRP<socket_create_cfg> const& ccfg) {
+		inline void _do_aio_accept( fn_channel_initializer_t const& fn_accepted_initializer, NRP<socket_cfg> const& ccfg) {
 			NETP_ASSERT(L->in_event_loop());
 
 			if (m_chflag&int(channel_flag::F_WATCH_READ)) {
@@ -725,7 +731,7 @@ namespace netp {
 		inline SOCKET __iocp_call_AcceptEx_create_fd(void* ol_) {
 			NETP_ASSERT(L->in_event_loop());
 			(void)ol_;
-			return socket_api::socket(socket_api::fncfg[m_fn_api_type], m_family, m_type, m_protocol);
+			return netp::socket(netp::fncfg[m_fn_api_type], m_family, m_type, m_protocol);
 		}
 
 		void __iocp_call_AcceptEx_done(const int aiort_, fn_channel_initializer_t const& fn_accepted_initializer) {

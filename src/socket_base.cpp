@@ -2,7 +2,7 @@
 
 namespace netp {
 
-	socket_base::socket_base(SOCKET fd, int family, int sockt, int proto, address const& laddr, address const& raddr) :
+	socket_base::socket_base(SOCKET fd, int family, int sockt, int proto, address const& laddr, address const& raddr, const socket_api* sockapi) :
 		m_fd(fd),
 		m_option(0),
 
@@ -10,7 +10,7 @@ namespace netp {
 		m_type(u8_t(sockt)),
 		m_protocol(u8_t(proto)),
 
-		m_fn((socket_api::socket_fn_cfg*)&socket_api::NETP_DEFAULT_SOCKET_API),
+		m_api(sockapi==nullptr?((netp::socket_api*)&netp::NETP_DEFAULT_SOCKAPI):sockapi),
 
 		m_laddr(laddr),
 		m_raddr(raddr),
@@ -21,8 +21,7 @@ namespace netp {
 		NETP_ASSERT(proto < NETP_PROTOCOL_MAX);
 	}
 
-	socket_base::~socket_base() {
-	}
+	socket_base::~socket_base() {}
 
 	int socket_base::_cfg_reuseaddr(bool onoff) {
 		NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_fd == NETP_INVALID_SOCKET);
@@ -35,7 +34,7 @@ namespace netp {
 		}
 
 		int optval = onoff ? 1 : 0;
-		int rt= m_fn->setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+		int rt= m_api->setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		if (onoff) {
 			m_option |= u16_t(socket_option::OPTION_REUSEADDR);
@@ -59,7 +58,7 @@ namespace netp {
 		}
 
 		int optval = onoff ? 1 : 0;
-		int rt = socket_api::fncfg[m_fn_api_type].setsockopt(m_fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+		int rt = netp::fncfg[m_fn_api_type].setsockopt(m_fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		if (onoff) {
 			m_option |= u8_t(socket_option::OPTION_REUSEPORT);
@@ -81,7 +80,7 @@ namespace netp {
 			return netp::OK;
 		}
 
-		int rt = m_fn->set_nonblocking(m_fd, onoff);
+		int rt = m_api->set_nonblocking(m_fd, onoff);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		if (onoff) {
 			m_option |= int(socket_option::OPTION_NON_BLOCKING);
@@ -109,7 +108,7 @@ namespace netp {
 		}
 
 		int optval = onoff ? 1 : 0;
-		int rt = m_fn->setsockopt(m_fd, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval));
+		int rt = m_api->setsockopt(m_fd, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval));
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		if (onoff) {
 			m_option |= u16_t(socket_option::OPTION_NODELAY);
@@ -147,17 +146,17 @@ namespace netp {
 #elif defined(_NETP_GNU_LINUX)
 		if (vals.idle != 0) {
 			int idle = (vals.idle);
-			rt = socket_api::fncfg[m_fn_api_type].setsockopt(m_fd, SOL_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));
+			rt = netp::fncfg[m_fn_api_type].setsockopt(m_fd, SOL_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));
 			NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		}
 		if (vals.interval != 0) {
 			int interval = (vals.interval);
-			rt = socket_api::fncfg[m_fn_api_type].setsockopt(m_fd, SOL_TCP, TCP_KEEPINTVL, &interval, sizeof(interval));
+			rt = netp::fncfg[m_fn_api_type].setsockopt(m_fd, SOL_TCP, TCP_KEEPINTVL, &interval, sizeof(interval));
 			NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		}
 		if (vals.probes != 0) {
 			int probes = vals.probes;
-			rt = socket_api::fncfg[m_fn_api_type].setsockopt(m_fd, SOL_TCP, TCP_KEEPCNT, &probes, sizeof(probes));
+			rt = netp::fncfg[m_fn_api_type].setsockopt(m_fd, SOL_TCP, TCP_KEEPCNT, &probes, sizeof(probes));
 			NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		}
 #else
@@ -171,7 +170,7 @@ namespace netp {
 		/*WCP WILL SETUP A DEFAULT KAV AT START FOR THE CURRENT IMPL*/
 		if (!(m_protocol == u8_t(NETP_PROTOCOL_TCP))) { return netp::E_INVALID_OPERATION; }
 		//force to false
-		int rt = netp::socket_api::set_keepalive(*m_fn, m_fd, onoff);
+		int rt = netp::set_keepalive(*m_api, m_fd, onoff);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		if (onoff) {
 			m_option |= int(socket_option::OPTION_KEEP_ALIVE);
@@ -192,7 +191,7 @@ namespace netp {
 		if (!setornot) {
 			return netp::OK;
 		}
-		int rt = netp::socket_api::set_broadcast(*m_fn,m_fd, onoff);
+		int rt = netp::set_broadcast(*m_api,m_fd, onoff);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		if (onoff) {
 			m_option |= u16_t(socket_option::OPTION_BROADCAST);
@@ -232,19 +231,19 @@ namespace netp {
 
 	int socket_base::open() {
 		NETP_ASSERT(m_fd == NETP_INVALID_SOCKET);
-		m_fd = socket_api::socket(*m_fn,m_family, m_type, m_protocol);
+		m_fd = netp::open(*m_api,m_family, m_type, m_protocol);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), m_fd == NETP_SOCKET_ERROR);
 		return netp::OK;
 	}
 
 	int socket_base::close() {
-		int rt = socket_api::close(*m_fn,m_fd);
+		int rt = netp::close(*m_api,m_fd);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		return netp::OK;
 	}
 
 	int socket_base::shutdown(int flag) {
-		int rt = socket_api::shutdown(*m_fn,m_fd, flag);
+		int rt = netp::shutdown(*m_api,m_fd, flag);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		return netp::OK;
 	}
@@ -253,7 +252,7 @@ namespace netp {
 		NETP_ASSERT(m_laddr.is_null());
 
 		NETP_ASSERT((m_family) == addr.family());
-		int rt= socket_api::bind(*m_fn,m_fd , addr);
+		int rt= netp::bind(*m_api,m_fd , addr);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		m_laddr = addr;
 		return netp::OK;
@@ -266,7 +265,7 @@ namespace netp {
 		if (m_protocol == u8_t(NETP_PROTOCOL_UDP)) {
 			rt = netp::OK;
 		} else {
-			rt = socket_api::listen(*m_fn,m_fd, backlog);
+			rt = netp::listen(*m_api,m_fd, backlog);
 		}
 
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
@@ -274,7 +273,7 @@ namespace netp {
 	}
 
 	SOCKET socket_base::accept(address& addr) {
-		return socket_api::accept(*m_fn,m_fd, addr);
+		return netp::accept(*m_api,m_fd, addr);
 	}
 
 	int socket_base::connect(address const& addr ) {
@@ -302,7 +301,7 @@ namespace netp {
 			NETP_ASSERT(!"TODO");
 		}
 #else
-		int rt= socket_api::connect(*m_fn,m_fd, addr );
+		int rt= netp::connect(*m_api,m_fd, addr );
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		return netp::OK;
 #endif

@@ -66,7 +66,7 @@ namespace netp {
 		u8_t m_type;
 		u8_t m_protocol;
 
-		socket_api::socket_fn_cfg* m_fn;
+		const socket_api* m_api;
 
 		address m_laddr;
 		address m_raddr;
@@ -103,10 +103,8 @@ namespace netp {
 		int connect(address const& addr);
 
 	public:
-		socket_base(SOCKET fd, int family, int sockt, int proto, address const& laddr, address const& raddr); //by pass a connected socket fd
+		socket_base(SOCKET fd, int family, int sockt, int proto, address const& laddr, address const& raddr, const socket_api* sockapi); //by pass a connected socket fd
 		~socket_base();
-
-		void cfg_socket_fn(socket_api::socket_fn_cfg* const fncfg) { m_fn = fncfg; }
 
 		__NETP_FORCE_INLINE int sock_family() const { return ((m_family)); };
 		__NETP_FORCE_INLINE int sock_type() const { return (m_type); };
@@ -121,7 +119,7 @@ namespace netp {
 		__NETP_FORCE_INLINE address const& local_addr() const { return m_laddr; }
 
 		int load_sockname() {
-			int rt = socket_api::getsockname(*m_fn,m_fd, m_laddr);
+			int rt = netp::getsockname(*m_api,m_fd, m_laddr);
 			if (rt == netp::OK) {
 				NETP_ASSERT(m_laddr.family() == NETP_AF_INET);
 				NETP_ASSERT(!m_laddr.is_null());
@@ -132,7 +130,7 @@ namespace netp {
 
 		//load_peername always succeed on win10
 		int load_peername() {
-			int rt = socket_api::getpeername(*m_fn,m_fd, m_raddr);
+			int rt = netp::getpeername(*m_api,m_fd, m_raddr);
 			if (rt == netp::OK) {
 				NETP_ASSERT(m_raddr.family() == NETP_AF_INET);
 				NETP_ASSERT(!m_laddr.is_null());
@@ -146,11 +144,11 @@ namespace netp {
 		}
 
 		__NETP_FORCE_INLINE int getsockopt(int level, int option_name, void* value, socklen_t* option_len) const {
-			return m_fn->getsockopt(m_fd, level, option_name, value, option_len);
+			return m_api->getsockopt(m_fd, level, option_name, value, option_len);
 		}
 
 		__NETP_FORCE_INLINE int setsockopt(int level, int option_name, void const* value, socklen_t const& option_len) {
-			return m_fn->setsockopt(m_fd, level, option_name, value, option_len);
+			return m_api->setsockopt(m_fd, level, option_name, value, option_len);
 		}
 
 		__NETP_FORCE_INLINE int turnon_nodelay() { return _cfg_nodelay(true); }
@@ -191,22 +189,22 @@ namespace netp {
 		int set_tos(u8_t tos);
 
 		__NETP_FORCE_INLINE netp::u32_t send(byte_t const* const buffer, netp::u32_t size, int& ec_o, int flag = 0) {
-			return socket_api::send(*m_fn,m_fd, buffer, size, ec_o, flag);
+			return netp::send(*m_api,m_fd, buffer, size, ec_o, flag);
 		}
 		__NETP_FORCE_INLINE netp::u32_t recv(byte_t* const buffer_o, netp::u32_t size, int& ec_o, int flag = 0) {
-			return socket_api::recv(*m_fn,m_fd, buffer_o, size, ec_o, flag);
+			return netp::recv(*m_api,m_fd, buffer_o, size, ec_o, flag);
 		}
 
 		__NETP_FORCE_INLINE netp::u32_t sendto(netp::byte_t const* const buffer, netp::u32_t len, const netp::address& addr, int& ec_o, int flag = 0) {
-			return socket_api::sendto(*m_fn,m_fd, buffer, len, addr, ec_o, flag);
+			return netp::sendto(*m_api,m_fd, buffer, len, addr, ec_o, flag);
 		}
 
 		__NETP_FORCE_INLINE netp::u32_t recvfrom(byte_t* const buffer_o, netp::u32_t size, address& addr_o, int& ec_o) {
-			return socket_api::recvfrom(*m_fn,m_fd, buffer_o, size, addr_o, ec_o, 0);
+			return netp::recvfrom(*m_api,m_fd, buffer_o, size, addr_o, ec_o, 0);
 		}
 
 		__NETP_FORCE_INLINE netp::u32_t recvonemsg(byte_t* const buff_o, netp::u32_t size, address& addr_o, ipv4_t& lipv4, int& ec_o, int flag) {
-			return m_fn->recvonemsg(m_fd, buff_o, size, addr_o, lipv4, ec_o,flag );
+			return m_api->recvonemsg(m_fd, buff_o, size, addr_o, lipv4, ec_o,flag );
 		}
 	};
 }

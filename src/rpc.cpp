@@ -499,7 +499,7 @@ namespace netp {
 
 	//example:
 	//tcp://127.0.0.1:31000
-	NRP<rpc_dial_promise> rpc::dial(const char* host, size_t len, netp::fn_channel_initializer_t const& fn_ch_initializer , NRP<socket_create_cfg> const& cfg ) {
+	NRP<rpc_dial_promise> rpc::dial(const char* host, size_t len, netp::fn_channel_initializer_t const& fn_ch_initializer , NRP<socket_cfg> const& cfg ) {
 		NRP<netp::rpc_dial_promise> rdf = netp::make_ref<netp::rpc_dial_promise>();
 		NRP<netp::channel_dial_promise> ch_df = netp::make_ref<netp::channel_dial_promise>();
 		ch_df->if_done([rdf](std::tuple<int, NRP<netp::channel>> const& tupc) {
@@ -523,11 +523,11 @@ namespace netp {
 		return rdf;
 	}
 
-	NRP<rpc_dial_promise> rpc::dial(std::string const& host, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_create_cfg> const& cfg) {
+	NRP<rpc_dial_promise> rpc::dial(std::string const& host, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_cfg> const& cfg) {
 		return dial(host.c_str(), host.length(), fn_ch_initializer, cfg);
 	}
 
-	NRP<rpc_listen_promise> rpc::listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_create_cfg> const& cfg ) {
+	NRP<rpc_listen_promise> rpc::listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_cfg> const& cfg ) {
 		return netp::socket::listen_on(host.c_str(), host.length(), __decorate_initializer(fn_accepted, nullptr, fn_ch_initializer), cfg);
 	}
 }

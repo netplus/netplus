@@ -6,16 +6,29 @@
 #include <netp/test.hpp>
 
 namespace netp {
+
+	typedef std::function<int()> fn_app_hook_t;
+
 	struct app_cfg {
+
 		std::string logfilepathname;
 		std::vector<std::string> dnsnses; //dotip
 		int poller_count[T_POLLER_MAX];
 		poller_cfg poller_cfgs[T_POLLER_MAX];
 
+		fn_app_hook_t app_startup_prev;
+		fn_app_hook_t app_startup_post;
+		fn_app_hook_t app_exit_prev;
+		fn_app_hook_t app_exit_post;
+
 	public:
 		app_cfg() :
 			logfilepathname(""),
-			dnsnses(std::vector<std::string>())
+			dnsnses(std::vector<std::string>()),
+			app_startup_prev(nullptr),
+			app_startup_post(nullptr),
+			app_exit_prev(nullptr),
+			app_exit_post(nullptr)
 		{
 			const int corecount = std::thread::hardware_concurrency();
 			for (size_t i = 0; i < T_POLLER_MAX; ++i) {
@@ -67,6 +80,11 @@ namespace netp {
 		netp::condition m_cond;
 		std::vector<std::tuple<int,long>> m_signo_tuple_vec;
 		app_cfg m_cfg;
+		fn_app_hook_t m_app_startup_prev;
+		fn_app_hook_t m_app_startup_post;
+		fn_app_hook_t m_app_exit_prev;
+		fn_app_hook_t m_app_exit_post;
+
 	public:
 		app(app_cfg const& cfg = {});
 		~app();

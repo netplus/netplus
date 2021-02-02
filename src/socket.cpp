@@ -90,7 +90,7 @@ namespace netp {
 		return rt;
 	}
 
-	void socket::do_listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted_initializer, NRP<promise<int>> const& chp, NRP<socket_create_cfg> const& ccfg, int backlog ) {
+	void socket::do_listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted_initializer, NRP<promise<int>> const& chp, NRP<socket_cfg> const& ccfg, int backlog ) {
 		if (!L->in_event_loop()) {
 			L->schedule([_this=NRP<socket>(this), addr, fn_accepted_initializer, chp,ccfg, backlog]() ->void {
 				_this->do_listen_on(addr, fn_accepted_initializer, chp, ccfg, backlog);
@@ -122,7 +122,7 @@ namespace netp {
 		});
 	}
 
-	//NRP<promise<int>> socket::listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<socket_create_cfg> const& ccfg, int backlog) {
+	//NRP<promise<int>> socket::listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<socket_cfg> const& ccfg, int backlog) {
 	//	NRP<promise<int>> ch_p = make_ref<promise<int>>();
 	//	do_listen_on(addr, fn_accepted, ch_p, ccfg, backlog);
 	//	return ch_p;
@@ -199,7 +199,7 @@ namespace netp {
 		}
 #endif
 		netp::address raddr;
-		rt = socket_api::getpeername(*m_fn, m_fd, raddr);
+		rt = netp::getpeername(*m_api, m_fd, raddr);
 		if (rt != netp::OK ) {
 			goto _set_fail_and_return;
 		}
@@ -248,7 +248,7 @@ namespace netp {
 		ch_aio_read();
 	}
 
-	void socket::__cb_aio_accept_impl(fn_channel_initializer_t const& fn_initializer, NRP<socket_create_cfg> const& ccfg, int rt) {
+	void socket::__cb_aio_accept_impl(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& ccfg, int rt) {
 
 		NETP_ASSERT(L->in_event_loop());
 		/*ignore the left fds, cuz we're closed*/
@@ -270,7 +270,7 @@ namespace netp {
 
 			//patch for local addr
 			address laddr;
-			rt = socket_api::getsockname(*m_fn, nfd, laddr);
+			rt = netp::getsockname(*m_api, nfd, laddr);
 			if (rt != netp::OK) {
 				NETP_ERR("[socket][%s][accept]load local addr failed: %d", info().c_str(), netp_socket_get_last_errno());
 				NETP_CLOSE_SOCKET(nfd);
