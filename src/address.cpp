@@ -13,17 +13,17 @@ namespace netp {
 		"USER"
 	};
 
-	const int OS_DEF_protocol[NETP_PROTOCOL_MAX] = {
+	const u16_t OS_DEF_protocol[NETP_PROTOCOL_MAX] = {
 		IPPROTO_TCP,
 		IPPROTO_UDP,
 		IPPROTO_ICMP,
 		IPPROTO_IGMP,
 		IPPROTO_SCTP,
 		IPPROTO_RAW,
-		0
+		u16_t(~0)
 	};
 
-	const u8_t DEF_protocol_str_to_proto(const char* protostr) {
+	const u16_t DEF_protocol_str_to_proto(const char* protostr) {
 		if (netp::iequals<string_t>(protostr, string_t("tcp"))) {
 			return NETP_PROTOCOL_TCP;
 		} else if (netp::iequals<string_t>(protostr, string_t("udp"))) {

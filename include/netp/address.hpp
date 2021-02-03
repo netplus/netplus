@@ -36,8 +36,8 @@
 namespace netp {
 
 	extern const char* DEF_protocol_str[NETP_PROTOCOL_MAX];
-	extern const int OS_DEF_protocol[NETP_PROTOCOL_MAX];
-	extern const u8_t DEF_protocol_str_to_proto(const char* protostr);
+	extern const u16_t OS_DEF_protocol[NETP_PROTOCOL_MAX];
+	extern const u16_t DEF_protocol_str_to_proto(const char* protostr);
 
 	enum class addrinfo_filter {
 		AIF_ALL			= 0x0, //return all

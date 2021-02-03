@@ -8,7 +8,7 @@ namespace netp {
 
 		m_family(u8_t(family)),
 		m_type(u8_t(sockt)),
-		m_protocol(u8_t(proto)),
+		m_protocol(u16_t(proto)),
 
 		m_api(sockapi==nullptr?((netp::socket_api*)&netp::NETP_DEFAULT_SOCKAPI):sockapi),
 
@@ -50,8 +50,8 @@ namespace netp {
 #ifdef _NETP_GNU_LINUX
 		NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_fd == NETP_INVALID_SOCKET);
 
-		bool setornot = ((m_option&u8_t(socket_option::OPTION_REUSEPORT)) && (!onoff)) ||
-			(((m_option&u8_t(socket_option::OPTION_REUSEPORT)) == 0) && (onoff));
+		bool setornot = ((m_option& u16_t(socket_option::OPTION_REUSEPORT)) && (!onoff)) ||
+			(((m_option& u16_t(socket_option::OPTION_REUSEPORT)) == 0) && (onoff));
 
 		if (!setornot) {
 			return netp::OK;
@@ -61,9 +61,9 @@ namespace netp {
 		int rt = netp::fncfg[m_fn_api_type].setsockopt(m_fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		if (onoff) {
-			m_option |= u8_t(socket_option::OPTION_REUSEPORT);
+			m_option |= u16_t(socket_option::OPTION_REUSEPORT);
 		} else {
-			m_option &= ~u8_t(socket_option::OPTION_REUSEPORT);
+			m_option &= ~u16_t(socket_option::OPTION_REUSEPORT);
 		}
 		return netp::OK;
 #else
@@ -120,7 +120,7 @@ namespace netp {
 
 	int socket_base::__cfg_keepalive_vals(keep_alive_vals const& vals) {
 		/*WCP WILL SETUP A DEFAULT KAV AT START FOR THE CURRENT IMPL*/
-		if (!(m_protocol == u8_t(NETP_PROTOCOL_TCP))) { return netp::E_INVALID_OPERATION; }
+		if (!(m_protocol == u16_t(NETP_PROTOCOL_TCP))) { return netp::E_INVALID_OPERATION; }
 		NETP_ASSERT(m_option & int(socket_option::OPTION_KEEP_ALIVE));
 		int rt;
 #ifdef _NETP_WIN
@@ -146,17 +146,17 @@ namespace netp {
 #elif defined(_NETP_GNU_LINUX)
 		if (vals.idle != 0) {
 			int idle = (vals.idle);
-			rt = netp::fncfg[m_fn_api_type].setsockopt(m_fd, SOL_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));
+			rt = m_api->setsockopt(m_fd, SOL_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));
 			NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		}
 		if (vals.interval != 0) {
 			int interval = (vals.interval);
-			rt = netp::fncfg[m_fn_api_type].setsockopt(m_fd, SOL_TCP, TCP_KEEPINTVL, &interval, sizeof(interval));
+			rt = m_api->setsockopt(m_fd, SOL_TCP, TCP_KEEPINTVL, &interval, sizeof(interval));
 			NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		}
 		if (vals.probes != 0) {
 			int probes = vals.probes;
-			rt = netp::fncfg[m_fn_api_type].setsockopt(m_fd, SOL_TCP, TCP_KEEPCNT, &probes, sizeof(probes));
+			rt = m_api->setsockopt(m_fd, SOL_TCP, TCP_KEEPCNT, &probes, sizeof(probes));
 			NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		}
 #else
@@ -168,7 +168,7 @@ namespace netp {
 
 	int socket_base::_cfg_keepalive(bool onoff, keep_alive_vals const& vals) {
 		/*WCP WILL SETUP A DEFAULT KAV AT START FOR THE CURRENT IMPL*/
-		if (!(m_protocol == u8_t(NETP_PROTOCOL_TCP))) { return netp::E_INVALID_OPERATION; }
+		if (!(m_protocol == u16_t(NETP_PROTOCOL_TCP))) { return netp::E_INVALID_OPERATION; }
 		//force to false
 		int rt = netp::set_keepalive(*m_api, m_fd, onoff);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
@@ -201,12 +201,12 @@ namespace netp {
 		return netp::OK;
 	}
 
-	int socket_base::_cfg_option(u8_t opt, keep_alive_vals const& kvals) {
+	int socket_base::_cfg_option(u16_t opt, keep_alive_vals const& kvals) {
 		//force nonblocking
-		int rt = _cfg_nonblocking((opt& u8_t(socket_option::OPTION_NON_BLOCKING)) != 0);
+		int rt = _cfg_nonblocking((opt& u16_t(socket_option::OPTION_NON_BLOCKING)) != 0);
 		NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
 
-		rt = _cfg_reuseaddr((opt& u8_t(socket_option::OPTION_REUSEADDR)) !=0);
+		rt = _cfg_reuseaddr((opt& u16_t(socket_option::OPTION_REUSEADDR)) !=0);
 		NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
 
 #ifdef _NETP_GNU_LINUX
@@ -262,7 +262,7 @@ namespace netp {
 		NETP_ASSERT(m_fd>0);
 		int rt;
 
-		if (m_protocol == u8_t(NETP_PROTOCOL_UDP)) {
+		if (m_protocol == u16_t(NETP_PROTOCOL_UDP)) {
 			rt = netp::OK;
 		} else {
 			rt = netp::listen(*m_api,m_fd, backlog);
@@ -283,7 +283,7 @@ namespace netp {
 		m_raddr = addr;
 
 #ifdef NETP_IO_MODE_IOCP
-		if (m_protocol == P_TCP) {
+		if (m_protocol == NETP_PROTOCOL_TCP) {
 			//connectex requires the socket to be initially bound
 			struct sockaddr_in addr_in;
 			::memset(&addr_in, 0, sizeof(addr_in));

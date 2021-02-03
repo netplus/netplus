@@ -50,8 +50,8 @@ namespace netp {
 		return netp::OK;
 	}
 
-	static inline std::tuple<int, u8_t, u8_t, u8_t> __inspect_address_info_from_dial_str(const char* dialstr ) {
-		u8_t sproto = DEF_protocol_str_to_proto(dialstr);
+	static inline std::tuple<int, u8_t, u8_t, u16_t> __inspect_address_info_from_dial_str(const char* dialstr ) {
+		u16_t sproto = DEF_protocol_str_to_proto(dialstr);
 		u8_t family;
 		u8_t stype;
 		switch (sproto) {
@@ -85,13 +85,13 @@ namespace netp {
 		SOCKET fd;
 		u8_t family;
 		u8_t type;
-		u8_t proto;
+		u16_t proto;
+		u16_t option;
 
 		address laddr;
 		address raddr;
 
 		socket_api* sockapi;
-		u8_t option;
 		keep_alive_vals kvals;
 		channel_buf_cfg sock_buf;
 		u32_t bdlimit; //in bit (1kb == 1024b), 0 means no limit
@@ -102,10 +102,10 @@ namespace netp {
 			family((NETP_AF_INET)),
 			type(NETP_SOCK_STREAM),
 			proto(NETP_PROTOCOL_TCP),
+			option(default_socket_option),
 			laddr(),
 			raddr(),
 			sockapi((netp::socket_api*)&netp::NETP_DEFAULT_SOCKAPI),
-			option(default_socket_option),
 			kvals(default_tcp_keep_alive_vals),
 			sock_buf({0}),
 			bdlimit(0)
@@ -282,7 +282,7 @@ namespace netp {
 			}
 
 			if (netp::is_dotipv4_decimal_notation(info.host.c_str())) {
-				do_dial(address(info.host.c_str(), info.port, NETP_AF_INET), initializer, ch_dialf, cfg);
+				do_dial(address(info.host.c_str(), info.port, cfg->family), initializer, ch_dialf, cfg);
 				return;
 			}
 
@@ -300,7 +300,7 @@ namespace netp {
 					address __a;
 					__a.setipv4(ipv4s[i]);
 					__a.setport(port);
-					__a.setfamily(NETP_AF_INET);
+					__a.setfamily(cfg->family);
 					dialaddrs.push_back( __a );
 				}
 

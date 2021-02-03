@@ -37,7 +37,7 @@ namespace netp {
 		SOCKET fd;
 		u8_t f;
 		u8_t t;
-		u8_t p;
+		u16_t p;
 
 		address laddr;
 		address raddr;
@@ -60,11 +60,11 @@ namespace netp {
 	{
 	protected:
 		SOCKET m_fd;
-		u8_t m_option;
 
 		u8_t m_family;
 		u8_t m_type;
-		u8_t m_protocol;
+		u16_t m_protocol;
+		u16_t m_option;
 
 		const socket_api* m_api;
 
@@ -85,9 +85,9 @@ namespace netp {
 		int _cfg_keepalive(bool onoff, keep_alive_vals const& vals);
 
 		int _cfg_broadcast(bool onoff);
-		int _cfg_option(u8_t opt, keep_alive_vals const& vlas);
+		int _cfg_option(u16_t opt, keep_alive_vals const& vlas);
 
-		int init(u8_t opt, keep_alive_vals const& kvals, channel_buf_cfg const& cbc) {
+		int init(u16_t opt, keep_alive_vals const& kvals, channel_buf_cfg const& cbc) {
 			int rt = _cfg_option(opt,kvals);
 			NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
 			return _cfg_buffer(cbc);
