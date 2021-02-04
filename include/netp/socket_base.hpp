@@ -106,9 +106,9 @@ namespace netp {
 		socket_base(SOCKET fd, int family, int sockt, int proto, address const& laddr, address const& raddr, const socket_api* sockapi); //by pass a connected socket fd
 		~socket_base();
 
-		__NETP_FORCE_INLINE int sock_family() const { return ((m_family)); };
-		__NETP_FORCE_INLINE int sock_type() const { return (m_type); };
-		__NETP_FORCE_INLINE int sock_protocol() { return (m_protocol); };
+		__NETP_FORCE_INLINE u8_t sock_family() const { return ((m_family)); };
+		__NETP_FORCE_INLINE u8_t sock_type() const { return (m_type); };
+		__NETP_FORCE_INLINE u16_t sock_protocol() { return (m_protocol); };
 
 		__NETP_FORCE_INLINE bool is_tcp() const { return m_protocol == u8_t(NETP_PROTOCOL_TCP); }
 		__NETP_FORCE_INLINE bool is_udp() const { return m_protocol == u8_t(NETP_PROTOCOL_UDP); }
