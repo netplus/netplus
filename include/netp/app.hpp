@@ -7,7 +7,7 @@
 
 namespace netp {
 
-	typedef std::function<int()> fn_app_hook_t;
+	typedef std::function<void()> fn_app_hook_t;
 
 	struct app_cfg {
 
@@ -21,6 +21,11 @@ namespace netp {
 		fn_app_hook_t app_exit_prev;
 		fn_app_hook_t app_exit_post;
 
+		fn_app_hook_t app_event_loop_init_prev;
+		fn_app_hook_t app_event_loop_init_post;
+		fn_app_hook_t app_event_loop_deinit_prev;
+		fn_app_hook_t app_event_loop_deinit_post;
+
 	public:
 		app_cfg() :
 			logfilepathname(""),
@@ -28,7 +33,11 @@ namespace netp {
 			app_startup_prev(nullptr),
 			app_startup_post(nullptr),
 			app_exit_prev(nullptr),
-			app_exit_post(nullptr)
+			app_exit_post(nullptr),
+			app_event_loop_init_prev(nullptr),
+			app_event_loop_init_post(nullptr),
+			app_event_loop_deinit_prev(nullptr),
+			app_event_loop_deinit_post(nullptr)
 		{
 			const int corecount = std::thread::hardware_concurrency();
 			for (size_t i = 0; i < T_POLLER_MAX; ++i) {
@@ -80,10 +89,16 @@ namespace netp {
 		netp::condition m_cond;
 		std::vector<std::tuple<int,long>> m_signo_tuple_vec;
 		app_cfg m_cfg;
+
 		fn_app_hook_t m_app_startup_prev;
 		fn_app_hook_t m_app_startup_post;
 		fn_app_hook_t m_app_exit_prev;
 		fn_app_hook_t m_app_exit_post;
+
+		fn_app_hook_t m_app_event_loop_init_prev;
+		fn_app_hook_t m_app_event_loop_init_post;
+		fn_app_hook_t m_app_event_loop_deinit_prev;
+		fn_app_hook_t m_app_event_loop_deinit_post;
 
 	public:
 		app(app_cfg const& cfg = {});

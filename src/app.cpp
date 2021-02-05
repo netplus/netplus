@@ -64,40 +64,30 @@ namespace netp {
 		m_cfg(cfg),
 		m_app_startup_prev(cfg.app_startup_prev),
 		m_app_startup_post(cfg.app_startup_post),
-		m_app_exit_prev(cfg.app_startup_prev),
-		m_app_exit_post(cfg.app_startup_post)
+		m_app_exit_prev(cfg.app_exit_prev),
+		m_app_exit_post(cfg.app_exit_post),
+		m_app_event_loop_init_prev(cfg.app_event_loop_init_prev),
+		m_app_event_loop_init_post(cfg.app_event_loop_init_post),
+		m_app_event_loop_deinit_prev(cfg.app_event_loop_deinit_prev),
+		m_app_event_loop_deinit_post(cfg.app_event_loop_deinit_post)
 	{
-		int rt;
-		if (m_app_startup_prev != nullptr) {
-			rt = m_app_startup_prev();
-			if (rt != netp::OK) {
-				exit(rt);
-			}
+		if (m_app_startup_prev) {
+			m_app_startup_prev();
 		}
 		_startup();
-		if (m_app_startup_post != nullptr) {
-			rt = m_app_startup_post();
-			if (rt != netp::OK) {
-				exit(rt);
-			}
+		if (m_app_startup_post ) {
+			m_app_startup_post();
 		}
 	}
 
 	app::~app()
 	{
-		int rt;
-		if (m_app_exit_prev != nullptr) {
-			rt = m_app_exit_prev();
-			if (rt != netp::OK) {
-				exit(rt);
-			}
+		if (m_app_exit_prev ) {
+			m_app_exit_prev();
 		}
 		_exit();
-		if (m_app_exit_post != nullptr) {
-			rt = m_app_exit_post();
-			if (rt != netp::OK) {
-				exit(rt);
-			}
+		if (m_app_exit_post ) {
+			 m_app_exit_post();
 		}
 	}
 
@@ -122,8 +112,6 @@ namespace netp {
 	void app::_deinit() {
 		__net_deinit();
 		__signal_deinit();
-
-		NETP_INFO("deinit signal end");
 		__log_deinit();
 	}
 
@@ -317,25 +305,40 @@ namespace netp {
 			m_signo_tuple_vec.pop_back();
 		}
 		signal_broker_deinit();
+		NETP_INFO("deinit signal end");
 	}
 
 	void app::__net_init() {
-		NETP_INFO("init net begin");
+		NETP_INFO("net init begin");
 #ifdef _NETP_WIN
 		netp::os::winsock_init();
 #endif
+
+		if (m_app_event_loop_init_prev) {
+			m_app_event_loop_init_prev();
+		}	
 		___event_loop_init();
-		NETP_INFO("init net end");
+		if (m_app_event_loop_init_post) {
+			m_app_event_loop_init_post();
+		}
+
+		NETP_INFO("net init end");
 	}
 
 	void app::__net_deinit() {
-		NETP_INFO("deinit net begin");
+		NETP_INFO("net deinit begin");
+		if (m_app_event_loop_deinit_prev) {
+			m_app_event_loop_deinit_prev();
+		}
 		___event_loop_deinit();
-		NETP_INFO("deinit net end");
+		if (m_app_event_loop_deinit_post) {
+			m_app_event_loop_deinit_post();
+		}
 
 #ifdef _NETP_WIN
 		netp::os::winsock_deinit();
 #endif
+		NETP_INFO("net deinit end");
 	}
 
 	void app::___event_loop_init() {

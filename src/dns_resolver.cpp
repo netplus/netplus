@@ -52,6 +52,7 @@ namespace netp {
 	}
 
 	void dns_resolver::_do_start(NRP<netp::promise<int>> const& p) {
+
 		if ( m_flag &( u8_t(dns_resolver_flag::f_launching|dns_resolver_flag::f_running|dns_resolver_flag::f_stop_called)) ) {
 			p->set(netp::E_INVALID_STATE);
 			return;
