@@ -299,7 +299,7 @@ namespace netp { namespace http {
 	}
 
 	void do_get(std::string const& url, NRP<netp::http::request_promise> const& reqp, std::chrono::seconds timeout) {
-		NRP<client_dial_promise> dp = netp::http::dial(url);
+		NRP<client_dial_promise> dp = netp::http::dial(url, { true,true,{},netp::make_ref<netp::socket_cfg>() });
 		dp->if_done([url,reqp,timeout]( std::tuple<int, NRP<client>> const& tupc ) {
 			int dialrt = std::get<0>(tupc);
 			if(dialrt != netp::OK) {

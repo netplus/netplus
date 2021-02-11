@@ -1,0 +1,3 @@
+gcc 4.8.5
+sse2 is enabled by default
+ssse3,avx is not enabled by default

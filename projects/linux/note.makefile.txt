@@ -1,0 +1,11 @@
+makefile 中的变量，在经过多次的处理之后，只会使用最终的变量值
+ifeq, ifneq 使用的时候，注意空隔，必须严格按照下面这样
+
+ifeq ($(xxx),name)
+else ifeq($(yyy),name)
+else
+endif
+
+
+$(if ) 可以在target块中根据 $(<F) 来进行条件处理
+ifeq, ifdef可以在 target块中语法正确地工作，但是不能正确地以$(<F)进行逻辑处理

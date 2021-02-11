@@ -578,7 +578,7 @@ recvfrom:
 	inline int set_reuseport(socket_api const& api, SOCKET fd, bool onoff) {
 #ifdef _NETP_GNU_LINUX
 		int optval = onoff ? 1 : 0;
-		return fn.setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+		return api.setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 #else
 		(void)api;
 		(void)fd;

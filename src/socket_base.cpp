@@ -4,11 +4,11 @@ namespace netp {
 
 	socket_base::socket_base(SOCKET fd, int family, int sockt, int proto, address const& laddr, address const& raddr, const socket_api* sockapi) :
 		m_fd(fd),
-		m_option(0),
 
 		m_family(u8_t(family)),
 		m_type(u8_t(sockt)),
 		m_protocol(u16_t(proto)),
+		m_option(0),
 
 		m_api(sockapi==nullptr?((netp::socket_api*)&netp::NETP_DEFAULT_SOCKAPI):sockapi),
 
@@ -58,7 +58,7 @@ namespace netp {
 		}
 
 		int optval = onoff ? 1 : 0;
-		int rt = netp::fncfg[m_fn_api_type].setsockopt(m_fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+		int rt = m_api->setsockopt(m_fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		if (onoff) {
 			m_option |= u16_t(socket_option::OPTION_REUSEPORT);
