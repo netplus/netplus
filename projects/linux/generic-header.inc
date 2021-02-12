@@ -75,31 +75,31 @@ endif
 X86_X86_X86 := x86_32 x86_64
 ARCH_IS_X86 := YES
 ARCH_IS_ARMV7A := NO
+SIMD_DEFINES := 
 
 ifeq ($(PRJ_ARCH), $(findstring $(PRJ_ARCH),$(X86_X86_X86) ))
-	ifeq ($(PRJ_SIMD),avx2)
+	ifeq ($(PRJ_SIMD),$(findstring $(PRJ_SIMD),avx2))
 		CC_SIMD := -mssse3 -mavx2
+		SIMD_DEFINES := BFR_ENABLE_AVX2 BFR_ENABLE_SSSE3
 	else ifeq ($(PRJ_SIMD),ssse3)
 		CC_SIMD := -mssse3
+		SIMD_DEFINES := BFR_ENABLE_SSSE3
 	else 
 		CC_SIMD :=
 	endif
 else ifeq ($(PRJ_ARCH),armv7a)
-	#for rpi4
-	ifeq ($(PRJ_SIMD),neon)
-		CC_SIMD := -mcpu=cortex-a7 -mfloat-abi=hard
-	else
-		CC_SIMD := 
-	endif
-	
+	CC_SIMD := -mcpu=cortex-a7 -mfloat-abi=hard -mfpu=neon -fno-tree-vectorize
+
+	SIMD_DEFINES := BFR_ENABLE_NEON
 	ARCH_IS_X86 := NO
 	ARCH_IS_ARMV7A := YES
 else 
 	ARCH_IS_X86 := NO
 endif
 
+SIMD_DEFINES :=\
+	$(foreach define,$(SIMD_DEFINES), -D$(define))
 
-CC_MISC := $(CC_MISC) $(CC_SIMD)
 
 ifdef ver
 	TARGET_VER := $(ver)

@@ -1,4 +1,4 @@
-include generic-header.in
+include generic-header.inc
 
 LIB_ARCH_BUILD = $(ARCH_BUILD_NAME)
 LIBNAME		:= netplus
@@ -13,14 +13,6 @@ LIB_BUILD_DIR	:= $(LIB_DIR)/build/$(LIB_ARCH_BUILD)
 LIB_BIN_DIR		:= $(LIB_DIR)/bin/$(LIB_ARCH_BUILD)
 
 LIB_SIMD_CPP_FILES := 
-
-#ifeq ($(ARCH_IS_X86),YES)
-#	LIB_CC_SIMD := -mavx2 -mssse3
-#	LIB_SIMD_DEFINE := NETP_ENABLE_AVX2 NETP_ENABLE_SSSE3
-#else ifeq ($(ARCH_IS_ARMV7A),YES)
-#	LIB_CC_SIMD := -mcpu=cortex-a7 -mfloat-abi=hard -mfpu=neon -fno-tree-vectorize
-#	LIB_SIMD_DEFINE := NETP_ENABLE_NEON
-#endif
 
 
 LIB_CPP_FILES	:= $(shell find $(LIB_SOURCE_DIR) -name *.cpp -not -name ".*" )
@@ -123,7 +115,7 @@ $(LIB_BUILD_DIR)/%.o : $(LIB_SOURCE_DIR)/%.cpp
 	@echo $(<F)
 	@echo "------build cpp file end------"
 
-	$(if $(findstring $(<F),$(LIB_SIMD_CPP_FILES)),$(CXX) $(CC_MISC) $(CC_C11) $(CC_SIMD) $(LIB_CC_SIMD) $(DEFINES) $(INCLUDES) $< -o $@, $(CXX) $(CC_MISC) $(CC_C11) $(DEFINES) $(INCLUDES) $< -o $@ ) 
+	$(if $(findstring $(<F),$(LIB_SIMD_CPP_FILES)),$(CXX) $(CC_MISC) $(CC_C11) $(CC_SIMD) $(SIMD_DEFINES) $(DEFINES) $(INCLUDES) $< -o $@, $(CXX) $(CC_MISC) $(CC_C11) $(DEFINES) $(INCLUDES) $< -o $@ ) 
 
 $(LIB_3RD_CPP_BUILD_DIR)/%.o : $(LIB_3RD_DIR)/%.cpp
 	@if [ ! -d $(@D) ] ; then \
