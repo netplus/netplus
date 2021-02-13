@@ -3,8 +3,8 @@
 
 #define NETP_DEFAULT_ALIGN (16)
 
-//#ifdef __ARM_NEON__
-//	#define NETP_ENABLE_NEON
-//#endif
+#ifdef __ARM_NEON__
+	#define NETP_ENABLE_NEON
+#endif
 
 #endif
