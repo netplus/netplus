@@ -57,7 +57,7 @@
     <ClInclude Include="..\..\include\netp\core\platform\win_x86_.hpp" />
     <ClInclude Include="..\..\include\netp\CPUID.hpp" />
     <ClInclude Include="..\..\include\netp\dns_resolver.hpp" />
-    <ClInclude Include="..\..\include\netp\epoll_poller.hpp" />
+    <ClInclude Include="..\..\include\netp\poller_epoll.hpp" />
     <ClInclude Include="..\..\include\netp\event_broker.hpp" />
     <ClInclude Include="..\..\include\netp\exception.hpp" />
     <ClInclude Include="..\..\include\netp\funcs.hpp" />
@@ -81,7 +81,7 @@
     <ClInclude Include="..\..\include\netp\http\message.hpp" />
     <ClInclude Include="..\..\include\netp\http\parser.hpp" />
     <ClInclude Include="..\..\include\netp\icmp.hpp" />
-    <ClInclude Include="..\..\include\netp\iocp_poller.hpp" />
+    <ClInclude Include="..\..\include\netp\poller_iocp.hpp" />
     <ClInclude Include="..\..\include\netp\io_event.hpp" />
     <ClInclude Include="..\..\include\netp\io_event_loop.hpp" />
     <ClInclude Include="..\..\include\netp\ipv4.hpp" />
@@ -110,7 +110,7 @@
     <ClInclude Include="..\..\include\netp\security\murmurhash.hpp" />
     <ClInclude Include="..\..\include\netp\security\obfuscate.hpp" />
     <ClInclude Include="..\..\include\netp\security\xxtea.hpp" />
-    <ClInclude Include="..\..\include\netp\select_poller.hpp" />
+    <ClInclude Include="..\..\include\netp\poller_select.hpp" />
     <ClInclude Include="..\..\include\netp\signal_broker.hpp" />
     <ClInclude Include="..\..\include\netp\singleton.hpp" />
     <ClInclude Include="..\..\include\netp\smart_ptr.hpp" />

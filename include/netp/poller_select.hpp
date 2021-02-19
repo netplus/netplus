@@ -7,7 +7,7 @@
 
 namespace netp {
 
-	class select_poller final :
+	class poller_select final :
 		public io_event_loop
 	{
 		enum fds_idx {
@@ -19,12 +19,12 @@ namespace netp {
 
 	private:
 		public:
-			select_poller(poller_cfg const& cfg):
+			poller_select(poller_cfg const& cfg):
 				io_event_loop(T_SELECT, cfg)
 			{
 			}
 
-			~select_poller() {}
+			~poller_select() {}
 
 			int _do_watch(SOCKET, u8_t, NRP<watch_ctx> const&) override
 			{

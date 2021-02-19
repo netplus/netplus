@@ -12,7 +12,7 @@
 
 namespace netp {
 
-	class iocp_poller final :
+	class poller_iocp final :
 		public io_event_loop
 	{
 		class socket;
@@ -214,7 +214,7 @@ namespace netp {
 			}
 		}
 	public:
-			iocp_poller() :
+		poller_iocp() :
 				io_event_loop(T_IOCP),
 				m_handle(nullptr)
 			{}

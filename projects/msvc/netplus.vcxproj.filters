@@ -348,9 +348,6 @@
     <ClInclude Include="..\..\include\netp\dns_resolver.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\netp\epoll_poller.hpp">
-      <Filter>Header Files\netp</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\netp\event_broker.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
@@ -370,9 +367,6 @@
       <Filter>Header Files\netp</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\netp\io_event_loop.hpp">
-      <Filter>Header Files\netp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\netp\iocp_poller.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\netp\ipv4.hpp">
@@ -403,9 +397,6 @@
       <Filter>Header Files\netp</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\netp\rpc.hpp">
-      <Filter>Header Files\netp</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\netp\select_poller.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\netp\signal_broker.hpp">
@@ -446,6 +437,15 @@
     </ClInclude>
     <ClInclude Include="..\..\include\netp\l2\m6.hpp">
       <Filter>Header Files\netp\l2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\poller_iocp.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\poller_select.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\poller_epoll.hpp">
+      <Filter>Header Files\netp</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

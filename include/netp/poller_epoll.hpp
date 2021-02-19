@@ -11,19 +11,19 @@
 
 namespace netp {
 
-	class epoll_poller final:
+	class poller_epoll final:
 		public io_event_loop
 	{
 		int m_epfd;
 
 	public:
-		epoll_poller(poller_cfg const& cfg):
+		poller_epoll(poller_cfg const& cfg):
 			io_event_loop(T_EPOLL,cfg),
 			m_epfd(-1)
 		{
 		}
 
-		~epoll_poller() {
+		~poller_epoll() {
 			NETP_ASSERT( m_epfd == -1 );
 		}
 
