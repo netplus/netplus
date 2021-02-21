@@ -289,7 +289,14 @@ namespace netp { namespace handler {
 		m_entries_lastit = m_entries.begin();
 	}
 
-	mux::~mux() {}
+	mux::~mux() {
+		//Iterator::_Mproxy should be set nullptr, otherwise we get read : read access violation .
+		//forward_list::~forward_list() would result in the pointer of iterator::_Pproxy be deleted
+		//reference: _Iterator_base12's impl
+		m_entries_writeit = m_entries.end();
+		m_entries_lastit_prev = m_entries.end();
+		m_entries_lastit = m_entries.end();
+	}
 
 	void mux::__do_mux_flush_done( const int rt ) {
 		if (m_write_state == mux_transport_write_state::S_CLOSED) {
