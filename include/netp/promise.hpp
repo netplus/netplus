@@ -101,7 +101,7 @@ namespace netp {
 		}
 
 		template <class _Rep, class _Period>
-		inline void wait_for(std::chrono::duration<_Rep, _Period>&& dur) const {
+		inline void wait_for(std::chrono::duration<_Rep, _Period>&& dur) {
 			if (m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE)) {
 				lock_guard<spin_mutex> lg(m_mutex);
 				const std::chrono::time_point< std::chrono::steady_clock> tp_expire = std::chrono::steady_clock::now() + dur;
