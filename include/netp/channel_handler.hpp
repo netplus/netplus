@@ -36,7 +36,7 @@ namespace netp {
 	};
 
 	class channel_handler_abstract :
-		virtual public ref_base
+		public ref_base
 	{
 		friend class channel_handler_context;
 	public:
