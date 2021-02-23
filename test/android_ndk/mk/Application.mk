@@ -1,5 +1,5 @@
 
-APP_MODULES 		:= ndk_hello_wawo
+APP_MODULES 		:= ndk_hello_netplus
 APP_OPTIM			:= release
 
 ifdef build
