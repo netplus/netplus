@@ -1,8 +1,6 @@
 #include <netp/timer.hpp>
 
 namespace netp {
-
-
 	void timer_broker::expire_all() {
 		while (!m_tq.empty()) {
 			NRP<timer>& tm = m_tq.front();
@@ -50,13 +48,10 @@ namespace netp {
 		}
 	}
 
+	/*
 	timer_broker_ts::~timer_broker_ts()
 	{
-		{
-			lock_guard<mutex> lg(m_mutex);
-			m_in_exit = true;
-		}
-
+		stop();
 		if (m_th != nullptr) {
 			m_th->interrupt();
 			m_th->join();
@@ -69,6 +64,11 @@ namespace netp {
 			m_heap.pop();
 		}
 		NETP_WARN("[timer]cancel timer task count: %u", m_tq.size());
+	}
+
+	void timer_broker_ts::stop() {
+		lock_guard<mutex> lg(m_mutex);
+		m_in_exit = true;
 	}
 
 	void timer_broker_ts::_run() {
@@ -128,4 +128,5 @@ namespace netp {
 			}
 		}
 	}
+	*/
 }

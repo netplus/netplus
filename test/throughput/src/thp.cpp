@@ -1,8 +1,8 @@
 #include <netp.hpp>
 
-#define AIO
+//#define AIO
 
-#ifndef AIO
+#ifdef BLOCK_READ_WRITE
 void read_and_write(NRP<netp::socket> const& so, NRP<netp::packet> const& buf, netp::u64_t total_received_to_exit) {
 	netp::u64_t total_received = 0;
 	do {
@@ -125,10 +125,9 @@ void th_dialer() {
 	NETP_ASSERT(len == buf->len());
 	read_and_write(dialer, buf, 6553500000LL);
 }
+#endif
 
-#else
-
-
+#ifdef NBLOCK_READ_WRITE
 
 struct socket_info:
 	public netp::ref_base
@@ -177,6 +176,7 @@ void aio_read_and_write(NRP<netp::socket> const& so, NRP<netp::packet> const& bu
 		NETP_ERR("read failed: %d", rec);
 	});
 }
+#endif
 
 netp::spin_mutex g_mtx;
 std::vector<NRP<netp::channel>> g_channels;
@@ -203,11 +203,12 @@ public:
 
 
 NRP<netp::channel> start_listener() {
-	NRP<netp::socket_create_cfg> cfg = netp::make_ref<netp::socket_create_cfg>();
+	NRP<netp::socket_cfg> cfg = netp::make_ref<netp::socket_cfg>();
 	cfg->sock_buf.rcv_size = (g_rcvwnd<<1);
 	cfg->sock_buf.snd_size = (g_sndwnd);
 
 	NRP<netp::channel_listen_promise> lp = netp::socket::listen_on("tcp://0.0.0.0:32002", [](NRP<netp::channel> const& ch) {
+		ch->pipeline()->add_last(netp::make_ref<netp::handler::hlen>());
 		ch->pipeline()->add_last( netp::make_ref<server_echo_handler>() );
 	}, cfg );
 
@@ -217,8 +218,6 @@ NRP<netp::channel> start_listener() {
 	}
 	return nullptr;
 }
-
-
 
 class client_echo_handler :
 	public netp::channel_handler_abstract
@@ -244,11 +243,12 @@ public:
 
 
 void dialone() {
-	NRP<netp::socket_create_cfg> cfg = netp::make_ref<netp::socket_create_cfg>();
+	NRP<netp::socket_cfg> cfg = netp::make_ref<netp::socket_cfg>();
 	cfg->sock_buf.rcv_size = (g_rcvwnd);
 	cfg->sock_buf.snd_size = (g_sndwnd);
 
 	NRP<netp::channel_dial_promise> dp = netp::socket::dial("tcp://127.0.0.1:32002", [](NRP<netp::channel> const& ch) {
+		ch->pipeline()->add_last(netp::make_ref<netp::handler::hlen>());
 		ch->pipeline()->add_last(netp::make_ref<client_echo_handler>(g_packet_size*g_packet_number));
 	}, cfg);
 
@@ -278,7 +278,6 @@ void dialone() {
 		});
 	});
 }
-#endif
 
 void parse_param(int argc, char** argv) {
 	static struct option long_options[] = {
@@ -287,7 +286,7 @@ void parse_param(int argc, char** argv) {
 		{"rcvwnd",optional_argument,0,'r'},
 		{"sndwnd", optional_argument,0, 's'},
 		{"clients", optional_argument, 0, 'c'},
-		{"buf-for-loop", optional_argument, 0, 'b'},
+		{"buf-for-evtloop", optional_argument, 0, 'b'},
 		{0,0,0,0}
 	};
 
@@ -349,9 +348,9 @@ int main(int argc, char** argv) {
 
 	g_client_token = g_client_max;
 
-	netp::app_startup_cfg appcfg;
+	netp::app_cfg appcfg;
 
-	appcfg.poller_cfgs[netp::u8_t(DEFAULT_POLLER_TYPE)].ch_buf_size = g_loopbufsize;
+	appcfg.poller_cfgs[netp::u8_t(NETP_DEFAULT_POLLER_TYPE)].ch_buf_size = g_loopbufsize;
 	netp::app _app(appcfg);
 
 	netp::benchmark bmarker("start");

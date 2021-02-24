@@ -50,7 +50,7 @@ public:
 		message_ping->write(ping.c_str(), ping.length());
 		NRP<netp::promise<int>> write_p = ctx->write(message_ping);
 		write_p->if_done([]( int rt ) {
-			NETP_INFO("[PING]write PING failed: %d", rt );
+			NETP_INFO("[PING]write PING, rt: %d", rt );
 		});
 	}
 };

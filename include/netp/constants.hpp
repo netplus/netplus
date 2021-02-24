@@ -240,6 +240,7 @@ namespace netp {
 	const int E_WSA_QOS_SENDERS					= -11006;
 
 	//internal error
+	const int E_NETP_APP_EXIT								= -20000;
 	const int E_NO_NET_DEV								= -20001;
 	const int E_INVALID_OPERATION					= -20002;
 	const int E_INVALID_STATE								= -20003;
