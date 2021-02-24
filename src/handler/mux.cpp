@@ -180,7 +180,6 @@ namespace netp { namespace handler {
 		} else if (m_chflag& int(channel_flag::F_CONNECTING)) {
 			_ch_do_close_connecting();
 		} else if (m_chflag & (int(channel_flag::F_CLOSE_PENDING)|int(channel_flag::F_CLOSING)) ) {
-			NETP_ASSERT(m_chflag& int(channel_flag::F_CONNECTED));
 			prt = (netp::E_OP_INPROCESS);
 		} else if (m_chflag & (int(channel_flag::F_WRITING)|int(channel_flag::F_BDLIMIT))) {
 			NETP_ASSERT(m_chflag& int(channel_flag::F_CONNECTED));
@@ -472,6 +471,8 @@ namespace netp { namespace handler {
 		NETP_ASSERT(id > 0);
 		NETP_ASSERT(dlen >= 0);
 		income->skip(NETP_MUX_STREAM_FRAME_HEADER_LEN);
+		//assert might get failed for multi-packet arrive at the same time
+		//such as a fin followed by a rst
 		NETP_ASSERT(dlen == income->len());
 
 		NRP<mux_stream> s;
