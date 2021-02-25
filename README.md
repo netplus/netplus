@@ -9,10 +9,10 @@ Netplus borrows lots of concepts from Netty, and tries to implement these concep
 
 # What can we use Netplus to do
     1) Implement a message gateway
-    2) As the network component of a message queue, gameserver or any other network based application.
-       please note that netplus is not a gameserver framework, But you can implement one by yourself
-    3) Write protocol driver of Middleware, such as kinds of database, message queue server, etc
-    4) Write http/https,websocket based application with well defined modules
+    2) Use as the network component of a message queue, gameserver or any other network based application.
+       please note that netplus is not a gameserver framework, But you can implement one with netplus
+    3) Implement protocol driver of Middleware, such as kinds of database, message queue server, etc
+    4) Implement http/https, websocket based application with well defined modules
     5) Implement RPC server
 
 # Target Arch & Platform
