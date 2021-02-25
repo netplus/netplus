@@ -13,7 +13,7 @@ Netplus borrows lots of concepts from Netty, and tries to implement these concep
        please note that netplus is not a gameserver framework, But you can implement one by yourself
     3) Write protocol driver of Middleware, such as kinds of database, message queue server, etc
     4) Write http/https,websocket, rpc based application with well defined modules
-    
+    5) Implement RPC server
 
 # Target Arch & Platform
     1) Windows on x86
@@ -25,11 +25,13 @@ Netplus borrows lots of concepts from Netty, and tries to implement these concep
 
 Build and usage: <https://github.com/netplus/netplus/wiki#building--usage>
 
+Quick Start: https://github.com/netplus/netplus/wiki#quick-start
+
 Examples: <https://github.com/netplus/netplus/wiki#examples>
 
 Basic concept: <https://github.com/netplus/netplus/wiki#concept>
 
-Modules: <https://github.com/netplus/netplus/wiki#examples>
+Modules: <https://github.com/netplus/netplus/wiki#modules>
 
 Zhihu: https://www.zhihu.com/column/c_1339539434091040768
 
