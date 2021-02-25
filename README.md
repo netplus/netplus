@@ -29,7 +29,7 @@ Examples: <https://github.com/netplus/netplus/wiki#examples>
 
 Basic concept: <https://github.com/netplus/netplus/wiki#concept>
 
-Modules: <https://github.com/netplus/netplus/wiki#concept>
+Modules: <https://github.com/netplus/netplus/wiki#examples>
 
 Zhihu: https://www.zhihu.com/column/c_1339539434091040768
 
