@@ -12,6 +12,7 @@
 
 #include <netp/mutex.hpp>
 #include <netp/thread.hpp>
+#include <netp/promise.hpp>
 
 #include <netp/logger_broker.hpp>
 
@@ -86,7 +87,7 @@ namespace netp {
 		template <class dur, class _callable
 			, class=typename std::enable_if<std::is_convertible<_callable, _fn_timer_t>::value>::type>
 		inline timer(dur&& delay_, _callable&& callee_ ):
-			callee(std::forward<std::remove_reference<_fn_timer_t>::type>(callee_)),
+			callee(std::forward<_fn_timer_t>(callee_)),
 			delay(delay_),
 			expiration(timer_timepoint_t()),
 			invocation(timer_timepoint_t()),
@@ -197,6 +198,7 @@ namespace netp {
 		const netp::size_t size() { return m_tq.size() + m_heap.size(); }
 	};
 
+	/*
 	class timer_broker_ts final
 	{
 		netp::mutex m_mutex;
@@ -237,10 +239,12 @@ namespace netp {
 		}
 
 		~timer_broker_ts();
+		void stop();
 
-		inline void launch(NRP<timer> const& t) {
+		inline void launch(NRP<timer> const& t, NRP<netp::promise<int>> const& lf = nullptr) {
 			lock_guard<mutex> lg(m_mutex);
 			if (m_in_exit == true) {
+				if (lf != nullptr) { lf->set(netp::E_NETP_APP_EXIT); }
 				return;
 				//_TIMER_TP_INFINITE;
 			}
@@ -250,11 +254,13 @@ namespace netp {
 			t->expiration = timer_clock_t::now() + t->delay;
 			m_tq.push_back(t);
 			__check_th_and_wait();
+			if (lf != nullptr) { lf->set(netp::OK); }
 		}
 
-		inline void launch(NRP<timer>&& t) {
+		inline void launch(NRP<timer>&& t, NRP<netp::promise<int>> const& lf = nullptr) {
 			lock_guard<mutex> lg(m_mutex);
 			if (m_in_exit == true) {
+				if (lf != nullptr) { lf->set(netp::E_NETP_APP_EXIT); }
 				return;
 					//; _TIMER_TP_INFINITE;
 			}
@@ -263,9 +269,12 @@ namespace netp {
 			t->expiration = timer_clock_t::now() + t->delay;
 			m_tq.push_back(std::forward<NRP<timer>>(t));
 			__check_th_and_wait();
+
+			if (lf != nullptr) { lf->set(netp::OK); }
 		}
 
 		void _run();
+		*/
 
 		/*
 		 * @note
@@ -277,11 +286,14 @@ namespace netp {
 		 * @param nexpire, next expire timepoint
 		 *		a) updated on every frame when heap get updated (on both pop and push operation)
 		 */
+
+	/*
 		void update(timer_duration_t& ndelay);
 	};
 
 	class timer_manager:
 		public singleton<timer_broker_ts>
 	{};
+	*/
 }
 #endif
