@@ -50,6 +50,7 @@ namespace netp {
 		}
 	}
 
+	/*
 	timer_broker_ts::~timer_broker_ts()
 	{
 		{
@@ -128,4 +129,5 @@ namespace netp {
 			}
 		}
 	}
+	*/
 }

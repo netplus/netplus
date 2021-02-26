@@ -197,6 +197,7 @@ namespace netp {
 		const netp::size_t size() { return m_tq.size() + m_heap.size(); }
 	};
 
+	/*
 	class timer_broker_ts final
 	{
 		netp::mutex m_mutex;
@@ -267,21 +268,22 @@ namespace netp {
 
 		void _run();
 
-		/*
-		 * @note
-		 * 1, if m_tq is not empty, check one by one ,
-		 *		a) tm update expire and state, push heap, pop from tq
-		 * 2, check the first heap element and see whether it is expired
-		 *		a) if expire == timepoint::zero(), ignore and pop, continue
-		 *		b) if expire time reach, call callee, check REPEAT and push to tq if necessary, pop
-		 * @param nexpire, next expire timepoint
-		 *		a) updated on every frame when heap get updated (on both pop and push operation)
-		 */
+		 //
+		 // @note
+		 // 1, if m_tq is not empty, check one by one ,
+		 //		a) tm update expire and state, push heap, pop from tq
+		 // 2, check the first heap element and see whether it is expired
+		 //		a) if expire == timepoint::zero(), ignore and pop, continue
+		 //		b) if expire time reach, call callee, check REPEAT and push to tq if necessary, pop
+		 // @param nexpire, next expire timepoint
+		 //		a) updated on every frame when heap get updated (on both pop and push operation)
+		 //
 		void update(timer_duration_t& ndelay);
 	};
 
 	class timer_manager:
 		public singleton<timer_broker_ts>
 	{};
+	*/
 }
 #endif
