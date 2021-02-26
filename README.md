@@ -2,7 +2,7 @@
 
 # What is Netplus
 
-Netplus is a network programming library written by c++11. It's highly extensible, and with default configuration it can reach high performance.
+Netplus is a network programming library written in c++11. It's highly extensible, and with default configuration it can reach high performance.
 It's easy to learn. Basically, you can just implement your own business in a channel handler, then the library would do all the dirty jobs (platform specific considerations, io event delivery&process, basic memory optimization, etc ) for you.
 You can also write http/https,websocket,based application even you only have little corresponding knowledge background, Cuz it has relevant modules to simplify programming tasks of such kinds.
 Netplus borrows lots of concepts from Netty, and tries to implement these concepts by c++, such as channel, channel handler, channel pipeline, executor, scheduler, promise. Any one who is familiar with Netty should be able to start with ease. 
