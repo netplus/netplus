@@ -9,3 +9,10 @@ endif
 
 $(if ) 可以在target块中根据 $(<F) 来进行条件处理
 ifeq, ifdef可以在 target块中语法正确地工作，但是不能正确地以$(<F)进行逻辑处理
+
+
+替换后缀
+obj=$(dir:%.c=%.o)
+
+
+the first target is the default target
