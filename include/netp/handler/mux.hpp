@@ -586,7 +586,7 @@ namespace netp { namespace handler {
 			s->dial(fn_initializer, dial_p);
 		}
 
-		NRP<channel_dial_promise> dial(mux_stream_id_t id, fn_channel_initializer_t const& fn_initializer, netp::channel_buf_cfg const& bcfg) {
+		NRP<channel_dial_promise> dial(mux_stream_id_t id, fn_channel_initializer_t const& fn_initializer, netp::channel_buf_cfg const& bcfg = {128,128} ) {
 			NETP_ASSERT(m_loop != nullptr);
 			NRP<channel_dial_promise> ch_openp = netp::make_ref<channel_dial_promise>();
 			m_loop->execute([id, ch_openp, x=NRP<mux>(this), fn_initializer,bcfg]() {

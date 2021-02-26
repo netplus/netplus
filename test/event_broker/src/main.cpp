@@ -294,12 +294,14 @@ void test_unorderedmap_mem(int max) {
 
 int main(int argc, char** argv) {
 
+	netp::app app;
+
 	NRP<netp::promise<int>> p = netp::make_ref<netp::promise<int>>();
-	p->add_listener([]( NRP<netp::future<int>> const& f ) {
-		NETP_ASSERT(f->get() == netp::OK);
+	p->if_done([]( int rt ) {
+		NETP_ASSERT( rt == netp::OK);
 	});
 
-	p->set_success(0);
+	p->set(0);
 
 	/*
 	{
