@@ -91,10 +91,10 @@ namespace netp {
 	}
 
 	int socket_base::_cfg_buffer(channel_buf_cfg const& cfg) {
-		int rt = set_snd_buffer_size (cfg.snd_size);
+		int rt = set_snd_buffer_size (cfg.sndbuf_size);
 		NETP_RETURN_V_IF_MATCH(rt, rt < 0);
 
-		return set_rcv_buffer_size(cfg.rcv_size);
+		return set_rcv_buffer_size(cfg.rcvbuf_size);
 	}
 
 	int socket_base::_cfg_nodelay(bool onoff) {
@@ -314,7 +314,7 @@ namespace netp {
 		if(size ==0) {
 			int nsize = get_snd_buffer_size();
 			NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
-			m_sock_buf.snd_size = nsize;
+			m_sock_buf.sndbuf_size = nsize;
 			return netp::OK;
 		} else if (size < u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE) ) {
 			size = u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE);
@@ -337,7 +337,7 @@ namespace netp {
 
 		int nsize = get_snd_buffer_size();
 		NETP_RETURN_V_IF_MATCH(nsize, nsize <0);
-		m_sock_buf.snd_size = nsize;
+		m_sock_buf.sndbuf_size = nsize;
 		NETP_TRACE_SOCKET("[socket_base][%s]snd buffer size new: %u", info().c_str(), m_sock_buf.snd_size);
 
 		return netp::OK;
@@ -380,7 +380,7 @@ namespace netp {
 		if (size == 0) {
 			int nsize = get_rcv_buffer_size();
 			NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
-			m_sock_buf.rcv_size = nsize;
+			m_sock_buf.rcvbuf_size = nsize;
 			return netp::OK;
 		} else if (size < u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE)) {
 			size = u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE);
@@ -402,7 +402,7 @@ namespace netp {
 		}
 		int nsize = get_rcv_buffer_size();
 		NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
-		m_sock_buf.rcv_size = nsize;
+		m_sock_buf.rcvbuf_size = nsize;
 		NETP_TRACE_SOCKET("[socket_base][%s]rcv buffer size new: %u", info().c_str(), m_sock_buf.rcv_size);
 		return netp::OK;
 	}

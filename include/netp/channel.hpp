@@ -55,8 +55,8 @@ namespace netp {
 	};
 
 	struct channel_buf_cfg {
-		u32_t rcv_size;
-		u32_t snd_size;
+		u32_t rcvbuf_size;
+		u32_t sndbuf_size;
 	};
 
 	enum channel_buf_range {

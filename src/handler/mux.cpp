@@ -481,9 +481,9 @@ namespace netp { namespace handler {
 			NETP_ASSERT(income->len() == sizeof(u32_t));
 			u32_t sndwnd = income->read<u32_t>();
 			NETP_ASSERT(sndwnd > 0);
-			sndwnd = NETP_MIN(sndwnd, m_buf_cfg.snd_size );
+			sndwnd = NETP_MIN(sndwnd, m_buf_cfg.sndbuf_size );
 
-			u32_t rcvwnd = NETP_MIN(wndinc, m_buf_cfg.rcv_size);
+			u32_t rcvwnd = NETP_MIN(wndinc, m_buf_cfg.rcvbuf_size);
 
 			int ec;
 			std::tie(ec, s) = __do_open_stream(id, { sndwnd,rcvwnd });

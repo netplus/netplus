@@ -539,8 +539,8 @@ namespace netp {
 						return;
 					}
 
-					NETP_ASSERT(so->m_sock_buf.rcv_size > 0, "info: %s", so->ch_info().c_str());
-					NETP_ASSERT(so->m_sock_buf.snd_size > 0, "info: %s", so->ch_info().c_str());
+					NETP_ASSERT(so->m_sock_buf.rcvbuf_size > 0, "info: %s", so->ch_info().c_str());
+					NETP_ASSERT(so->m_sock_buf.sndbuf_size > 0, "info: %s", so->ch_info().c_str());
 					so->ch_fire_connected();
 					so->ch_aio_read();
 				});
@@ -608,7 +608,7 @@ namespace netp {
 		NRP<promise<int>> ch_get_read_buffer_size() override {
 			NRP<promise<int>> chp = make_ref<promise<int>>();
 			L->execute([S = NRP<socket>(this), chp]() {
-				chp->set(S->m_sock_buf.rcv_size);
+				chp->set(S->m_sock_buf.rcvbuf_size);
 			});
 			return chp;
 		}
@@ -624,7 +624,7 @@ namespace netp {
 		NRP<promise<int>> ch_get_write_buffer_size() override {
 			NRP<promise<int>> chp = make_ref<promise<int>>();
 			L->execute([S = NRP<socket>(this), chp]() {
-				chp->set(S->m_sock_buf.snd_size);
+				chp->set(S->m_sock_buf.sndbuf_size);
 			});
 			return chp;
 		}

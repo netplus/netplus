@@ -242,8 +242,8 @@ namespace netp {
 		ch_set_connected();
 		so_dialf->set(netp::OK);
 
-		NETP_ASSERT(m_sock_buf.rcv_size > 0, "info: %s", ch_info().c_str() );
-		NETP_ASSERT(m_sock_buf.snd_size > 0, "info: %s", ch_info().c_str());
+		NETP_ASSERT(m_sock_buf.rcvbuf_size > 0, "info: %s", ch_info().c_str() );
+		NETP_ASSERT(m_sock_buf.sndbuf_size > 0, "info: %s", ch_info().c_str());
 		ch_fire_connected();
 		ch_aio_read();
 	}
@@ -619,7 +619,7 @@ namespace netp {
 		} \
  \
 		const u32_t outlet_len = (u32_t)outlet->len(); \
-		if ( (m_noutbound_bytes > 0) && (m_noutbound_bytes + outlet_len > m_sock_buf.snd_size)) { \
+		if ( (m_noutbound_bytes > 0) && (m_noutbound_bytes + outlet_len > m_sock_buf.sndbuf_size)) { \
 			NETP_ASSERT(m_noutbound_bytes > 0); \
 			NETP_ASSERT(m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE))); \
 			chp->set(netp::E_CHANNEL_WRITE_BLOCK); \

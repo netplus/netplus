@@ -102,8 +102,8 @@ namespace netp { namespace handler {
 
 		void init(netp::channel_buf_cfg const& cfg ) {
 			NETP_ASSERT(L->in_event_loop());
-			_ch_set_read_buffer_size(cfg.rcv_size);
-			_ch_set_write_buffer_size(cfg.snd_size);
+			_ch_set_read_buffer_size(cfg.rcvbuf_size);
+			_ch_set_write_buffer_size(cfg.sndbuf_size);
 			channel::ch_init();
 		}
 
@@ -159,7 +159,7 @@ namespace netp { namespace handler {
 			if (m_rcv_wnd == u32_t(size)) { return netp::OK; }
 
 			if (size == 0) {
-				m_rcv_wnd = muxs_buf_cfg_default.rcv_size;
+				m_rcv_wnd = muxs_buf_cfg_default.rcvbuf_size;
 			} else if (size < int(channel_buf_range::CH_BUF_RCV_MIN_SIZE)) {
 				m_rcv_wnd = u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE);
 			} else if (size > int(channel_buf_range::CH_BUF_RCV_MAX_SIZE)) {
@@ -183,7 +183,7 @@ namespace netp { namespace handler {
 			if (m_snd_wnd == u32_t(size)) { return netp::OK; }
 
 			if (size == 0) {
-				m_snd_wnd = muxs_buf_cfg_default.snd_size;
+				m_snd_wnd = muxs_buf_cfg_default.sndbuf_size;
 			} else if (size < int(channel_buf_range::CH_BUF_SND_MIN_SIZE)) {
 				m_snd_wnd = u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE);
 			} else if (size > int(channel_buf_range::CH_BUF_SND_MAX_SIZE)) {
