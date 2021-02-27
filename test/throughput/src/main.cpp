@@ -4,12 +4,12 @@
 
 // the evulate method is as bellow:
 // step 1, listen on tcp://0.0.0.0:32002
-// step 2, dial to tcp://0.0.0.0:32002, once it is connected, the client  writes a packet, we record the written packet count as 1
+// step 2, dial to tcp://0.0.0.0:32002, once it is connected, the client writes a packet, set WRITTEN_PACKET to 1
 // step 3, the remote endpoint will reply this packet to client
-// step 4, when the client has received the full reply, it write another packet
-// step 5, record the total cost time as TOTAL TITME
+// step 4, when the client has received the full reply, it compare the WRITTEN_PACKET with TOTAL_PACKET, and writes another packet and incre(WRITTEN_PACKET) if WRITTEN_PACKET<TOTAL_PACKET 
+// step 5, record the total cost time as TOTAL TITME 
 // step 6, calc avgrate as (TOTAL PACKET)/TOTAL TIME
-// step 7, calc avgrate as (TOTAL PACKET * TOTAL NUMBER) / TOTAL TIME
+// step 7, calc avgbits as (TOTAL PACKET * TOTAL NUMBER) / TOTAL TIME
 
 //example: 
 //thp.exe -h
@@ -50,12 +50,12 @@ int main(int argc, char** argv) {
 	}
 
 	double avgrate = netp::u64_t(g_param.packet_number) *1.0 / (sec.count());
-	double avgbytes = netp::u64_t(g_param.packet_number) * netp::u64_t(g_param.packet_size) * 1.0 / (sec.count() * 1000 * 1000);
-	NETP_INFO("\n---\npacketsize: %ld\nnumber: %ld\ncost: %ld\navgrate: %0.2f/s\navgbytes: %0.2fMB/s\n---",
+	double avgbits = netp::u64_t(g_param.packet_number) * netp::u64_t(g_param.packet_size) * 1.0 / (sec.count() * 1000 * 1000);
+	NETP_INFO("\n---\npacketsize: %ld\nnumber: %ld\ncost: %ld\navgrate: %0.2f/s\navgbits: %0.2fMB/s\n---",
 		g_param.packet_size,
 		g_param.packet_number,
 		sec.count(),
-		g_param.client_max*avgrate, g_param.client_max*avgbytes);
+		g_param.client_max*avgrate, g_param.client_max* avgbits);
 	NETP_INFO("main exit");
 	return 0;
 }

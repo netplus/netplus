@@ -87,7 +87,7 @@ void handler_dial_one_client(thp_param const& param_) {
 
 		netp::atomic_incre(&g_channels, std::memory_order_acq_rel);
 
-		NRP<netp::packet> outp = netp::make_ref<netp::packet>( );
+		NRP<netp::packet> outp = netp::make_ref<netp::packet>(param_.packet_size);
 		outp->incre_write_idx(param_.packet_size);
 
 		NRP<netp::channel> const& ch = std::get<1>(tupc);
