@@ -8,11 +8,11 @@ public:
 	{}
 
 	//for inbound
-	void read(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& income) {
+	void read(netp::ref_ptr<netp::channel_handler_context> const& ctx, netp::ref_ptr<netp::packet> const& income) {
 		//reply with PONG
 		const std::string pong = "PONG";
-		NRP<netp::packet> PONG = netp::make_ref<netp::packet>(pong.c_str(), pong.length());
-		NRP<netp::promise<int>> write_promise = ctx->write(PONG);
+		netp::ref_ptr<netp::packet> PONG = netp::make_ref<netp::packet>(pong.c_str(), pong.length());
+		netp::ref_ptr<netp::promise<int>> write_promise = ctx->write(PONG);
 
 		//check the reply status once the write operation is done
 		write_promise->if_done([](int reply_rt) {
@@ -25,30 +25,26 @@ class Ping :
 	public netp::channel_handler_abstract {
 public:
 	Ping():
-		channel_handler_abstract(netp::CH_ACTIVITY_CONNECTED|netp::CH_ACTIVITY_CLOSED|netp::CH_INBOUND_READ)
+		channel_handler_abstract(netp::CH_ACTIVITY_CONNECTED|netp::CH_INBOUND_READ)
 	{}
 
-	void connected(NRP<netp::channel_handler_context> const& ctx) {
+	void connected(netp::ref_ptr<netp::channel_handler_context> const& ctx) {
 		NETP_INFO("[PING]connected");
 
 		//initial PING
 		do_ping(ctx);
 	}
 
-	void closed(NRP<netp::channel_handler_context> const& ctx) {
-		NETP_INFO("[PING]closed");
-	}
-
-	void read(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& income) {
+	void read(netp::ref_ptr<netp::channel_handler_context> const& ctx, netp::ref_ptr<netp::packet> const& income) {
 		NETP_INFO("[PING]reply income");
 		do_ping(ctx);
 	}
 
-	void do_ping(NRP<netp::channel_handler_context> const& ctx) {
+	void do_ping(netp::ref_ptr<netp::channel_handler_context> const& ctx) {
 		const std::string ping = "PING";
-		NRP<netp::packet> message_ping = netp::make_ref<netp::packet>();
+		netp::ref_ptr<netp::packet> message_ping = netp::make_ref<netp::packet>();
 		message_ping->write(ping.c_str(), ping.length());
-		NRP<netp::promise<int>> write_p = ctx->write(message_ping);
+		netp::ref_ptr<netp::promise<int>> write_p = ctx->write(message_ping);
 		write_p->if_done([]( int rt ) {
 			NETP_INFO("[PING]write PING, rt: %d", rt );
 		});
@@ -61,7 +57,7 @@ int main(int argc, char** argv) {
 
 	std::string host = "tcp://127.0.0.1:13103";
 	
-	NRP<netp::channel_listen_promise> listenp = netp::socket::listen_on(host, [](NRP<netp::channel>const& ch) {
+	netp::ref_ptr<netp::channel_listen_promise> listenp = netp::socket::listen_on(host, [](netp::ref_ptr<netp::channel>const& ch) {
 		ch->pipeline()->add_last( netp::make_ref<netp::handler::hlen>());
 		ch->pipeline()->add_last( netp::make_ref<Pong>() );
 	});
@@ -71,7 +67,7 @@ int main(int argc, char** argv) {
 		return listenrt;
 	}
 
-	NRP<netp::channel_dial_promise> dialp = netp::socket::dial(host, []( NRP<netp::channel> const& ch ) {
+	netp::ref_ptr<netp::channel_dial_promise> dialp = netp::socket::dial(host, [](netp::ref_ptr<netp::channel> const& ch ) {
 		ch->pipeline()->add_last( netp::make_ref<netp::handler::hlen>() );
 		ch->pipeline()->add_last( netp::make_ref<Ping>() );
 	});
