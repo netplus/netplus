@@ -25,7 +25,9 @@ Netplus borrows lots of concepts from Netty, and tries to implement these concep
 
 Build and usage: <https://github.com/netplus/netplus/wiki#building--usage>
 
-Quick Start: https://github.com/netplus/netplus/wiki#quick-start
+Quick Start: <https://github.com/netplus/netplus/wiki#quick-start>
+
+Benchmark: <https://github.com/netplus/netplus/wiki/#benchmark>
 
 Examples: <https://github.com/netplus/netplus/wiki#examples>
 
