@@ -6,7 +6,6 @@ public:
 	Pong() : 
 		channel_handler_abstract(netp::CH_INBOUND_READ)
 	{}
-
 	//for inbound
 	void read(netp::ref_ptr<netp::channel_handler_context> const& ctx, netp::ref_ptr<netp::packet> const& income) {
 		//reply with PONG
@@ -27,19 +26,15 @@ public:
 	Ping():
 		channel_handler_abstract(netp::CH_ACTIVITY_CONNECTED|netp::CH_INBOUND_READ)
 	{}
-
 	void connected(netp::ref_ptr<netp::channel_handler_context> const& ctx) {
 		NETP_INFO("[PING]connected");
-
 		//initial PING
 		do_ping(ctx);
 	}
-
 	void read(netp::ref_ptr<netp::channel_handler_context> const& ctx, netp::ref_ptr<netp::packet> const& income) {
 		NETP_INFO("[PING]reply income");
 		do_ping(ctx);
 	}
-
 	void do_ping(netp::ref_ptr<netp::channel_handler_context> const& ctx) {
 		const std::string ping = "PING";
 		netp::ref_ptr<netp::packet> message_ping = netp::make_ref<netp::packet>();
@@ -54,9 +49,8 @@ public:
 int main(int argc, char** argv) {
 	//initialize a netplus app instance
 	netp::app app;
-
 	std::string host = "tcp://127.0.0.1:13103";
-	
+
 	netp::ref_ptr<netp::channel_listen_promise> listenp = netp::socket::listen_on(host, [](netp::ref_ptr<netp::channel>const& ch) {
 		ch->pipeline()->add_last( netp::make_ref<netp::handler::hlen>());
 		ch->pipeline()->add_last( netp::make_ref<Pong>() );
