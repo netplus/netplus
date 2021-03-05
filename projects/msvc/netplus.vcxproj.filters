@@ -447,6 +447,18 @@
     <ClInclude Include="..\..\include\netp\poller_epoll.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\compiler.hpp">
+      <Filter>Header Files\netp\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\config.hpp">
+      <Filter>Header Files\netp\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\macros.hpp">
+      <Filter>Header Files\netp\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform.hpp">
+      <Filter>Header Files\netp\core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">

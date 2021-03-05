@@ -39,6 +39,7 @@
     <ClInclude Include="..\..\include\netp\condition.hpp" />
     <ClInclude Include="..\..\include\netp\constants.hpp" />
     <ClInclude Include="..\..\include\netp\core.hpp" />
+    <ClInclude Include="..\..\include\netp\core\compiler.hpp" />
     <ClInclude Include="..\..\include\netp\core\compiler\gcc_.hpp" />
     <ClInclude Include="..\..\include\netp\core\compiler\gcc_armv7a_.hpp" />
     <ClInclude Include="..\..\include\netp\core\compiler\gcc_x64_.hpp" />
@@ -46,6 +47,9 @@
     <ClInclude Include="..\..\include\netp\core\compiler\msvc_.hpp" />
     <ClInclude Include="..\..\include\netp\core\compiler\msvc_x64_.hpp" />
     <ClInclude Include="..\..\include\netp\core\compiler\msvc_x86_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\config.hpp" />
+    <ClInclude Include="..\..\include\netp\core\macros.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform.hpp" />
     <ClInclude Include="..\..\include\netp\core\platform\android_.hpp" />
     <ClInclude Include="..\..\include\netp\core\platform\android_armv7a_.hpp" />
     <ClInclude Include="..\..\include\netp\core\platform\gnu_linux_.hpp" />
