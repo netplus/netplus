@@ -71,7 +71,7 @@ namespace netp {
 
 	inline int set_nonblocking(SOCKET fd, bool onoff) {
 		int rt;
-#if defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID)
+#if defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID) || defined(_NETP_APPLE)
 		int mode = ::fcntl(fd, F_GETFL, 0);
 		if (onoff) {
 			mode |= O_NONBLOCK;
@@ -260,7 +260,7 @@ namespace netp {
 		}
 	}
 
-#elif defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID)
+#elif defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID) || defined(_NETP_APPLE)
 #if defined IP_RECVDSTADDR
 # define DSTADDR_SOCKOPT IP_RECVDSTADDR
 # define DSTADDR_DATASIZE (CMSG_SPACE(sizeof(struct in_addr)))
@@ -639,7 +639,7 @@ recvfrom:
 		socklen_t socklen = sizeof(addr_connect);
 
 		addr_listen.sin_family = AF_INET;
-		addr_listen.sin_addr.s_addr = ::htonl(INADDR_LOOPBACK);
+		addr_listen.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 		addr_listen.sin_port = 0;
 		int rt = ::bind(listenfd, reinterpret_cast<sockaddr*>(&addr_listen), sizeof(addr_listen));
 		if (rt != netp::OK) {

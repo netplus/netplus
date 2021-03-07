@@ -116,6 +116,7 @@ namespace netp {
 
 	#define WORD_WIDTH (64u)
 	typedef u64_t word_t;
+    typedef unsigned long ulong_t;
 }
 
 #endif

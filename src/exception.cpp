@@ -13,7 +13,7 @@ namespace netp {
 	void stack_trace(char stack_buffer[], u32_t const& s) {
 		__android_log_print(ANDROID_LOG_FATAL, "NETP", "exception ..." );
 	}
-#elif defined(_NETP_GNU_LINUX)
+#elif defined(_NETP_GNU_LINUX) || defined(_NETP_APPLE)
 	void stack_trace(char stack_buffer[], u32_t const& s) {
 		int j, nptrs;
 		u32_t current_stack_fill_pos = 0;

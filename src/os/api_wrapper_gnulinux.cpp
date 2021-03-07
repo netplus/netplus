@@ -1,6 +1,6 @@
 #include <netp/os/api_wrapper.hpp>
 
-#ifdef _NETP_GNU_LINUX
+#ifdef _NETP_GNU_LINUX  || define(_NETP_APPLE)
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netdb.h>

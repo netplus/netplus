@@ -94,7 +94,7 @@ namespace netp {
 			return ipv4();
 		}
 		inline ipv4_t nipv4() const {
-			return ::htonl(m_ipv4);
+			return htonl(m_ipv4);
 		}
 		inline port_t port() const {
 			return m_port;
@@ -141,8 +141,8 @@ namespace netp {
 
 	extern bool is_dotipv4_decimal_notation(const char* string);
 
-	inline ipv4_t ipv4tonipv4(ipv4_t const& ip) { return ::htonl(ip); }
-	inline ipv4_t nipv4toipv4(ipv4_t const& ip) { return ::ntohl(ip); }
+	inline ipv4_t ipv4tonipv4(ipv4_t const& ip) { return htonl(ip); }
+	inline ipv4_t nipv4toipv4(ipv4_t const& ip) { return ntohl(ip); }
 
 	extern string_t ipv4todotip(ipv4_t const& ip);
 	inline string_t nipv4todotip(ipv4_t const& ip) { return ipv4todotip(nipv4toipv4(ip)); }

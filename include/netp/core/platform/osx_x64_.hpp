@@ -1,5 +1,5 @@
-#ifndef _CORE_PLATFORM_NETP_PLATFORM_OSX_HPP_
-#define _CORE_PLATFORM_NETP_PLATFORM_OSX_HPP_
+#ifndef _CORE_PLATFORM_NETP_PLATFORM_OSX_X64_HPP_
+#define _CORE_PLATFORM_NETP_PLATFORM_OSX_X64_HPP_
 
 //for MacOS
 #include <sys/time.h>
@@ -18,7 +18,6 @@
 #include <sys/un.h> //sockaddr_un
 #include <sys/uio.h>
 #include <sys/ioctl.h>
-#include <execinfo.h>
 
 #define NETP_CLOSE_SOCKET	::close
 #define NETP_DUP						dup
@@ -31,13 +30,5 @@ namespace netp {
 
     typedef socklen_t socklen_t;
 }
-
-#if !defined(SOL_TCP) && defined(IPPROTO_TCP)
-#define SOL_TCP IPPROTO_TCP
-#endif
-
-#if !defined(TCP_KEEPIDLE) && defined(TCP_KEEPALIVE)
-#define TCP_KEEPIDLE TCP_KEEPALIVE
-#endif
 
 #endif

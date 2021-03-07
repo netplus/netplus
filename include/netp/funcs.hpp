@@ -222,7 +222,7 @@ namespace netp {
 		tv.tv_sec = static_cast<long int>(clock);
 		tv.tv_usec = wtm.wMilliseconds * 1000;
 #endif
-#elif defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID)
+#elif defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID) || defined(_NETP_APPLE)
 		gettimeofday(&tv, nullptr);
 #else
 	#error "unknown platform"

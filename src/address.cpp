@@ -173,7 +173,7 @@ namespace netp {
 	}
 
 	ipv4_t dotiptoip(const char* ipaddr) {
-		return ::ntohl(dotiptonip(ipaddr));
+		return ntohl(dotiptonip(ipaddr));
 	}
 
 	ipv4_t hosttoip( const char* hostname ) {
@@ -202,7 +202,7 @@ namespace netp {
 
 	string_t ipv4todotip(ipv4_t const& ip) {
 		in_addr ia;
-		ia.s_addr = ::htonl(ip);
+		ia.s_addr = htonl(ip);
 		char addr[16] = { 0 };
 		const char* addr_cstr = ::inet_ntop(AF_INET, &ia, addr, 16);
 		if (NETP_LIKELY(addr_cstr != nullptr)) {
