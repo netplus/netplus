@@ -3,7 +3,26 @@
 
 
 //https://sourceforge.net/p/predef/wiki/Endianness/
-#include <endian.h>
+#if defined(__APPLE__) && defined(__MACH__) 
+	#include <machine/endian.h>
+	#if !defined(__BYTE_ORDER) && defined(BYTE_ORDER)
+		#define __BYTE_ORDER BYTE_ORDER
+	#endif
+
+	#if !defined(__BIG_ENDIAN) && defined(BIG_ENDIAN)
+		#define __BIG_ENDIAN BIG_ENDIAN
+	#endif
+#else
+	#include <endian.h>
+	#if __NETP_IS_BIG_ENDIAN
+	#define htonll(val) (val)
+	#define ntohll(val) (val)
+	#else
+	#define htonll(val) __bswap_64(val)
+	#define ntohll(val) __bswap_64(val)
+	#endif
+#endif
+
 #define __NETP_IS_BIG_ENDIAN (__BYTE_ORDER == __BIG_ENDIAN)
 #define __NETP_IS_LITTLE_ENDIAN (!__NETP_IS_BIG_ENDIAN)
 
@@ -18,18 +37,6 @@
     #define NETP_ENABLE_GNU_SOURCE
 #endif
 
-inline unsigned long long htonll(unsigned long long val)
-{
-	if (__BYTE_ORDER == __BIG_ENDIAN) return (val);
-	else return __bswap_64(val);
-}
-
-inline unsigned long long ntohll(unsigned long long val)
-{
-	if (__BYTE_ORDER == __BIG_ENDIAN) return (val);
-	else return __bswap_64(val);
-}
-
 //ssize_t
 #include <sys/types.h>
 
@@ -38,7 +45,5 @@ namespace netp {
 	typedef ::ssize_t		ssize_t;
 	typedef int SOCKET;
 }
-
-
 
 #endif

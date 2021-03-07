@@ -21,6 +21,9 @@
 			#error "unknown android api level"
 		#endif
 	#endif
+#elif defined(__APPLE__)
+	#define _NETP_APPLE
+	#define _NETP_PLATFORM_STR	osx
 #else
 	#error "unknown platform"
 #endif

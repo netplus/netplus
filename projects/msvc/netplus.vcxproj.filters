@@ -459,6 +459,15 @@
     <ClInclude Include="..\..\include\netp\core\platform.hpp">
       <Filter>Header Files\netp\core</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform\osx_.hpp">
+      <Filter>Header Files\netp\core\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform\osx_x64.hpp">
+      <Filter>Header Files\netp\core\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform\osx_x86.hpp">
+      <Filter>Header Files\netp\core\platform</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">

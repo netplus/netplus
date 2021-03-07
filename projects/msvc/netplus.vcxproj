@@ -56,6 +56,9 @@
     <ClInclude Include="..\..\include\netp\core\platform\gnu_linux_armv7a_.hpp" />
     <ClInclude Include="..\..\include\netp\core\platform\gnu_linux_x64_.hpp" />
     <ClInclude Include="..\..\include\netp\core\platform\gnu_linux_x86_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform\osx_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform\osx_x64.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform\osx_x86.hpp" />
     <ClInclude Include="..\..\include\netp\core\platform\win_.hpp" />
     <ClInclude Include="..\..\include\netp\core\platform\win_x64_.hpp" />
     <ClInclude Include="..\..\include\netp\core\platform\win_x86_.hpp" />
