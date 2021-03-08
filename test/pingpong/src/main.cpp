@@ -47,6 +47,9 @@ public:
 };
 
 int main(int argc, char** argv) {
+
+	int li = sizeof(long);
+
 	//initialize a netplus app instance
 	netp::app app;
 	std::string host = "tcp://127.0.0.1:13103";
