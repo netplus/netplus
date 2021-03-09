@@ -5,7 +5,6 @@
 
 #include <netp/core.hpp>
 #include <netp/smart_ptr.hpp>
-#include <netp/event_broker.hpp>
 
 #include <netp/condition.hpp>
 #include <netp/mutex.hpp>

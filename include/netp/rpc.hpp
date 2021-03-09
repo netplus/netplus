@@ -6,6 +6,7 @@
 
 #include <netp/core.hpp>
 #include <netp/smart_ptr.hpp>
+#include <netp/event_broker.hpp>
 #include <netp/promise.hpp>
 #include <netp/channel_handler_context.hpp>
 #include <netp/channel_handler.hpp>
