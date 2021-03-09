@@ -2,7 +2,7 @@
 #define _NETP_CONSTANTS_H_
 
 #include <climits>
-#include <netp/core/compiler.hpp>
+#include <netp/core/platform.hpp>
 
 #define NETP_SOCKET_ERROR (-1)
 #define NETP_INVALID_SOCKET (~0)
@@ -41,6 +41,185 @@ namespace netp {
 
 	//WSAEWOULDBLOCK
 	const int OK = 0;
+#if defined(_NETP_APPLE)
+	const int  E_EPERM = 1;               /* Operation not permitted */
+	const int  E_ENOENT = 2;               /* No such file or directory */
+	const int  E_ESRCH = 3;               /* No such process */
+	const int  E_EINTR =4;               /* Interrupted system call */
+	const int  E_EIO = 5;               /* Input/output error */
+	const int  E_ENXIO = 6;               /* Device not configured */
+	const int  E_E2BIG = 7;               /* Argument list too long */
+	const int  E_ENOEXEC = 8;               /* Exec format error */
+	const int  E_EBADF = 9;               /* Bad file descriptor */
+	const int  E_ECHILD = 10;              /* No child processes */
+	const int  E_EDEADLK = 11;              /* Resource deadlock avoided */
+	/* 11 was EAGAIN */
+	const int  E_ENOMEM = 12;              /* Cannot allocate memory */
+	const int  E_EACCES = 13;              /* Permission denied */
+	const int  E_EFAULT = 14;          /* Bad address */
+#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+	const int  E_ENOTBLK = 15; ;         /* Block device required */
+#endif
+	const int  E_EBUSY = 16;          /* Device / Resource busy */
+	const int  E_EEXIST          =17;          /* File exists */
+	const int  E_EXDEV = 18;        /* Cross-device link */
+	const int  E_ENODEV = 19;         /* Operation not supported by device */
+	const int  E_ENOTDIR = 20;         /* Not a directory */
+	const int  E_EISDIR = 21;       /* Is a directory */
+	const int  E_EINVAL = 22;         /* Invalid argument */
+	const int  E_ENFILE = 23;        /* Too many open files in system */
+	const int  E_EMFILE = 24;         /* Too many open files */
+	const int  E_ENOTTY = 25;           /* Inappropriate ioctl for device */
+	const int  E_ETXTBSY = 26;          /* Text file busy */
+	const int  E_EFBIG = 27;         /* File too large */
+	const int  E_ENOSPC = 28;          /* No space left on device */
+	const int  E_ESPIPE = 29;        /* Illegal seek */
+	const int  E_EROFS = 30;         /* Read-only file system */
+	const int  E_EMLINK = 31;           /* Too many links */
+	const int  E_EPIPE = 32;           /* Broken pipe */
+
+/* math software */
+const int  E_EDOM = 33;         /* Numerical argument out of domain */
+const int  E_ERANGE = 34;         /* Result too large */
+
+	/* non-blocking and interrupt i/o */
+	const int  E_EAGAIN = 35;         /* Resource temporarily unavailable */
+	const int  E_EWOULDBLOCK = E_EAGAIN;     /* Operation would block */
+	const int  E_EINPROGRESS = 36;          /* Operation now in progress */
+	const int  E_EALREADY = 37;           /* Operation already in progress */
+
+	/* ipc/network software -- argument errors */
+	const int  E_ENOTSOCK = 38;         /* Socket operation on non-socket */
+	const int  E_EDESTADDRREQ = 39;         /* Destination address required */
+	const int  E_EMSGSIZE = 40;        /* Message too long */
+	const int  E_EPROTOTYPE = 41;            /* Protocol wrong type for socket */
+	const int  E_ENOPROTOOPT = 42;            /* Protocol not available */
+	const int  E_EPROTONOSUPPORT = 43;          /* Protocol not supported */
+	#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+	const int  E_ESOCKTNOSUPPORT = 44;           /* Socket type not supported */
+	#endif
+	const int  E_ENOTSUP = 45;          /* Operation not supported */
+	#if !__DARWIN_UNIX03 && !defined(KERNEL)
+	/*
+	 * This is the same for binary and source copmpatability, unless compiling
+	 * the kernel itself, or compiling __DARWIN_UNIX03; if compiling for the
+	 * kernel, the correct value will be returned.  If compiling non-POSIX
+	 * source, the kernel return value will be converted by a stub in libc, and
+	 * if compiling source with __DARWIN_UNIX03, the conversion in libc is not
+	 * done, and the caller gets the expected (discrete) value.
+	 */
+	const int  E_EOPNOTSUPP = E_ENOTSUP;        /* Operation not supported on socket */
+	#endif /* !__DARWIN_UNIX03 && !KERNEL */
+
+	#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+	const int  E_EPFNOSUPPORT = 46;           /* Protocol family not supported */
+	#endif
+	const int  E_EAFNOSUPPORT = 47;         /* Address family not supported by protocol family */
+	const int  E_EADDRINUSE = 48;         /* Address already in use */
+	const int  E_EADDRNOTAVAIL = 49;            /* Can't assign requested address */
+
+	 /* ipc/network software -- operational errors */
+	const int  E_ENETDOWN = 50;          /* Network is down */
+	const int  E_ENETUNREACH = 51;          /* Network is unreachable */
+	const int  E_ENETRESET = 52;/* Network dropped connection on reset */
+	const int  E_ECONNABORTED = 53;            /* Software caused connection abort */
+	const int  E_ECONNRESET = 54;         /* Connection reset by peer */
+	const int  E_ENOBUFS = 55;        /* No buffer space available */
+	const int  E_EISCONN = 56;         /* Socket is already connected */
+	const int  E_ENOTCONN = 57;        /* Socket is not connected */
+	#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+	const int  E_ESHUTDOWN = 58;        /* Can't send after socket shutdown */
+	const int  E_ETOOMANYREFS = 59;           /* Too many references: can't splice */
+	#endif
+	const int  E_ETIMEDOUT = 60;       /* Operation timed out */
+	const int  E_ECONNREFUSED = 61;         /* Connection refused */
+
+	const int  E_ELOOP = 62;       /* Too many levels of symbolic links */
+	const int  E_ENAMETOOLONG = 63;          /* File name too long */
+
+	/* should be rearranged */
+	#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+	const int  E_EHOSTDOWN = 64;          /* Host is down */
+	#endif
+	const int  E_EHOSTUNREACH = 65;          /* No route to host */
+	const int  E_ENOTEMPTY = 66;     /* Directory not empty */
+
+	/* quotas & mush */
+	#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+	const int  E_EPROCLIM = 67;             /* Too many processes */
+	const int  E_EUSERS = 68;           /* Too many users */
+	#endif
+	const int  E_EDQUOT = 69;             /* Disc quota exceeded */
+
+	/* Network File System */
+	const int  E_ESTALE = 70;         /* Stale NFS file handle */
+	#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+	const int  E_EREMOTE = 71;             /* Too many levels of remote in path */
+	const int  E_EBADRPC = 72;  /* RPC struct is bad */
+	const int  E_ERPCMISMATCH = 73;            /* RPC version wrong */
+	const int  E_EPROGUNAVAIL = 74;         /* RPC prog. not avail */
+	const int  E_EPROGMISMATCH = 75;              /* Program version wrong */
+	const int  E_EPROCUNAVAIL = 76;          /* Bad procedure for program */
+	#endif
+
+	const int  E_ENOLCK = 77;             /* No locks available */
+	const int  E_ENOSYS = 78;             /* Function not implemented */
+
+	#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+	const int  E_EFTYPE = 79;          /* Inappropriate file type or format */
+	const int  E_EAUTH = 80;          /* Authentication error */
+	const int  E_ENEEDAUTH = 81;            /* Need authenticator */
+
+	/* Intelligent device errors */
+	const int  E_EPWROFF = 82;    /* Device power is off */
+	const int  E_EDEVERR = 83;    /* Device error, e.g. paper out */
+	#endif
+
+	const int  E_EOVERFLOW = 84;          /* Value too large to be stored in data type */
+
+	/* Program loading errors */
+	#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+	const int  E_EBADEXEC = 85;     /* Bad executable */
+	const int  E_EBADARCH = 86;     /* Bad CPU type in executable */
+	const int  E_ESHLIBVERS = 87;    /* Shared library version mismatch */
+	const int  E_EBADMACHO = 88;    /* Malformed Macho file */
+	#endif
+
+	const int  E_ECANCELED = 89;          /* Operation canceled */
+
+	const int  E_EIDRM = 90;         /* Identifier removed */
+	const int  E_ENOMSG = 91;            /* No message of desired type */
+	const int  E_EILSEQ = 92;        /* Illegal byte sequence */
+	#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+	const int  E_ENOATTR = 93;         /* Attribute not found */
+	#endif
+
+	const int  E_EBADMSG = 94;        /* Bad message */
+	const int  E_EMULTIHOP = 95;           /* Reserved */
+	const int  E_ENODATA = 96;        /* No message available on STREAM */
+	const int  E_ENOLINK = 97;         /* Reserved */
+	const int  E_ENOSR = 98;         /* No STREAM resources */
+	const int  E_ENOSTR = 99;           /* Not a STREAM */
+	const int  E_EPROTO = 100;           /* Protocol error */
+	const int  E_ETIME = 101;          /* STREAM ioctl timeout */
+
+	#if __DARWIN_UNIX03 || defined(KERNEL)
+	/* This value is only discrete when compiling __DARWIN_UNIX03, or KERNEL */
+	const int  E_EOPNOTSUPP = 102;         /* Operation not supported on socket */
+	#endif /* __DARWIN_UNIX03 || KERNEL */
+
+	const int  E_ENOPOLICY = 103;       /* No such policy registered */
+
+	#if __DARWIN_C_LEVEL >= 200809L
+	const int  E_ENOTRECOVERABLE = 104;         /* State not recoverable */
+	const int  E_EOWNERDEAD = 105;            /* Previous owner died */
+	#endif
+
+	#if __DARWIN_C_LEVEL >= __DARWIN_C_FULL
+	const int  E_EQFULL = 106;             /* Interface output queue is full */
+	const int  E_ELAST = 106;             /* Must be equal largest errno */
+	#endif
+#elif defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID)
 	const int E_EPERM								= -1; //operation not permitted
 	const int E_ENOENT							= -2; //no such file or directory
 	const int E_ESRCH								= -3; //no such process
@@ -181,7 +360,8 @@ namespace netp {
 	const int E_ERROR_ABANDONED_WAIT_0		= -735;
 	const int E_ERROR_IO_PENDING						= -997;
 	const int E_ERROR_CONNECTION_ABORTED		= -1236;
-	
+
+#elif defined(_NETP_WIN)
 // 1---19999; reserved for system call error code (windows)
 	const int E_WSAEINTR							= -10004; // A blocking operation was interrupted by a call to WSACancelBlockingCall.
 	const int E_WSAEBADF						= -10009; // The file handle supplied is not valid.
@@ -239,6 +419,13 @@ namespace netp {
 	const int E_WSA_QOS_RECEIVERS				= -11005;
 	const int E_WSA_QOS_SENDERS					= -11006;
 
+	const int E_ECONNABORTED = E_WSAECONNABORTED;
+	const int E_EINTR = E_WSAEINTR;
+	const int E_EWOULDBLOCK = E_WSAEWOULDBLOCK;
+	const int E_EINPROGRESS = E_WSAEWOULDBLOCK; //pls refer tohttps://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-connect
+
+	const int E_EMFILE = E_WSAEMFILE;
+#endif
 	//internal error
 	const int E_NETP_APP_EXIT								= -20000;
 	const int E_NO_NET_DEV								= -20001;

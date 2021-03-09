@@ -7,13 +7,16 @@
 
 #ifdef _NETP_WIN
 	#include <netp/os/winsock_helper.hpp>
-	#define IS_ERRNO_EQUAL_WOULDBLOCK(_errno) ((_errno==netp::E_EWOULDBLOCK)||(_errno==netp::E_WSAEWOULDBLOCK))
 	#define WINAPI __stdcall 
-#else
-	#define IS_ERRNO_EQUAL_WOULDBLOCK(_errno) ((_errno==netp::E_EWOULDBLOCK)||(_errno==netp::E_EAGAIN))
 #endif
 
-#define IS_ERRNO_EQUAL_CONNECTING(_errno) ((_errno==netp::E_EINPROGRESS)||(_errno==netp::E_WSAEWOULDBLOCK))
+#ifdef _NETP_GNU_LINUX
+	#define IS_ERRNO_EQUAL_WOULDBLOCK(_errno) ((_errno==netp::E_EAGAIN)||(_errno==netp::E_EWOULDBLOCK))
+#else
+	#define IS_ERRNO_EQUAL_WOULDBLOCK(_errno) (_errno==netp::E_EWOULDBLOCK)
+#endif
+
+#define IS_ERRNO_EQUAL_CONNECTING(_errno) (_errno==netp::E_EINPROGRESS)
 
 namespace netp {
 

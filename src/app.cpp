@@ -282,7 +282,7 @@ namespace netp {
 		netp::unique_lock<netp::mutex> ulk(m_mutex);
 		signal_broker_init();
 
-#ifdef _NETP_GNU_LINUX
+#if  defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID) || defined(_NETP_APPLE)
 		signal_register(SIGPIPE, nullptr);
 #endif
 

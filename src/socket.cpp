@@ -294,7 +294,7 @@ namespace netp {
 			return;
 		}
 
-		if(rt == netp::E_EMFILE || rt == netp::E_WSAEMFILE ) {
+		if(rt == netp::E_EMFILE ) {
 			NETP_WARN("[socket][%s]accept error, EMFILE", info().c_str() );
 			return ;
 		}
