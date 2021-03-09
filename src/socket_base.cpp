@@ -143,7 +143,7 @@ namespace netp {
 
 		rt = ::WSAIoctl(m_fd, SIO_KEEPALIVE_VALS, &alive, sizeof(alive), nullptr, 0, &dwBytesRet, nullptr, nullptr);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
-#elif defined(_NETP_GNU_LINUX)
+#elif defined(_NETP_GNU_LINUX) || defined(_NETP_APPLE)
 		if (vals.idle != 0) {
 			int idle = (vals.idle);
 			rt = m_api->setsockopt(m_fd, SOL_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));

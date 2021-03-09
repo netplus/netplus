@@ -4,7 +4,7 @@
 #include <atomic>
 #include <netp/core.hpp>
 
-#ifdef _NETP_GNU_LINUX
+#if defined(_NETP_GNU_LINUX)
 	#define _NETP_USE_PTHREAD_SPIN_AS_SPIN_MUTEX
 	#include <pthread.h>
 #endif
