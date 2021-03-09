@@ -5,7 +5,6 @@
 
 #include <netp/core.hpp>
 #include <netp/smart_ptr.hpp>
-#include <netp/event_broker.hpp>
 
 #include <netp/condition.hpp>
 #include <netp/mutex.hpp>
@@ -38,7 +37,7 @@ namespace netp {
 		}
 		
 		inline void invoke( V const& v) {
-			for (::size_t i = 0; i <__callees.size(); ++i) {
+			for (::size_t i = 0, s=__callees.size() ; i <s; ++i) {
 				__callees[i](v);
 			}
 			__callees.clear();

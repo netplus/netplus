@@ -11,7 +11,7 @@ namespace netp {
 	namespace impl {
 
 		atomic_spin_mutex::atomic_spin_mutex()
-#if defined(NETP_PLATFORM_GNU) && defined (USE_BOOL_FLAG)
+#if defined(_NETP_GNU_LINUX) && defined (USE_BOOL_FLAG)
 		:m_flag(false)
 #endif
 		{
