@@ -18,7 +18,7 @@ namespace netp { namespace impl {
 #ifdef USE_BOOL_FLAG
 				std::atomic_bool m_flag; //ATOMIC_VAR_INIT(false);
 #else
-	#if defined(_NETP_GNU_LINUX) || (_MSC_VER>=1900)
+	#if defined(_NETP_GNU_LINUX) || (_MSC_VER>=1900) ||defined(_NETP_APPLE)
 					std::atomic_flag m_flag = ATOMIC_FLAG_INIT; //force for sure
 	#else
 					std::atomic_flag m_flag;

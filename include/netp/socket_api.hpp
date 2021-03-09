@@ -283,7 +283,7 @@ namespace netp {
 		NETP_ASSERT(fd != NETP_INVALID_SOCKET);
 	_recvmsg:
 		struct iovec iov[1] = { {buff_o,bsize} };
-		sockaddr_in sockaddr_remote;
+		struct sockaddr_in sockaddr_remote;
 		union control_data cmsg;
 
 		struct msghdr msg = {
@@ -363,21 +363,21 @@ namespace netp {
 	}
 
 	inline int connect(socket_api const& fn,SOCKET fd, address const& addr) {
-		sockaddr_in addr_in;
+		struct sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
 		addr_in.sin_family = u16_t(addr.family());
 		addr_in.sin_port = addr.nport();
 		addr_in.sin_addr.s_addr = addr.nipv4();
-		return fn.connect(fd, (sockaddr*)(&addr_in), sizeof(addr_in));
+		return fn.connect(fd, (const struct sockaddr*)(&addr_in), sizeof(addr_in));
 	}
 
 	inline int bind(socket_api const& fn,SOCKET fd, address const& addr) {
-		sockaddr_in addr_in;
+		struct sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
 		addr_in.sin_family = u16_t(addr.family());
 		addr_in.sin_port = addr.nport();
 		addr_in.sin_addr.s_addr = addr.nipv4();
-		return fn.bind(fd, (sockaddr*)(&addr_in), sizeof(addr_in));
+		return fn.bind(fd, (const struct sockaddr*)(&addr_in), sizeof(addr_in));
 	}
 
 	inline int shutdown(socket_api const& fn, SOCKET fd, int flag) {
@@ -393,32 +393,32 @@ namespace netp {
 	}
 
 	inline SOCKET accept(socket_api const& fn, SOCKET fd, address& addr) {
-		sockaddr_in addr_in;
+		struct sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
 		socklen_t len = sizeof(addr_in);
 
-		SOCKET accepted_fd = fn.accept(fd, (sockaddr*)(&addr_in), &len);
+		SOCKET accepted_fd = fn.accept(fd, (struct sockaddr*)(&addr_in), &len);
 		NETP_RETURN_V_IF_MATCH((SOCKET)NETP_SOCKET_ERROR, (accepted_fd == (SOCKET)NETP_INVALID_SOCKET));
 		addr = address(addr_in);
 		return accepted_fd;
 	}
 
 	inline int getsockname(socket_api const& fn,SOCKET fd, address& addr) {
-		sockaddr_in addr_in;
+		struct sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
 
 		socklen_t len = sizeof(addr_in);
-		int rt = fn.getsockname(fd, (sockaddr*)(&addr_in), &len);
+		int rt = fn.getsockname(fd, (struct sockaddr*)(&addr_in), &len);
 		NETP_RETURN_V_IF_MATCH(rt, rt == NETP_SOCKET_ERROR);
 		addr = address(addr_in);
 		return netp::OK;
 	}
 
 	inline int getpeername(socket_api const& fn, SOCKET fd, address& addr) {
-		sockaddr_in addr_peer;
+		struct sockaddr_in addr_peer;
 		::memset(&addr_peer, 0, sizeof(addr_peer));
 		socklen_t len = sizeof(addr_peer);
-		int rt = fn.getpeername(fd, (sockaddr*)(&addr_peer), &len);
+		int rt = fn.getpeername(fd, (struct sockaddr*)(&addr_peer), &len);
 		NETP_RETURN_V_IF_MATCH(rt, rt == NETP_SOCKET_ERROR);
 		addr = address(addr_peer);
 		return netp::OK;
@@ -510,13 +510,13 @@ namespace netp {
 		NETP_ASSERT(len > 0);
 		NETP_ASSERT(!addr.is_null());
 
-		sockaddr_in addr_in;
+		struct sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
 		addr_in.sin_family = u16_t(addr.family());
 		addr_in.sin_port = addr.nport();
 		addr_in.sin_addr.s_addr = addr.nipv4();
 sendto:
-		const int nbytes = fn.sendto(fd, reinterpret_cast<const char*>(buff), (int)len, flag, reinterpret_cast<sockaddr*>(&addr_in), sizeof(addr_in));
+		const int nbytes = fn.sendto(fd, reinterpret_cast<const char*>(buff), (int)len, flag, reinterpret_cast<struct sockaddr*>(&addr_in), sizeof(addr_in));
 
 		if (NETP_LIKELY(nbytes > 0)) {
 			NETP_ASSERT((u32_t)nbytes == len);
@@ -540,10 +540,10 @@ sendto:
 
 	inline netp::u32_t recvfrom(socket_api const& api, SOCKET fd, byte_t* const buff_o, netp::u32_t size, address& addr_o, int& ec_o, int const& flag) {
 recvfrom:
-		sockaddr_in addr_in;
+		struct sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
 		socklen_t socklen = sizeof(addr_in);
-		const int nbytes = api.recvfrom(fd, reinterpret_cast<char*>(buff_o), (int)size, flag, reinterpret_cast<sockaddr*>(&addr_in), &socklen);
+		const int nbytes = api.recvfrom(fd, reinterpret_cast<char*>(buff_o), (int)size, flag, reinterpret_cast<struct sockaddr*>(&addr_in), &socklen);
 
 		if (NETP_LIKELY(nbytes > 0)) {
 			addr_o = address(addr_in);
