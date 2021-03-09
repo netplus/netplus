@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
 		NETP_INFO("listen on host: %s failed, fail code: %d", host.c_str(), listenrt);
 		return listenrt;
 	}
-	app.run();
+//	app.run();
 
 	netp::ref_ptr<netp::channel_dial_promise> dialp = netp::socket::dial(host, [](netp::ref_ptr<netp::channel> const& ch ) {
 		ch->pipeline()->add_last( netp::make_ref<netp::handler::hlen>() );

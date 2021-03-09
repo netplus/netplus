@@ -26,7 +26,7 @@ namespace netp {
 		NETP_ASSERT(L->in_event_loop());
 
 		int rt = connect(addr);
-		NETP_INFO("connect rt: %d", rt);
+		//NETP_INFO("connect rt: %d", rt);
                 if (IS_ERRNO_EQUAL_CONNECTING(rt)) {
 			ch_aio_connect([so=NRP<socket>(this), p](const int aiort_) {
 				//NRP< promise<int>> __p__barrier(p);we dont need this line if act executed in Q

@@ -64,12 +64,14 @@ namespace netp { namespace os {
 				}
 				NETP_ASSERT("todo");
 			}
+			#ifndef _NETP_APPLE
 			else if (ifa->ifa_addr->sa_family == AF_PACKET) {
 				if (filter& adp_f_skip_af_packet) {
 					continue;
 				}
 				NETP_ASSERT("todo");
 			}
+			#endif
 			else {
 				NETP_WARN("[api_wrapper_gnulinux]unknown sa_family: %u", ifa->ifa_addr->sa_family);
 				continue;
