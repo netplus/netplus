@@ -64,7 +64,7 @@ namespace netp {
 
 	inline int netp_close(SOCKET fd) { return NETP_CLOSE_SOCKET(fd); }
 
-#ifdef NETP_IO_MODE_IOCP
+#ifdef NETP_IO_POLLER_IOCP
 	namespace iocp {
 		inline SOCKET socket(int const& family, int const& type, int const& proto) {
 			return ::WSASocketW(OS_DEF_family[family], OS_DEF_sock_type[type], OS_DEF_protocol[proto], nullptr, 0, WSA_FLAG_OVERLAPPED);
@@ -579,7 +579,7 @@ recvfrom:
 	}
 
 	inline int set_reuseport(socket_api const& api, SOCKET fd, bool onoff) {
-#ifdef _NETP_GNU_LINUX
+#if defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID) || defined(_NETP_APPLE)
 		int optval = onoff ? 1 : 0;
 		return api.setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 #else

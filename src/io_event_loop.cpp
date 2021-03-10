@@ -1,8 +1,10 @@
 #include <netp/core.hpp>
-#ifdef NETP_IO_MODE_EPOLL
+#if defined(NETP_IO_POLLER_EPOLL)
 	#include <netp/poller_epoll.hpp>
-#elif defined(NETP_IO_MODE_IOCP)
+#elif defined(NETP_IO_POLLER_IOCP)
 	#include <netp/poller_iocp.hpp>
+#elif defined(NETP_IO_POLLER_KQUEUE)
+	#include <netp/poller_kqueue.hpp>
 #else
 	#include <netp/poller_select.hpp>
 #endif
@@ -15,17 +17,24 @@ namespace netp {
 	inline static NRP<io_event_loop> default_poller_maker(io_poller_type t, poller_cfg const& cfg) {
 		NRP<io_event_loop> poller;
 		switch (t) {
-#ifdef NETP_IO_MODE_EPOLL
+#if defined(NETP_IO_POLLER_EPOLL)
 		case T_EPOLL:
 		{
 			poller = netp::make_ref<poller_epoll>(cfg);
 			NETP_ALLOC_CHECK(poller, sizeof(poller_epoll));
 		}
 		break;
-#elif defined(NETP_IO_MODE_IOCP)
+#elif defined(NETP_IO_POLLER_IOCP)
 		case T_IOCP:
 		{
 			poller = netp::make_ref<poller_iocp>(cfg);
+			NETP_ALLOC_CHECK(poller, sizeof(poller_iocp));
+		}
+		break;
+#elif defined(NETP_IO_POLLER_KQUEUE)
+		case T_KQUEUE:
+		{
+			poller = netp::make_ref<poller_kqueue>(cfg);
 			NETP_ALLOC_CHECK(poller, sizeof(poller_iocp));
 		}
 		break;

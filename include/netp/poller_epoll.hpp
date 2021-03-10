@@ -34,7 +34,7 @@ namespace netp {
 
 			struct epoll_event epEvent =
 			{
-#ifdef NETP_IO_MODE_EPOLL_USE_ET
+#ifdef NETP_IO_POLLER_EPOLL_USE_ET
 				EPOLLET|EPOLLPRI|EPOLLHUP|EPOLLERR,
 #else
 				EPOLLLT|EPOLLPRI|EPOLLHUP|EPOLLERR,
@@ -65,7 +65,7 @@ namespace netp {
 
 			struct epoll_event epEvent =
 			{
-#ifdef NETP_IO_MODE_EPOLL_USE_ET
+#ifdef NETP_IO_POLLER_EPOLL_USE_ET
 				EPOLLET|EPOLLPRI|EPOLLHUP|EPOLLERR|EPOLLIN|EPOLLOUT,
 #else
 				EPOLLLT|EPOLLPRI|EPOLLHUP|EPOLLERR|EPOLLIN|EPOLLOUT,

@@ -1,25 +1,27 @@
-#include <netp/exception.hpp>
 #include <netp/string.hpp>
+#include <netp/exception.hpp>
 
-#ifdef _NETP_ANDROID
-	#include <android/log.h>
-#elif defined(_NETP_WIN)
+#if defined(_NETP_WIN)
 	#include "./../3rd/stack_walker/StackWalker.h"
+#elif defined(_NETP_HAS_EXECINFO_H)
+	#include <execinfo.h>
+#elif defined(_NETP_ANDROID)
+	#include <android/log.h>
 #else
+	#error 
 #endif
+
 namespace netp {
 
-#ifdef _NETP_ANDROID
+#if defined(_NETP_ANDROID)
 	void stack_trace(char stack_buffer[], u32_t const& s) {
 		__android_log_print(ANDROID_LOG_FATAL, "NETP", "exception ..." );
 	}
-#elif defined(_NETP_GNU_LINUX) || defined(_NETP_APPLE)
+#elif defined(_NETP_HAS_EXECINFO_H)
+	#define BUFFER_SIZE 256
 	void stack_trace(char stack_buffer[], u32_t const& s) {
 		int j, nptrs;
 		u32_t current_stack_fill_pos = 0;
-
-#define BUFFER_SIZE 100
-
 		char binary_name[256];
 
 		void* buffer[BUFFER_SIZE];
@@ -35,7 +37,6 @@ namespace netp {
 		}
 
 		for (j = 1; j < nptrs; j++) {
-
 			int _address_begin = netp::strpos(strings[j], (char*)"[");
 			int _address_end = netp::strpos(strings[j], (char*)"]");
 			::memcpy((void*)&stack_buffer[current_stack_fill_pos], (void* const)(strings[j] + _address_begin), _address_end - _address_begin);
@@ -86,12 +87,10 @@ namespace netp {
 		stack_walker sw;
 		sw.ShowCallstack();
 		NETP_ASSERT(sw.stack_info.length() > 0);
-
 		if (sw.stack_info.length() > (s - 1)) {
 			::memcpy(stack_buffer, sw.stack_info.c_str(), s - 1);
 			stack_buffer[s - 1] = '\0';
-		}
-		else {
+		} else {
 			::memcpy(stack_buffer, sw.stack_info.c_str(), sw.stack_info.length());
 			stack_buffer[sw.stack_info.length()] = '\0';
 		}

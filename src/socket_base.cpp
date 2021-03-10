@@ -47,7 +47,7 @@ namespace netp {
 	int socket_base::_cfg_reuseport(bool onoff) {
 		(void)onoff;
 
-#ifdef _NETP_GNU_LINUX
+#if defined(_NETP_GNU_LINUX)|| defined(_NETP_ANDROID) || defined(_NETP_APPLE)
 		NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_fd == NETP_INVALID_SOCKET);
 
 		bool setornot = ((m_option& u16_t(socket_option::OPTION_REUSEPORT)) && (!onoff)) ||
@@ -143,7 +143,7 @@ namespace netp {
 
 		rt = ::WSAIoctl(m_fd, SIO_KEEPALIVE_VALS, &alive, sizeof(alive), nullptr, 0, &dwBytesRet, nullptr, nullptr);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
-#elif defined(_NETP_GNU_LINUX) || defined(_NETP_APPLE)
+#elif defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID) || defined(_NETP_APPLE)
 		if (vals.idle != 0) {
 			int idle = (vals.idle);
 			rt = m_api->setsockopt(m_fd, SOL_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));
@@ -209,7 +209,7 @@ namespace netp {
 		rt = _cfg_reuseaddr((opt& u16_t(socket_option::OPTION_REUSEADDR)) !=0);
 		NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
 
-#ifdef _NETP_GNU_LINUX
+#if defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID) || defined(_NETP_APPLE)
 		rt = _cfg_reuseport((m_option&u8_t(socket_option::OPTION_REUSEPORT))!=0);
 		NETP_RETURN_V_IF_MATCH(NETP_SOCKET_ERROR, rt == NETP_SOCKET_ERROR);
 #endif
@@ -282,7 +282,7 @@ namespace netp {
 		NETP_ASSERT((m_family) == addr.family());
 		m_raddr = addr;
 
-#ifdef NETP_IO_MODE_IOCP
+#ifdef NETP_IO_POLLER_IOCP
 		if (m_protocol == NETP_PROTOCOL_TCP) {
 			//connectex requires the socket to be initially bound
 			struct sockaddr_in addr_in;

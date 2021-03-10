@@ -468,6 +468,9 @@
     <ClInclude Include="..\..\include\netp\core\platform\osx_x86_.hpp">
       <Filter>Header Files\netp\core\platform</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\poller_kqueue.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">

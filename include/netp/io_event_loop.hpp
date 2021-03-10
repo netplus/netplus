@@ -15,12 +15,14 @@
 #include <netp/promise.hpp>
 #include <netp/packet.hpp>
 
-#ifdef NETP_IO_MODE_IOCP
-	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_IOCP
-#elif defined(NETP_IO_MODE_EPOLL)
+#if defined(NETP_IO_POLLER_EPOLL)
 	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_EPOLL
-#elif defined(NETP_IO_MODE_SELECT)
+#elif defined(NETP_IO_POLLER_SELECT)
 	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_SELECT
+#elif defined(NETP_IO_POLLER_KQUEUE)
+	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_KQUEUE
+#elif defined(NETP_IO_POLLER_IOCP)
+	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_IOCP
 #else
 	#error "unknown poller type"
 #endif
@@ -31,6 +33,7 @@ namespace netp {
 		T_SELECT, //win&linux&android
 		T_IOCP, //win
 		T_EPOLL, //linux,epoll,et
+		T_KQUEUE,//bsd
 		T_POLLER_CUSTOM_1,
 		T_POLLER_CUSTOM_2,
 		T_POLLER_MAX,
@@ -513,7 +516,7 @@ namespace netp {
 			return m_channel_rcv_buf;
 		}
 
-#ifdef NETP_IO_MODE_IOCP
+#ifdef NETP_IO_POLLER_IOCP
 		virtual void do_iocp_call(iocp_action act, SOCKET fd, fn_overlapped_io_event const& fn_overlapped, fn_aio_event_t const& fn) {
 			NETP_ASSERT(m_type == T_IOCP);
 		}

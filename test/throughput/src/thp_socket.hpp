@@ -1,13 +1,12 @@
 #ifndef _THP_SOCKET_HPP
 #define _THP_SOCKET_HPP
 
-#ifdef BLOCK_READ_WRITE
 void read_and_write(NRP<netp::socket> const& so, NRP<netp::packet> const& buf, netp::u64_t total_received_to_exit) {
 	netp::u64_t total_received = 0;
 	do {
 		buf->reset();
 		int ec = netp::OK;
-		netp::u32_t len = so->recv(buf->begin(), buf->left_right_capacity(), ec);
+		netp::u32_t len = so->recv(buf->head(), buf->left_right_capacity(), ec);
 		if (len > 0) {
 			if (total_received_to_exit > 0) {
 				total_received += len;
@@ -16,8 +15,8 @@ void read_and_write(NRP<netp::socket> const& so, NRP<netp::packet> const& buf, n
 					break;
 				}
 			}
-			buf->forward_write_index(len);
-			netp::u32_t wlen = so->send(buf->begin(), buf->len(), ec);
+			buf->incre_write_idx(len);
+			netp::u32_t wlen = so->send(buf->head(), buf->len(), ec);
 			NETP_ASSERT(len == wlen);
 		}
 		else if (len == 0) {
@@ -35,10 +34,10 @@ void read_and_write(NRP<netp::socket> const& so, NRP<netp::packet> const& buf, n
 
 void th_listener() {
 
-	NRP<netp::socket_create_cfg> cfg = netp::make_ref<netp::socket_create_cfg>();
-	cfg->family = netp::s_family::F_AF_INET;
-	cfg->type = netp::s_type::T_STREAM;
-	cfg->proto = netp::s_protocol::P_TCP;
+	NRP<netp::socket_cfg> cfg = netp::make_ref<netp::socket_cfg>();
+	cfg->family = NETP_AF_INET;
+	cfg->type = NETP_SOCK_STREAM;
+	cfg->proto = NETP_PROTOCOL_TCP;
 	cfg->L = netp::io_event_loop_group::instance()->next();
 	cfg->option &= ~netp::u8_t(netp::socket_option::OPTION_NON_BLOCKING);
 	std::tuple<int, NRP<netp::socket>> tupc = netp::socket::create(cfg);
@@ -51,7 +50,7 @@ void th_listener() {
 
 	NRP<netp::socket> listener = std::get<1>(tupc);
 
-	netp::address laddr = netp::address("0.0.0.0", 32002, netp::s_family::F_AF_INET);
+	netp::address laddr = netp::address("0.0.0.0", 32002, NETP_AF_INET);
 	rt = listener->bind(laddr);
 	if (rt != netp::OK) {
 		NETP_ERR("bind failed: %d", rt);
@@ -71,10 +70,10 @@ void th_listener() {
 		return;
 	}
 
-	NRP<netp::socket_create_cfg> acfg = netp::make_ref<netp::socket_create_cfg>();
-	acfg->family = netp::s_family::F_AF_INET;
-	acfg->type = netp::s_type::T_STREAM;
-	acfg->proto = netp::s_protocol::P_TCP;
+	NRP<netp::socket_cfg> acfg = netp::make_ref<netp::socket_cfg>();
+	acfg->family = NETP_AF_INET;
+	acfg->type = NETP_SOCK_STREAM;
+	acfg->proto = NETP_PROTOCOL_TCP;
 	acfg->fd = nfd;
 	acfg->L = netp::io_event_loop_group::instance()->next();
 	acfg->option &= ~netp::u8_t(netp::socket_option::OPTION_NON_BLOCKING);
@@ -93,10 +92,10 @@ void th_listener() {
 }
 
 void th_dialer() {
-	NRP<netp::socket_create_cfg> cfg = netp::make_ref<netp::socket_create_cfg>();
-	cfg->family = netp::s_family::F_AF_INET;
-	cfg->type = netp::s_type::T_STREAM;
-	cfg->proto = netp::s_protocol::P_TCP;
+	NRP<netp::socket_cfg> cfg = netp::make_ref<netp::socket_cfg>();
+	cfg->family = NETP_AF_INET;
+	cfg->type = NETP_SOCK_STREAM;
+	cfg->proto = NETP_PROTOCOL_TCP;
 	cfg->L = netp::io_event_loop_group::instance()->next();
 	cfg->option &= ~netp::u8_t(netp::socket_option::OPTION_NON_BLOCKING);
 
@@ -110,7 +109,7 @@ void th_dialer() {
 
 	NRP<netp::socket> dialer = std::get<1>(tupc);
 
-	netp::address raddr = netp::address("127.0.0.1", 32002, netp::s_family::F_AF_INET);
+	netp::address raddr = netp::address("127.0.0.1", 32002, NETP_AF_INET);
 	rt = dialer->connect(raddr);
 	if (rt != netp::OK) {
 		NETP_ERR("bind failed: %d", rt);
@@ -118,16 +117,14 @@ void th_dialer() {
 	}
 
 	NRP<netp::packet> buf = netp::make_ref<netp::packet>(64 * 1024);
-	buf->forward_write_index(64 * 1024);
+	buf->incre_write_idx(64 * 1024);
 	int ec = netp::OK;
-	netp::u32_t len = dialer->send(buf->begin(), buf->len(), ec);
+	netp::u32_t len = dialer->send(buf->head(), buf->len(), ec);
 	NETP_ASSERT(len == buf->len());
 	read_and_write(dialer, buf, 6553500000LL);
 }
-#endif
 
 #ifdef NBLOCK_READ_WRITE
-
 struct socket_info :
 	public netp::ref_base
 {

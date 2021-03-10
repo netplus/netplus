@@ -23,7 +23,7 @@ namespace netp {
 
 	typedef std::function<void(const int )> fn_aio_event_t;
 
-#ifdef NETP_IO_MODE_IOCP
+#ifdef NETP_IO_POLLER_IOCP
 #ifdef _NETP_AM64
 	typedef i64_t overlapped_return_t;
 #else

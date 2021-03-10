@@ -3,8 +3,9 @@
 
 #include <netp/core/platform.hpp>
 
-#ifdef _NETP_GNU_LINUX
-	#include <execinfo.h>
+#if defined(_NETP_GNU_LINUX) || defined(_NETP_APPLE)
+	//Declares the functions backtrace, backtrace_symbols, backtrace_symbols_fd.
+	#define _NETP_HAS_EXECINFO_H
 #endif
 
 #define NETP_EXCEPTION_MESSAGE_LENGTH_LIMIT 1024

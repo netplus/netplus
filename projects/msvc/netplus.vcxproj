@@ -107,6 +107,7 @@
     <ClInclude Include="..\..\include\netp\os\api_wrapper.hpp" />
     <ClInclude Include="..\..\include\netp\os\winsock_helper.hpp" />
     <ClInclude Include="..\..\include\netp\packet.hpp" />
+    <ClInclude Include="..\..\include\netp\poller_kqueue.hpp" />
     <ClInclude Include="..\..\include\netp\promise.hpp" />
     <ClInclude Include="..\..\include\netp\ringbuffer.hpp" />
     <ClInclude Include="..\..\include\netp\rpc.hpp" />

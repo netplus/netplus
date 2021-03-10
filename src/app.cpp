@@ -388,7 +388,7 @@ namespace netp {
 		NETP_INFO("[APP]receive signo: %d", signo);
 		m_cond.notify_one();
 
-#if defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID)
+#if defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID) || defined(_NETP_APPLE)
 		if (signo == SIGPIPE) {
 			return;//IGN
 		}

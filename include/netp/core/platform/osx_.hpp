@@ -18,7 +18,6 @@
 #include <sys/un.h> //sockaddr_un
 #include <sys/uio.h>
 #include <sys/ioctl.h>
-#include <execinfo.h>
 
 #define NETP_CLOSE_SOCKET	::close
 #define NETP_DUP						dup

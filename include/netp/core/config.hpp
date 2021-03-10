@@ -72,21 +72,24 @@
 
 #define NETP_ENABLE_EPOLL
 //#define NETP_ENABLE_IOCP
+//#define NETP_ENABLE_KQUEUE
 
 //FOR IO MODE
-#if defined(_NETP_WIN) && defined(NETP_ENABLE_IOCP)
-	#define NETP_IO_MODE_IOCP
-#elif defined(_NETP_GNU_LINUX)||defined(_NETP_ANDROID) && defined(NETP_ENABLE_EPOLL)
-	#define NETP_IO_MODE_EPOLL
+#if defined(NETP_ENABLE_IOCP) && defined(_NETP_WIN)
+	#define NETP_IO_POLLER_IOCP
+#elif defined(NETP_ENABLE_EPOLL) && (defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID))
+	#define NETP_IO_POLLER_EPOLL
+#elif defined(NETP_ENABLE_KQUEUE) && defined(_NETP_APPLE)
+	#define NETP_IO_POLLER_KQUEUE
 #else
-	#define NETP_IO_MODE_SELECT
+	#define NETP_IO_POLLER_SELECT
 #endif
 
 // for epoll using
-#ifdef NETP_IO_MODE_EPOLL
+#ifdef NETP_IO_POLLER_EPOLL
 	#define NETP_EPOLL_CREATE_HINT_SIZE			(1024)	///< max size of epoll control
 	#define NETP_EPOLL_PER_HANDLE_SIZE			(128)	///< max size of per epoll_wait
-	#define NETP_IO_MODE_EPOLL_USE_ET
+	#define NETP_IO_POLLER_EPOLL_USE_ET
 #endif
 
 

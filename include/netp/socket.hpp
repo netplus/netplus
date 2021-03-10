@@ -124,7 +124,7 @@ namespace netp {
 	{
 		byte_t* m_rcv_buf_ptr;
 		u32_t m_rcv_buf_size;
-#ifdef NETP_IO_MODE_IOCP
+#ifdef NETP_IO_POLLER_IOCP
 		WSAOVERLAPPED* m_ol_write;
 #endif
 
@@ -143,7 +143,7 @@ namespace netp {
 			socket_base(cfg->fd, cfg->family, cfg->type, cfg->proto, cfg->laddr, cfg->raddr, cfg->sockapi),
 			m_rcv_buf_ptr(cfg->L->channel_rcv_buf()->head()),
 			m_rcv_buf_size(u32_t(cfg->L->channel_rcv_buf()->left_right_capacity())),
-#ifdef NETP_IO_MODE_IOCP
+#ifdef NETP_IO_POLLER_IOCP
 			m_ol_write(0),
 #endif
 			m_noutbound_bytes(0),
@@ -707,7 +707,7 @@ namespace netp {
 
 		inline void _do_aio_end_accept() {
 			NETP_ASSERT(L->in_event_loop());
-#ifdef NETP_IO_MODE_IOCP
+#ifdef NETP_IO_POLLER_IOCP
 			if (L->type() == T_IOCP) {
 				return;
 			}
@@ -715,7 +715,7 @@ namespace netp {
 			ch_aio_end_read();
 		}
 
-#ifdef NETP_IO_MODE_IOCP
+#ifdef NETP_IO_POLLER_IOCP
 		inline void __iocp_begin( fn_aio_event_t const& fn_begin_done ) {
 			L->iocp_call(iocp_action::BEGIN, fd(), nullptr, [so=NRP<socket>(this), fn_begin_done](const int aiort_) {
 				if (aiort == netp::OK) {
@@ -991,7 +991,7 @@ namespace netp {
 
 			m_chflag |= int(channel_flag::F_WATCH_READ);
 
-#ifdef NETP_IO_MODE_IOCP
+#ifdef NETP_IO_POLLER_IOCP
 			if (L->type() == T_IOCP) {
 				const fn_aio_event_t _fn_io = fn_read == nullptr ? std::bind(&socket::__iocp_WSARead_done, NRP<socket>(this), std::placeholders::_1) : fn_read;
 				L->iocp_call(iocp_action::READ, m_fd, nullptr, _fn_io);
@@ -1044,7 +1044,7 @@ namespace netp {
 				return;
 			}
 
-#ifdef NETP_IO_MODE_IOCP
+#ifdef NETP_IO_POLLER_IOCP
 			if (L->type() == T_IOCP) {
 				NETP_ASSERT((m_chflag&channel_flag::F_WATCH_WRITE) == 0);
 				__IOCP_do_ch_flush_impl();
@@ -1071,7 +1071,7 @@ namespace netp {
 			if (m_chflag&int(channel_flag::F_WATCH_WRITE)) {
 				m_chflag &= ~int(channel_flag::F_WATCH_WRITE);
 
-#ifdef NETP_IO_MODE_IOCP
+#ifdef NETP_IO_POLLER_IOCP
 				if (L->type() == T_IOCP) {
 					return;
 				}
@@ -1085,7 +1085,7 @@ namespace netp {
 		void ch_aio_connect(fn_aio_event_t const& fn = nullptr) override {
 			NETP_ASSERT(fn != nullptr);
 
-#ifdef NETP_IO_MODE_IOCP
+#ifdef NETP_IO_POLLER_IOCP
 			if (L->type() == T_IOCP) {
 				__iocp_call_ConnectEx(fn);
 				return;
@@ -1094,7 +1094,7 @@ namespace netp {
 			ch_aio_write(fn);
 		}
 		void ch_aio_end_connect() override {
-#ifdef NETP_IO_MODE_IOCP
+#ifdef NETP_IO_POLLER_IOCP
 			if (L->type() == T_IOCP) {
 				return;
 			}
