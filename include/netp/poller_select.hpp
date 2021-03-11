@@ -116,18 +116,31 @@ namespace netp {
 					NETP_ASSERT(ec != netp::OK);
 				}
 
-				for (int i = aio_flag::AIO_READ; i < aio_flag::AIO_FLAG_MAX; ++i) {
-					if (FD_ISSET(fd, &m_fds[i])) {
-						//FD_CLR(fd, &m_fds[i]);
-						--nready;
+				if (FD_ISSET(fd, &m_fds[AIO_READ])) {
+					//FD_CLR(fd, &m_fds[i]);
+					--nready;
 #ifdef NETP_DEBUG_WATCH_CTX_FLAG
-						NETP_ASSERT((ctx->flag & i), "fd: %d, flag: %u", ctx->fd, ctx->flag);
-						NETP_ASSERT(ctx->iofn[i] != nullptr, "fd: %d, flag: %u", ctx->fd, ctx->flag);
+					NETP_ASSERT((ctx->flag & AIO_READ), "fd: %d, flag: %u", ctx->fd, ctx->flag);
+					NETP_ASSERT(ctx->iofn[AIO_READ] != nullptr, "fd: %d, flag: %u", ctx->fd, ctx->flag);
 #endif
-						ctx->iofn[i](ec);
-						continue;
-					}
-					ec != netp::OK && ctx->iofn[i] != nullptr ? ctx->iofn[i](ec):(void)0;
+					ctx->iofn[AIO_READ](ec);
+					continue;
+				}
+
+				if (FD_ISSET(fd, &m_fds[AIO_WRITE])) {
+					//FD_CLR(fd, &m_fds[i]);
+					--nready;
+#ifdef NETP_DEBUG_WATCH_CTX_FLAG
+					NETP_ASSERT((ctx->flag & AIO_WRITE), "fd: %d, flag: %u", ctx->fd, ctx->flag);
+					NETP_ASSERT(ctx->iofn[AIO_WRITE] != nullptr, "fd: %d, flag: %u", ctx->fd, ctx->flag);
+#endif
+					ctx->iofn[AIO_WRITE](ec);
+					continue;
+				}
+
+				if (ec != netp::OK) {
+					ctx->iofn[AIO_READ] != nullptr ? ctx->iofn[AIO_READ](ec) : (void)0;
+					ctx->iofn[AIO_WRITE] != nullptr ? ctx->iofn[AIO_WRITE](ec) : (void)0;
 				}
 			}
 		}
