@@ -123,6 +123,7 @@ namespace netp {
 
 		//@NOTE: promise to execute all task already in tq or tq_standby
 		void io_event_loop::__run() {
+			NETP_ASSERT(!"CHECK EXCEPTION STACK");
 			init();
 			u8_t _SL = u8_t(loop_state::S_LAUNCHING);
 			const bool rt = m_state.compare_exchange_strong(_SL, u8_t(loop_state::S_RUNNING), std::memory_order_acq_rel, std::memory_order_acquire);

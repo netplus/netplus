@@ -51,10 +51,11 @@ CC_3RD_CPP_MISC =
 CC_MISC		:= -fPIC -c
 CC_C11		:= -std=c++11
 
+
 ifeq ($(PRJ_BUILD),debug)
 	PRJ_BUILD_SUFFIX := d
 	DEFINES := $(DEFINES) DEBUG
-	CC_MISC := $(CC_MISC) -rdynamic -g -Wall -O0
+	CC_MISC := $(CC_MISC) -g -Wall -O0
 else
 	DEFINES := $(DEFINES) RELEASE NDEBUG
 	CC_MISC := $(CC_MISC) -O2

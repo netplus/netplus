@@ -17,58 +17,55 @@ namespace netp {
 	void stack_trace(char stack_buffer[], u32_t const& s) {
 		__android_log_print(ANDROID_LOG_FATAL, "NETP", "exception ..." );
 	}
-#elif defined(_NETP_APPLE)
-#define BUFFER_SIZE 128
-void stack_trace(char stack_buffer[], u32_t const& s) {
-	void* callstack[BUFFER_SIZE];
-	int i, frames = backtrace(callstack,128);
-	char** strs = backtrace_symbols(callstack,frames);
-	for(i=0;i<frames;++i){
-		printf("%s\n",strs[i]);
-	}
-	free(strs);
 
-}
-#elif defined(_NETP_GNU_LINUX)
+#elif defined(_NETP_HAS_EXECINFO_H)
 	#define BUFFER_SIZE 128
 	void stack_trace(char stack_buffer[], u32_t const& s) {
-		int j, nptrs;
-		u32_t current_stack_fill_pos = 0;
-		char binary_name[256];
-
-		void* buffer[BUFFER_SIZE];
-		char** strings;
-		nptrs = backtrace(buffer, BUFFER_SIZE);
-
-		//printf("backtrace() return %d address\n", nptrs );
-
-		strings = backtrace_symbols(buffer, nptrs);
-		if (strings == nullptr) {
-			perror("backtrace_symbol");
+		void* callstack[BUFFER_SIZE];
+		int i, frames = backtrace(callstack, BUFFER_SIZE);
+		char** strs = backtrace_symbols(callstack, frames);
+		if (strs == nullptr) {
+			perror("backtrace_symbols failed");
 			exit(EXIT_FAILURE);
 		}
-
-		for (j = 1; j < nptrs; j++) {
-			int _address_begin = netp::strpos(strings[j], (char*)"[");
-			int _address_end = netp::strpos(strings[j], (char*)"]");
-			::memcpy((void*)&stack_buffer[current_stack_fill_pos], (void* const)(strings[j] + _address_begin), _address_end - _address_begin);
+		u32_t p = 0;
+		for (i = 0; i < frames; ++i) {
+			int c = snprintf( stack_buffer+p, (s-p-1), "%s\n", strs[i] );
+			if (c<0) {
+				break;
+			}
+			if ((p + c) >= s) {
+				p = s;
+				break;
+			}
+			p += c;
+		}
+		stack_buffer[p] = '\0';
+		free(strs);
+		
+		/*
+		for (i = 1; i < frames; ++i) {
+			printf("%s\n", strs[i]);
+			int _address_begin = netp::strpos(strs[i], (char*)"[");
+			int _address_end = netp::strpos(strs[i], (char*)"]");
+			::memcpy((void*)&stack_buffer[current_stack_fill_pos], (void* const)(strs[i] + _address_begin), _address_end - _address_begin);
 			current_stack_fill_pos += (_address_end - _address_begin);
 			stack_buffer[current_stack_fill_pos++] = ']';
 			stack_buffer[current_stack_fill_pos++] = ' ';
 
-			int _f_begin = netp::strpos(strings[j], (char*)"(");
-			int _f_end = netp::strpos(strings[j], (char*)")");
-			::memcpy((void*)&stack_buffer[current_stack_fill_pos], (void* const)(strings[j] + _f_begin), _f_end - _f_begin);
+			int _f_begin = netp::strpos(strs[i], (char*)"(");
+			int _f_end = netp::strpos(strs[i], (char*)")");
+			::memcpy((void*)&stack_buffer[current_stack_fill_pos], (void* const)(strs[i] + _f_begin), _f_end - _f_begin);
 			current_stack_fill_pos += (_f_end - _f_begin);
 			stack_buffer[current_stack_fill_pos++] = ')';
 			stack_buffer[current_stack_fill_pos++] = ' ';
 
 			stack_buffer[current_stack_fill_pos++] = '\n';
 
-			if (j == 1) {
+			if (i == 1) {
 				char const* ba = "binary: ";
 				::memcpy((void*)&binary_name[0], (void* const)ba, strlen(ba));
-				::memcpy((void*)&binary_name[strlen(ba)], (void* const)(strings[j]), _f_begin);
+				::memcpy((void*)&binary_name[strlen(ba)], (void* const)(strs[i]), _f_begin);
 				binary_name[strlen(ba) + _f_begin] = '\0';
 			}
 		}
@@ -78,7 +75,8 @@ void stack_trace(char stack_buffer[], u32_t const& s) {
 
 		stack_buffer[current_stack_fill_pos] = '\0';
 		assert(current_stack_fill_pos <= s);
-		::free(strings);
+		::free(strs);
+		*/
 	}
 
 #elif defined(_NETP_WIN)
