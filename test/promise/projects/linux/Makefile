@@ -8,11 +8,7 @@ DEFINES :=\
 INCLUDES:= \
 	$(foreach include,$(LIB_INCLUDE_PATH_ALL_LIBS), -I"$(include)") \
 
-ifeq ($(CXX),C++)
-LINK_LIBS := -lpthread -ldl -Xlinker "-(" $(LIB_LINK_LIBS_ALL_LIBS) -Xlinker "-)"
-else
-LINK_LIBS := -lpthread -ldl $(LIB_LINK_LIBS_ALL_LIBS) 
-endif
+LINK_LIBS := $(LINK_LIBS) $(LIB_LINK_LIBS_ALL_LIBS) 
 
 include _module-app-promise.inc
 

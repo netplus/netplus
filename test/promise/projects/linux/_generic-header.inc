@@ -1,4 +1,6 @@
 CURRENT_DIR 	:= $(shell pwd)
+UNAME_S 		:= $(shell uname -s)
+
 PRJ_BUILD		:= release
 PRJ_ARCH		:= x86_64
 PRJ_SIMD		:= 
@@ -51,10 +53,19 @@ CC_3RD_CPP_MISC =
 CC_MISC		:= -fPIC -c
 CC_C11		:= -std=c++11
 
+LINK_MISC := -rdynamic $(LINK_MISC)
+
+LINK_CXX_LIBS = -lpthread -ldl
+
+ifneq ($(UNAME_S),Darwin)
+	LINK_CXX_LIBS := -lrt $(LINK_CXX_LIBS)
+endif
+
+
 ifeq ($(PRJ_BUILD),debug)
 	PRJ_BUILD_SUFFIX := d
 	DEFINES := $(DEFINES) DEBUG
-	CC_MISC := $(CC_MISC) -rdynamic -g -Wall -O0
+	CC_MISC := $(CC_MISC) -g -Wall -O0
 else
 	DEFINES := $(DEFINES) RELEASE NDEBUG
 	CC_MISC := $(CC_MISC) -O2
