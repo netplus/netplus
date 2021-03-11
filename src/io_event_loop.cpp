@@ -73,6 +73,7 @@ namespace netp {
 		rt = netp::turnon_nodelay(netp::NETP_DEFAULT_SOCKAPI, m_signalfds[1]);
 		NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
+
 		NETP_ASSERT(rt == netp::OK);
 		aio_do(aio_action::BEGIN, m_signalfds[0], [](const int aiort_) {
 			NETP_ASSERT(aiort_ == netp::OK);
@@ -123,7 +124,7 @@ namespace netp {
 
 		//@NOTE: promise to execute all task already in tq or tq_standby
 		void io_event_loop::__run() {
-			NETP_ASSERT(!"CHECK EXCEPTION STACK");
+//			NETP_ASSERT(!"CHECK EXCEPTION STACK");
 			init();
 			u8_t _SL = u8_t(loop_state::S_LAUNCHING);
 			const bool rt = m_state.compare_exchange_strong(_SL, u8_t(loop_state::S_RUNNING), std::memory_order_acq_rel, std::memory_order_acquire);
