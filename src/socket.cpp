@@ -306,6 +306,7 @@ namespace netp {
 	}
 
 	void socket::__cb_aio_read_impl(const int aiort_) {
+		NETP_INFO("READ IN");
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(!ch_is_listener());
 		int aiort = aiort_;
@@ -323,7 +324,9 @@ namespace netp {
 			while (aiort == netp::OK) {
 				NETP_ASSERT( (m_chflag&(int(channel_flag::F_READ_SHUTDOWNING))) == 0);
 				if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN)|int(channel_flag::F_READ_ERROR) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
+				NETP_INFO("read begin, %d", m_rcv_buf_size);
 				netp::u32_t nbytes = socket_base::recv(m_rcv_buf_ptr, m_rcv_buf_size, aiort);
+				NETP_INFO("READ END: %d", nbytes);
 				if (NETP_LIKELY(nbytes > 0)) {
 					channel::ch_fire_read(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes));
 				}

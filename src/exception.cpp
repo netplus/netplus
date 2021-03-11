@@ -17,8 +17,20 @@ namespace netp {
 	void stack_trace(char stack_buffer[], u32_t const& s) {
 		__android_log_print(ANDROID_LOG_FATAL, "NETP", "exception ..." );
 	}
-#elif defined(_NETP_HAS_EXECINFO_H)
-	#define BUFFER_SIZE 256
+#elif defined(_NETP_APPLE)
+#define BUFFER_SIZE 128
+void stack_trace(char stack_buffer[], u32_t const& s) {
+	void* callstack[BUFFER_SIZE];
+	int i, frames = backtrace(callstack,128);
+	char** strs = backtrace_symbols(callstack,frames);
+	for(i=0;i<frames;++i){
+		printf("%s\n",strs[i]);
+	}
+	free(strs);
+
+}
+#elif defined(_NETP_GNU_LINUX)
+	#define BUFFER_SIZE 128
 	void stack_trace(char stack_buffer[], u32_t const& s) {
 		int j, nptrs;
 		u32_t current_stack_fill_pos = 0;

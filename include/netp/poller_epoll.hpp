@@ -161,7 +161,7 @@ namespace netp {
 					if (events & _s_flag_epollin_epollout_map[i]) {
 						events &= ~(_s_flag_epollin_epollout_map[i]);
 #ifdef NETP_DEBUG_WATCH_CTX_FLAG
-						NETP_ASSERT( ((ctx->flag& (i)) && ctx->iofn[i] != nullptr) , "fd: %d, flag: %d, ec", ctx->fd, ctx->flag, ec );
+						NETP_ASSERT( ((ctx->flag& (i)) && ctx->iofn[i] != nullptr) , "fd: %d, flag: %d, ec: %d", ctx->fd, ctx->flag, ec );
 #endif
 						ctx->iofn[i](ec);
 						continue;

@@ -102,7 +102,7 @@ namespace netp {
 				int ec = netp::OK;
 
 				if (FD_ISSET(fd, &m_fds[fds_e])) {
-					FD_CLR(fd, &m_fds[fds_e]);
+					//FD_CLR(fd, &m_fds[fds_e]);
 					--nready;
 
 					socklen_t optlen = sizeof(int);
@@ -118,7 +118,7 @@ namespace netp {
 
 				for (int i = aio_flag::AIO_READ; i < aio_flag::AIO_FLAG_MAX; ++i) {
 					if (FD_ISSET(fd, &m_fds[i])) {
-						FD_CLR(fd, &m_fds[i]);
+						//FD_CLR(fd, &m_fds[i]);
 						--nready;
 #ifdef NETP_DEBUG_WATCH_CTX_FLAG
 						NETP_ASSERT((ctx->flag & i), "fd: %d, flag: %u", ctx->fd, ctx->flag);

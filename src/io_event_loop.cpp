@@ -9,6 +9,7 @@
 	#include <netp/poller_select.hpp>
 #endif
 
+
 #include <netp/io_event_loop.hpp>
 #include <netp/socket_api.hpp>
 
@@ -35,7 +36,7 @@ namespace netp {
 		case T_KQUEUE:
 		{
 			poller = netp::make_ref<poller_kqueue>(cfg);
-			NETP_ALLOC_CHECK(poller, sizeof(poller_iocp));
+			NETP_ALLOC_CHECK(poller, sizeof(poller_kqueue));
 		}
 		break;
 #else

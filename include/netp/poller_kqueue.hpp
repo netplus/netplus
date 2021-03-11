@@ -20,11 +20,13 @@ namespace netp {
 			m_kevt_size(0)
 		{}
 		void _do_poller_init() override {
+			NETP_INFO("CREATE KQUEUE");
 			m_kq = kqueue();
 			if (m_kq == -1) {
 				NETP_ERR("[kqueue]create poller failed: %d", netp_last_errno() );
 				NETP_THROW("KQUEUE CREATE FAILED");
 			}
+			NETP_INFO("CREATE KQUEUE DONE");
 			m_kevts = (struct kevent*)netp::aligned_malloc( sizeof(struct kevent) * 256, NETP_DEFAULT_ALIGN);
 			NETP_ALLOC_CHECK(m_kevts, sizeof(struct kevent) * 256);
 			m_kevt_size = 256;
@@ -52,26 +54,34 @@ namespace netp {
 				tspp = &tsp;
 			}
 
+			int ec=netp::OK;
 			int rt = kevent(m_kq, NULL, 0, m_kevts, m_kevt_size, tspp);
+                        NETP_INFO("kevent: %d", rt);
 			if (NETP_LIKELY(rt > 0)) {
 				for (int j = 0; j < rt; ++j) {
-					struct kevent* e = m_kevts + j;
+					struct kevent* e = (m_kevts + j);
+					NETP_INFO("J: %d", j);
 					NETP_ASSERT(e->udata != nullptr);
 					NRP<watch_ctx> ctx(static_cast<watch_ctx*> (e->udata));
 					if (e->filter&EVFILT_READ) {
 #ifdef NETP_DEBUG_WATCH_CTX_FLAG
-						NETP_ASSERT(((ctx->flag & (AIO_READ)) && ctx->iofn[AIO_READ] != nullptr), "fd: %d, flag: %d, ec", ctx->fd, ctx->flag, ec);
+						NETP_ASSERT(((ctx->flag & (AIO_READ)) && ctx->iofn[AIO_READ] != nullptr), "fd: %d, flag: %d", ctx->fd, ctx->flag);
 #endif
-						ctx->iofn[AIO_READ](netp::OK);
+						NETP_INFO("KEVENT READ");
+						ctx->iofn[AIO_READ](ec);
+						NETP_INFO("KEVENT READ DONE");
 					}
 					if (e->filter&EVFILT_WRITE) {
+					NETP_INFO("KEVENT WRITE BEGIN");
 #ifdef NETP_DEBUG_WATCH_CTX_FLAG
-						NETP_ASSERT(((ctx->flag & (AIO_WRITE)) && ctx->iofn[AIO_WRITE] != nullptr), "fd: %d, flag: %d, ec", ctx->fd, ctx->flag, ec);
+						NETP_ASSERT(((ctx->flag & (AIO_WRITE)) && ctx->iofn[AIO_WRITE] != nullptr), "fd: %d, flag: %d", ctx->fd, ctx->flag);
 #endif
-						ctx->iofn[AIO_WRITE](netp::OK);
+						NETP_INFO("KEVENT WRITE DONE");
+						ctx->iofn[AIO_WRITE](ec);
 					}
 				}
 			}
+			NETP_INFO("KQUEUE POLL DONE");
 		}
 		int _do_watch(SOCKET fd, u8_t flag, NRP<watch_ctx> const& ctx) {
 			struct kevent ke;
