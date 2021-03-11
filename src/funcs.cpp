@@ -78,8 +78,8 @@ namespace netp {
 #endif
 	}
 
-#define _ASSERT_INFO_MAX_LEN 1024
-#define _ASSERT_MSG_MAX_LEN 1024
+#define _ASSERT_INFO_MAX_LEN 512
+#define _ASSERT_MSG_MAX_LEN 512
 #define _ASSERT_MSG_TOTAL_LEN (_ASSERT_INFO_MAX_LEN+_ASSERT_MSG_MAX_LEN)
 	void assert_failed(const char* check, const char* file, int line, const char* function, ...)
 	{

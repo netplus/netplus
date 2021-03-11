@@ -43,10 +43,6 @@ ${APP_NAME}_ALL_O_FILES	:= $(addprefix $(${APP_NAME}_BIN_PATH)/,$(${APP_NAME}_AL
 #custome for codeblock
 #CC_MISC := $(CC_MISC) -finput-charset=GBK -fexec-charset=GBK
 
-#ifeq ($(PRJ_BUILD),debug)
-LINK_MISC := $(LINK_MISC)
-#endif
-
 
 $(APP_TARGET): $(${APP_NAME}_ALL_O_FILES)
 	@if [ ! -d $(@D) ] ; then \
@@ -56,7 +52,7 @@ $(APP_TARGET): $(${APP_NAME}_ALL_O_FILES)
 	@echo "---"
 	@echo \*\* assembling $@...
 	@echo $(CXX) $(LINK_MISC) $^ -o $@ $(LINK_LIBS)
-	@$(CXX) $(LINK_MISC) $^ -o $@ $(LINK_LIBS) 
+	@$(CXX) -rdynamic $(LINK_MISC) $^ -o $@ $(LINK_LIBS) 
 	@echo "---"
 	
 

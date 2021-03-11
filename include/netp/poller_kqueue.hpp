@@ -55,7 +55,7 @@ namespace netp {
 			int rt = kevent(m_kq, NULL, 0, m_kevts, m_kevt_size, tspp);
 			if (NETP_LIKELY(rt > 0)) {
 				for (int j = 0; j < rt; ++j) {
-					struct kevent* e = m_kevts + j;
+					struct kevent* e = (m_kevts + j);
 					NETP_ASSERT(e->udata != nullptr);
 					NRP<watch_ctx> ctx(static_cast<watch_ctx*> (e->udata));
 					if (e->filter&EVFILT_READ) {
