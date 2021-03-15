@@ -665,6 +665,9 @@
     <ClCompile Include="..\..\src\helper.cpp">
       <Filter>Source Files\src</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\os\winsock_helper.cpp">
+      <Filter>Source Files\src\os</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\3rd\udns\0.4\inet_XtoX.ci">

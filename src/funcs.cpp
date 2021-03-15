@@ -107,8 +107,4 @@ namespace netp {
 		}
 		throw netp::exception(netp::E_ASSERT_FAILED, _message, file, line, function);
 	}
-
-
-
-
 }

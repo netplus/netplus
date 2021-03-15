@@ -384,7 +384,7 @@ namespace netp { namespace handler {
 			});
 			return p;
 		}
-		void ch_aio_read(fn_aio_event_t const& fn_read = nullptr) {
+		void ch_aio_read(fn_aio_read_event_t const& fn_read = nullptr) {
 			if (!L->in_event_loop()) {
 				L->schedule([ch = NRP<channel>(this)](){
 					ch->ch_aio_read();

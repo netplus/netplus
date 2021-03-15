@@ -196,6 +196,7 @@
     <ClCompile Include="..\..\src\os\api_wrapper_android.cpp" />
     <ClCompile Include="..\..\src\os\api_wrapper_gnulinux.cpp" />
     <ClCompile Include="..\..\src\os\api_wrapper_win.cpp" />
+    <ClCompile Include="..\..\src\os\winsock_helper.cpp" />
     <ClCompile Include="..\..\src\rpc.cpp" />
     <ClCompile Include="..\..\src\signal_broker.cpp" />
     <ClCompile Include="..\..\src\socket.cpp" />

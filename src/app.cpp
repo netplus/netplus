@@ -358,6 +358,7 @@ namespace netp {
 			NETP_ERR("[app]no dns nameserver");
 		}
 #endif
+		/*
 		netp::dns_resolver::instance()
 			->reset(io_event_loop_group::instance()->internal_next());
 		if (m_cfg.dnsnses.size()) {
@@ -370,11 +371,12 @@ namespace netp {
 			_exit();
 			exit(dnsp->get());
 		}
+		*/
 		NETP_INFO("[app]init dns done");
 	}
 
 	void app::___event_loop_deinit() {
-		netp::dns_resolver::instance()->stop();
+//		netp::dns_resolver::instance()->stop();
 		netp::io_event_loop_group::instance()->deinit();
 
 		//reset loop after all loop reference dattached from business code

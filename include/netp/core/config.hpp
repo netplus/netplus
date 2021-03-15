@@ -71,22 +71,23 @@
 #endif
 
 #define NETP_ENABLE_EPOLL
-//#define NETP_ENABLE_IOCP
 #define NETP_ENABLE_KQUEUE
+
+#define NETP_ENABLE_IOCP
 
 //FOR IO MODE
 #if defined(NETP_ENABLE_IOCP) && defined(_NETP_WIN)
-	#define NETP_IO_POLLER_IOCP
+	#define NETP_HAS_POLLER_IOCP
 #elif defined(NETP_ENABLE_EPOLL) && (defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID))
-	#define NETP_IO_POLLER_EPOLL
+	#define NETP_HAS_POLLER_EPOLL
 #elif defined(NETP_ENABLE_KQUEUE) && defined(_NETP_APPLE)
-	#define NETP_IO_POLLER_KQUEUE
+	#define NETP_HAS_POLLER_KQUEUE
 #else
-	#define NETP_IO_POLLER_SELECT
+	#define NETP_HAS_POLLER_SELECT
 #endif
 
 // for epoll using
-#ifdef NETP_IO_POLLER_EPOLL
+#ifdef NETP_ENABLE_EPOLL
 	#define NETP_EPOLL_CREATE_HINT_SIZE			(1024)	///< max size of epoll control
 	#define NETP_EPOLL_PER_HANDLE_SIZE			(128)	///< max size of per epoll_wait
 	#define NETP_IO_POLLER_EPOLL_USE_ET
@@ -131,9 +132,10 @@
 //#define NETP_ENABLE_TRACE_HTTP_MESSAGE
 #endif
 
-//#define NETP_ENABLE_TRACE_SOCKET
-//#define NETP_ENABLE_TRACE_IOE
-
+#ifdef NETP_HAS_POLLER_IOCP
+//	#define NETP_ENABLE_TRACE_SOCKET
+//	#define NETP_ENABLE_TRACE_IOE
+#endif
 
 #ifdef NETP_ENABLE_TRACE_SOCKET_API
 	#define NETP_TRACE_SOCKET_API NETP_INFO

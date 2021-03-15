@@ -4,12 +4,18 @@
 #include <functional>
 #include <netp/core.hpp>
 #include <netp/packet.hpp>
+#include <netp/address.hpp>
 
 //in nano seconds
 #define NETP_POLLER_WAIT_IGNORE_DUR ((50LL)) 
 
 namespace netp {
 	
+	typedef std::function<void(const int )> fn_aio_event_t;
+	typedef std::function<void(const int, NRP<netp::packet> const&)> fn_aio_read_event_t;
+	typedef std::function<void(const int, NRP<netp::packet> const&, address const&)> fn_aio_read_from_event_t;
+
+#ifdef NETP_HAS_POLLER_IOCP
 	//class packet;
 	//give iocp a different struct, such as ,,iocp_result
 	struct iocp_result {
@@ -17,19 +23,12 @@ namespace netp {
 		union {
 			int len;
 			int code;
-		};
-		NRP<netp::packet> data;
+		}intv;
+		byte_t* data;
 	};
 
-	typedef std::function<void(const int )> fn_aio_event_t;
-
-#ifdef NETP_IO_POLLER_IOCP
-#ifdef _NETP_AM64
-	typedef i64_t overlapped_return_t;
-#else
-	typedef i32_t overlapped_return_t;
-#endif
-	typedef std::function<overlapped_return_t(void* ol)> fn_overlapped_io_event;
+	typedef std::function<int(const iocp_result&)> fn_iocp_event_t;
+	typedef std::function<int(void* ol)> fn_overlapped_io_event;
 #endif
 }
 

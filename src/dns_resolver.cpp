@@ -86,6 +86,9 @@ namespace netp {
 		//libudns do not support iocp
 		m_so->ch_set_active();
 		m_so->ch_set_connected();
+		p->set(netp::OK);
+		return;
+
 		m_so->aio_begin([dnsr=this, p](const int aiort) {
 			NETP_ASSERT(dnsr->m_flag & dns_resolver_flag::f_launching);
 			dnsr->m_flag &= dns_resolver_flag::f_launching;

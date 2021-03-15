@@ -282,24 +282,20 @@ namespace netp {
 		NETP_ASSERT((m_family) == addr.family());
 		m_raddr = addr;
 
-#ifdef NETP_IO_POLLER_IOCP
-		if (m_protocol == NETP_PROTOCOL_TCP) {
-			//connectex requires the socket to be initially bound
-			struct sockaddr_in addr_in;
-			::memset(&addr_in, 0, sizeof(addr_in));
-			addr_in.sin_family = OS_DEF_family[m_family];
-			addr_in.sin_addr.s_addr = INADDR_ANY;
-			addr_in.sin_port = 0;
-			int bindrt = ::bind( m_fd, reinterpret_cast<sockaddr*>(&addr_in), sizeof(addr_in));
-			if (bindrt != netp::OK ) {
-				bindrt = netp_socket_get_last_errno();
-				NETP_DEBUG("bind failed: %d\n", bindrt );
-				return bindrt;
-			}
-			return netp::E_EINPROGRESS;
-		} else {
-			NETP_ASSERT(!"TODO");
+#ifdef NETP_HAS_POLLER_IOCP
+		//connectex requires the socket to be initially bound
+		struct sockaddr_in addr_in;
+		::memset(&addr_in, 0, sizeof(addr_in));
+		addr_in.sin_family = m_family;
+		addr_in.sin_addr.s_addr = INADDR_ANY;
+		addr_in.sin_port = 0;
+		int bindrt = ::bind( m_fd, reinterpret_cast<sockaddr*>(&addr_in), sizeof(addr_in));
+		if (bindrt != netp::OK ) {
+			bindrt = netp_socket_get_last_errno();
+			NETP_DEBUG("bind failed: %d\n", bindrt );
+			return bindrt;
 		}
+		return netp::E_EINPROGRESS;
 #else
 		int rt= netp::connect(*m_api,m_fd, addr );
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
@@ -338,7 +334,7 @@ namespace netp {
 		int nsize = get_snd_buffer_size();
 		NETP_RETURN_V_IF_MATCH(nsize, nsize <0);
 		m_sock_buf.sndbuf_size = nsize;
-		NETP_TRACE_SOCKET("[socket_base][%s]snd buffer size new: %u", info().c_str(), m_sock_buf.snd_size);
+		NETP_TRACE_SOCKET("[socket_base][%s]snd buffer size new: %u", info().c_str(), m_sock_buf.sndbuf_size);
 
 		return netp::OK;
 	}
@@ -403,7 +399,7 @@ namespace netp {
 		int nsize = get_rcv_buffer_size();
 		NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
 		m_sock_buf.rcvbuf_size = nsize;
-		NETP_TRACE_SOCKET("[socket_base][%s]rcv buffer size new: %u", info().c_str(), m_sock_buf.rcv_size);
+		NETP_TRACE_SOCKET("[socket_base][%s]rcv buffer size new: %u", info().c_str(), m_sock_buf.rcvbuf_size);
 		return netp::OK;
 	}
 

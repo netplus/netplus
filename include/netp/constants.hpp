@@ -5,7 +5,7 @@
 #include <netp/core/platform.hpp>
 
 #define NETP_SOCKET_ERROR (-1)
-#define NETP_INVALID_SOCKET (~0)
+#define NETP_INVALID_SOCKET netp::SOCKET(~0)
 
 namespace netp {
 
@@ -356,12 +356,18 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_ERFKILL								= -132;
 	const int E_EHWPOISON						= -133;
 
-	const int E_WAIT_TIMEOUT					= -258;
-	const int E_ERROR_ABANDONED_WAIT_0		= -735;
-	const int E_ERROR_IO_PENDING						= -997;
-	const int E_ERROR_CONNECTION_ABORTED		= -1236;
 
 #elif defined(_NETP_WIN)
+	const int E_WSA_INVALID_HANDLE = -6;
+	const int E_WSA_INVALID_PARAMETER = -87;
+	const int E_WAIT_TIMEOUT = -258;
+	const int E_ERROR_ABANDONED_WAIT_0 = -735;
+
+	const int E_WSA_OPERATION_ABORTED = -995;
+	const int E_WSA_IO_INCOMPLETE = -996;
+	const int E_WSA_IO_PENDING = -997;
+	const int E_ERROR_CONNECTION_ABORTED = -1236;
+
 // 1---19999; reserved for system call error code (windows)
 	const int E_WSAEINTR							= -10004; // A blocking operation was interrupted by a call to WSACancelBlockingCall.
 	const int E_WSAEBADF						= -10009; // The file handle supplied is not valid.
@@ -447,7 +453,6 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_OP_ABORT									= -20017;
 	const int E_OP_TIMEOUT								= -20018;
 
-
 	const int E_EVENT_BROKER_BINDED_ALREADY = -21001;
 	const int E_EVENT_BROKER_NO_LISTENER			= -21002;
 
@@ -479,6 +484,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_SOCKET_READ_CLOSED_ALREADY = -31007;
 	const int E_SOCKET_WRITE_CLOSED_ALREADY = -31008;
 	const int E_SOCKET_NO_AVAILABLE_ADDR = -31009;
+	const int E_SOCKET_OP_ALREADY		 = -31010;
 
 	const int E_CHANNEL_BDLIMIT							= -34001;
 	const int E_CHANNEL_READ_BLOCK					= -34002;
@@ -492,12 +498,14 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_CHANNEL_CLOSING							= -34010;
 	const int E_CHANNEL_WRITE_SHUTDOWNING	= -34011;
 	const int E_CHANNEL_WRITING							= -34012;
-	const int E_CHANNEL_OUTBOUND_EMPTY		= -34013;
+	const int E_CHANNEL_OUTGO_LIST_EMPTY		= -34013; //FOR IOCP
 	const int E_CHANNEL_CANCEL_WRITE				= -34014;
 
 	const int E_CHANNEL_READ_WRITE_ERROR		= -34015;
 	const int E_CHANNEL_ABORT								= -34016;
 	const int E_CHANNEL_CONTEXT_REMOVED		= -34017;
+
+	const int E_CHANNEL_OVERLAPPED_OP_TRY = -34018;
 
 	const int E_FORWARDER_DOMAIN_LEN_EXCEED	= -35001;
 	const int E_FORWARDER_INVALID_IPV4					= -35002;
