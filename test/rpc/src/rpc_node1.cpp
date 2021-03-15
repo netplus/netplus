@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
 		//r->on_push( std::bind(&foo::on_push, f, std::placeholders::_1, std::placeholders::_2));
 	};
 
-	NRP<netp::socket_create_cfg> cfg = netp::make_ref<netp::socket_create_cfg>();
+	NRP<netp::socket_cfg> cfg = netp::make_ref<netp::socket_cfg>();
 
 	NRP<netp::rpc_listen_promise> rpc_lf = netp::rpc::listen("tcp://0.0.0.0:21001", fn_bind_api, nullptr ,cfg );
 
