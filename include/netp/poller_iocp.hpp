@@ -149,10 +149,18 @@ namespace netp {
 			switch (olctx->action) {
 			case iocp_ol_action::WSAREAD:
 			{
-				//@NOTE: even the user has called aio_end_read(), he could get a incoming data from system
 				NETP_ASSERT(olctx->fd != NETP_INVALID_SOCKET);
 				NETP_ASSERT(olctx->accept_fd == NETP_INVALID_SOCKET);
 				NETP_ASSERT(olctx->fn_iocp_done != nullptr);
+				if ( ec !=0 && (olctx->action_status&AS_DONE)) {
+					//@NOTE: even the user has called aio_end_read(), he could get a incoming data from system
+						//pending data len
+					//user has called aio_end_read() ;
+					//store len into accept_fd
+					olctx->accept_fd = dwTrans;
+					return;
+				}
+
 				ec = olctx->fn_iocp_done( { olctx->fd, ec == 0 ? (int)dwTrans : ec, olctx->buf } );
 				if (ec == netp::E_CHANNEL_OVERLAPPED_OP_TRY && (olctx->action_status&AS_DONE) == 0 ) {
 					ec = _do_read(olctx);
@@ -437,9 +445,21 @@ namespace netp {
 					NETP_ASSERT(olctx->is_ch_end == 0);
 					NETP_ASSERT((olctx->action_status&AS_WAIT_IOCP) == 0);
 
+					int ec;
+					if (olctx->accept_fd != NETP_INVALID_SOCKET) {
+						//deliver pending data first
+						int len = olctx->accept_fd;
+						olctx->accept_fd = NETP_INVALID_SOCKET;
+						ec = fn_iocp({olctx->fd, len, olctx->buf});
+						if (ec != netp::E_CHANNEL_OVERLAPPED_OP_TRY) {
+							//cancel read
+							return;
+						}
+					}
+
 					olctx->action = iocp_ol_action::WSAREAD;
 					olctx->fn_iocp_done = fn_iocp;
-					int ec = _do_read(olctx);
+					ec = _do_read(olctx);
 					if (ec == netp::OK) {
 						olctx->action_status &= ~AS_DONE;
 						olctx->action_status |= AS_WAIT_IOCP;
