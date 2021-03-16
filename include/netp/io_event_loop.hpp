@@ -386,6 +386,9 @@ namespace netp {
 
 					NETP_ASSERT(m_tb != nullptr);
 					m_tb->expire_all();
+
+					//last loop interrupt
+					//_do_poller_interrupt_wait();
 				}
 				break;
 				case aio_action::END:

@@ -20,7 +20,8 @@ public:
 		packet_size(64),
 		rcvwnd(128 * 1024),
 		sndwnd(64 * 1024),
-		loopbufsize(128 * 1024)
+		loopbufsize(128 * 1024),
+		thread(0)
 	{}
 };
 

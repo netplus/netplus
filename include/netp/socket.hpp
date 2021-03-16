@@ -786,8 +786,7 @@ namespace netp {
 			L->iocp_do(iocp_action::ACCEPT, m_fd,
 				std::bind(&socket::__iocp_do_AcceptEx_create_fd, NRP<socket>(this), std::placeholders::_1),
 				[fn_accepted_initializer, ccfg, so = NRP<socket>(this)](const iocp_result& r) -> int {
-				so->__iocp_do_AcceptEx_done(r, fn_accepted_initializer, ccfg);
-				return netp::OK;
+				return so->__iocp_do_AcceptEx_done(r, fn_accepted_initializer, ccfg);
 			}); 
 #else
 			//@TODO: provide custome accept feature
@@ -898,7 +897,7 @@ namespace netp {
 			if (connrt == FALSE) {
 				ec = netp_socket_get_last_errno();
 				if (ec == netp::E_WSA_IO_PENDING) {
-					NETP_DEBUG("[socket][iocp][#%u]socket __connectEx failed", m_fd, connrt);
+					NETP_DEBUG("[socket][iocp][#%u]socket __connectEx E_WSA_IO_PENDING", m_fd, connrt);
 					ec = netp::OK;
 				}
 			}

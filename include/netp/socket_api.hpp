@@ -146,11 +146,11 @@ namespace netp {
 			int protocol
 		) {
 			return
-#ifdef NETP_HAS_POLLER_IOCP
-			WSASocketW(af,type,protocol, nullptr, 0, WSA_FLAG_OVERLAPPED);
-#else
+//#ifdef NETP_HAS_POLLER_IOCP
+//			WSASocketW(af,type,protocol, nullptr, 0, WSA_FLAG_OVERLAPPED);
+//#else
 			::socket(af, type, protocol);
-#endif
+//#endif
 		}
 
 		__NETP_FORCE_INLINE int bind(

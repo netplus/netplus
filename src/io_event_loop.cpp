@@ -111,7 +111,7 @@ namespace netp {
 		NETP_ASSERT(m_signalfds[0] > 0);
 		NETP_ASSERT(m_signalfds[1] > 0);
 		int ec;
-		const static byte_t interrutp_a[1] = { (byte_t) 'i' };
+		const byte_t interrutp_a[1] = { (byte_t) 'i' };
 		NETP_ASSERT(interrutp_a[0] == 'i');
 
 		u32_t c = netp::send(netp::NETP_DEFAULT_SOCKAPI, m_signalfds[1], interrutp_a, 1, ec, 0);
@@ -217,7 +217,7 @@ namespace netp {
 			}
 			u8_t terminated = u8_t(loop_state::S_TERMINATED);
 			if (m_state.compare_exchange_strong(terminated, u8_t(loop_state::S_EXIT), std::memory_order_acq_rel, std::memory_order_acquire)) {
-				NETP_DEBUG("[io_event_loop][%u]enter S_EXIT, poller_interrupt_wait", m_type );
+				NETP_DEBUG("[io_event_loop][%u]enter S_EXIT, last interrupt if needed", m_type );
 				_do_poller_interrupt_wait();
 				//@NOTE:
 				//1, we don't interrupt these kinds of thread, cuz we want all the tasks be finished one by one

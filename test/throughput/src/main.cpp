@@ -27,10 +27,12 @@ int main(int argc, char** argv) {
 
 	parse_param(g_param, argc, argv);
 
-	//for (int i = 0; i < 100; ++i) {
+	for (int i = 0; i < 100000; ++i) {
 		netp::app_cfg appcfg;
 		appcfg.poller_cfgs[netp::u8_t(NETP_DEFAULT_POLLER_TYPE)].ch_buf_size = g_param.loopbufsize;
-		appcfg.cfg_poller_count(NETP_DEFAULT_POLLER_TYPE, g_param.thread);
+		if (g_param.thread != 0) {
+			appcfg.cfg_poller_count(NETP_DEFAULT_POLLER_TYPE, g_param.thread);
+		}
 		appcfg.cfg_channel_rcv_buf(NETP_DEFAULT_POLLER_TYPE, 64);
 
 		netp::app _app(appcfg);
@@ -60,6 +62,6 @@ int main(int argc, char** argv) {
 			sec.count(),
 			g_param.client_max * avgrate, g_param.client_max * avgbits);
 		NETP_INFO("main exit");
-	//}
+	}
 	return 0;
 }

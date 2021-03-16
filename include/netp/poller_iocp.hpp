@@ -441,6 +441,7 @@ namespace netp {
 					olctx->fn_iocp_done = fn_iocp;
 					int ec = _do_read(olctx);
 					if (ec == netp::OK) {
+						olctx->action_status &= ~AS_DONE;
 						olctx->action_status |= AS_WAIT_IOCP;
 					} else {
 						olctx->fn_iocp_done({ olctx->fd, ec, 0 });
@@ -472,6 +473,7 @@ namespace netp {
 					iocp_olctx_reset_overlapped(olctx);
 					int wrt = fn_overlapped((void*)&olctx->overlapped);
 					if (wrt == netp::OK) {
+						olctx->action_status &= ~AS_DONE;
 						olctx->action_status |= AS_WAIT_IOCP;
 					} else {
 						olctx->fn_iocp_done({ fd, wrt, 0 });
@@ -506,6 +508,7 @@ namespace netp {
 					iocp_olctx_reset_overlapped(olctx);
 					int ec = _do_accept_ex(olctx);
 					if (ec == netp::OK) {
+						olctx->action_status &= ~AS_DONE;
 						olctx->action_status |= AS_WAIT_IOCP;
 					} else {
 						olctx->fn_iocp_done({ NETP_INVALID_SOCKET, ec, nullptr });
@@ -577,9 +580,6 @@ namespace netp {
 
 					NETP_ASSERT(m_tb != nullptr);
 					m_tb->expire_all();
-
-					//last loop interrupt
-					_do_poller_interrupt_wait();
 				}
 				break;
 				}
