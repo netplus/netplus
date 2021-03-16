@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # project name, use this name to create executable file 
-project(thp CXX C)
+project(netplus CXX C)
 
 # build flags
 set(CMAKE_CXX_STANDARD 11)
@@ -66,5 +66,5 @@ target_include_directories(${LIB_NAME}
 )
 
 # Create executable file with netplus
-add_executable(${PROJECT_NAME} ../../test/throughput/src/main.cpp)
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} PRIVATE ${LIB_NAME})
+# add_executable(${PROJECT_NAME} ../../test/throughput/src/main.cpp)
+# TARGET_LINK_LIBRARIES(${PROJECT_NAME} PRIVATE ${LIB_NAME})
