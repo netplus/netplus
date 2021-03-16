@@ -8,8 +8,8 @@
 #include <netp/io_event_loop.hpp>
 #include <netp/os/winsock_helper.hpp>
 
-#define NETP_IOCP_INTERRUPT_COMPLETE_KEY (-17)
-#define NETP_IOCP_INTERRUPT_COMPLETE_PARAM (-17)
+#define NETP_IOCP_INTERRUPT_COMPLETE_KEY (-13)
+#define NETP_IOCP_INTERRUPT_COMPLETE_PARAM (-13)
 #define NETP_IOCP_BUFFER_SIZE (1024*64)
 
 namespace netp {
@@ -351,7 +351,7 @@ namespace netp {
 		void _do_iocp_begin(SOCKET fd, fn_iocp_event_t const& fn_iocp) {
 			NETP_TRACE_IOE("[#%d][CreateIoCompletionPort]init", fd);
 			NETP_ASSERT(m_handle != nullptr);
-			HANDLE bindcp = ::CreateIoCompletionPort((HANDLE)fd, m_handle, (u_long)fd, 0);
+			HANDLE bindcp = ::CreateIoCompletionPort((HANDLE)fd, m_handle, 0, 0);
 			if (bindcp == nullptr) {
 				int ec = netp_socket_get_last_errno();
 				fn_iocp({ fd,ec,0 });

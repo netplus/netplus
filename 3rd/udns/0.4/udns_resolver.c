@@ -1199,6 +1199,257 @@ again: /* receive the reply */
 
 }
 
+//-------------------------for netplus aio mode-------------------------------
+void dns_ioevent_with_udpdata_in(struct dns_ctx* ctx, time_t now, dnsc_t* udpdata, int len, struct sockaddr_in* sockin) {
+    int r;
+    unsigned servi;
+    struct dns_query* q;
+    dnsc_t* pbuf;
+    dnscc_t* pend, * pcur;
+    void* result;
+    union sockaddr_ns sns;
+    socklen_t slen;
+
+    SETCTX(ctx);
+    if (!CTXOPEN(ctx))
+        return;
+    dns_assert_ctx(ctx);
+    //pbuf = ctx->dnsc_pbuf;
+    pbuf = udpdata;
+    r = len;
+    sns.sin = *sockin;
+    if (!now) now = time(NULL);
+
+//again: /* receive the reply */
+
+    /*skip read, as we feed it with udp packet*/
+    slen = sizeof(sns);
+    //r = recvfrom(ctx->dnsc_udpsock, (void*)pbuf, ctx->dnsc_udpbuf,
+    //    MSG_DONTWAIT, &sns.sa, &slen);
+    //if (r < 0) {
+        /*XXX just ignore recvfrom() errors for now.
+         * in the future it may be possible to determine which
+         * query failed and requeue it.
+         * Note there may be various error conditions, triggered
+         * by both local problems and remote problems.  It isn't
+         * quite trivial to determine whenever an error is local
+         * or remote.  On local errors, we should stop, while
+         * remote errors should be ignored (for now anyway).
+         */
+//#ifdef WINDOWS
+       // if (WSAGetLastError() == WSAEWOULDBLOCK)
+//#else
+        //if (errno == EAGAIN)
+//#endif
+        //{
+        //    dns_request_utm(ctx, now);
+        //    return;
+        //}
+        //goto again;
+    //}
+
+    pend = pbuf + r;
+    pcur = dns_payload(pbuf);
+
+    /* check reply header */
+    if (pcur > pend || dns_numqd(pbuf) > 1 || dns_opcode(pbuf) != 0) {
+        //DNS_DBG(ctx, -1/*bad reply*/, &sns.sa, slen, pbuf, r);
+        return ;
+    }
+
+    /* find the matching query, by qID */
+    for (q = ctx->dnsc_qactive.head; ; q = q->dnsq_next) {
+        if (!q) {
+            /* no more requests: old reply? */
+            //DNS_DBG(ctx, -5/*no matching query*/, &sns.sa, slen, pbuf, r);
+            return;
+        }
+        if (pbuf[DNS_H_QID1] == q->dnsq_id[0] &&
+            pbuf[DNS_H_QID2] == q->dnsq_id[1])
+            break;
+    }
+
+    /* if we have numqd, compare with our query qDN */
+    if (dns_numqd(pbuf)) {
+        /* decode the qDN */
+        dnsc_t dn[DNS_MAXDN];
+        if (dns_getdn(pbuf, &pcur, pend, dn, sizeof(dn)) < 0 ||
+            pcur + 4 > pend) {
+            //DNS_DBG(ctx, -1/*bad reply*/, &sns.sa, slen, pbuf, r);
+            return;
+        }
+        if (!dns_dnequal(dn, q->dnsq_dn) ||
+            memcmp(pcur, q->dnsq_typcls, 4) != 0) {
+            /* not this query */
+            //DNS_DBG(ctx, -5/*no matching query*/, &sns.sa, slen, pbuf, r);
+            return;
+        }
+        /* here, query match, and pcur points past qDN in query section in pbuf */
+    }
+    /* if no numqd, we only allow FORMERR rcode */
+    else if (dns_rcode(pbuf) != DNS_R_FORMERR) {
+        /* treat it as bad reply if !FORMERR */
+        //DNS_DBG(ctx, -1/*bad reply*/, &sns.sa, slen, pbuf, r);
+        return;
+    }
+    else {
+        /* else it's FORMERR, handled below */
+    }
+
+    /* find server */
+#ifdef HAVE_IPv6
+    if (sns.sa.sa_family == AF_INET6 && slen >= sizeof(sns.sin6)) {
+        for (servi = 0; servi < ctx->dnsc_nserv; ++servi)
+            if (sin6_eq(ctx->dnsc_serv[servi].sin6, sns.sin6))
+                break;
+    }
+    else
+#endif
+        if (sns.sa.sa_family == AF_INET && slen >= sizeof(sns.sin)) {
+            for (servi = 0; servi < ctx->dnsc_nserv; ++servi)
+                if (sin_eq(ctx->dnsc_serv[servi].sin, sns.sin))
+                    break;
+        }
+        else
+            servi = ctx->dnsc_nserv;
+
+    /* check if we expect reply from this server.
+     * Note we can receive reply from first try if we're already at next */
+    if (!(q->dnsq_servwait & (1 << servi))) { /* if ever asked this NS */
+        //DNS_DBG(ctx, -2/*wrong server*/, &sns.sa, slen, pbuf, r);
+        return;
+    }
+
+    /* we got (some) reply for our query */
+
+    DNS_DBGQ(ctx, q, 0, &sns.sa, slen, pbuf, r);
+    q->dnsq_servwait &= ~(1 << servi);	/* don't expect reply from this serv */
+
+    /* process the RCODE */
+    switch (dns_rcode(pbuf)) {
+
+    case DNS_R_NOERROR:
+        if (dns_tc(pbuf)) {
+            /* possible truncation.  We can't deal with it. */
+            /*XXX for now, treat TC bit the same as SERVFAIL.
+             * It is possible to:
+             *  a) try to decode the reply - may be ANSWER section is ok;
+             *  b) check if server understands EDNS0, and if it is, and
+             *   answer still don't fit, end query.
+             */
+            break;
+        }
+        if (!dns_numan(pbuf)) {	/* no data of requested type */
+            if (dns_next_srch(ctx, q)) {
+                /* if we're searching, try next searchlist element,
+                 * but remember NODATA reply. */
+                q->dnsq_flags |= DNS_SEEN_NODATA;
+                dns_send(ctx, q, now);
+            }
+            else
+                /* else - nothing to search any more - finish the query.
+                 * It will be NODATA since we've seen a NODATA reply. */
+                dns_end_query(ctx, q, DNS_E_NODATA, 0);
+        }
+        /* we've got a positive reply here */
+        else if (q->dnsq_parse) {
+            /* if we have parsing routine, call it and return whatever it returned */
+            /* don't try to re-search if NODATA here.  For example,
+             * if we asked for A but only received CNAME.  Unless we'll
+             * someday do recursive queries.  And that's problematic too, since
+             * we may be dealing with specific AA-only nameservers for a given
+             * domain, but CNAME points elsewhere...
+             */
+            r = q->dnsq_parse(q->dnsq_dn, pbuf, pcur, pend, &result);
+            dns_end_query(ctx, q, r, r < 0 ? NULL : result);
+        }
+        /* else just malloc+copy the raw DNS reply */
+        else if ((result = malloc(r)) == NULL)
+            dns_end_query(ctx, q, DNS_E_NOMEM, NULL);
+        else {
+            memcpy(result, pbuf, r);
+            dns_end_query(ctx, q, r, result);
+        }
+
+        return;
+
+    case DNS_R_NXDOMAIN:	/* Non-existing domain. */
+        if (dns_next_srch(ctx, q))
+            /* more search entries exists, try them. */
+            dns_send(ctx, q, now);
+        else
+            /* nothing to search anymore. End the query, returning either NODATA
+             * if we've seen it before, or NXDOMAIN if not. */
+            dns_end_query(ctx, q,
+                q->dnsq_flags & DNS_SEEN_NODATA ? DNS_E_NODATA : DNS_E_NXDOMAIN, 0);
+
+        return;
+
+    case DNS_R_FORMERR:
+    case DNS_R_NOTIMPL:
+        /* for FORMERR and NOTIMPL rcodes, if we tried EDNS0-enabled query,
+         * try w/o EDNS0. */
+        if (ctx->dnsc_udpbuf > DNS_MAXPACKET &&
+            !(q->dnsq_servnEDNS0 & (1 << servi))) {
+            /* we always trying EDNS0 first if enabled, and retry a given query
+             * if not available. Maybe it's better to remember inavailability of
+             * EDNS0 in ctx as a per-NS flag, and never try again for this NS.
+             * For long-running applications.. maybe they will change the nameserver
+             * while we're running? :)  Also, since FORMERR is the only rcode we
+             * allow to be header-only, and in this case the only check we do to
+             * find a query it belongs to is qID (not qDN+qCLS+qTYP), it's much
+             * easier to spoof and to force us to perform non-EDNS0 queries only...
+             */
+            q->dnsq_servnEDNS0 |= 1 << servi;
+            dns_send_this(ctx, q, servi, now);
+            return;
+        }
+        /* else we handle it the same as SERVFAIL etc */
+
+    case DNS_R_SERVFAIL:
+    case DNS_R_REFUSED:
+        /* for these rcodes, advance this request
+         * to the next server and reschedule */
+    default: /* unknown rcode? hmmm... */
+        break;
+    }
+
+    /* here, we received unexpected reply */
+    q->dnsq_servskip |= (1 << servi);	/* don't retry this server */
+
+    /* we don't expect replies from this server anymore.
+     * But there may be other servers.  Some may be still processing our
+     * query, and some may be left to try.
+     * We just ignore this reply and wait a bit more if some NSes haven't
+     * replied yet (dnsq_servwait != 0), and let the situation to be handled
+     * on next event processing.  Timeout for this query is set correctly,
+     * if not taking into account the one-second difference - we can try
+     * next server in the same iteration sooner.
+     */
+
+     /* try next server */
+    if (!q->dnsq_servwait) {
+        /* next retry: maybe some other servers will reply next time.
+         * dns_send() will end the query for us if no more servers to try.
+         * Note we can't continue with the next searchlist element here:
+         * we don't know if the current qdn exists or not, there's no definitive
+         * answer yet (which is seen in cases above).
+         *XXX standard resolver also tries as-is query in case all nameservers
+         * failed to process our query and if not tried before.  We don't do it.
+         */
+        dns_send(ctx, q, now);
+    }
+    else {
+        /* else don't do anything - not all servers replied yet */
+    }
+
+    return;
+
+}
+
+//end for netplus aio mode
+
+
 /* handle all timeouts */
 int dns_timeouts(struct dns_ctx *ctx, int maxwait, time_t now) {
   /* this is a hot routine */

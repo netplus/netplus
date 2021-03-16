@@ -1,4 +1,6 @@
+#include <netp/core/platform.hpp>
 
+#ifdef _NETP_WIN
 #include <netp/os/winsock_helper.hpp>
 
 namespace netp { namespace os {
@@ -61,5 +63,6 @@ namespace netp { namespace os {
 
 		NETP_CLOSE_SOCKET(fd);
 	}
-
 }}
+
+#endif

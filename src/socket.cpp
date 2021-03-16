@@ -317,6 +317,10 @@ namespace netp {
 					fn_read(netp::OK, netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes), m_raddr);
 			}
 		}
+		if (aiort != netp::OK && fn_read != nullptr) {
+			//deliver error
+			fn_read(aiort, nullptr, address() );
+		}
 		___aio_read_impl_done(aiort);
 	}
 
@@ -335,6 +339,9 @@ namespace netp {
 				fn_read == nullptr ? channel::ch_fire_read(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes)):
 					fn_read(nbytes, netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes));
 			}
+		}
+		if (aiort != netp::OK && fn_read != nullptr) {
+			fn_read(aiort, nullptr);
 		}
 		___aio_read_impl_done(aiort);
 	}

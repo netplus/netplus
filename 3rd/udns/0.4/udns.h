@@ -470,6 +470,9 @@ dns_setstatus(struct dns_ctx *ctx, int status);
 UDNS_API void
 dns_ioevent(struct dns_ctx *ctx, time_t now);
 
+UDNS_API void
+dns_ioevent_with_udpdata_in(struct dns_ctx* ctx, time_t now, dnsc_t* udpdata, int len, struct sockaddr_in* sockin);
+
 /* process any timeouts, return time in secounds to the
  * next timeout (or -1 if none) but not greather than maxwait */
 UDNS_API int

@@ -1048,8 +1048,7 @@ namespace netp {
 
 #ifdef NETP_HAS_POLLER_IOCP
 			NETP_ASSERT(L->type() == T_IOCP);
-			NETP_ASSERT("TODO");
-			//L->iocp_call(iocp_action::READ, m_fd, nullptr, std::bind(&socket::__iocp_WSARead_done, NRP<socket>(this), fn_read, std::placeholders::_1));
+			L->iocp_call(iocp_action::READ, m_fd, nullptr, std::bind(&socket::__iocp_WSARead_done, NRP<socket>(this), fn_read, std::placeholders::_1));
 #else
 			L->aio_do(aio_action::READ, m_fd, std::bind(&socket::__cb_aio_read_from_impl, NRP<socket>(this), fn_read, std::placeholders::_1));
 #endif
