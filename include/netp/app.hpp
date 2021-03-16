@@ -70,6 +70,10 @@ namespace netp {
 			}
 			poller_count[t] = c;
 		}
+		
+		void cfg_channel_rcv_buf(io_poller_type t, int buf_in_kbytes) {
+			poller_cfgs[t].ch_buf_size = buf_in_kbytes*(1024);
+		}
 
 		void cfg_add_dns(std::string const& dns_ns) {
 			dnsnses.push_back(dns_ns);

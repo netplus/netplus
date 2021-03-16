@@ -27,7 +27,7 @@ namespace netp {
 
 		int rt = connect(addr);
 		//NETP_INFO("connect rt: %d", rt);
-                if (IS_ERRNO_EQUAL_CONNECTING(rt)) {
+		if (IS_ERRNO_EQUAL_CONNECTING(rt)) {
 			ch_aio_connect([so=NRP<socket>(this), p](const int aiort_) {
 				//NRP< promise<int>> __p__barrier(p);we dont need this line if act executed in Q
 				so->ch_aio_end_connect();
@@ -131,7 +131,7 @@ namespace netp {
 
 	void socket::do_dial(address const& addr, fn_channel_initializer_t const& initializer, NRP<promise<int>> const& so_dialf) {
 		NETP_ASSERT(L->in_event_loop());
-		socket::aio_begin([so=NRP<socket>(this),addr, initializer, so_dialf](const int aiort_) {
+		aio_begin([so=NRP<socket>(this),addr, initializer, so_dialf](const int aiort_) {
 			NETP_ASSERT(so->L->in_event_loop());
 			if (aiort_ != netp::OK) {
 				so_dialf->set(aiort_);
@@ -305,57 +305,38 @@ namespace netp {
 		ch_close_impl(nullptr);
 	}
 
-	void socket::__cb_aio_read_impl(const int aiort_) {
+	void socket::__cb_aio_read_from_impl(fn_aio_read_from_event_t const& fn_read, const int aiort_) {
+		NETP_ASSERT(m_protocol == u8_t(NETP_PROTOCOL_UDP));
+		int aiort = aiort_;
+		while (aiort == netp::OK) {
+			NETP_ASSERT((m_chflag & (int(channel_flag::F_READ_SHUTDOWNING))) == 0);
+			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN) | int(channel_flag::F_CLOSE_PENDING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
+			netp::u32_t nbytes = socket_base::recvfrom(m_rcv_buf_ptr, m_rcv_buf_size, m_raddr, aiort);
+			if (NETP_LIKELY(nbytes > 0)) {
+				fn_read == nullptr ? channel::ch_fire_readfrom(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes), m_raddr) :
+					fn_read(netp::OK, netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes), m_raddr);
+			}
+		}
+		___aio_read_impl_done(aiort);
+	}
+
+	void socket::__cb_aio_read_impl(fn_aio_read_event_t const& fn_read, const int aiort_) {
 		//NETP_INFO("READ IN");
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(!ch_is_listener());
 		int aiort = aiort_;
-		if (m_protocol == u8_t(NETP_PROTOCOL_UDP)) {
-			while (aiort == netp::OK) {
-				NETP_ASSERT((m_chflag & (int(channel_flag::F_READ_SHUTDOWNING))) ==0 );
-				if (NETP_UNLIKELY(m_chflag & ( int(channel_flag::F_READ_SHUTDOWN) | int(channel_flag::F_CLOSE_PENDING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
-				netp::u32_t nbytes = socket_base::recvfrom(m_rcv_buf_ptr, m_rcv_buf_size, m_raddr, aiort);
-				if (NETP_LIKELY(nbytes > 0)) {
-					channel::ch_fire_readfrom(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes),m_raddr );
-				}
-			}
-		} else {
-			//in case socket object be destructed during ch_read
-			while (aiort == netp::OK) {
-				NETP_ASSERT( (m_chflag&(int(channel_flag::F_READ_SHUTDOWNING))) == 0);
-				if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN)|int(channel_flag::F_READ_ERROR) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
-				//NETP_INFO("read begin, %d", m_rcv_buf_size);
-				netp::u32_t nbytes = socket_base::recv(m_rcv_buf_ptr, m_rcv_buf_size, aiort);
-				//NETP_INFO("READ END: %d", nbytes);
-				if (NETP_LIKELY(nbytes > 0)) {
-					channel::ch_fire_read(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes));
-				}
-			}
-		}
 
-		switch (aiort) {
-			case netp::OK:
-			case netp::E_SOCKET_READ_BLOCK:
-			{}
-			break;
-			case netp::E_SOCKET_GRACE_CLOSE:
-			{
-				NETP_ASSERT(m_protocol != u8_t(NETP_PROTOCOL_UDP));
-				m_chflag |= int(channel_flag::F_FIN_RECEIVED);
-				ch_close_read_impl(nullptr);
-			}
-			break;
-			default:
-			{
-				NETP_ASSERT(aiort < 0);
-				ch_aio_end_read();
-				m_chflag |= int(channel_flag::F_READ_ERROR);
-				m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING)|int(channel_flag::F_BDLIMIT));
-				ch_errno()=(aiort);
-				ch_close_impl(nullptr);
-				NETP_WARN("[socket][%s]__cb_aio_read_impl, _ch_do_close_read_write, read error: %d, close, flag: %u", info().c_str(), aiort, m_chflag );
+		//in case socket object be destructed during ch_read
+		while (aiort == netp::OK) {
+			NETP_ASSERT( (m_chflag&(int(channel_flag::F_READ_SHUTDOWNING))) == 0);
+			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN)|int(channel_flag::F_READ_ERROR) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
+			netp::u32_t nbytes = socket_base::recv(m_rcv_buf_ptr, m_rcv_buf_size, aiort);
+			if (NETP_LIKELY(nbytes > 0)) {
+				fn_read == nullptr ? channel::ch_fire_read(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes)):
+					fn_read(nbytes, netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes));
 			}
 		}
+		___aio_read_impl_done(aiort);
 	}
 
 	void socket::__cb_aio_write_impl(const int aiort_) {
@@ -380,53 +361,7 @@ namespace netp {
 				m_chflag &= ~int(channel_flag::F_WRITING);
 			}
 		}
-
-		switch (aiort) {
-		case netp::OK:
-		{
-			NETP_ASSERT( (m_chflag & int(channel_flag::F_BDLIMIT)) == 0);
-			NETP_ASSERT( m_outbound_entry_q.size() == 0);
-			if (m_chflag&int(channel_flag::F_CLOSE_PENDING)) {
-				_ch_do_close_read_write();
-				NETP_TRACE_SOCKET("[socket][%s]aio_write, end F_CLOSE_PENDING, _ch_do_close_read_write, errno: %d, flag: %d", info().c_str(), ch_errno(), m_chflag);
-			} else if (m_chflag&int(channel_flag::F_WRITE_SHUTDOWN_PENDING)) {
-				_ch_do_close_write();
-				NETP_TRACE_SOCKET("[socket][%s]aio_write, end F_WRITE_SHUTDOWN_PENDING, ch_close_write, errno: %d, flag: %d", info().c_str(), ch_errno(), m_chflag);
-			} else {
-				std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>().swap(m_outbound_entry_q) ;
-				ch_aio_end_write();
-			}
-		}
-		break;
-		case netp::E_SOCKET_WRITE_BLOCK:
-		{
-			NETP_ASSERT(m_outbound_entry_q.size() > 0);
-#ifdef NETP_ENABLE_FAST_WRITE
-			NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)) );
-			ch_aio_write();
-#else
-			NETP_ASSERT(m_chflag & int(channel_flag::F_WATCH_WRITE));
-#endif
-			//NETP_TRACE_SOCKET("[socket][%s]__cb_aio_write_impl, write block", info().c_str());
-		}
-		break;
-		case netp::E_CHANNEL_BDLIMIT:
-		{
-			m_chflag |= int(channel_flag::F_BDLIMIT);
-			ch_aio_end_write();
-		}
-		break;
-		default:
-		{
-			ch_aio_end_write();
-			m_chflag |= int(channel_flag::F_WRITE_ERROR);
-			m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
-			socket::ch_errno()=(aiort);
-			ch_close_impl(nullptr);
-			NETP_WARN("[socket][%s]__cb_aio_write_impl, call_ch_do_close_read_write, write error: %d, m_chflag: %u", info().c_str(), aiort, m_chflag);
-		}
-		break;
-		}
+		__handle_aio_write_impl_done(aiort);
 	}
 
 	//write until error

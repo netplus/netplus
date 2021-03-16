@@ -267,7 +267,7 @@ public: \
 
 	CH_FUTURE_ACTION_IMPL_PACKET_ADDR(write_to);
 
-
+	/*
 #define CH_ACTION_IMPL_VOID(NAME) \
 private: \
 		inline void __ch_##NAME() { \
@@ -282,6 +282,7 @@ public: \
 				_ch->__ch_##NAME(); \
 			}); \
 		} \
+		*/
 
 		virtual channel_id_t ch_id() const = 0; //called by context in event_loop
 		virtual std::string ch_info() const = 0;
@@ -306,9 +307,9 @@ public: \
 		virtual void ch_close_read_impl(NRP<promise<int>> const& chp) = 0;
 		virtual void ch_close_write_impl(NRP<promise<int>> const& chp) = 0;
 		virtual void ch_close_impl(NRP<promise<int>> const& chp) = 0;
-
-
-		virtual void ch_aio_read( fn_aio_event_t const& fn = nullptr) = 0;
+		
+		virtual void ch_aio_read_from(fn_aio_read_from_event_t const& fn = nullptr) { (void)fn; }
+		virtual void ch_aio_read( fn_aio_read_event_t const& fn = nullptr) = 0;
 		virtual void ch_aio_end_read() = 0;
 
 		virtual void ch_aio_write(fn_aio_event_t const& fn = nullptr) = 0;

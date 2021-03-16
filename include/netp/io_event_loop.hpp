@@ -15,13 +15,13 @@
 #include <netp/promise.hpp>
 #include <netp/packet.hpp>
 
-#if defined(NETP_IO_POLLER_EPOLL)
+#if defined(NETP_HAS_POLLER_EPOLL)
 	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_EPOLL
-#elif defined(NETP_IO_POLLER_SELECT)
+#elif defined(NETP_HAS_POLLER_SELECT)
 	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_SELECT
-#elif defined(NETP_IO_POLLER_KQUEUE)
+#elif defined(NETP_HAS_POLLER_KQUEUE)
 	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_KQUEUE
-#elif defined(NETP_IO_POLLER_IOCP)
+#elif defined(NETP_HAS_POLLER_IOCP)
 	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_IOCP
 #else
 	#error "unknown poller type"
@@ -69,18 +69,20 @@ namespace netp {
 		BEGIN_READ_WRITE = (BEGIN | READ | WRITE)
 	};
 
-#ifdef NETP_ENABLE_IOCP
+#ifdef NETP_HAS_POLLER_IOCP
 	enum class iocp_action {
-		READ,
-		END_READ,
-		WRITE,
-		END_WRITE,
-		ACCEPT,
-		END_ACCEPT,
-		CONNECT,
-		END_CONNECT,
-		BEGIN,
-		END
+		READ=1<<0,
+		END_READ = 1 << 1,
+		WRITE = 1 << 2,
+		END_WRITE = 1 << 3,
+		ACCEPT = 1 << 4,
+		END_ACCEPT = 1 << 5,
+		CONNECT = 1 << 6,
+		END_CONNECT = 1 << 7,
+		BEGIN = 1 << 8,
+		NOTIFY_TERMINATING = 1 << 9,
+		END = 1 << 10,
+		BEGIN_READ_WRITE_ACCEPT_CONNECT = (BEGIN | READ | WRITE| ACCEPT| CONNECT)
 	};
 #endif
 
@@ -89,7 +91,7 @@ namespace netp {
 #endif
 
 	struct watch_ctx :
-		public netp::ref_base
+		public netp::non_atomic_ref_base
 	{
 		SOCKET fd;
 		fn_aio_event_t iofn[aio_flag::AIO_FLAG_MAX];//notify,read,write
@@ -108,6 +110,32 @@ namespace netp {
 	typedef std::function<void()> fn_io_event_task_t;
 	typedef std::vector<fn_io_event_task_t, netp::allocator<fn_io_event_task_t>> io_task_q_t;
 
+	struct act_op {
+		aio_action act;
+		SOCKET fd;
+		fn_aio_event_t fn;
+	};
+	typedef std::vector<act_op, netp::allocator<act_op>> act_queue_t;
+
+#ifdef NETP_HAS_POLLER_IOCP
+	struct iocp_act_op {
+		iocp_action act;
+		SOCKET fd;
+		fn_overlapped_io_event fn_overlapped;
+		fn_iocp_event_t fn_iocp;
+	};
+	typedef std::vector<iocp_act_op, netp::allocator<act_op>> iocp_act_op_queue_t;
+#endif
+
+	enum class loop_state {
+		S_IDLE,
+		S_LAUNCHING,
+		S_RUNNING,
+		S_TERMINATING, //no more watch evt
+		S_TERMINATED, //no more new timer, we need this state to make sure all channel have a chance to check terminating flag
+		S_EXIT //exit..
+	};
+
 	class io_event_loop :
 		public ref_base
 	{
@@ -116,26 +144,16 @@ namespace netp {
 			F_LOOP_WAIT_ENTER_WAITING = 1<<1
 		};
 		friend class io_event_loop_group;
-		enum class loop_state {
-			S_IDLE,
-			S_LAUNCHING,
-			S_RUNNING,
-			S_TERMINATING, //no more watch evt
-			S_TERMINATED, //no more new timer, we need this state to make sure all channel have a chance to check terminating flag
-			S_EXIT //exit..
-		};
-
-		struct act_op {
-			aio_action act;
-			SOCKET fd;
-			fn_aio_event_t fn;
-		};
-		typedef std::vector<act_op, netp::allocator<act_op>> act_queue_t;
 
 	protected:
 		std::thread::id m_tid;
+
 		act_queue_t m_acts;
 		watch_ctx_map_t m_ctxs;
+
+#ifdef NETP_HAS_POLLER_IOCP
+		iocp_act_op_queue_t m_iocp_acts;
+#endif
 
 		spin_mutex m_tq_mutex;
 		io_task_q_t m_tq_standby;
@@ -169,7 +187,13 @@ namespace netp {
 			netp::timer_duration_t ndelay;
 			m_tb->expire(ndelay);
 			long long ndelayns = ndelay.count();
-			if (ndelayns == 0 || m_acts.size() != 0 ) {
+			if (ndelayns == 0 ||
+#ifdef NETP_HAS_POLLER_IOCP
+				m_iocp_acts.size() != 0
+#else
+				m_acts.size() != 0 
+#endif
+				) {
 				return 0;
 			}
 
@@ -212,185 +236,186 @@ namespace netp {
 			NETP_ASSERT(m_ctxs.size() == 0);
 		}
 
-		inline void __do_execute_act() {
+		virtual void __do_execute_act() {
 			std::size_t vecs = m_acts.size();
-			if (vecs>0) {
-				std::size_t acti = 0;
-				while (acti < vecs) {
-					act_op& actop = m_acts[acti++];
-					//m_acts.pop();
-					watch_ctx_map_t::iterator&& ctxit = m_ctxs.find(actop.fd);
-					switch (actop.act) {
-					case aio_action::READ:
-					{
+			if (NETP_UNLIKELY(vecs == 0)) {
+				return;
+			}
+			std::size_t acti = 0;
+			while (acti < m_acts.size()) {
+				act_op& actop = m_acts[acti++];
+				//m_acts.pop();
+				watch_ctx_map_t::iterator&& ctxit = m_ctxs.find(actop.fd);
+				switch (actop.act) {
+				case aio_action::READ:
+				{
 #ifdef NETP_DEBUG_TERMINATING
-						NETP_ASSERT(m_terminated == false);
+					NETP_ASSERT(m_terminated == false);
 #endif
 
-						NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::READ", m_type, actop.fd);
-						NETP_ASSERT(ctxit != m_ctxs.end());
-						int rt = _do_watch(actop.fd, aio_flag::AIO_READ, ctxit->second);
-						if (netp::OK == rt) {
+					NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::READ", m_type, actop.fd);
+					NETP_ASSERT(ctxit != m_ctxs.end());
+					int rt = _do_watch(actop.fd, aio_flag::AIO_READ, ctxit->second);
+					if (netp::OK == rt) {
 #ifdef NETP_DEBUG_WATCH_CTX_FLAG
-							NETP_ASSERT(((ctxit->second->flag & aio_flag::AIO_READ) == 0 && ctxit->second->iofn[aio_flag::AIO_READ] == nullptr), "fd: %d, flag: %d", actop.fd, ctxit->second->flag);
-							ctxit->second->flag |= aio_flag::AIO_READ;
+						NETP_ASSERT(((ctxit->second->flag & aio_flag::AIO_READ) == 0 && ctxit->second->iofn[aio_flag::AIO_READ] == nullptr), "fd: %d, flag: %d", actop.fd, ctxit->second->flag);
+						ctxit->second->flag |= aio_flag::AIO_READ;
 #endif
-							ctxit->second->iofn[aio_flag::AIO_READ] = actop.fn;
-						} else {
-							const int ec = netp_socket_get_last_errno();
-							NETP_WARN("[io_event_loop][type:%d][#%d]aio_action::READ failed", m_type, actop.fd, ec);
-							actop.fn(ec);
-						}
+						ctxit->second->iofn[aio_flag::AIO_READ] = actop.fn;
+					} else {
+						const int ec = netp_socket_get_last_errno();
+						NETP_WARN("[io_event_loop][type:%d][#%d]aio_action::READ failed", m_type, actop.fd, ec);
+						actop.fn(ec);
 					}
-					break;
-					case aio_action::END_READ:
-					{
-						NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::END_READ", m_type, actop.fd);
-						NETP_ASSERT(ctxit != m_ctxs.end());
-						if (ctxit->second->iofn[aio_flag::AIO_READ] != nullptr) {
-							//we need this condition check ,cuz epoll might fail to watch
-							_do_unwatch(actop.fd, aio_flag::AIO_READ, ctxit->second);
+				}
+				break;
+				case aio_action::END_READ:
+				{
+					NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::END_READ", m_type, actop.fd);
+					NETP_ASSERT(ctxit != m_ctxs.end());
+					if (ctxit->second->iofn[aio_flag::AIO_READ] != nullptr) {
+						//we need this condition check ,cuz epoll might fail to watch
+						_do_unwatch(actop.fd, aio_flag::AIO_READ, ctxit->second);
 #ifdef NETP_DEBUG_WATCH_CTX_FLAG
-							NETP_ASSERT(((ctxit->second->flag & aio_flag::AIO_READ) != 0 && ctxit->second->iofn[aio_flag::AIO_READ] != nullptr), "fd: %d, flag: %d", actop.fd, ctxit->second->flag);
-							ctxit->second->flag &= ~aio_flag::AIO_READ;
+						NETP_ASSERT(((ctxit->second->flag & aio_flag::AIO_READ) != 0 && ctxit->second->iofn[aio_flag::AIO_READ] != nullptr), "fd: %d, flag: %d", actop.fd, ctxit->second->flag);
+						ctxit->second->flag &= ~aio_flag::AIO_READ;
 #endif
-							ctxit->second->iofn[aio_flag::AIO_READ] = nullptr;
-						}
+						ctxit->second->iofn[aio_flag::AIO_READ] = nullptr;
 					}
-					break;
-					case aio_action::WRITE:
-					{
-
-#ifdef NETP_DEBUG_TERMINATING
-						NETP_ASSERT(m_terminated == false);
-#endif
-						NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::WRITE", m_type, actop.fd);
-						NETP_ASSERT(ctxit != m_ctxs.end());
-						int rt = _do_watch(actop.fd, aio_flag::AIO_WRITE, ctxit->second);
-						if (netp::OK == rt) {
-#ifdef NETP_DEBUG_WATCH_CTX_FLAG
-							NETP_ASSERT(((ctxit->second->flag & aio_flag::AIO_WRITE) == 0 && ctxit->second->iofn[aio_flag::AIO_WRITE] == nullptr), "fd: %d, flag: %d", actop.fd, ctxit->second->flag);
-							ctxit->second->flag |= aio_flag::AIO_WRITE;
-#endif
-							ctxit->second->iofn[aio_flag::AIO_WRITE] = actop.fn;
-						} else {
-							const int ec = netp_socket_get_last_errno();
-							NETP_WARN("[io_event_loop][type:%d][#%d]aio_action::WRITE failed, ec: %d", m_type, actop.fd, ec);
-							actop.fn(ec);
-						}
-					}
-					break;
-					case aio_action::END_WRITE:
-					{
-						NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::END_WRITE", m_type, actop.fd);
-						NETP_ASSERT(ctxit != m_ctxs.end());
-						if (ctxit->second->iofn[aio_flag::AIO_WRITE] != nullptr) {
-							//we need this condition check ,cuz epoll might fail to watch
-							_do_unwatch(actop.fd, aio_flag::AIO_WRITE, ctxit->second);
-#ifdef NETP_DEBUG_WATCH_CTX_FLAG
-							NETP_ASSERT(((ctxit->second->flag & aio_flag::AIO_WRITE) != 0 && ctxit->second->iofn[aio_flag::AIO_WRITE] != nullptr), "fd: %d, flag: %d", actop.fd, ctxit->second->flag);
-							ctxit->second->flag &= ~aio_flag::AIO_WRITE;
-#endif
-							ctxit->second->iofn[aio_flag::AIO_WRITE] = nullptr;
-						}
-					}
-					break;
-					case aio_action::BEGIN:
-					{
+				}
+				break;
+				case aio_action::WRITE:
+				{
 
 #ifdef NETP_DEBUG_TERMINATING
-						NETP_ASSERT(m_terminated == false);
+					NETP_ASSERT(m_terminated == false);
 #endif
-
-						if (m_cfg.maxiumctx != 0 && m_ctxs.size() >= m_cfg.maxiumctx) {
-							NETP_WARN("[io_event_loop][type:%d][#%d]aio_action::BEGIN limitation(%u)", m_type, actop.fd, m_cfg.maxiumctx);
-							actop.fn(netp::E_IO_EVENT_LOOP_MAXIMUM_CTX_LIMITATION);
-						} else {
-							NETP_ASSERT(ctxit == m_ctxs.end(), "fd: %d", actop.fd);
-							NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::BEGIN", m_type, actop.fd);
-
-							NRP<watch_ctx> ctx_ = netp::make_ref<watch_ctx>();
-							ctx_->fd = actop.fd;
+					NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::WRITE", m_type, actop.fd);
+					NETP_ASSERT(ctxit != m_ctxs.end());
+					int rt = _do_watch(actop.fd, aio_flag::AIO_WRITE, ctxit->second);
+					if (netp::OK == rt) {
 #ifdef NETP_DEBUG_WATCH_CTX_FLAG
-							ctx_->flag = 0;
+						NETP_ASSERT(((ctxit->second->flag & aio_flag::AIO_WRITE) == 0 && ctxit->second->iofn[aio_flag::AIO_WRITE] == nullptr), "fd: %d, flag: %d", actop.fd, ctxit->second->flag);
+						ctxit->second->flag |= aio_flag::AIO_WRITE;
 #endif
-
-#ifdef NETP_DEBUG_TERMINATING
-							ctx_->terminated = false;
-#endif
-							ctx_->iofn[aio_flag::AIO_NOTIFY] = actop.fn;
-							ctx_->iofn[aio_flag::AIO_READ] = nullptr;
-							ctx_->iofn[aio_flag::AIO_WRITE] = nullptr;
-
-							m_ctxs.insert({ actop.fd,std::move(ctx_) });
-							actop.fn(netp::OK);
-						}
+						ctxit->second->iofn[aio_flag::AIO_WRITE] = actop.fn;
+					} else {
+						const int ec = netp_socket_get_last_errno();
+						NETP_WARN("[io_event_loop][type:%d][#%d]aio_action::WRITE failed, ec: %d", m_type, actop.fd, ec);
+						actop.fn(ec);
 					}
-					break;
-					case aio_action::NOTIFY_TERMINATING:
-					{
-						//no more add(ctx) opertion after terminating
-#ifdef NETP_DEBUG_TERMINATING
-						NETP_ASSERT(m_terminated == false);
-						m_terminated = true;
-#endif
-						watch_ctx_map_t::iterator&& it = m_ctxs.begin();
-						while (it != m_ctxs.end()) {
-							NRP<watch_ctx> ctx = (it++)->second;
-							if (ctx->fd == m_signalfds[0]) {
-								continue;
-							}
-							NETP_ASSERT(ctx->fd > 0);
-							NETP_ASSERT(ctx->iofn[aio_flag::AIO_NOTIFY] != nullptr);
-							for (i8_t i = aio_flag::AIO_WRITE; i >= aio_flag::AIO_NOTIFY; --i) {
-								if (ctx->iofn[i] != nullptr) {
-									NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::NOTIFY_TERMINATING, io_flag: %d", m_type, ctx->fd, i);
-									ctx->iofn[i](netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING);
-								}
-							}
-
-#ifdef NETP_DEBUG_TERMINATING
-							ctx->terminated = true;
-#endif
-						}
-
-						//no competitor here, store directly
-						NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_TERMINATING));
-						m_state.store(u8_t(loop_state::S_TERMINATED), std::memory_order_release);
-
-						NETP_ASSERT(m_tb != nullptr);
-						m_tb->expire_all();
-					}
-					break;
-					case aio_action::END:
-					{
-						NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::END", m_type, actop.fd);
-						NETP_ASSERT(ctxit != m_ctxs.end(), "fd: %d", actop.fd);
+				}
+				break;
+				case aio_action::END_WRITE:
+				{
+					NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::END_WRITE", m_type, actop.fd);
+					NETP_ASSERT(ctxit != m_ctxs.end());
+					if (ctxit->second->iofn[aio_flag::AIO_WRITE] != nullptr) {
+						//we need this condition check ,cuz epoll might fail to watch
+						_do_unwatch(actop.fd, aio_flag::AIO_WRITE, ctxit->second);
 #ifdef NETP_DEBUG_WATCH_CTX_FLAG
-						NETP_ASSERT(ctxit->second->flag == 0);
+						NETP_ASSERT(((ctxit->second->flag & aio_flag::AIO_WRITE) != 0 && ctxit->second->iofn[aio_flag::AIO_WRITE] != nullptr), "fd: %d, flag: %d", actop.fd, ctxit->second->flag);
+						ctxit->second->flag &= ~aio_flag::AIO_WRITE;
 #endif
-						NETP_ASSERT((ctxit->second->iofn[aio_flag::AIO_READ] == nullptr));
-						NETP_ASSERT((ctxit->second->iofn[aio_flag::AIO_WRITE] == nullptr));
-						NETP_ASSERT((ctxit->second->iofn[aio_flag::AIO_NOTIFY] != nullptr));
+						ctxit->second->iofn[aio_flag::AIO_WRITE] = nullptr;
+					}
+				}
+				break;
+				case aio_action::BEGIN:
+				{
 
-						ctxit->second->iofn[aio_flag::AIO_NOTIFY] = nullptr;
-						m_ctxs.erase(ctxit);
-						NETP_ASSERT(actop.fn != nullptr);
+#ifdef NETP_DEBUG_TERMINATING
+					NETP_ASSERT(m_terminated == false);
+#endif
+
+					if (m_cfg.maxiumctx != 0 && m_ctxs.size() >= m_cfg.maxiumctx) {
+						NETP_WARN("[io_event_loop][type:%d][#%d]aio_action::BEGIN limitation(%u)", m_type, actop.fd, m_cfg.maxiumctx);
+						actop.fn(netp::E_IO_EVENT_LOOP_MAXIMUM_CTX_LIMITATION);
+					} else {
+						NETP_ASSERT(ctxit == m_ctxs.end(), "fd: %d", actop.fd);
+						NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::BEGIN", m_type, actop.fd);
+
+						NRP<watch_ctx> ctx_ = netp::make_ref<watch_ctx>();
+						ctx_->fd = actop.fd;
+#ifdef NETP_DEBUG_WATCH_CTX_FLAG
+						ctx_->flag = 0;
+#endif
+
+#ifdef NETP_DEBUG_TERMINATING
+						ctx_->terminated = false;
+#endif
+						ctx_->iofn[aio_flag::AIO_NOTIFY] = actop.fn;
+						ctx_->iofn[aio_flag::AIO_READ] = nullptr;
+						ctx_->iofn[aio_flag::AIO_WRITE] = nullptr;
+
+						m_ctxs.insert({ actop.fd,std::move(ctx_) });
 						actop.fn(netp::OK);
 					}
-					break;
-					case aio_action::BEGIN_READ_WRITE:
-					{//for compiler warning...
-					}
-					break;
-					}
-					vecs = m_acts.size();//update vecs
 				}
+				break;
+				case aio_action::NOTIFY_TERMINATING:
+				{
+					//no more add(ctx) opertion after terminating
+#ifdef NETP_DEBUG_TERMINATING
+					NETP_ASSERT(m_terminated == false);
+					m_terminated = true;
+#endif
+					watch_ctx_map_t::iterator&& it = m_ctxs.begin();
+					while (it != m_ctxs.end()) {
+						NRP<watch_ctx> ctx = (it++)->second;
+						if (ctx->fd == m_signalfds[0]) {
+							continue;
+						}
+						NETP_ASSERT(ctx->fd > 0);
+						NETP_ASSERT(ctx->iofn[aio_flag::AIO_NOTIFY] != nullptr);
+						for (i8_t i = aio_flag::AIO_WRITE; i >= aio_flag::AIO_NOTIFY; --i) {
+							if (ctx->iofn[i] != nullptr) {
+								NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::NOTIFY_TERMINATING, io_flag: %d", m_type, ctx->fd, i);
+								ctx->iofn[i](netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING);
+							}
+						}
 
-				m_acts.clear();
-				if (vecs > 8192) {
-					act_queue_t().swap(m_acts);
+#ifdef NETP_DEBUG_TERMINATING
+						ctx->terminated = true;
+#endif
+					}
+
+					//no competitor here, store directly
+					NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_TERMINATING));
+					m_state.store(u8_t(loop_state::S_TERMINATED), std::memory_order_release);
+
+					NETP_ASSERT(m_tb != nullptr);
+					m_tb->expire_all();
 				}
+				break;
+				case aio_action::END:
+				{
+					NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::END", m_type, actop.fd);
+					NETP_ASSERT(ctxit != m_ctxs.end(), "fd: %d", actop.fd);
+#ifdef NETP_DEBUG_WATCH_CTX_FLAG
+					NETP_ASSERT(ctxit->second->flag == 0);
+#endif
+					NETP_ASSERT((ctxit->second->iofn[aio_flag::AIO_READ] == nullptr));
+					NETP_ASSERT((ctxit->second->iofn[aio_flag::AIO_WRITE] == nullptr));
+					NETP_ASSERT((ctxit->second->iofn[aio_flag::AIO_NOTIFY] != nullptr));
+
+					ctxit->second->iofn[aio_flag::AIO_NOTIFY] = nullptr;
+					m_ctxs.erase(ctxit);
+					NETP_ASSERT(actop.fn != nullptr);
+					actop.fn(netp::OK);
+				}
+				break;
+				case aio_action::BEGIN_READ_WRITE:
+				{//for compiler warning...
+				}
+				break;
+				}
+				vecs = m_acts.size();//update vecs
+			}
+
+			m_acts.clear();
+			if (vecs > 8192) {
+				act_queue_t().swap(m_acts);
 			}
 		}
 
@@ -516,15 +541,25 @@ namespace netp {
 			return m_channel_rcv_buf;
 		}
 
-#ifdef NETP_IO_POLLER_IOCP
-		virtual void do_iocp_call(iocp_action act, SOCKET fd, fn_overlapped_io_event const& fn_overlapped, fn_aio_event_t const& fn) {
-			NETP_ASSERT(m_type == T_IOCP);
+#ifdef NETP_HAS_POLLER_IOCP
+		inline void iocp_do( iocp_action act, SOCKET fd, fn_overlapped_io_event const& fn_overlapped, fn_iocp_event_t const& fn) {
+			NETP_ASSERT(fd != NETP_INVALID_SOCKET);
+			NETP_ASSERT(in_event_loop());
+			if (((u16_t(act) & u16_t(iocp_action::BEGIN_READ_WRITE_ACCEPT_CONNECT)) == 0) || m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
+				m_iocp_acts.push_back({act,fd, (fn_overlapped), (fn) });
+			} else {
+				fn({ fd, netp::E_IO_EVENT_LOOP_TERMINATED,0 });
+			}
 		}
-		inline void iocp_call( iocp_action act, SOCKET fd, fn_overlapped_io_event const& fn_overlapped, fn_aio_event_t const& fn) {
-			NETP_ASSERT(fd != NETP_INVALID_SOCKET );
-			execute([L=NRP<io_event_loop>(this), act, fd, fn_overlapped, fn]() -> void {
-				L->do_IOCP_call(act,fd, fn_overlapped,fn);
-			});
+		inline void iocp_do(iocp_action act, SOCKET fd, fn_overlapped_io_event&& fn_overlapped, fn_iocp_event_t&& fn) {
+			NETP_ASSERT(fd != NETP_INVALID_SOCKET);
+			NETP_ASSERT(in_event_loop());
+			if (((u16_t(act) & u16_t(iocp_action::BEGIN_READ_WRITE_ACCEPT_CONNECT)) == 0) || m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
+				m_iocp_acts.push_back({ act,fd, std::move(fn_overlapped), std::move(fn) });
+			}
+			else {
+				fn({ fd, netp::E_IO_EVENT_LOOP_TERMINATED,0 });
+			}
 		}
 #endif
 

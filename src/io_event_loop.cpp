@@ -1,9 +1,9 @@
 #include <netp/core.hpp>
-#if defined(NETP_IO_POLLER_EPOLL)
+#if defined(NETP_HAS_POLLER_EPOLL)
 	#include <netp/poller_epoll.hpp>
-#elif defined(NETP_IO_POLLER_IOCP)
+#elif defined(NETP_HAS_POLLER_IOCP)
 	#include <netp/poller_iocp.hpp>
-#elif defined(NETP_IO_POLLER_KQUEUE)
+#elif defined(NETP_HAS_POLLER_KQUEUE)
 	#include <netp/poller_kqueue.hpp>
 #else
 	#include <netp/poller_select.hpp>
@@ -18,21 +18,21 @@ namespace netp {
 	inline static NRP<io_event_loop> default_poller_maker(io_poller_type t, poller_cfg const& cfg) {
 		NRP<io_event_loop> poller;
 		switch (t) {
-#if defined(NETP_IO_POLLER_EPOLL)
+#if defined(NETP_HAS_POLLER_EPOLL)
 		case T_EPOLL:
 		{
 			poller = netp::make_ref<poller_epoll>(cfg);
 			NETP_ALLOC_CHECK(poller, sizeof(poller_epoll));
 		}
 		break;
-#elif defined(NETP_IO_POLLER_IOCP)
+#elif defined(NETP_HAS_POLLER_IOCP)
 		case T_IOCP:
 		{
 			poller = netp::make_ref<poller_iocp>(cfg);
 			NETP_ALLOC_CHECK(poller, sizeof(poller_iocp));
 		}
 		break;
-#elif defined(NETP_IO_POLLER_KQUEUE)
+#elif defined(NETP_HAS_POLLER_KQUEUE)
 		case T_KQUEUE:
 		{
 			poller = netp::make_ref<poller_kqueue>(cfg);
@@ -72,7 +72,6 @@ namespace netp {
 
 		rt = netp::turnon_nodelay(netp::NETP_DEFAULT_SOCKAPI, m_signalfds[1]);
 		NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
-
 
 		NETP_ASSERT(rt == netp::OK);
 		aio_do(aio_action::BEGIN, m_signalfds[0], [](const int aiort_) {
@@ -152,6 +151,7 @@ namespace netp {
 							m_tq.clear();
 						}
 					}
+
 					__do_execute_act();
 					_do_poll(_calc_wait_dur_in_nano());
 				}
@@ -181,8 +181,16 @@ namespace netp {
 		void io_event_loop::__notify_terminating() {
 			u8_t running = u8_t(loop_state::S_RUNNING);
 			if (m_state.compare_exchange_strong(running, u8_t(loop_state::S_TERMINATING), std::memory_order_acq_rel, std::memory_order_acquire)) {
-				schedule([L = NRP<io_event_loop>(this)](){
-					L->aio_do(aio_action::NOTIFY_TERMINATING, 0,nullptr);
+				schedule([L = NRP<io_event_loop>(this)]() {
+#ifdef NETP_HAS_POLLER_IOCP
+					if (L->type() == T_IOCP) {
+						L->iocp_do(iocp_action::NOTIFY_TERMINATING, 0, nullptr, nullptr);
+					} else {//patch for bye
+						L->aio_do(aio_action::NOTIFY_TERMINATING, 0, nullptr);
+					}
+#else
+					L->aio_do(aio_action::NOTIFY_TERMINATING, 0, nullptr);
+#endif
 				});
 			}
 		}

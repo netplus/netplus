@@ -239,6 +239,7 @@ namespace netp {
 			return base > r.base;
 		}
 	};
+
 	inline sp_counter::sp_counter(sp_weak_counter const& weak):
 			base(weak.base)
 	{
@@ -251,9 +252,15 @@ namespace netp {
 	template <class T>
 	class weak_ptr;
 
+	enum class construct_from_make_shared {};
+
 	template <class T>
 	class shared_ptr final {
 		friend class weak_ptr<T>;
+
+		template <class _Shared_ty, typename... _Args>
+		friend shared_ptr<_Shared_ty> make_shared(_Args&&... args);
+
 		typedef typename std::remove_reference<T>::type __ELEMENT_TYPE;
 		typedef __ELEMENT_TYPE* POINTER_TYPE;
 		typedef shared_ptr<T> THIS_TYPE;
@@ -269,21 +276,21 @@ namespace netp {
 		friend shared_ptr<_To> const_pointer_cast(shared_ptr<_From> const& r);
 
 		sp_counter sp_ct;//sp_counter
-	public:
 
+		//_Tp_rel related type
+		template <typename _Tp_rel
+			, class = typename std::enable_if<std::is_convertible<_Tp_rel*, POINTER_TYPE>::value>::type>
+			explicit shared_ptr(_Tp_rel* const& r, construct_from_make_shared) :
+			sp_ct(r)
+		{
+		}
+
+	public:
 		_NETP_CONSTEXPR shared_ptr() _NETP_NOEXCEPT:sp_ct() {}
 		_NETP_CONSTEXPR shared_ptr(std::nullptr_t) _NETP_NOEXCEPT : sp_ct() {}
 
 		~shared_ptr() _NETP_NOEXCEPT {}
 		long use_count() const _NETP_NOEXCEPT { return sp_ct.sp_count(); }
-
-		//_Tp_rel related type
-		template <typename _Tp_rel>
-		explicit shared_ptr(_Tp_rel* const& r) :
-			sp_ct(r)
-		{
-			static_assert(std::is_convertible<_Tp_rel*, POINTER_TYPE>::value, "convertible check failed");
-		}
 
 		inline shared_ptr(THIS_TYPE const& r) _NETP_NOEXCEPT:
 			sp_ct(r.sp_ct)
@@ -433,7 +440,7 @@ _VARIADIC_EXPAND_0X(_ALLOCATE_MAKE_SHARED, , , , )
 	{
 		_TTM* t = new _TTM(std::forward<_Args>(args)...);
 		//NETP_ALLOC_CHECK(t,sizeof(_TTM));
-		return shared_ptr<_TTM>(t);
+		return shared_ptr<_TTM>(t, construct_from_make_shared());
 	}
 #endif
 
@@ -691,7 +698,8 @@ template<class _Ty COMMA LIST(_CLASS_TYPE)> \
 #endif
 	};
 
-	using ref_base = ref_base_internal<__atomic_counter>;
+	using atomic_ref_base = ref_base_internal<__atomic_counter>;
+	using ref_base = atomic_ref_base;
 	using non_atomic_ref_base = ref_base_internal<__non_atomic_counter>;
 
 	enum class construct_from_make_ref {};
