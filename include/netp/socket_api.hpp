@@ -64,13 +64,7 @@ namespace netp {
 
 	inline int netp_close(SOCKET fd) { return NETP_CLOSE_SOCKET(fd); }
 
-#ifdef NETP_HAS_POLLER_IOCP
-	//namespace iocp {
-	//	inline SOCKET socket(int const& family, int const& type, int const& proto) {
-	//		return ::WSASocketW(OS_DEF_family[family], OS_DEF_sock_type[type], OS_DEF_protocol[proto], nullptr, 0, WSA_FLAG_OVERLAPPED);
-	//	}
-	//}
-#endif
+
 
 	inline int set_nonblocking(SOCKET fd, bool onoff) {
 		int rt;
@@ -128,11 +122,9 @@ namespace netp {
 		NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvmsg, ERROR: %d", fd, ec);
 		if (IS_ERRNO_EQUAL_WOULDBLOCK(ec)) {
 			ec_o = netp::E_SOCKET_READ_BLOCK;
-		}
-		else if (ec == netp::E_EINTR) {
+		} else if (ec == netp::E_EINTR) {
 			goto _recvmsg;
-		}
-		else {
+		} else {
 			ec_o = ec;
 		}
 		(void)flag;
@@ -146,11 +138,8 @@ namespace netp {
 			int protocol
 		) {
 			return
-//#ifdef NETP_HAS_POLLER_IOCP
-//			WSASocketW(af,type,protocol, nullptr, 0, WSA_FLAG_OVERLAPPED);
-//#else
 			::socket(af, type, protocol);
-//#endif
+
 		}
 
 		__NETP_FORCE_INLINE int bind(

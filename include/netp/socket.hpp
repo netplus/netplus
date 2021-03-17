@@ -18,9 +18,9 @@
 	#define NETP_DEFAULT_LISTEN_BACKLOG 256
 #endif
 
-#ifndef NETP_HAS_POLLER_IOCP
+//#ifndef NETP_HAS_POLLER_IOCP
 	#define NETP_ENABLE_FAST_WRITE
-#endif
+//#endif
 
 //in milliseconds
 #define NETP_SOCKET_BDLIMIT_TIMER_DELAY_DUR (250)
@@ -606,6 +606,7 @@ namespace netp {
 #ifdef NETP_HAS_POLLER_IOCP
 			case netp::E_WSA_IO_PENDING:
 			{
+				NETP_ASSERT(!"WE SHOULD NEVER REACH HERE, AS WE'VE HARDCODE IT TO netp::OK");
 				NETP_ASSERT(m_chflag & int(channel_flag::F_WATCH_WRITE));
 			}
 			break;
@@ -1048,7 +1049,7 @@ namespace netp {
 
 #ifdef NETP_HAS_POLLER_IOCP
 			NETP_ASSERT(L->type() == T_IOCP);
-			L->iocp_call(iocp_action::READ, m_fd, nullptr, std::bind(&socket::__iocp_WSARead_done, NRP<socket>(this), fn_read, std::placeholders::_1));
+			//L->iocp_call(iocp_action::READ, m_fd, nullptr, std::bind(&socket::__iocp_WSARead_done, NRP<socket>(this), fn_read, std::placeholders::_1));
 #else
 			L->aio_do(aio_action::READ, m_fd, std::bind(&socket::__cb_aio_read_from_impl, NRP<socket>(this), fn_read, std::placeholders::_1));
 #endif
