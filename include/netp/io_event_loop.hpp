@@ -79,9 +79,11 @@ namespace netp {
 		END_ACCEPT = 1 << 5,
 		CONNECT = 1 << 6,
 		END_CONNECT = 1 << 7,
-		BEGIN = 1 << 8,
-		NOTIFY_TERMINATING = 1 << 9,
-		END = 1 << 10,
+		READFROM = 1<<8,
+		SENDTO = 1<<9,
+		BEGIN = 1 << 10,
+		NOTIFY_TERMINATING = 1 << 11,
+		END = 1 << 12,
 		BEGIN_READ_WRITE_ACCEPT_CONNECT = (BEGIN | READ | WRITE| ACCEPT| CONNECT)
 	};
 #endif

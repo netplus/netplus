@@ -22,6 +22,8 @@ namespace netp {
 			WSAREAD,
 			WSASEND,
 			CONNECTEX,
+			WSARECVFROM,
+			WSASEND,
 			CALL_MAX
 		};
 
@@ -132,6 +134,19 @@ namespace netp {
 		}
 
 		inline static int _do_read(iocp_overlapped_ctx* olctx) {
+			iocp_olctx_reset_overlapped(olctx);
+			DWORD flags = 0;
+			int ec = ::WSARecv(olctx->fd, &olctx->wsabuf, 1, nullptr, &flags, &olctx->overlapped, nullptr);
+			if (ec == -1) {
+				ec = netp_socket_get_last_errno();
+				if (ec == netp::E_WSA_IO_PENDING) {
+					ec = netp::OK;
+				}
+			}
+			return ec;
+		}
+
+		inline static int _do_read_from(iocp_overlapped_ctx* olctx) {
 			iocp_olctx_reset_overlapped(olctx);
 			DWORD flags = 0;
 			int ec = ::WSARecv(olctx->fd, &olctx->wsabuf, 1, nullptr, &flags, &olctx->overlapped, nullptr);
@@ -509,6 +524,15 @@ namespace netp {
 
 					iocp_overlapped_ctx* olctx = iocpctx->ol_ctxs[iocp_ol_type::WRITE];
 					olctx->action_status |= AS_DONE;
+				}
+				break;
+				case iocp_action::READFROM:
+				{
+
+				}
+				break;
+				case iocp_action::SENDTO:
+				{
 				}
 				break;
 				case iocp_action::ACCEPT:

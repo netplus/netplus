@@ -160,7 +160,7 @@ namespace netp {
 
 	void dns_resolver::async_read_dns_reply(const int aiort_, NRP<netp::packet> const&in, address const& addr) {
 		NETP_ASSERT(m_loop->in_event_loop());
-		NETP_ASSERT(aiort_ == netp::OK);
+		//NETP_ASSERT(aiort_ == netp::OK);
 		if (aiort_ == netp::OK) {
 			struct sockaddr_in addr_in;
 			::memset(&addr_in, 0, sizeof(addr_in));
@@ -170,9 +170,10 @@ namespace netp {
 			dns_ioevent_with_udpdata_in(m_dns_ctx, 0, in->head(), in->len(), &addr_in );
 			return;
 		}
-
-		NETP_ERR("[dns_resolver]dns read error: %d, restart", aiort_);
-		_do_stop(netp::make_ref<netp::promise<int>>());
+		if (aiort_ != netp::E_SOCKET_READ_BLOCK) {
+			NETP_ERR("[dns_resolver]dns read error: %d, restart", aiort_);
+			_do_stop(netp::make_ref<netp::promise<int>>());
+		}
 	}
 
 	static void dns_submit_a4_cb(struct dns_ctx* ctx, struct dns_rr_a4* result, void* data) {

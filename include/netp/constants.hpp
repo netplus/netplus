@@ -295,7 +295,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_EMULTIHOP						= -72; //Multihop attempted
 	const int E_EDOTDOT							= -73; //RFS specific error
 	const int E_EBADMSG							= -74; //Not a data message
-	const int E_OVERFLOW						= -75; //Value too large for defined data type
+	const int E_EOVERFLOW						= -75; //Value too large for defined data type
 	const int E_ENOTUNIQ						= -76; //Name not unique on network
 	const int E_EBADFD								= -77; //File descriptor in bad state
 	const int E_REMCHG							= -78; //Remote address changed
@@ -431,6 +431,15 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_EINPROGRESS = E_WSAEWOULDBLOCK; //pls refer tohttps://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-connect
 
 	const int E_EMFILE = E_WSAEMFILE;
+
+
+	const int E_EBADF = E_WSAEBADF;
+	const int E_EALREADY = E_WSAEALREADY;
+	const int E_ECONNRESET = E_WSAECONNRESET;
+	const int E_ETIMEOUT = E_WSAETIMEDOUT;
+	const int E_EADDRINUSE = E_WSAEADDRINUSE;
+	const int E_EINVAL = E_WSAEINVAL;
+	const int E_ENOTCONN = E_WSAENOTCONN;
 #endif
 	//internal error
 	const int E_NETP_APP_EXIT								= -20000;
@@ -452,6 +461,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_OP_INPROCESS								= -20016;
 	const int E_OP_ABORT									= -20017;
 	const int E_OP_TIMEOUT								= -20018;
+	const int E_OP_ALREADY = -20019;
 
 	const int E_EVENT_BROKER_BINDED_ALREADY = -21001;
 	const int E_EVENT_BROKER_NO_LISTENER			= -21002;
