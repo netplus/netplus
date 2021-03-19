@@ -3,23 +3,22 @@
 
 #include <sys/event.h>
 #include <netp/core.hpp>
-#include <netp/io_event_loop.hpp>
+#include <netp/poller_abstract.hpp>
 
+#define NETP_KEVT_COUNT (256)
 namespace netp {
 	class poller_kqueue final :
 		public io_event_loop
 	{
 		int m_kq;
 		struct kevent* m_kevts;
-		int m_kevt_size;
 	public:
-		poller_kqueue(poller_cfg const& cfg) :
-			io_event_loop(T_KQUEUE, cfg),
+		poller_kqueue() :
+			poller_abstract(),
 			m_kq(-1),
-			m_kevts(0),
-			m_kevt_size(0)
+			m_kevts(0)
 		{}
-		void _do_poller_init() override {
+		void init() override {
 			NETP_DEBUG("CREATE KQUEUE");
 			m_kq = kqueue();
 			if (m_kq == -1) {
@@ -27,14 +26,13 @@ namespace netp {
 				NETP_THROW("KQUEUE CREATE FAILED");
 			}
 			NETP_DEBUG("CREATE KQUEUE DONE");
-			m_kevts = (struct kevent*)netp::aligned_malloc( sizeof(struct kevent) * 256, NETP_DEFAULT_ALIGN);
-			NETP_ALLOC_CHECK(m_kevts, sizeof(struct kevent) * 256);
-			m_kevt_size = 256;
-			io_event_loop::_do_poller_init();
+			m_kevts = (struct kevent*)netp::aligned_malloc( sizeof(struct kevent)* NETP_KEVT_COUNT, NETP_DEFAULT_ALIGN);
+			NETP_ALLOC_CHECK(m_kevts, sizeof(struct kevent)* NETP_KEVT_COUNT);
+			poller_abstract::init();
 		}
 
-		void _do_poller_deinit() override {
-			io_event_loop::_do_poller_deinit();
+		void deinit() override {
+			poller_abstract::deinit();
 			close(m_kq);
 			m_kq = -1;
 			netp::aligned_free(m_kevts);
@@ -42,7 +40,7 @@ namespace netp {
 			m_kevt_size = 0;
 		}
 	
-		void _do_poll(long long wait_in_nano) override {
+		void poll(long long wait_in_nano, std::atomic<bool>& W) override {
 			struct timespec tsp = {0,0};
 			struct timespec* tspp = 0;
 			if (wait_in_nano != ~0) {
@@ -54,8 +52,8 @@ namespace netp {
 			}
 
 			int ec=netp::OK;
-			int rt = kevent(m_kq, NULL, 0, m_kevts, m_kevt_size, tspp);
-			__LOOP_EXIT_WAITING__();
+			int rt = kevent(m_kq, NULL, 0, m_kevts, NETP_KEVT_COUNT, tspp);
+			__LOOP_EXIT_WAITING__(W);
 			
 			if (NETP_LIKELY(rt > 0)) {
 				for (int j = 0; j < rt; ++j) {
@@ -71,7 +69,7 @@ namespace netp {
 				}
 			}
 		}
-		int _do_watch( u8_t flag, aio_ctx* ctx) {
+		int watch( u8_t flag, aio_ctx* ctx) {
 			struct kevent ke;
 			if (flag&aio_flag::AIO_READ) {
 				EV_SET(&ke, fd, EVFILT_READ, EV_ADD, 0, 0, (void*)(ctx));
@@ -85,7 +83,7 @@ namespace netp {
 			}
 			return netp::OK;
 		}
-		int _do_unwatch(u8_t flag, aio_ctx* ctx) {
+		int unwatch(u8_t flag, aio_ctx* ctx) {
 			struct kevent ke;
 			if (flag & aio_flag::AIO_READ) {
 				EV_SET(&ke, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
@@ -101,5 +99,4 @@ namespace netp {
 		}
 	};
 }
-
 #endif

@@ -342,7 +342,7 @@ namespace netp {
 	}
 
 	void app::___event_loop_init() {
-		netp::io_event_loop_group::instance()->init(m_cfg.poller_count, m_cfg.poller_cfgs);
+		netp::io_event_loop_group::instance()->init(m_cfg.poller_count, m_cfg.event_loop_cfgs);
 		NETP_INFO("[app]init loop done");
 #ifdef _NETP_WIN
 		if (m_cfg.dnsnses.size() == 0) {
@@ -376,7 +376,7 @@ namespace netp {
 	}
 
 	void app::___event_loop_deinit() {
-//		netp::dns_resolver::instance()->stop();
+		netp::dns_resolver::instance()->stop();
 		netp::io_event_loop_group::instance()->deinit();
 
 		//reset loop after all loop reference dattached from business code

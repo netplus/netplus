@@ -10,57 +10,16 @@
 
 #define NETP_IOCP_INTERRUPT_COMPLETE_KEY (-13)
 #define NETP_IOCP_INTERRUPT_COMPLETE_PARAM (-13)
-#define NETP_IOCP_BUFFER_SIZE (1024*64)
 
 namespace netp {
 
 	class poller_iocp final :
 		public io_event_loop
 	{
-		enum iocp_ol_action {
-			ACCEPTEX,
-			WSAREAD,
-			WSASEND,
-			CONNECTEX,
-			WSARECVFROM,
-			WSASEND,
-			CALL_MAX
-		};
-
-		enum iocp_ol_type {
-			READ,
-			WRITE
-		};
-
-		enum action_status {
-			AS_WAIT_IOCP = 1 << 0,
-			AS_DONE = 1 << 1,
-		};
-
-		enum channel_end {
-			CH_END_NO = 0,
-			CH_END_YES = 1
-		};
-
-		struct iocp_overlapped_ctx
-		{
-			WSAOVERLAPPED overlapped;
-			SOCKET fd;
-			SOCKET accept_fd;
-			u8_t action;
-			u8_t action_status;
-			u8_t is_ch_end;
-			fn_overlapped_io_event fn_overlapped;
-			fn_iocp_event_t fn_iocp_done;
-			WSABUF wsabuf;
-			byte_t buf[NETP_IOCP_BUFFER_SIZE];
-		};
-
-		struct iocp_ctx :
-			public non_atomic_ref_base
+		struct iocp_ctx
 		{
 			SOCKET fd;
-			fn_iocp_event_t fn_notify;
+			fn_aio_event_t fn_notify;
 			iocp_overlapped_ctx* ol_ctxs[iocp_ol_type::WRITE+1];
 		};
 
@@ -74,7 +33,7 @@ namespace netp {
 			olctx->action_status = 0;
 			olctx->is_ch_end = CH_END_NO;
 			new ((fn_overlapped_io_event*)&(olctx->fn_overlapped))(fn_overlapped_io_event)();
-			new ((fn_iocp_event_t*)&(olctx->fn_iocp_done))(fn_iocp_event_t)();
+			new ((fn_aio_event_t*)&(olctx->fn_iocp_done))(fn_aio_event_t)();
 			olctx->wsabuf = { NETP_IOCP_BUFFER_SIZE, (char*)&olctx->buf };
 			return olctx;
 		}

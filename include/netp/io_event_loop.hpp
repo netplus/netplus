@@ -9,12 +9,13 @@
 #include <netp/mutex.hpp>
 #include <netp/thread.hpp>
 
-#include <netp/io_event.hpp>
 #include <netp/timer.hpp>
 
 #include <netp/promise.hpp>
 #include <netp/packet.hpp>
-#include <netp/list.hpp>
+
+#include <netp/poller_abstract.hpp>
+#include <netp/poller_dummy.hpp>
 
 #if defined(NETP_HAS_POLLER_EPOLL)
 	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_EPOLL
@@ -30,44 +31,21 @@
 
 namespace netp {
 
-	enum io_poller_type {
-		T_SELECT, //win&linux&android
-		T_IOCP, //win
-		T_EPOLL, //linux,epoll,et
-		T_KQUEUE,//bsd
-		T_POLLER_CUSTOM_1,
-		T_POLLER_CUSTOM_2,
-		T_POLLER_MAX,
-		T_BYE,
-		T_NONE
+	typedef std::function<void()> fn_io_event_task_t;
+	typedef std::vector<fn_io_event_task_t, netp::allocator<fn_io_event_task_t>> io_task_q_t;
+
+
+	struct event_loop_cfg {
+		u32_t ch_buf_size;
 	};
 
 	class io_event_loop;
-	struct poller_cfg {
-		u32_t ch_buf_size;
-		u32_t maxiumctx;
-	};
-	typedef std::function< NRP<io_event_loop>(io_poller_type t, poller_cfg const& cfg) > fn_poller_maker_t;
+	typedef std::function< NRP<io_event_loop>(event_loop_cfg const& cfg) > fn_event_loop_maker_t;
 
-	enum aio_flag {
-		AIO_NOTIFY = 0,
-		AIO_READ	=1,
-		AIO_WRITE	= 1<<1,
-		AIO_FLAG_MAX =3
-	};
-
-	enum class aio_action {
-		READ = 1<<0, //check read, sys io
-		END_READ=1<<1,
-
-		WRITE = 1<<2, //check write, sys io
-		END_WRITE =1<<3,
-
-		NOTIFY_TERMINATING=1<<4,
-		READ_WRITE = (READ | WRITE)
-	};
 
 #ifdef NETP_HAS_POLLER_IOCP
+#define NETP_IOCP_BUFFER_SIZE (1024*64)
+
 	enum class iocp_action {
 		READ=1<<0,
 		END_READ = 1 << 1,
@@ -84,81 +62,49 @@ namespace netp {
 		END = 1 << 12,
 		BEGIN_READ_WRITE_ACCEPT_CONNECT = (BEGIN | READ | WRITE| ACCEPT| CONNECT)
 	};
-#endif
 
-#ifdef _DEBUG
-	#define NETP_DEBUG_TERMINATING
-	#define NETP_DEBUG_AIO_CTX_
-#endif
+	enum iocp_ol_action {
+		ACCEPTEX,
+		WSAREAD,
+		WSASEND,
+		CONNECTEX,
+		WSARECVFROM,
+		WSASEND,
+		CALL_MAX
+	};
 
-	struct aio_ctx;
-	typedef std::function<void(int status, aio_ctx* ctx)> fn_aio_event_t;
-	struct aio_ctx
+	enum iocp_ol_type {
+		READ,
+		WRITE
+	};
+
+	enum action_status {
+		AS_WAIT_IOCP = 1 << 0,
+		AS_DONE = 1 << 1,
+	};
+
+	enum channel_end {
+		CH_END_NO = 0,
+		CH_END_YES = 1
+	};
+
+	struct iocp_overlapped_ctx
 	{
-		aio_ctx* prev;
-		aio_ctx* next;
-
+		WSAOVERLAPPED overlapped;
 		SOCKET fd;
-		fn_aio_event_t fn_read;
-		fn_aio_event_t fn_write;
-		fn_aio_event_t fn_notify;
-
-		u8_t flag;
-
-#ifdef NETP_DEBUG_TERMINATING
-		bool terminated;
-#endif
-	};
-
-	inline static void aio_ctx_list_init(aio_ctx* list) {
-		list->next = list;
-		list->prev = list;
-	}
-	inline static void __aio_ctx_list_insert(aio_ctx* prev, aio_ctx* next, aio_ctx* item) {
-		item->next = next;
-		item->prev = prev;
-		next->prev = item;
-		prev->next = item;
-	}
-	inline static void aio_ctx_list_prepend(aio_ctx* list, aio_ctx* item) {
-		__aio_ctx_list_insert(list, list->next, item);
-	}
-	inline static void aio_ctx_list_append(aio_ctx* list, aio_ctx* item) {
-		__aio_ctx_list_insert(list->prev, list, item);
-	}
-	inline static void aio_ctx_list_delete(aio_ctx* item) {
-		item->prev->next = item->next;
-		item->next->prev = item->prev;
-		item->next = 0;
-		item->prev = 0;
-	}
-	
-	inline static aio_ctx* aio_ctx_allocate() {
-		aio_ctx* ctx = netp::allocator<aio_ctx>::malloc(1);
-		new ((fn_aio_event_t*)&(ctx->fn_read))(fn_aio_event_t)();
-		new ((fn_aio_event_t*)&(ctx->fn_write))(fn_aio_event_t)();
-		new ((fn_aio_event_t*)&(ctx->fn_notify))(fn_aio_event_t)();
-		return ctx;
-	}
-
-	inline static void aio_ctx_deallocate(aio_ctx* ctx) {
-		netp::allocator<aio_ctx>::free(ctx);
-	}
-
-	typedef std::function<void()> fn_io_event_task_t;
-	typedef std::vector<fn_io_event_task_t, netp::allocator<fn_io_event_task_t>> io_task_q_t;
-
-#ifdef NETP_HAS_POLLER_IOCP
-	struct iocp_act_op {
-		iocp_action act;
-		SOCKET fd;
+		SOCKET accept_fd;
+		u8_t action;
+		u8_t action_status;
+		u8_t is_ch_end;
 		fn_overlapped_io_event fn_overlapped;
-		fn_iocp_event_t fn_iocp;
+		fn_aio_event_t fn_iocp_done;
+		WSABUF wsabuf;
+		byte_t buf[NETP_IOCP_BUFFER_SIZE];
 	};
-	typedef std::vector<iocp_act_op, netp::allocator<act_op>> iocp_act_op_queue_t;
-	typedef std::function<int(const iocp_result&)> fn_iocp_event_t;
-	typedef std::function<int(void* ol)> fn_overlapped_io_event;
+
 #endif
+
+
 
 	enum class loop_state {
 		S_IDLE,
@@ -179,37 +125,25 @@ namespace netp {
 		friend class io_event_loop_group;
 
 	protected:
-		std::thread::id m_tid;
 
-		aio_ctx m_aio_ctx_list;
+		std::atomic<bool> m_waiting;
+		std::atomic<u8_t> m_state;
+		io_poller_type m_type;
 
-#ifdef NETP_DEBUG_AIO_CTX_
-		long m_aio_ctx_count_alloc;
-		long m_aio_ctx_count_free;
-#endif
-
-#ifdef NETP_HAS_POLLER_IOCP
-		iocp_act_op_queue_t m_iocp_acts;
-#endif
+		NRP<poller_abstract> m_poller;
+		NRP<timer_broker> m_tb;
 
 		spin_mutex m_tq_mutex;
 		io_task_q_t m_tq_standby;
 		io_task_q_t m_tq;
-		NRP<timer_broker> m_tb;
-
-		u8_t m_type;
-		std::atomic<bool> m_waiting;
-		std::atomic<u8_t> m_state;
-
-		SOCKET m_signalfds[2];
-		aio_ctx* m_signalfds_aio_ctx;
+		std::thread::id m_tid;
 
 		NRP<netp::packet> m_channel_rcv_buf;
 		NRP<netp::thread> m_th;
 
 		//timer_timepoint_t m_wait_until;
 		std::atomic<u16_t> m_internal_ref_count;
-		poller_cfg m_cfg;
+		event_loop_cfg m_cfg;
 
 #ifdef NETP_DEBUG_TERMINATING
 		bool m_terminated;
@@ -222,17 +156,11 @@ namespace netp {
 		//>0,	WAIT nanosecond
 		__NETP_FORCE_INLINE long long _calc_wait_dur_in_nano() {
 
-			NETP_ASSERT( m_waiting.load(std::memory_order_acquire) == false );
+			NETP_ASSERT( m_waiting.load(std::memory_order_acquire) == false, "_calc_wait_dur_in_nano waiting check failed" );
 			netp::timer_duration_t ndelay;
 			m_tb->expire(ndelay);
 			long long ndelayns = ndelay.count();
-			if (ndelayns == 0
-#ifdef NETP_HAS_POLLER_IOCP
-//				|| m_iocp_acts.size() != 0
-#else
-//				|| m_acts.size() != 0 
-#endif
-				) {
+			if (ndelayns == 0) {
 				return 0;
 			}
 
@@ -240,24 +168,20 @@ namespace netp {
 			if (m_tq_standby.size() != 0) {
 				return 0;
 			}
-			NETP_ASSERT( u64_t(TIMER_TIME_INFINITE) > NETP_POLLER_WAIT_IGNORE_DUR);
-			if ( (u64_t(ndelayns)>NETP_POLLER_WAIT_IGNORE_DUR) ) {
+			NETP_ASSERT( u64_t(TIMER_TIME_INFINITE) > (27));
+			if ( (u64_t(ndelayns)>(27)) ) {
 				m_waiting.store(true, std::memory_order_release);
 			}
 			return ndelayns;
 		}
 
 		virtual void init() {
-			netp::aio_ctx_list_init(&m_aio_ctx_list);
 
-#ifdef NETP_DEBUG_AIO_CTX_
-			m_aio_ctx_count_alloc = 0;
-			m_aio_ctx_count_free = 0;
-#endif
 			m_channel_rcv_buf = netp::make_ref<netp::packet>(m_cfg.ch_buf_size);
 			m_tid = std::this_thread::get_id();
 			m_tb = netp::make_ref<timer_broker>();
-			_do_poller_init();
+			
+			m_poller->init();
 
 #ifdef NETP_DEBUG_TERMINATING
 			m_terminated = false;
@@ -265,126 +189,35 @@ namespace netp {
 		}
 
 		virtual void deinit() {
+			NETP_DEBUG("[io_event_loop]deinit begin");
 			NETP_ASSERT(in_event_loop());
-			NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_EXIT));
+			NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_EXIT), "event loop deinit state check failed");
 
 			{
 				lock_guard<spin_mutex> lg(m_tq_mutex);
 				NETP_ASSERT(m_tq_standby.empty());
 			}
 
-			//NETP_ASSERT(m_acts.size() == 0);
-
 			NETP_ASSERT(m_tq.empty());
 			NETP_ASSERT(m_tb->size() == 0);
 			m_tb = nullptr;
-			_do_poller_deinit();
-			
-			//NETP_ASSERT(m_ctxs.size() == 0);
-			NETP_ASSERT(NETP_LIST_IS_EMPTY(&m_aio_ctx_list));
 
-#ifdef NETP_DEBUG_AIO_CTX_
-			NETP_ASSERT( m_aio_ctx_count_alloc == m_aio_ctx_count_free );
-#endif
-		}
-
-		virtual int __do_execute_act(aio_action act, aio_ctx* ctx) {
-				switch (act) {
-				case aio_action::READ:
-				{ 
-					NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::READ", m_type, ctx->fd);
-					NETP_ASSERT((ctx->flag & aio_flag::AIO_READ) == 0);
-					int rt = _do_watch( aio_flag::AIO_READ, ctx);
-					if (netp::OK == rt) {
-						ctx->flag |= aio_flag::AIO_READ;
-					}
-					return rt;
-				}
-				break;
-				case aio_action::END_READ:
-				{
-					NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::END_READ", m_type, ctx->fd);
-					if (ctx->flag&aio_flag::AIO_READ) {
-						ctx->flag &= ~aio_flag::AIO_READ;
-						//we need this condition check ,cuz epoll might fail to watch
-						return _do_unwatch(aio_flag::AIO_READ, ctx);
-					}
-					return netp::OK;
-				}
-				break;
-				case aio_action::WRITE:
-				{
-					NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::WRITE", m_type, ctx->fd);
-					NETP_ASSERT((ctx->flag & aio_flag::AIO_WRITE) == 0);
-					int rt = _do_watch(aio_flag::AIO_WRITE, ctx);
-					if (netp::OK == rt) {
-						ctx->flag |= aio_flag::AIO_WRITE;
-					}
-					return rt;
-				}
-				break;
-				case aio_action::END_WRITE:
-				{
-					NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::END_WRITE", m_type, ctx->fd);
-					if (ctx->flag&aio_flag::AIO_WRITE) {
-						ctx->flag &= ~aio_flag::AIO_WRITE;
-						//we need this condition check ,cuz epoll might fail to watch
-						return _do_unwatch( aio_flag::AIO_WRITE, ctx);
-					}
-					return netp::OK;
-				}
-				break;
-				case aio_action::NOTIFY_TERMINATING:
-				{
-					aio_ctx* _ctx,*_ctx_n;
-					for (_ctx = (m_aio_ctx_list.next), _ctx_n = _ctx->next; _ctx != &(m_aio_ctx_list); _ctx = _ctx_n, _ctx_n = _ctx->next) {
-						if (_ctx->fd == m_signalfds[0]) {
-							continue;
-						}
-
-						NETP_ASSERT(_ctx->fd > 0);
-						NETP_ASSERT(_ctx->fn_notify != nullptr);
-
-						if (_ctx->fn_read != nullptr) {
-							_ctx->fn_read(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
-						}
-						if (_ctx->fn_write != nullptr) {
-							_ctx->fn_write(E_IO_EVENT_LOOP_NOTIFY_TERMINATING,_ctx);
-						}
-
-						//in case , close would result in _ctx->fn_notify be nullptr
-						if (_ctx->fn_notify != nullptr ) {
-							_ctx->fn_notify(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
-						}
-					}
-
-					//no competitor here, store directly
-					NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_TERMINATING));
-					m_state.store(u8_t(loop_state::S_TERMINATED), std::memory_order_release);
-
-					NETP_ASSERT(m_tb != nullptr);
-					m_tb->expire_all();
-				}
-				break;
-				case aio_action::READ_WRITE:
-				{//for compiler warning...
-				}
-				break;
-				}
-				return netp::OK;
+			m_poller->deinit();
+			NETP_DEBUG("[io_event_loop]deinit done");
 		}
 
 		void __run();
+		void __do_notify_terminating();
 		void __notify_terminating();
 		int __launch();
 		void __terminate();
 
 	public:
-		io_event_loop( io_poller_type t, poller_cfg const& cfg) :
-			m_type(u8_t(t)),
+		io_event_loop(io_poller_type t, NRP<poller_abstract> const& poller, event_loop_cfg const& cfg) :
 			m_waiting(false),
 			m_state(u8_t(loop_state::S_IDLE)),
-			m_signalfds{ (SOCKET)NETP_INVALID_SOCKET, (SOCKET)NETP_INVALID_SOCKET },
+			m_type(t),
+			m_poller(poller),
 			m_internal_ref_count(1),
 			m_cfg(cfg)
 		{}
@@ -403,7 +236,7 @@ namespace netp {
 				_interrupt_poller.store( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_acquire), std::memory_order_release);
 			}
 			if (NETP_UNLIKELY(_interrupt_poller.load(std::memory_order_acquire))) {
-				_do_poller_interrupt_wait();
+				m_poller->interrupt_wait();
 			}
 		}
 
@@ -415,7 +248,7 @@ namespace netp {
 				_interrupt_poller.store( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_acquire), std::memory_order_release);
 			}
 			if (NETP_UNLIKELY(_interrupt_poller.load(std::memory_order_acquire))) {
-				_do_poller_interrupt_wait();
+				m_poller->interrupt_wait();
 			}
 		}
 
@@ -469,11 +302,16 @@ namespace netp {
 			}
 		}
 
-		inline io_poller_type type() const { return (io_poller_type)m_type; }
+		inline io_poller_type type() const { return m_type; }
+
+		__NETP_FORCE_INLINE NRP<netp::packet> const& channel_rcv_buf() const {
+			return m_channel_rcv_buf;
+		}
+
 		inline int aio_do(aio_action act, aio_ctx* ctx) {
 			NETP_ASSERT(in_event_loop());
-			if ( ((u8_t(act)&u8_t(aio_action::READ_WRITE)) == 0) || m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING) ) {
-				__do_execute_act(act, ctx);
+			if (((u8_t(act) & u8_t(aio_action::READ_WRITE)) == 0) || m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
+				m_poller->__do_execute_act(act, ctx);
 				return netp::OK;
 			} else {
 				return netp::E_IO_EVENT_LOOP_TERMINATED;
@@ -481,38 +319,18 @@ namespace netp {
 		}
 		inline aio_ctx* aio_begin(SOCKET fd) {
 			NETP_ASSERT(in_event_loop());
-			if ( m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
-				NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::BEGIN", m_type, fd);
-				aio_ctx* ctx = netp::aio_ctx_allocate();
-				ctx->fd = fd;
-				ctx->flag = 0;
-				netp::aio_ctx_list_append(&m_aio_ctx_list, ctx);
-#ifdef NETP_DEBUG_AIO_CTX_
-				++m_aio_ctx_count_alloc;
-#endif
-				return ctx;
+			if (m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
+				return m_poller->aio_begin(fd);
 			}
 			return 0;
 		}
 		inline void aio_end(aio_ctx* ctx) {
 			NETP_ASSERT(in_event_loop());
-			NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::END", m_type, ctx->fd);
-			NETP_ASSERT((ctx->fn_read == nullptr));
-			NETP_ASSERT((ctx->fn_write == nullptr));
-			NETP_ASSERT( ctx->fn_notify == nullptr);
-			netp::aio_ctx_list_delete(ctx);
-			netp::aio_ctx_deallocate(ctx);
-#ifdef NETP_DEBUG_AIO_CTX_
-			++m_aio_ctx_count_free;
-#endif
+			return m_poller->aio_end(ctx);
 		}
 
-		__NETP_FORCE_INLINE NRP<netp::packet> const& channel_rcv_buf() const {
-			return m_channel_rcv_buf;
-		}
-
-#ifdef NETP_HAS_POLLER_IOCP
-		inline void iocp_do( iocp_action act, SOCKET fd, fn_overlapped_io_event const& fn_overlapped, fn_iocp_event_t const& fn) {
+#ifdef NETP_HAS_POLLER_IOCP		
+		inline void iocp_do( iocp_action act, fn_overlapped_io_event const& fn_overlapped, fn_iocp_event_t const& fn) {
 			NETP_ASSERT(fd != NETP_INVALID_SOCKET);
 			NETP_ASSERT(in_event_loop());
 			if (((u16_t(act) & u16_t(iocp_action::BEGIN_READ_WRITE_ACCEPT_CONNECT)) == 0) || m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
@@ -534,33 +352,6 @@ namespace netp {
 #endif
 
 	protected:
-	#define __LOOP_EXIT_WAITING__() (m_waiting.store(false, std::memory_order_release))
-
-		virtual void _do_poller_init();
-		virtual void _do_poller_deinit() ;
-		virtual void _do_poller_interrupt_wait() ;
-
-		virtual void _do_poll(long long wait_in_nano ) = 0;
-		virtual int _do_watch(u8_t, aio_ctx* ) = 0;
-		virtual int _do_unwatch(u8_t, aio_ctx* ) = 0;
-	};
-
-	class bye_event_loop :
-		public netp::io_event_loop
-	{
-		public:
-			bye_event_loop(io_poller_type t, poller_cfg const& cfg):
-				io_event_loop(t,cfg)
-			{}
-
-		protected:
-			void _do_poller_init() override {}
-			void _do_poller_deinit() override {}
-			void _do_poller_interrupt_wait() override { NETP_ASSERT(!in_event_loop());}
-
-			void _do_poll(long long wait_in_nano)  override;
-			int _do_watch(u8_t, aio_ctx*)  override;
-			int _do_unwatch(u8_t, aio_ctx*) override;
 	};
 
 	class app;
@@ -577,16 +368,16 @@ namespace netp {
 		};
 
 	private:
-		netp::shared_mutex m_pollers_mtx[T_POLLER_MAX];
-		std::atomic<u32_t> m_curr_poller_idx[T_POLLER_MAX];
-		io_event_loop_vector m_pollers[T_POLLER_MAX];
+		netp::shared_mutex m_loop_mtx[T_POLLER_MAX];
+		std::atomic<u32_t> m_curr_loop_idx[T_POLLER_MAX];
+		io_event_loop_vector m_loop[T_POLLER_MAX];
 
 		int m_bye_ref_count;
 		std::atomic<bye_event_loop_state> m_bye_state;
 		NRP<io_event_loop> m_bye_event_loop;
 
 
-		void init( int count[io_poller_type::T_POLLER_MAX], poller_cfg cfgs[io_poller_type::T_POLLER_MAX]);
+		void init( int count[io_poller_type::T_POLLER_MAX], event_loop_cfg cfgs[io_poller_type::T_POLLER_MAX]);
 		void deinit();
 
 	public:
@@ -594,8 +385,8 @@ namespace netp {
 		~io_event_loop_group();
 
 		void notify_terminating(io_poller_type t);
-		void dealloc_remove_poller(io_poller_type t);
-		void alloc_add_poller(io_poller_type t, int count, poller_cfg const& cfg, fn_poller_maker_t const& fn_maker = nullptr);
+		void dealloc_remove_event_loop(io_poller_type t);
+		void alloc_add_event_loop(io_poller_type t, int count, event_loop_cfg const& cfg, fn_event_loop_maker_t const& fn_maker = nullptr);
 		io_poller_type query_available_custom_poller_type();
 		netp::size_t size(io_poller_type t);
 		NRP<io_event_loop> next(io_poller_type t, std::set<NRP<io_event_loop>> const& exclude_this_set_if_have_more);

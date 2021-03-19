@@ -21,8 +21,8 @@ namespace netp {
 		m_ns.clear();
 		m_flag = 0;
 
-		NETP_ASSERT(m_so == nullptr);
-		NETP_ASSERT(m_tm_dnstimeout == nullptr);
+		NETP_ASSERT(m_so == nullptr, "dns resolver check m_so failed");
+		NETP_ASSERT(m_tm_dnstimeout == nullptr, "dns resolver check m_tm_dnstimeout failed");
 	}
 
 	dns_resolver::dns_resolver() :
@@ -171,8 +171,9 @@ namespace netp {
 			dns_ioevent(m_dns_ctx, 0);
 			return;
 		}
-			NETP_ERR("[dns_resolver]dns read error: %d, restart", aiort_);
-			_do_stop(netp::make_ref<netp::promise<int>>());
+
+		NETP_ERR("[dns_resolver]dns read error: %d", aiort_);
+		_do_stop(netp::make_ref<netp::promise<int>>());
 	}
 
 	static void dns_submit_a4_cb(struct dns_ctx* ctx, struct dns_rr_a4* result, void* data) {

@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
 
 	for (int i = 0; i < g_param.for_max; ++i) {
 		netp::app_cfg appcfg;
-		appcfg.poller_cfgs[netp::u8_t(NETP_DEFAULT_POLLER_TYPE)].ch_buf_size = g_param.loopbufsize;
+		appcfg.event_loop_cfgs[netp::u8_t(NETP_DEFAULT_POLLER_TYPE)].ch_buf_size = g_param.loopbufsize;
 		if (g_param.thread != 0) {
 			appcfg.cfg_poller_count(NETP_DEFAULT_POLLER_TYPE, g_param.thread);
 		}

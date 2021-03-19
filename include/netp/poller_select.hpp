@@ -2,13 +2,13 @@
 #define _NETP_SELECT_POLLER_HPP_
 
 #include <netp/core.hpp>
-#include <netp/io_event_loop.hpp>
 #include <netp/socket_api.hpp>
+#include <netp/poller_abstract.hpp>
 
 namespace netp {
 
 	class poller_select final :
-		public io_event_loop
+		public poller_abstract
 	{
 		enum fds_idx {
 			fds_e = 0,
@@ -19,19 +19,19 @@ namespace netp {
 
 	private:
 		public:
-			poller_select(poller_cfg const& cfg):
-				io_event_loop(T_SELECT, cfg)
+			poller_select():
+				poller_abstract()
 			{
 			}
 
 			~poller_select() {}
 
-			int _do_watch(u8_t, aio_ctx*) override
+			int watch(u8_t, aio_ctx*) override
 			{
 				return netp::OK;
 			}
 
-			int _do_unwatch(u8_t, aio_ctx*) override
+			int unwatch(u8_t, aio_ctx*) override
 			{
 				return netp::OK;
 			}
@@ -40,9 +40,7 @@ namespace netp {
     #pragma warning(push)
     #pragma warning(disable:4389)
 #endif
-		void _do_poll(long long wait_in_nano) override {
-			NETP_ASSERT(in_event_loop());
-
+		void poll(long long wait_in_nano, std::atomic<bool>& W) override {
 			timeval _tv = { 0,0 };
 			timeval* tv = 0;
 			if (wait_in_nano != ~0) {
@@ -74,7 +72,7 @@ namespace netp {
 			}
 
 			int nready = ::select((int)(max_fd_v + 1), &m_fds[fds_r], &m_fds[fds_w], &m_fds[fds_e], tv); //only read now
-			__LOOP_EXIT_WAITING__();
+			__LOOP_EXIT_WAITING__(W);
 
 			if (nready == 0) {
 				return;

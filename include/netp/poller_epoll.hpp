@@ -6,19 +6,19 @@
 #include <poll.h>
 
 #include <netp/core.hpp>
-#include <netp/io_event_loop.hpp>
+#include <netp/poller_abstract.hpp>
 #include <netp/socket_api.hpp>
 
 namespace netp {
 
 	class poller_epoll final:
-		public io_event_loop
+		public poller_abstract
 	{
 		int m_epfd;
 
 	public:
-		poller_epoll(poller_cfg const& cfg):
-			io_event_loop(T_EPOLL,cfg),
+		poller_epoll():
+			poller_abstract(),
 			m_epfd(-1)
 		{
 		}
@@ -27,9 +27,8 @@ namespace netp {
 			NETP_ASSERT( m_epfd == -1 );
 		}
 
-		int _do_watch(u8_t flag, aio_ctx* ctx) override {
+		int watch(u8_t flag, aio_ctx* ctx) override {
 			NETP_ASSERT( ctx->fd != NETP_INVALID_SOCKET);
-			NETP_ASSERT(in_event_loop());
 //			const u8_t f2 = (!(--flag)) + 1;
 
 			struct epoll_event epEvent =
@@ -57,10 +56,9 @@ namespace netp {
 			return epoll_ctl(m_epfd, epoll_op, ctx->fd, &epEvent);
 		}
 
-		int _do_unwatch( u8_t flag, aio_ctx* ctx ) override {
+		int unwatch( u8_t flag, aio_ctx* ctx ) override {
 
 			NETP_ASSERT(ctx->fd != NETP_INVALID_SOCKET);
-			NETP_ASSERT(in_event_loop());
 			//const u8_t f2 = (!(--flag)) + 1;
 
 			struct epoll_event epEvent =
@@ -88,19 +86,18 @@ namespace netp {
 		}
 
 	public:
-		void _do_poller_init() override {
+		void init() override {
 			//the size argument is ignored since Linux 2.6.8, but must be greater than zero
 			m_epfd = epoll_create(NETP_EPOLL_CREATE_HINT_SIZE);
 			if (-1 == m_epfd) {
 				NETP_THROW("create epoll handle failed");
 			}
 			NETP_DEBUG("[EPOLL]init write epoll handle ok");
-			io_event_loop::_do_poller_init();
+			poller_abstract::init();
 		}
 
-		void _do_poller_deinit() override {
-			io_event_loop::_do_poller_deinit();
-
+		void deinit() override {
+			poller_abstract::deinit();
 			NETP_ASSERT(m_epfd != NETP_INVALID_SOCKET);
 			int rt = ::close(m_epfd);
 			if (-1 == rt) {
@@ -110,14 +107,13 @@ namespace netp {
 			NETP_TRACE_IOE("[EPOLL] EPOLL::deinit() done");
 		}
 
-		void _do_poll(long long wait_in_nano) override {
+		void poll(long long wait_in_nano, std::atomic<bool>& W) override {
 			NETP_ASSERT( m_epfd != NETP_INVALID_SOCKET );
-			NETP_ASSERT(in_event_loop());
 
 			struct epoll_event epEvents[NETP_EPOLL_PER_HANDLE_SIZE];
 			int wait_in_mill = wait_in_nano != ~0 ? wait_in_nano / 1000000: ~0;
 			int nEvents = epoll_wait(m_epfd, epEvents,NETP_EPOLL_PER_HANDLE_SIZE, wait_in_mill);
-			__LOOP_EXIT_WAITING__();
+			__LOOP_EXIT_WAITING__(W);
 			if ( -1 == nEvents ) {
 				NETP_ERR("[EPOLL][##%u]epoll wait event failed!, errno: %d", m_epfd, netp_socket_get_last_errno() );
 				return ;

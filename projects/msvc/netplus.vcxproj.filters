@@ -363,9 +363,6 @@
     <ClInclude Include="..\..\include\netp\icmp.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\netp\io_event.hpp">
-      <Filter>Header Files\netp</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\netp\io_event_loop.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
@@ -472,6 +469,12 @@
       <Filter>Header Files\netp</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\netp\list.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\poller_abstract.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\poller_dummy.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
   </ItemGroup>

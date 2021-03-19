@@ -65,6 +65,8 @@
     <ClInclude Include="..\..\include\netp\CPUID.hpp" />
     <ClInclude Include="..\..\include\netp\dns_resolver.hpp" />
     <ClInclude Include="..\..\include\netp\list.hpp" />
+    <ClInclude Include="..\..\include\netp\poller_abstract.hpp" />
+    <ClInclude Include="..\..\include\netp\poller_dummy.hpp" />
     <ClInclude Include="..\..\include\netp\poller_epoll.hpp" />
     <ClInclude Include="..\..\include\netp\event_broker.hpp" />
     <ClInclude Include="..\..\include\netp\exception.hpp" />
@@ -90,7 +92,6 @@
     <ClInclude Include="..\..\include\netp\http\parser.hpp" />
     <ClInclude Include="..\..\include\netp\icmp.hpp" />
     <ClInclude Include="..\..\include\netp\poller_iocp.hpp" />
-    <ClInclude Include="..\..\include\netp\io_event.hpp" />
     <ClInclude Include="..\..\include\netp\io_event_loop.hpp" />
     <ClInclude Include="..\..\include\netp\ipv4.hpp" />
     <ClInclude Include="..\..\include\netp\ipv6.hpp" />

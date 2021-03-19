@@ -10,7 +10,6 @@
 #include <netp/singleton.hpp>
 #include <netp/promise.hpp>
 #include <netp/ipv4.hpp>
-#include <netp/io_event.hpp>
 
 namespace netp {
 	class socket;
