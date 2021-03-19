@@ -308,8 +308,8 @@ public: \
 		virtual void ch_close_write_impl(NRP<promise<int>> const& chp) = 0;
 		virtual void ch_close_impl(NRP<promise<int>> const& chp) = 0;
 		
-		virtual void ch_aio_read_from(fn_aio_read_from_event_t const& fn = nullptr) { (void)fn; }
-		virtual void ch_aio_read( fn_aio_read_event_t const& fn = nullptr) = 0;
+		virtual void ch_aio_read_from(fn_aio_event_t const& fn = nullptr) { (void)fn; }
+		virtual void ch_aio_read( fn_aio_event_t const& fn = nullptr) = 0;
 		virtual void ch_aio_end_read() = 0;
 
 		virtual void ch_aio_write(fn_aio_event_t const& fn = nullptr) = 0;

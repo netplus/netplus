@@ -471,6 +471,9 @@
     <ClInclude Include="..\..\include\netp\poller_kqueue.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\list.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">

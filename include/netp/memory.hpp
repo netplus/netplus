@@ -13,9 +13,9 @@
 #include <netp/core/macros.hpp>
 #include <netp/tls.hpp>
 
-#define USE_POOL 1
-//#define USE_ALIGN_MALLOC 1
-//#define USE_STD_MALLOC
+#define NETP_MEMORY_USE_TLS_POOL 1
+//#define NETP_MEMORY_USE_ALIGN_MALLOC 1
+//#define NETP_MEMORY_USE_STD_MALLOC
 
 namespace netp {
 
@@ -106,7 +106,7 @@ namespace netp {
 	struct tag_allocator_std_malloc {};
 	struct tag_allocator_default_new {};
 	struct tag_allocator_align_malloc {};
-	struct tag_allocator_pool {};
+	struct tag_allocator_tls_pool {};
 
 	//std::allocator<T> AA;
 	template<class allocator_t>
@@ -167,15 +167,15 @@ namespace netp {
 	};
 
 	template<>
-	struct allocator_wrapper<tag_allocator_pool> {
+	struct allocator_wrapper<tag_allocator_tls_pool> {
 		static inline void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return tls_get<netp::pool_align_allocator_t>()->malloc(n, alignment);
+			return tls_get<netp::pool_align_allocator>()->malloc(n, alignment);
 		}
 		static inline void free(void* p) {
-			tls_get<netp::pool_align_allocator_t>()->free(p);
+			tls_get<netp::pool_align_allocator>()->free(p);
 		}
 		static inline void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return tls_get<netp::pool_align_allocator_t>()->realloc(ptr, size, alignment);
+			return tls_get<netp::pool_align_allocator>()->realloc(ptr, size, alignment);
 		}
 	};
 
@@ -213,6 +213,7 @@ namespace netp {
 			(void)n;
 		}
 
+		//for stl container
 		template<class _Objty,
 			class... _Types>
 			inline void construct(_Objty* _Ptr, _Types&&... _Args)
@@ -222,6 +223,8 @@ namespace netp {
 			//so, construct&destroy must be paired
 			::new ((void*)_Ptr) _Objty( std::forward<_Types>(_Args)...);
 		}
+
+		//for stl container
 		template<class _Uty>
 		inline void destroy(_Uty* _Ptr)
 		{	// destroy object at _Ptr
@@ -358,9 +361,9 @@ namespace netp {
 	//thread safe
 	template <class T>
 	struct allocator_pool :
-		public allocator_base<T, allocator_wrapper<tag_allocator_pool>>
+		public allocator_base<T, allocator_wrapper<tag_allocator_tls_pool>>
 	{
-		typedef  allocator_base<T, allocator_wrapper<tag_allocator_pool>> allocator_base_t;
+		typedef  allocator_base<T, allocator_wrapper<tag_allocator_tls_pool>> allocator_base_t;
 		typedef allocator_pool<T> allocator_t;
 
 		typedef typename allocator_base_t::size_type size_type;
@@ -398,9 +401,9 @@ namespace netp {
 	};
 
 	template<class T>
-#ifdef USE_POOL
+#ifdef NETP_MEMORY_USE_TLS_POOL
 	using allocator = netp::allocator_pool<T>;
-#elif defined(USE_ALIGN_MALLOC)
+#elif defined(NETP_MEMORY_USE_ALIGN_MALLOC)
 	using allocator = netp::allocator_align_malloc<T>;
 #else
 	using allocator = netp::allocator_std_malloc<T>;

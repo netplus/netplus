@@ -74,30 +74,33 @@ namespace netp {
 		NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
 		NETP_ASSERT(rt == netp::OK);
-		aio_do(aio_action::BEGIN, m_signalfds[0], [](const int aiort_) {
-			NETP_ASSERT(aiort_ == netp::OK);
-		});
 
-		aio_do(aio_action::READ, m_signalfds[0], [fd = m_signalfds[0]](const int aiort_) {
-			if (aiort_ == netp::OK) {
+		m_signalfds_aio_ctx = aio_begin(m_signalfds[0]);
+		NETP_ASSERT(m_signalfds_aio_ctx != 0);
+		m_signalfds_aio_ctx->fn_read = [](int status, aio_ctx* ctx) {
+			if (status == netp::OK) {
 				byte_t tmp[1];
 				int ec = netp::OK;
 				do {
-					u32_t c = netp::recv(netp::NETP_DEFAULT_SOCKAPI, fd, tmp, 1, ec, 0);
+					u32_t c = netp::recv(netp::NETP_DEFAULT_SOCKAPI, ctx->fd, tmp, 1, ec, 0);
 					if (c == 1) {
 						NETP_ASSERT(ec == netp::OK);
 						NETP_ASSERT(tmp[0] == 'i', "c: %d", tmp[0]);
 					}
 				} while (ec == netp::OK);
 			}
-		});
+			return netp::OK;
+		};
+		rt = aio_do(aio_action::READ, m_signalfds_aio_ctx);
+		NETP_ASSERT(rt == netp::OK);
 	}
 
 	void io_event_loop::_do_poller_deinit() {
 		NETP_ASSERT(in_event_loop());
-		aio_do(aio_action::END_READ, m_signalfds[0],nullptr);
-		aio_do(aio_action::END, m_signalfds[0], [](const int aiort_) {(void)aiort_; });
-		__do_execute_act();
+		aio_do(aio_action::END_READ, m_signalfds_aio_ctx);
+		m_signalfds_aio_ctx->fn_read = nullptr;
+		aio_end(m_signalfds_aio_ctx) ;
+
 		NETP_CLOSE_SOCKET(m_signalfds[0]);
 		NETP_CLOSE_SOCKET(m_signalfds[1]);
 		m_signalfds[0] = (SOCKET)NETP_INVALID_SOCKET;
@@ -145,14 +148,14 @@ namespace netp {
 						while (i < ss) {
 							m_tq[i++]();
 						}
-						if (ss > 2048) {
+						if (ss > 4096) {
 							io_task_q_t().swap(m_tq);
 						} else {
 							m_tq.clear();
 						}
 					}
 
-					__do_execute_act();
+					//__do_execute_act();
 					_do_poll(_calc_wait_dur_in_nano());
 				}
 			}
@@ -189,7 +192,7 @@ namespace netp {
 						L->aio_do(aio_action::NOTIFY_TERMINATING, 0, nullptr);
 					}
 #else
-					L->aio_do(aio_action::NOTIFY_TERMINATING, 0, nullptr);
+					L->aio_do(aio_action::NOTIFY_TERMINATING, 0);
 #endif
 				});
 			}
@@ -235,19 +238,19 @@ namespace netp {
 			(void)wait_in_nano;
 		}
 
-		int bye_event_loop::_do_watch(SOCKET fd,u8_t flag, NRP<watch_ctx> const& ) {
+		int bye_event_loop::_do_watch(u8_t flag, aio_ctx* ctx ) {
 			NETP_ASSERT(in_event_loop());
 			//NETP_ASSERT(flag == IOE_INIT);
 
-			NETP_ERR("[bye_event_loop]_do_watch(%d,%d), cancel", flag, fd);
+			NETP_ERR("[bye_event_loop]_do_watch(%d,%d), cancel", flag, ctx->fd);
 			return netp::E_IO_EVENT_LOOP_BYE_DO_NOTHING;
 
 			//(void)fn;
 			//NETP_THROW("[do_watch]io_event_loop_group dealloc logic issue");
 		}
 
-		int bye_event_loop::_do_unwatch(SOCKET fd, u8_t flag, NRP<watch_ctx> const&) {
-			NETP_ERR("[bye_event_loop]do_unwatch(%d,%d)", flag, fd);
+		int bye_event_loop::_do_unwatch(u8_t flag, aio_ctx* ctx) {
+			NETP_ERR("[bye_event_loop]do_unwatch(%d,%d)", flag, ctx->fd);
 			NETP_THROW("[do_unwatch]io_event_loop_group dealloc logic issue");
 		}
 

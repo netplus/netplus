@@ -27,10 +27,10 @@ namespace netp {
 			NETP_ASSERT( m_epfd == -1 );
 		}
 
-		int _do_watch(SOCKET fd, u8_t flag, NRP<watch_ctx> const& ctx) override {
-			NETP_ASSERT(fd != NETP_INVALID_SOCKET);
+		int _do_watch(u8_t flag, aio_ctx* ctx) override {
+			NETP_ASSERT( ctx->fd != NETP_INVALID_SOCKET);
 			NETP_ASSERT(in_event_loop());
-			const u8_t f2 = (!(--flag)) + 1;
+//			const u8_t f2 = (!(--flag)) + 1;
 
 			struct epoll_event epEvent =
 			{
@@ -39,29 +39,29 @@ namespace netp {
 #else
 				EPOLLLT|EPOLLPRI|EPOLLHUP|EPOLLERR,
 #endif
-				{(void*)ctx.get()}
+				{(void*)ctx}
 			};
 
 			int epoll_op = EPOLL_CTL_ADD;
-			if (ctx->iofn[f2] != nullptr) {
+			if ( 0 != ctx->flag ) {
 				epEvent.events |= (EPOLLIN|EPOLLOUT);
 				epoll_op = EPOLL_CTL_MOD;
 			} else {
                 const static int _s_flag_epollin_epollout_map[] = {
                     EPOLLIN,EPOLLOUT
                 };
-				epEvent.events |= _s_flag_epollin_epollout_map[flag];
+				epEvent.events |= _s_flag_epollin_epollout_map[--flag];
 			}
 
-			NETP_TRACE_IOE("fd: %d, op:%d, evts: %u", fd, epoll_op, epEvent.events);
-			return epoll_ctl(m_epfd, epoll_op, fd, &epEvent);
+			NETP_TRACE_IOE("[watch]fd: %d, op:%d, evts: %u", ctx->fd, epoll_op, epEvent.events);
+			return epoll_ctl(m_epfd, epoll_op, ctx->fd, &epEvent);
 		}
 
-		int _do_unwatch( SOCKET fd, u8_t flag, NRP<watch_ctx> const& ctx ) override {
+		int _do_unwatch( u8_t flag, aio_ctx* ctx ) override {
 
-			NETP_ASSERT(fd != NETP_INVALID_SOCKET);
+			NETP_ASSERT(ctx->fd != NETP_INVALID_SOCKET);
 			NETP_ASSERT(in_event_loop());
-			const u8_t f2 = (!(--flag)) + 1;
+			//const u8_t f2 = (!(--flag)) + 1;
 
 			struct epoll_event epEvent =
 			{
@@ -70,20 +70,21 @@ namespace netp {
 #else
 				EPOLLLT|EPOLLPRI|EPOLLHUP|EPOLLERR|EPOLLIN|EPOLLOUT,
 #endif
-				{(void*)ctx.get()}
+				{(void*)ctx}
 			};
 
 			int epoll_op = EPOLL_CTL_MOD;
-			if (ctx->iofn[f2] == nullptr) {
+			if ( 0 == (ctx->flag & (~flag)) ) {
 				epEvent.events &= ~(EPOLLIN | EPOLLOUT);
 				epoll_op = EPOLL_CTL_DEL;
 			} else {
 				const static int _s_flag_epollin_epollout_map[] = {
 					EPOLLIN,EPOLLOUT
 				};
-				epEvent.events &= ~(_s_flag_epollin_epollout_map[flag]);
+				epEvent.events &= ~(_s_flag_epollin_epollout_map[--flag]);
 			}
-			return epoll_ctl(m_epfd,epoll_op,fd,&epEvent) ;
+			NETP_TRACE_IOE("[unwatch]fd: %d, op:%d, evts: %u", ctx->fd, epoll_op, epEvent.events);
+			return epoll_ctl(m_epfd,epoll_op,ctx->fd,&epEvent) ;
 		}
 
 	public:
@@ -125,7 +126,7 @@ namespace netp {
 			for( int i=0;i<nEvents;++i) {
 
 				NETP_ASSERT( epEvents[i].data.ptr != nullptr );
-				NRP<watch_ctx> ctx (static_cast<watch_ctx*> (epEvents[i].data.ptr)) ;
+				aio_ctx* ctx =(static_cast<aio_ctx*> (epEvents[i].data.ptr)) ;
 				NETP_ASSERT(ctx->fd != NETP_INVALID_SOCKET);
 
 				uint32_t events = ((epEvents[i].events) & 0xFFFFFFFF) ;
@@ -153,22 +154,15 @@ namespace netp {
 					events &= ~(EPOLLERR | EPOLLHUP);
 				}
 
-				const static int _s_flag_epollin_epollout_map[] = {
-					0,EPOLLIN,EPOLLOUT
-				};
-
-				for (i8_t i = aio_flag::AIO_READ; i < aio_flag::AIO_FLAG_MAX; ++i) {
-					if (events & _s_flag_epollin_epollout_map[i]) {
-						events &= ~(_s_flag_epollin_epollout_map[i]);
-#ifdef NETP_DEBUG_WATCH_CTX_FLAG
-						NETP_ASSERT( ((ctx->flag& (i)) && ctx->iofn[i] != nullptr) , "fd: %d, flag: %d, ec: %d", ctx->fd, ctx->flag, ec );
-#endif
-						ctx->iofn[i](ec);
-						continue;
-					}
-
-					ec != netp::OK && ctx->iofn[i] != nullptr ? ctx->iofn[i](ec) : (void)0;
+				if ( ((events&EPOLLIN) || ec != netp::OK) && ctx->fn_read != nullptr ) {
+					NETP_ASSERT(ctx->flag & u8_t(aio_flag::AIO_READ));
+					ctx->fn_read(ec, ctx);
 				}
+				if ( ( (events&EPOLLOUT) || ec != netp::OK) && ctx->fn_write != nullptr ) {
+					NETP_ASSERT(ctx->flag & u8_t(aio_flag::AIO_WRITE));
+					ctx->fn_write(ec, ctx);
+				}
+				events &= ~(EPOLLOUT|EPOLLIN);
 
 				if (events&EPOLLPRI) {
 					events &= ~EPOLLPRI;

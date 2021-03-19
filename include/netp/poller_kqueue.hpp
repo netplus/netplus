@@ -55,49 +55,44 @@ namespace netp {
 
 			int ec=netp::OK;
 			int rt = kevent(m_kq, NULL, 0, m_kevts, m_kevt_size, tspp);
-                        __LOOP_EXIT_WAITING__();
+			__LOOP_EXIT_WAITING__();
+			
 			if (NETP_LIKELY(rt > 0)) {
 				for (int j = 0; j < rt; ++j) {
 					struct kevent* e = (m_kevts + j);
 					NETP_ASSERT(e->udata != nullptr);
-					NRP<watch_ctx> ctx(static_cast<watch_ctx*> (e->udata));
-					if (e->filter==EVFILT_READ) {
-#ifdef NETP_DEBUG_WATCH_CTX_FLAG
-						NETP_ASSERT(((ctx->flag & (AIO_READ)) && ctx->iofn[AIO_READ] != nullptr), "fd: %d, flag: %d", ctx->fd, ctx->flag);
-#endif
-						ctx->iofn[AIO_READ](ec);
+					aio_ctx* ctx = (static_cast<aio_ctx*> (e->udata));
+					if (e->filter==EVFILT_READ && ctx->fn_read != nullptr) {
+						ctx->fn_read(ec);
 					}
-					if (e->filter==EVFILT_WRITE) {
-#ifdef NETP_DEBUG_WATCH_CTX_FLAG
-						NETP_ASSERT(((ctx->flag & (AIO_WRITE)) && ctx->iofn[AIO_WRITE] != nullptr), "fd: %d, flag: %d", ctx->fd, ctx->flag);
-#endif	
-						ctx->iofn[AIO_WRITE](ec);
+					if (e->filter==EVFILT_WRITE && ctx->fn_write != nullptr ) {
+						ctx->fn_write(ec);
 					}
 				}
 			}
 		}
-		int _do_watch(SOCKET fd, u8_t flag, NRP<watch_ctx> const& ctx) {
+		int _do_watch( u8_t flag, aio_ctx* ctx) {
 			struct kevent ke;
-			if (flag&AIO_READ) {
-				EV_SET(&ke, fd, EVFILT_READ, EV_ADD, 0, 0, (void*)(ctx.get()));
+			if (flag&aio_flag::AIO_READ) {
+				EV_SET(&ke, fd, EVFILT_READ, EV_ADD, 0, 0, (void*)(ctx));
 				int rt = kevent(m_kq, &ke, 1, NULL, 0, NULL);
 				NETP_RETURN_V_IF_MATCH(rt, rt == -1);
 			}
-			if (flag & AIO_WRITE) {
-				EV_SET(&ke, fd, EVFILT_WRITE, EV_ADD, 0, 0, (void*)(ctx.get()));
+			if (flag&aio_flag::AIO_WRITE) {
+				EV_SET(&ke, fd, EVFILT_WRITE, EV_ADD, 0, 0, (void*)(ctx));
 				int rt = kevent(m_kq, &ke, 1, NULL, 0, NULL);
 				NETP_RETURN_V_IF_MATCH(rt, rt == -1);
 			}
 			return netp::OK;
 		}
-		int _do_unwatch(SOCKET fd, u8_t flag, NRP<watch_ctx> const& ctx) {
+		int _do_unwatch(u8_t flag, aio_ctx* ctx) {
 			struct kevent ke;
-			if (flag & AIO_READ) {
+			if (flag & aio_flag::AIO_READ) {
 				EV_SET(&ke, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
 				int rt = kevent(m_kq, &ke, 1, NULL, 0, NULL);
 				NETP_RETURN_V_IF_MATCH(rt, rt == -1);
 			}
-			if (flag & AIO_WRITE) {
+			if (flag & aio_flag::AIO_WRITE) {
 				EV_SET(&ke, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
 				int rt = kevent(m_kq, &ke, 1, NULL, 0, NULL);
 				NETP_RETURN_V_IF_MATCH(rt, rt == -1);

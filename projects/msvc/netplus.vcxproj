@@ -64,6 +64,7 @@
     <ClInclude Include="..\..\include\netp\core\platform\win_x86_.hpp" />
     <ClInclude Include="..\..\include\netp\CPUID.hpp" />
     <ClInclude Include="..\..\include\netp\dns_resolver.hpp" />
+    <ClInclude Include="..\..\include\netp\list.hpp" />
     <ClInclude Include="..\..\include\netp\poller_epoll.hpp" />
     <ClInclude Include="..\..\include\netp\event_broker.hpp" />
     <ClInclude Include="..\..\include\netp\exception.hpp" />

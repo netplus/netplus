@@ -11,8 +11,8 @@
 
 namespace netp {
 	
-	typedef std::function<void(const int )> fn_aio_event_t;
-//	typedef std::function<void(const int)> fn_aio_read_event_t;
+	//struct aio_ctx;
+	//typedef std::function<void(aio_ctx*)> fn_aio_event_t;
 
 #ifdef NETP_HAS_POLLER_IOCP
 	//class packet;

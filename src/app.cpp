@@ -156,7 +156,7 @@ namespace netp {
 		NETP_ASSERT(netp::is_little_endian());
 #endif
 		netp::random_init_seed();
-#ifdef USE_POOL
+#ifdef NETP_MEMORY_USE_TLS_POOL
 		netp::tls_create<netp::pool_align_allocator_t>();
 #endif
 		netp::tls_create< netp::impl::thread_data>();
@@ -176,7 +176,7 @@ namespace netp {
 #endif
 		netp::tls_destroy< netp::impl::thread_data>();
 
-#ifdef USE_POOL
+#ifdef NETP_MEMORY_USE_TLS_POOL
 		netp::tls_destroy< netp::pool_align_allocator_t>();
 #endif
 	}
@@ -274,7 +274,7 @@ namespace netp {
 		NETP_INFO("sizeof(netp::condition): %u", sizeof(netp::condition));
 		NETP_INFO("sizeof(netp::condition_any): %u", sizeof(netp::condition_any));
 		NETP_INFO("sizeof(netp::fn_aio_event_t): %u", sizeof(fn_aio_event_t));
-		NETP_INFO("sizeof(netp::watch_ctx): %u", sizeof(netp::watch_ctx));
+		NETP_INFO("sizeof(netp::aio_ctx): %u", sizeof(netp::aio_ctx));
 	}
 #endif
 

@@ -87,13 +87,13 @@ namespace netp {
 		m_so->ch_set_active();
 		m_so->ch_set_connected();
 		
-		m_so->aio_begin([dnsr=this, p](const int aiort) {
+		m_so->aio_begin([dnsr=this, p](int aiort , aio_ctx* ctx) {
 			NETP_ASSERT(dnsr->m_flag & dns_resolver_flag::f_launching);
 			dnsr->m_flag &= dns_resolver_flag::f_launching;
 			if (aiort == netp::OK) {
 				NETP_DEBUG("[dns_resolver][%s]init done", dnsr->m_so->info().c_str());
 				dnsr->m_flag |= dns_resolver_flag::f_running;
-				dnsr->m_so->ch_aio_read_from(std::bind(&dns_resolver::async_read_dns_reply, dns_resolver::instance(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+				dnsr->m_so->ch_aio_read_from(std::bind(&dns_resolver::async_read_dns_reply, dns_resolver::instance(), std::placeholders::_1, std::placeholders::_2));
 				dnsr->m_so->ch_close_promise()->if_done([dnsr](int const&) {
 					dnsr->m_flag &= ~dns_resolver_flag::f_running;
 					dnsr->m_so = nullptr;
@@ -158,22 +158,21 @@ namespace netp {
 		}
 	}
 
-	void dns_resolver::async_read_dns_reply(const int aiort_, NRP<netp::packet> const&in, address const& addr) {
+	void dns_resolver::async_read_dns_reply(int aiort_, aio_ctx* ctx) {
 		NETP_ASSERT(m_loop->in_event_loop());
 		//NETP_ASSERT(aiort_ == netp::OK);
 		if (aiort_ == netp::OK) {
-			struct sockaddr_in addr_in;
-			::memset(&addr_in, 0, sizeof(addr_in));
-			addr_in.sin_family = u16_t(addr.family());
-			addr_in.sin_port = addr.nport();
-			addr_in.sin_addr.s_addr = addr.nipv4();
-			dns_ioevent_with_udpdata_in(m_dns_ctx, 0, in->head(), in->len(), &addr_in );
+			//struct sockaddr_in addr_in;
+			//::memset(&addr_in, 0, sizeof(addr_in));
+			//addr_in.sin_family = u16_t(addr.family());
+			//addr_in.sin_port = addr.nport();
+			//addr_in.sin_addr.s_addr = addr.nipv4();
+			//dns_ioevent_with_udpdata_in(m_dns_ctx, 0, in->head(), in->len(), &addr_in );
+			dns_ioevent(m_dns_ctx, 0);
 			return;
 		}
-		if (aiort_ != netp::E_SOCKET_READ_BLOCK) {
 			NETP_ERR("[dns_resolver]dns read error: %d, restart", aiort_);
 			_do_stop(netp::make_ref<netp::promise<int>>());
-		}
 	}
 
 	static void dns_submit_a4_cb(struct dns_ctx* ctx, struct dns_rr_a4* result, void* data) {
