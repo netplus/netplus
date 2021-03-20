@@ -169,12 +169,13 @@ namespace netp {
 		NETP_ASSERT(m_loop->in_event_loop());
 		//NETP_ASSERT(aiort_ == netp::OK);
 
+#ifdef NETP_HAS_POLLER_IOCP
 		if (status > 0) {
-			NETP_ASSERT(ctx->is_iocp);
 			dns_ioevent_with_udpdata_in(m_dns_ctx, 0, (unsigned char*) ctx->ol_r->wsabuf_rcv.buf, status, ctx->ol_r->from_ptr );
 			dns_ioevent(m_dns_ctx, 0);
 			return;
 		}
+#endif
 		if (status == netp::OK) {
 			//struct sockaddr_in addr_in;
 			//::memset(&addr_in, 0, sizeof(addr_in));

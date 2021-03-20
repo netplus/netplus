@@ -500,7 +500,7 @@ namespace netp {
 			}
 
 			if (ch_errno() != netp::OK) {
-				NETP_ASSERT(m_chflag & (int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_IO_EVENT_LOOP_BEGIN_FAILED) | int(channel_flag::F_IO_EVENT_LOOP_NOTIFY_TERMINATING)));
+				NETP_ASSERT(m_chflag & (int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_IO_EVENT_LOOP_NOTIFY_TERMINATING)));
 				NETP_ASSERT( ((m_chflag&(int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED))) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED))) ?
 					m_outbound_entry_q.size() :
 					true);

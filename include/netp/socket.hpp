@@ -18,9 +18,9 @@
 	#define NETP_DEFAULT_LISTEN_BACKLOG 256
 #endif
 
-//#ifndef NETP_HAS_POLLER_IOCP
+#ifndef NETP_HAS_POLLER_IOCP
 	#define NETP_ENABLE_FAST_WRITE
-//#endif
+#endif
 
 //in milliseconds
 #define NETP_SOCKET_BDLIMIT_TIMER_DELAY_DUR (250)
@@ -96,7 +96,9 @@ namespace netp {
 		keep_alive_vals kvals;
 		channel_buf_cfg sock_buf;
 		u32_t bdlimit; //in bit (1kb == 1024b), 0 means no limit
-		
+#ifdef NETP_HAS_POLLER_IOCP
+		u32_t wsabuf_size;
+#endif
 		socket_cfg( NRP<io_event_loop> const& L = nullptr ):
 			L(L),
 			fd(SOCKET(NETP_INVALID_SOCKET)),
@@ -110,6 +112,9 @@ namespace netp {
 			kvals(default_tcp_keep_alive_vals),
 			sock_buf({0}),
 			bdlimit(0)
+#ifdef NETP_HAS_POLLER_IOCP
+			,wsabuf_size(64*1024)
+#endif
 		{}
 	};
 
@@ -134,6 +139,10 @@ namespace netp {
 		netp::size_t m_outbound_budget;
 		netp::size_t m_outbound_limit; //in byte
 
+#ifdef NETP_HAS_POLLER_IOCP
+		u32_t m_wsabuf_size;
+#endif
+
 		void _tmcb_BDL(NRP<timer> const& t);
 	public:
 		socket( NRP<socket_cfg> const& cfg):
@@ -145,6 +154,9 @@ namespace netp {
 			m_noutbound_bytes(0),
 			m_outbound_budget(cfg->bdlimit),
 			m_outbound_limit(cfg->bdlimit)
+#ifdef NETP_HAS_POLLER_IOCP
+			,m_wsabuf_size(cfg->wsabuf_size)
+#endif
 		{
 			NETP_ASSERT(cfg->L != nullptr);
 		}
@@ -644,36 +656,30 @@ namespace netp {
 		void _ch_do_close_listener();
 		void _ch_do_close_read_write();
 
-		void __cb_aio_notify(int status, aio_ctx*) {
+		void __aio_begin_done(aio_ctx* ctx) {
+			m_chflag |= int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE);
+#ifdef NETP_HAS_POLLER_IOCP
+			NETP_ASSERT( ctx->ol_r->rcvbuf == 0 );
+			const int from_reserve = sizeof(struct sockaddr_in) + 16 + sizeof(int);
+			ctx->ol_r->rcvbuf = netp::allocator<char>::malloc(from_reserve + m_wsabuf_size);
+			NETP_ALLOC_CHECK(ctx->ol_r->rcvbuf, m_wsabuf_size);
+
+			ctx->ol_r->wsabuf_rcv = { m_wsabuf_size, (ctx->ol_r->rcvbuf + (sizeof(struct sockaddr_in) + from_reserve)) };
+			ctx->ol_r->from_ptr = (struct sockaddr_in*)ctx->ol_r->rcvbuf;
+			ctx->ol_r->from_len_ptr = (int*)(ctx->ol_r->rcvbuf + sizeof(struct sockaddr_in) + 16);
+#endif
+		}
+
+		void __aio_notify_terminating(int status, aio_ctx*) {
 			NETP_ASSERT(L->in_event_loop());
-			int aiort_ = status;
-			NETP_ASSERT(
-				aiort_ == netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING
-				||aiort_ == netp::OK
-				|| aiort_ == netp::E_IO_EVENT_LOOP_TERMINATED
-				|| aiort_ == netp::E_IO_EVENT_LOOP_MAXIMUM_CTX_LIMITATION
-			);
-
-			if (aiort_ == netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING) {
-				//terminating notify, treat as a error
-				NETP_ASSERT(m_chflag & int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE));
-				m_chflag |= (int(channel_flag::F_IO_EVENT_LOOP_NOTIFY_TERMINATING));
-				m_cherrno = netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING;
-				m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
-				ch_close_impl(nullptr);
-				return;
-			}
-
-			NETP_ASSERT(m_chflag & int(channel_flag::F_IO_EVENT_LOOP_BEGINING));
-			m_chflag &= ~int(channel_flag::F_IO_EVENT_LOOP_BEGINING);
-
-			if (aiort_ == netp::OK) {
-				m_chflag |= int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE);
-			} else {
-				m_chflag |= int(channel_flag::F_IO_EVENT_LOOP_BEGIN_FAILED);
-				ch_errno()=(aiort_);
-				ch_close_impl(nullptr);
-			}
+			NETP_ASSERT(	status == netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING);
+			//terminating notify, treat as a error
+			NETP_ASSERT(m_chflag & int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE));
+			m_chflag |= (int(channel_flag::F_IO_EVENT_LOOP_NOTIFY_TERMINATING));
+			m_cherrno = netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING;
+			m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
+			ch_close_impl(nullptr);
+			return;
 		}
 
 	public:
@@ -727,8 +733,7 @@ namespace netp {
 				return;
 			}
 
-			NETP_ASSERT( (m_chflag&(int(channel_flag::F_IO_EVENT_LOOP_BEGINING)|int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE)|int(channel_flag::F_IO_EVENT_LOOP_BEGIN_FAILED))) == 0);
-			m_chflag |= int(channel_flag::F_IO_EVENT_LOOP_BEGINING);
+			NETP_ASSERT( (m_chflag&(int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE))) == 0);
 
 			m_aio_ctx = L->aio_begin(m_fd);
 			if (m_aio_ctx == 0) {
@@ -736,8 +741,8 @@ namespace netp {
 				return;
 			}
 
-			m_aio_ctx->fn_notify = std::bind(&socket::__cb_aio_notify, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
-			__cb_aio_notify(netp::OK,m_aio_ctx);
+			m_aio_ctx->fn_notify = std::bind(&socket::__aio_notify_terminating, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
+			__aio_begin_done(m_aio_ctx);
 			fn_begin_done(netp::OK, m_aio_ctx);
 		}
 
@@ -988,6 +993,7 @@ namespace netp {
 				entry.write_promise->set(netp::OK);
 				m_outbound_entry_q.pop_front();
 			}
+			status = netp::OK;
 			if ((m_noutbound_bytes>0)) {
 				NETP_ASSERT(m_outbound_entry_q.size());
 				NETP_ASSERT((m_chflag & int(channel_flag::F_WATCH_WRITE)) != 0);
@@ -1004,8 +1010,7 @@ namespace netp {
 		int __iocp_do_WSASend( ol_ctx* olctx ) {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(olctx != nullptr);
-			NETP_ASSERT((m_chflag & int(channel_flag::F_WATCH_WRITE)) );
-
+			NETP_ASSERT((olctx->action_status & AS_WAIT_IOCP) ==0);
 			int wrt = netp::OK;
 			while (m_outbound_entry_q.size()) {
 				NETP_ASSERT(m_noutbound_bytes > 0);
@@ -1065,6 +1070,7 @@ namespace netp {
 
 #ifdef NETP_HAS_POLLER_IOCP
 		inline static int __iocp_do_WSARecv(ol_ctx* olctx) {
+			NETP_ASSERT((olctx->action_status & AS_WAIT_IOCP) == 0);
 			ol_ctx_reset(olctx);
 			DWORD flags = 0;
 			int ec = ::WSARecv(olctx->fd, &olctx->wsabuf_rcv, 1, NULL, &flags, &olctx->ol, NULL);
@@ -1077,6 +1083,7 @@ namespace netp {
 			return ec;
 		}
 		inline static int __iocp_do_WSARecvfrom(ol_ctx* olctx, SOCKADDR* from, int* fromlen) {
+			NETP_ASSERT((olctx->action_status & AS_WAIT_IOCP) == 0);
 			ol_ctx_reset(olctx);
 			DWORD flags = 0;
 			*fromlen = sizeof(sockaddr_in);

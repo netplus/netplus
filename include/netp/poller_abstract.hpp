@@ -103,7 +103,6 @@ namespace netp {
 		aio_ctx* prev, *next;
 		SOCKET fd;
 		u8_t flag;
-		bool is_iocp;
 		fn_aio_event_t fn_read;
 		fn_aio_event_t fn_write;
 		fn_aio_event_t fn_notify;
@@ -112,7 +111,6 @@ namespace netp {
 	inline static aio_ctx* aio_ctx_allocate() {
 		aio_ctx* ctx = netp::allocator<aio_ctx>::malloc(1);
 		ctx->flag = 0;
-		ctx->is_iocp = false;
 		new ((fn_aio_event_t*)&(ctx->fn_read))(fn_aio_event_t)();
 		new ((fn_aio_event_t*)&(ctx->fn_write))(fn_aio_event_t)();
 		new ((fn_aio_event_t*)&(ctx->fn_notify))(fn_aio_event_t)();

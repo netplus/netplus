@@ -43,7 +43,7 @@ namespace netp {
 		WSABUF wsabuf_snd;
 		struct sockaddr_in* from_ptr;
 		int* from_len_ptr;
-		char buf[NETP_IOCP_BUF_SIZE];
+		char* rcvbuf;
 	};
 
 	__NETP_FORCE_INLINE static ol_ctx* ol_ctx_allocate(SOCKET fd) {
@@ -54,14 +54,17 @@ namespace netp {
 		olctx->action = u8_t(-1);
 		olctx->action_status = 0;
 		new ((fn_aio_event_t*)&(olctx->fn_ol_done))(fn_aio_event_t)();
-		olctx->wsabuf_rcv = { NETP_IOCP_BUF_SIZE-sizeof(struct sockaddr_in)-16-sizeof(int), (olctx->buf + (sizeof(struct sockaddr_in) + 16 + sizeof(int)) ) };
+		olctx->wsabuf_rcv = { 0,0 };
 		olctx->wsabuf_snd = { 0, 0 };
-		olctx->from_ptr = (struct sockaddr_in*)olctx->buf ;
-		olctx->from_len_ptr = (int*) (olctx->buf+sizeof(struct sockaddr_in)+16);
+		olctx->rcvbuf = 0;
 		return olctx;
 	}
 
 	__NETP_FORCE_INLINE static void ol_ctx_deallocate(ol_ctx* ctx) {
+		if (ctx->rcvbuf != 0) {
+			netp::allocator<char>::free(ctx->rcvbuf);
+			ctx->rcvbuf = 0;
+		}
 		netp::allocator<ol_ctx>::free(ctx);
 	}
 
@@ -76,7 +79,6 @@ namespace netp {
 		ol_ctx* ol_r;
 		ol_ctx* ol_w;
 		fn_aio_event_t fn_notify;
-		bool is_iocp;
 	};
 
 	inline static aio_ctx* aio_ctx_allocate( SOCKET fd ) {
@@ -86,7 +88,6 @@ namespace netp {
 		ctx->ol_r->aioctx = ctx;
 		ctx->ol_w = ol_ctx_allocate(fd);
 		ctx->ol_w->aioctx = ctx;
-		ctx->is_iocp = true;
 		new ((fn_aio_event_t*)&(ctx->fn_notify))(fn_aio_event_t)();
 		return ctx;
 	}
@@ -386,14 +387,14 @@ namespace netp {
 				break;
 				case aio_action::WRITE:
 				{
-					ol_ctx* olctx = ctx->ol_r;
+					ol_ctx* olctx = ctx->ol_w;
 					NETP_ASSERT(olctx != nullptr);
 					olctx->action_status &= ~AS_DONE;
 				}
 				break;
 				case aio_action::END_WRITE:
 				{
-					ol_ctx* olctx = ctx->ol_r;
+					ol_ctx* olctx = ctx->ol_w;
 					NETP_ASSERT(olctx != nullptr);
 					olctx->action_status |= AS_DONE;
 				}
