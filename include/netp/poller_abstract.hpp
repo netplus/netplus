@@ -14,6 +14,35 @@
 
 namespace netp {
 
+	template<class list_t>
+	inline static void list_init(list_t* list) {
+		list->next = list;
+		list->prev = list;
+	}
+	template<class list_t>
+	inline static void __list_insert(list_t* prev, list_t* next, list_t* item) {
+		item->next = next;
+		item->prev = prev;
+		next->prev = item;
+		prev->next = item;
+	}
+	template<class list_t>
+	inline static void list_prepend(list_t* list, list_t* item) {
+		__list_insert(list, list->next, item);
+	}
+	template<class list_t>
+	inline static void list_append(list_t* list, list_t* item) {
+		__list_insert(list->prev, list, item);
+	}
+	template<class list_t>
+	inline static void list_delete(list_t* item) {
+		item->prev->next = item->next;
+		item->next->prev = item->prev;
+		item->next = 0;
+		item->prev = 0;
+	}
+#define NETP_AIO_CTX_LIST_IS_EMPTY(list) ( ((list) == (list)->next) && ((list)==(list)->prev) )
+
 	enum io_poller_type {
 		T_SELECT, //win&linux&android
 		T_IOCP, //win
@@ -22,7 +51,6 @@ namespace netp {
 		T_POLLER_CUSTOM_1,
 		T_POLLER_CUSTOM_2,
 		T_POLLER_MAX,
-		T_DUMMY,
 		T_NONE
 	};
 
@@ -41,58 +69,49 @@ namespace netp {
 		END_WRITE = 1 << 3,
 
 		NOTIFY_TERMINATING = 1 << 4,
+
 		READ_WRITE = (READ | WRITE)
 	};
 
 	struct aio_ctx;
 	typedef std::function<void(int status, aio_ctx* ctx)> fn_aio_event_t;
+	class poller_abstract:
+		public netp::ref_base
+	{
+	protected:
+	public:
+		poller_abstract() {}
+		~poller_abstract() {}
+
+		virtual void init() = 0;
+		virtual void deinit() = 0;
+
+#define __LOOP_EXIT_WAITING__(_W_) (_W_.store(false, std::memory_order_release))
+		virtual void poll(long long wait_in_nano, std::atomic<bool>& waiting) = 0;
+
+		virtual void interrupt_wait() = 0;
+		virtual int aio_do(aio_action, aio_ctx*) = 0;
+		virtual aio_ctx* aio_begin(SOCKET) = 0;
+		virtual void aio_end(aio_ctx*) = 0;
+		virtual int watch(u8_t,aio_ctx*) = 0;
+		virtual int unwatch(u8_t, aio_ctx*) = 0;
+	};
+
+#ifndef NETP_HAS_POLLER_IOCP
 	struct aio_ctx
 	{
-		aio_ctx* prev;
-		aio_ctx* next;
-
+		aio_ctx* prev, *next;
 		SOCKET fd;
+		u8_t flag;
+
 		fn_aio_event_t fn_read;
 		fn_aio_event_t fn_write;
 		fn_aio_event_t fn_notify;
-
-		u8_t flag;
-
-#ifdef NETP_DEBUG_TERMINATING
-		bool terminated;
-#endif
-
-#ifdef NETP_HAS_POLLER_IOCP
-		iocp_overlapped_ctx* ol_ctxs[iocp_ol_type::WRITE + 1];
-#endif
 	};
-
-	inline static void aio_ctx_list_init(aio_ctx* list) {
-		list->next = list;
-		list->prev = list;
-	}
-	inline static void __aio_ctx_list_insert(aio_ctx* prev, aio_ctx* next, aio_ctx* item) {
-		item->next = next;
-		item->prev = prev;
-		next->prev = item;
-		prev->next = item;
-	}
-	inline static void aio_ctx_list_prepend(aio_ctx* list, aio_ctx* item) {
-		__aio_ctx_list_insert(list, list->next, item);
-	}
-	inline static void aio_ctx_list_append(aio_ctx* list, aio_ctx* item) {
-		__aio_ctx_list_insert(list->prev, list, item);
-	}
-	inline static void aio_ctx_list_delete(aio_ctx* item) {
-		item->prev->next = item->next;
-		item->next->prev = item->prev;
-		item->next = 0;
-		item->prev = 0;
-	}
-#define NETP_AIO_CTX_LIST_IS_EMPTY(list) ( ((list) == (list)->next) && ((list)==(list)->prev) )
 
 	inline static aio_ctx* aio_ctx_allocate() {
 		aio_ctx* ctx = netp::allocator<aio_ctx>::malloc(1);
+		ctx->flag = 0;
 		new ((fn_aio_event_t*)&(ctx->fn_read))(fn_aio_event_t)();
 		new ((fn_aio_event_t*)&(ctx->fn_write))(fn_aio_event_t)();
 		new ((fn_aio_event_t*)&(ctx->fn_notify))(fn_aio_event_t)();
@@ -100,20 +119,15 @@ namespace netp {
 	}
 
 	inline static void aio_ctx_deallocate(aio_ctx* ctx) {
+		NETP_ASSERT(ctx->fn_read == nullptr);
+		NETP_ASSERT(ctx->fn_write == nullptr);
+		NETP_ASSERT(ctx->fn_notify == nullptr);
 		netp::allocator<aio_ctx>::free(ctx);
 	}
 
-#ifdef NETP_HAS_POLLER_IOCP
-	typedef std::function<int(void* ol)> fn_overlapped_io_event;
-#endif
-
-	class poller_abstract :
-		public netp::ref_base
-	{
-
-	protected:
+	class poller_interruptable_by_fd : public poller_abstract {
+	public:
 		aio_ctx m_aio_ctx_list;
-
 		SOCKET m_signalfds[2];
 		aio_ctx* m_signalfds_aio_ctx;
 
@@ -122,31 +136,28 @@ namespace netp {
 		long m_aio_ctx_count_free;
 #endif
 
-	public:
-		poller_abstract() : 
-			m_signalfds {
-			(SOCKET)NETP_INVALID_SOCKET, (SOCKET)NETP_INVALID_SOCKET}
-		{
-			netp::aio_ctx_list_init(&m_aio_ctx_list);
-		}
-		~poller_abstract() {}
-
-		virtual void init() {
+		poller_interruptable_by_fd():
+			poller_abstract(),
+			m_signalfds{ (SOCKET)NETP_INVALID_SOCKET, (SOCKET)NETP_INVALID_SOCKET },
+			m_signalfds_aio_ctx(0)
 #ifdef NETP_DEBUG_AIO_CTX_
-			m_aio_ctx_count_alloc = 0;
-			m_aio_ctx_count_free = 0;
+			,m_aio_ctx_count_alloc(0),
+			m_aio_ctx_count_free(0)
 #endif
+		{}
+		~poller_interruptable_by_fd() {}
 
+		void __init_interrupt_fd() {
 			int rt = netp::socketpair(int(NETP_AF_INET), int(NETP_SOCK_STREAM), int(NETP_PROTOCOL_TCP), m_signalfds);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
-			rt = netp::turnon_nonblocking(netp::NETP_DEFAULT_SOCKAPI, m_signalfds[0]);
+			rt = netp::turnon_nonblocking(netp::default_socket_api, m_signalfds[0]);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
-			rt = netp::turnon_nonblocking(netp::NETP_DEFAULT_SOCKAPI, m_signalfds[1]);
+			rt = netp::turnon_nonblocking(netp::default_socket_api, m_signalfds[1]);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
-			rt = netp::turnon_nodelay(netp::NETP_DEFAULT_SOCKAPI, m_signalfds[1]);
+			rt = netp::turnon_nodelay(netp::default_socket_api, m_signalfds[1]);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
 			NETP_ASSERT(rt == netp::OK);
@@ -158,7 +169,7 @@ namespace netp {
 					byte_t tmp[1];
 					int ec = netp::OK;
 					do {
-						u32_t c = netp::recv(netp::NETP_DEFAULT_SOCKAPI, ctx->fd, tmp, 1, ec, 0);
+						u32_t c = netp::recv(netp::default_socket_api, ctx->fd, tmp, 1, ec, 0);
 						if (c == 1) {
 							NETP_ASSERT(ec == netp::OK);
 							NETP_ASSERT(tmp[0] == 'i', "c: %d", tmp[0]);
@@ -167,11 +178,11 @@ namespace netp {
 				}
 				return netp::OK;
 			};
-			rt = __do_execute_act(aio_action::READ, m_signalfds_aio_ctx);
+			rt = aio_do(aio_action::READ, m_signalfds_aio_ctx);
 			NETP_ASSERT(rt == netp::OK);
-		}
-		virtual void deinit() {
-			__do_execute_act(aio_action::END_READ, m_signalfds_aio_ctx);
+	}
+		void __deinit_interrupt_fd() {
+			aio_do(aio_action::END_READ, m_signalfds_aio_ctx);
 			m_signalfds_aio_ctx->fn_read = nullptr;
 			aio_end(m_signalfds_aio_ctx);
 
@@ -184,25 +195,58 @@ namespace netp {
 
 			//NETP_ASSERT(m_ctxs.size() == 0);
 			NETP_ASSERT(NETP_AIO_CTX_LIST_IS_EMPTY(&m_aio_ctx_list), "m_aio_ctx_list not empty");
+		}
 
+		void init() {
+			netp::list_init(&m_aio_ctx_list);
+			__init_interrupt_fd();
+#ifdef NETP_DEBUG_AIO_CTX_
+			m_aio_ctx_count_alloc = 0;
+			m_aio_ctx_count_free = 0;
+#endif
+		}
+
+		void deinit() {
+			__deinit_interrupt_fd();
 #ifdef NETP_DEBUG_AIO_CTX_
 			NETP_ASSERT(m_aio_ctx_count_alloc == m_aio_ctx_count_free);
 #endif
 		}
 
-		virtual void interrupt_wait() {
+		virtual void interrupt_wait() override {
 			NETP_ASSERT(m_signalfds[0] > 0);
 			NETP_ASSERT(m_signalfds[1] > 0);
 			int ec;
 			const byte_t interrutp_a[1] = { (byte_t)'i' };
-			u32_t c = netp::send(netp::NETP_DEFAULT_SOCKAPI, m_signalfds[1], interrutp_a, 1, ec, 0);
+			u32_t c = netp::send(netp::default_socket_api, m_signalfds[1], interrutp_a, 1, ec, 0);
 			if (NETP_UNLIKELY(ec != netp::OK)) {
 				NETP_WARN("[io_event_loop]interrupt send failed: %d", ec);
 			}
 			(void)c;
 		}
 
-		virtual int __do_execute_act(aio_action act, aio_ctx* ctx) {
+		virtual aio_ctx* aio_begin(SOCKET fd) override {
+			aio_ctx* ctx = netp::aio_ctx_allocate();
+			ctx->fd = fd;
+			ctx->flag = 0;
+			netp::list_append(&m_aio_ctx_list, ctx);
+
+#ifdef NETP_DEBUG_AIO_CTX_
+			++m_aio_ctx_count_alloc;
+#endif
+			return ctx;
+		}
+
+		virtual void aio_end(aio_ctx* ctx) override {
+			netp::list_delete(ctx);
+			netp::aio_ctx_deallocate(ctx);
+
+#ifdef NETP_DEBUG_AIO_CTX_
+			++m_aio_ctx_count_free;
+#endif
+		}
+
+		virtual int aio_do(aio_action act, aio_ctx* ctx) override {
 			switch (act) {
 			case aio_action::READ:
 			{
@@ -282,35 +326,7 @@ namespace netp {
 			}
 			return netp::OK;
 		}
-
-		inline aio_ctx* aio_begin(SOCKET fd) {
-				NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::BEGIN", m_type, fd);
-				aio_ctx* ctx = netp::aio_ctx_allocate();
-				ctx->fd = fd;
-				ctx->flag = 0;
-				netp::aio_ctx_list_append(&m_aio_ctx_list, ctx);
-#ifdef NETP_DEBUG_AIO_CTX_
-				++m_aio_ctx_count_alloc;
-#endif
-				return ctx;
-		}
-
-		inline void aio_end(aio_ctx* ctx) {
-			NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::END", m_type, ctx->fd);
-			NETP_ASSERT((ctx->fn_read == nullptr));
-			NETP_ASSERT((ctx->fn_write == nullptr));
-			NETP_ASSERT(ctx->fn_notify == nullptr);
-			netp::aio_ctx_list_delete(ctx);
-			netp::aio_ctx_deallocate(ctx);
-#ifdef NETP_DEBUG_AIO_CTX_
-			++m_aio_ctx_count_free;
-#endif
-		}
-
-#define __LOOP_EXIT_WAITING__(_W_) (_W_.store(false, std::memory_order_release))
-		virtual void poll(long long wait_in_nano, std::atomic<bool>& waiting) = 0;
-		virtual int watch(u8_t,aio_ctx*) = 0;
-		virtual int unwatch(u8_t, aio_ctx*) = 0;
 	};
+#endif
 }
 #endif

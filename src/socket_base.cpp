@@ -10,7 +10,7 @@ namespace netp {
 		m_protocol(u16_t(proto)),
 		m_option(0),
 
-		m_api(sockapi==nullptr?((netp::socket_api*)&netp::NETP_DEFAULT_SOCKAPI):sockapi),
+		m_api(sockapi==nullptr?((netp::socket_api*)&netp::default_socket_api):sockapi),
 
 		m_laddr(laddr),
 		m_raddr(raddr),
@@ -406,7 +406,7 @@ namespace netp {
 	int socket_base::get_rcv_buffer_size() const {
 		NETP_ASSERT(m_fd > 0);
 		int size;
-		socklen_t opt_length = sizeof(u32_t);
+		socklen_t opt_length = sizeof(size);
 		int rt = socket_base::getsockopt(SOL_SOCKET, SO_RCVBUF, (char*)&size, &opt_length);
 		if (rt == NETP_SOCKET_ERROR) {
 			const int errno_ = netp_socket_get_last_errno();

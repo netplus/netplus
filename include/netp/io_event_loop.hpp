@@ -13,18 +13,20 @@
 
 #include <netp/promise.hpp>
 #include <netp/packet.hpp>
-
 #include <netp/poller_abstract.hpp>
-#include <netp/poller_dummy.hpp>
 
 #if defined(NETP_HAS_POLLER_EPOLL)
-	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_EPOLL
+#include <netp/poller_epoll.hpp>
+#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_EPOLL
 #elif defined(NETP_HAS_POLLER_SELECT)
-	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_SELECT
+#include <netp/poller_select.hpp>
+#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_SELECT
 #elif defined(NETP_HAS_POLLER_KQUEUE)
-	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_KQUEUE
+#include <netp/poller_kqueue.hpp>
+#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_KQUEUE
 #elif defined(NETP_HAS_POLLER_IOCP)
-	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_IOCP
+#include <netp/poller_iocp.hpp>
+#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_IOCP
 #else
 	#error "unknown poller type"
 #endif
@@ -34,77 +36,12 @@ namespace netp {
 	typedef std::function<void()> fn_io_event_task_t;
 	typedef std::vector<fn_io_event_task_t, netp::allocator<fn_io_event_task_t>> io_task_q_t;
 
-
 	struct event_loop_cfg {
 		u32_t ch_buf_size;
 	};
 
 	class io_event_loop;
 	typedef std::function< NRP<io_event_loop>(event_loop_cfg const& cfg) > fn_event_loop_maker_t;
-
-
-#ifdef NETP_HAS_POLLER_IOCP
-#define NETP_IOCP_BUFFER_SIZE (1024*64)
-
-	enum class iocp_action {
-		READ=1<<0,
-		END_READ = 1 << 1,
-		WRITE = 1 << 2,
-		END_WRITE = 1 << 3,
-		ACCEPT = 1 << 4,
-		END_ACCEPT = 1 << 5,
-		CONNECT = 1 << 6,
-		END_CONNECT = 1 << 7,
-		READFROM = 1<<8,
-		SENDTO = 1<<9,
-		BEGIN = 1 << 10,
-		NOTIFY_TERMINATING = 1 << 11,
-		END = 1 << 12,
-		BEGIN_READ_WRITE_ACCEPT_CONNECT = (BEGIN | READ | WRITE| ACCEPT| CONNECT)
-	};
-
-	enum iocp_ol_action {
-		ACCEPTEX,
-		WSAREAD,
-		WSASEND,
-		CONNECTEX,
-		WSARECVFROM,
-		WSASEND,
-		CALL_MAX
-	};
-
-	enum iocp_ol_type {
-		READ,
-		WRITE
-	};
-
-	enum action_status {
-		AS_WAIT_IOCP = 1 << 0,
-		AS_DONE = 1 << 1,
-	};
-
-	enum channel_end {
-		CH_END_NO = 0,
-		CH_END_YES = 1
-	};
-
-	struct iocp_overlapped_ctx
-	{
-		WSAOVERLAPPED overlapped;
-		SOCKET fd;
-		SOCKET accept_fd;
-		u8_t action;
-		u8_t action_status;
-		u8_t is_ch_end;
-		fn_overlapped_io_event fn_overlapped;
-		fn_aio_event_t fn_iocp_done;
-		WSABUF wsabuf;
-		byte_t buf[NETP_IOCP_BUFFER_SIZE];
-	};
-
-#endif
-
-
 
 	enum class loop_state {
 		S_IDLE,
@@ -311,7 +248,7 @@ namespace netp {
 		inline int aio_do(aio_action act, aio_ctx* ctx) {
 			NETP_ASSERT(in_event_loop());
 			if (((u8_t(act) & u8_t(aio_action::READ_WRITE)) == 0) || m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
-				m_poller->__do_execute_act(act, ctx);
+				m_poller->aio_do(act, ctx);
 				return netp::OK;
 			} else {
 				return netp::E_IO_EVENT_LOOP_TERMINATED;
@@ -326,32 +263,8 @@ namespace netp {
 		}
 		inline void aio_end(aio_ctx* ctx) {
 			NETP_ASSERT(in_event_loop());
-			return m_poller->aio_end(ctx);
+			m_poller->aio_end(ctx);
 		}
-
-#ifdef NETP_HAS_POLLER_IOCP		
-		inline void iocp_do( iocp_action act, fn_overlapped_io_event const& fn_overlapped, fn_iocp_event_t const& fn) {
-			NETP_ASSERT(fd != NETP_INVALID_SOCKET);
-			NETP_ASSERT(in_event_loop());
-			if (((u16_t(act) & u16_t(iocp_action::BEGIN_READ_WRITE_ACCEPT_CONNECT)) == 0) || m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
-				m_iocp_acts.push_back({act,fd, (fn_overlapped), (fn) });
-			} else {
-				fn({ fd, netp::E_IO_EVENT_LOOP_TERMINATED,0 });
-			}
-		}
-		inline void iocp_do(iocp_action act, SOCKET fd, fn_overlapped_io_event&& fn_overlapped, fn_iocp_event_t&& fn) {
-			NETP_ASSERT(fd != NETP_INVALID_SOCKET);
-			NETP_ASSERT(in_event_loop());
-			if (((u16_t(act) & u16_t(iocp_action::BEGIN_READ_WRITE_ACCEPT_CONNECT)) == 0) || m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
-				m_iocp_acts.push_back({ act,fd, std::move(fn_overlapped), std::move(fn) });
-			}
-			else {
-				fn({ fd, netp::E_IO_EVENT_LOOP_TERMINATED,0 });
-			}
-		}
-#endif
-
-	protected:
 	};
 
 	class app;

@@ -8,7 +8,7 @@
 namespace netp {
 
 	class poller_select final :
-		public poller_abstract
+		public poller_interruptable_by_fd
 	{
 		enum fds_idx {
 			fds_e = 0,
@@ -20,7 +20,7 @@ namespace netp {
 	private:
 		public:
 			poller_select():
-				poller_abstract()
+				poller_interruptable_by_fd()
 			{
 			}
 
@@ -112,10 +112,6 @@ namespace netp {
 				if (FD_ISSET(ctx->fd, &m_fds[AIO_WRITE])) {
 					//FD_CLR(fd, &m_fds[i]);
  					--nready;
-#ifdef NETP_DEBUG_WATCH_CTX_FLAG
-					NETP_ASSERT((ctx->flag & AIO_WRITE), "fd: %d, flag: %u", ctx->fd, ctx->flag);
-					NETP_ASSERT(ctx->iofn[AIO_WRITE] != nullptr, "fd: %d, flag: %u", ctx->fd, ctx->flag);
-#endif
 					//fn_read might result in fn_write be reset
 					if(ctx->fn_write != nullptr) ctx->fn_write(status, ctx);
 					continue;

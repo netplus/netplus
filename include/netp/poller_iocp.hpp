@@ -5,7 +5,7 @@
 
 #if defined(NETP_HAS_POLLER_IOCP)
 
-#include <netp/io_event_loop.hpp>
+#include <netp/poller_abstract.hpp>
 #include <netp/os/winsock_helper.hpp>
 
 #define NETP_IOCP_INTERRUPT_COMPLETE_KEY (-13)
@@ -13,46 +13,105 @@
 
 namespace netp {
 
-	class poller_iocp final :
-		public io_event_loop
+	enum iocp_ol_action {
+		ACCEPTEX,
+		WSAREAD,
+		WSASEND,
+		CONNECTEX,
+		WSARECVFROM,
+		CALL_MAX
+	};
+
+	enum action_status {
+		AS_WAIT_IOCP = 1 << 0,
+		AS_DONE = 1 << 1,
+		AS_CH_END = 1 << 2
+	};
+
+#define NETP_IOCP_BUF_SIZE (32*1024)
+	struct aio_ctx;
+	struct ol_ctx
 	{
-		struct iocp_ctx
-		{
-			SOCKET fd;
-			fn_aio_event_t fn_notify;
-			iocp_overlapped_ctx* ol_ctxs[iocp_ol_type::WRITE+1];
-		};
+		WSAOVERLAPPED ol;
+		SOCKET fd;
+		SOCKET accept_fd;
+		aio_ctx* aioctx;
+		u8_t action;
+		u8_t action_status;
+		fn_aio_event_t fn_ol_done;
+		WSABUF wsabuf;
+		char buf[NETP_IOCP_BUF_SIZE];
+	};
 
-		//@TODO, we need a specific pool for this kinds of object
-		__NETP_FORCE_INLINE static iocp_overlapped_ctx* iocp_olctx_malloc() {
-			iocp_overlapped_ctx* olctx = netp::allocator<iocp_overlapped_ctx>::malloc(1);
-			::memset(&olctx->overlapped, 0, sizeof(olctx->overlapped));
-			olctx->fd = NETP_INVALID_SOCKET;
-			olctx->accept_fd = NETP_INVALID_SOCKET;
-			olctx->action = -1;
-			olctx->action_status = 0;
-			olctx->is_ch_end = CH_END_NO;
-			new ((fn_overlapped_io_event*)&(olctx->fn_overlapped))(fn_overlapped_io_event)();
-			new ((fn_aio_event_t*)&(olctx->fn_iocp_done))(fn_aio_event_t)();
-			olctx->wsabuf = { NETP_IOCP_BUFFER_SIZE, (char*)&olctx->buf };
-			return olctx;
+	__NETP_FORCE_INLINE static ol_ctx* ol_ctx_allocate(SOCKET fd) {
+		ol_ctx* olctx = netp::allocator<ol_ctx>::malloc(1);
+		::memset(&olctx->ol, 0, sizeof(olctx->ol));
+		olctx->fd = fd;
+		olctx->accept_fd = NETP_INVALID_SOCKET;
+		olctx->action = u8_t(-1);
+		olctx->action_status = 0;
+		new ((fn_aio_event_t*)&(olctx->fn_ol_done))(fn_aio_event_t)();
+		olctx->wsabuf = { NETP_IOCP_BUF_SIZE, (olctx->buf) };
+		return olctx;
+	}
+	__NETP_FORCE_INLINE static void ol_ctx_deallocate(ol_ctx* ctx) {
+		netp::allocator<ol_ctx>::free(ctx);
+	}
+
+	__NETP_FORCE_INLINE static void ol_ctx_reset(ol_ctx* ctx) {
+		NETP_ASSERT(ctx != 0);
+		::memset(&ctx->ol, 0, sizeof(ctx->ol));
+	}
+
+	struct aio_ctx {
+		aio_ctx* prev, * next;
+		SOCKET fd;
+		ol_ctx* ol_r;
+		ol_ctx* ol_w;
+		fn_aio_event_t fn_notify;
+	};
+
+	inline static aio_ctx* aio_ctx_allocate( SOCKET fd ) {
+		aio_ctx* ctx = netp::allocator<aio_ctx>::malloc(1);
+		ctx->fd = fd;
+		ctx->ol_r = ol_ctx_allocate(fd);
+		ctx->ol_r->aioctx = ctx;
+		ctx->ol_w = ol_ctx_allocate(fd);
+		ctx->ol_w->aioctx = ctx;
+
+		new ((fn_aio_event_t*)&(ctx->fn_notify))(fn_aio_event_t)();
+		return ctx;
+	}
+
+	inline static void aio_ctx_deallocate(aio_ctx* ctx) {
+		NETP_ASSERT(ctx->fn_notify == nullptr);
+
+		ctx->ol_r->action_status |= (AS_CH_END|AS_DONE);
+		if ((ctx->ol_r->action_status & AS_WAIT_IOCP) == 0) {
+			ol_ctx_deallocate(ctx->ol_r);
 		}
-		__NETP_FORCE_INLINE static void iocp_olctx_free(iocp_overlapped_ctx* ctx) {
-			netp::allocator<iocp_overlapped_ctx>::free(ctx);
+		ctx->ol_w->action_status |= (AS_CH_END | AS_DONE);
+		if ((ctx->ol_w->action_status & AS_WAIT_IOCP) == 0) {
+			ol_ctx_deallocate(ctx->ol_w);
 		}
+		netp::allocator<aio_ctx>::free(ctx);
+	}
 
-		__NETP_FORCE_INLINE static void iocp_olctx_reset_overlapped(iocp_overlapped_ctx* ctx) {
-			NETP_ASSERT(ctx != 0);
-			::memset(&ctx->overlapped, 0, sizeof(ctx->overlapped));
-		}
-
-		typedef std::unordered_map<SOCKET, NRP<iocp_ctx>> iocp_ctx_map_t;
-		typedef std::pair<SOCKET, NRP<iocp_ctx>> iocp_ctx_pair_t;
-
+	class poller_iocp final :
+		public poller_abstract
+	{
 		HANDLE m_handle;
-		iocp_ctx_map_t m_ctxs;
+		aio_ctx m_aio_ctx_list;
 
-		void _do_poller_interrupt_wait() override {
+#ifdef NETP_DEBUG_AIO_CTX_
+		long m_aio_ctx_count_alloc;
+		long m_aio_ctx_count_free;
+
+		long m_ol_count_alloc;
+		long m_ol_count_free;
+#endif
+
+		void interrupt_wait() override {
 			NETP_ASSERT(m_handle != nullptr);
 			BOOL postrt = ::PostQueuedCompletionStatus(m_handle, (DWORD)NETP_IOCP_INTERRUPT_COMPLETE_PARAM, (ULONG_PTR)NETP_IOCP_INTERRUPT_COMPLETE_KEY, 0);
 			if (postrt == FALSE) {
@@ -62,130 +121,55 @@ namespace netp {
 			NETP_TRACE_IOE("[iocp]interrupt_wait");
 		}
 
-		inline static int _do_accept_ex(iocp_overlapped_ctx* olctx) {
-			NETP_ASSERT(olctx != nullptr);
-			int ec = olctx->fn_overlapped((void*)&olctx->accept_fd);
-			if (olctx->accept_fd == NETP_INVALID_SOCKET) {
-				ec = netp_socket_get_last_errno();
-				NETP_TRACE_IOE("[iocp][#%u]_do_accept_ex create fd failed: %d", olctx->fd, ec);
-				return ec;
-			}
-
-			NETP_TRACE_IOE("[iocp][#%u]_do_accept_ex begin,new fd: %u", olctx->fd, olctx->accept_fd);
-
-			const static LPFN_ACCEPTEX lpfnAcceptEx = (LPFN_ACCEPTEX)netp::os::load_api_ex_address(netp::os::API_ACCEPT_EX);
-			NETP_ASSERT(lpfnAcceptEx != 0);
-			BOOL acceptrt = lpfnAcceptEx(olctx->fd, olctx->accept_fd, olctx->buf, 0,
-				sizeof(struct sockaddr_in) + 16, sizeof(struct sockaddr_in) + 16,
-				nullptr, &(olctx->overlapped));
-
-			if (!acceptrt)
-			{
-				ec = netp_socket_get_last_errno();
-				if (ec == netp::E_WSA_IO_PENDING) {
-					ec = netp::OK;
-				} else {
-					NETP_TRACE_IOE("[iocp][#%u]_do_accept_ex acceptex failed: %d", olctx->fd, netp_socket_get_last_errno());
-					NETP_CLOSE_SOCKET(olctx->accept_fd);
-				}
-			}
-			return ec;
-		}
-
-		inline static int _do_read(iocp_overlapped_ctx* olctx) {
-			iocp_olctx_reset_overlapped(olctx);
-			DWORD flags = 0;
-			int ec = ::WSARecv(olctx->fd, &olctx->wsabuf, 1, nullptr, &flags, &olctx->overlapped, nullptr);
-			if (ec == -1) {
-				ec = netp_socket_get_last_errno();
-				if (ec == netp::E_WSA_IO_PENDING) {
-					ec = netp::OK;
-				}
-			}
-			return ec;
-		}
-
-		inline static int _do_read_from(iocp_overlapped_ctx* olctx) {
-			iocp_olctx_reset_overlapped(olctx);
-			DWORD flags = 0;
-			int ec = ::WSARecv(olctx->fd, &olctx->wsabuf, 1, nullptr, &flags, &olctx->overlapped, nullptr);
-			if (ec == -1) {
-				ec = netp_socket_get_last_errno();
-				if (ec == netp::E_WSA_IO_PENDING) {
-					ec = netp::OK;
-				}
-			}
-			return ec;
-		}
-
-		void _handle_iocp_event(iocp_overlapped_ctx* olctx, DWORD& dwTrans, int& ec) {
+		void _handle_iocp_event(ol_ctx* olctx, DWORD& dwTrans, int& ec) {
 			NETP_ASSERT(olctx != nullptr);
 			switch (olctx->action) {
 			case iocp_ol_action::WSAREAD:
 			{
 				NETP_ASSERT(olctx->fd != NETP_INVALID_SOCKET);
 				NETP_ASSERT(olctx->accept_fd == NETP_INVALID_SOCKET);
-				NETP_ASSERT(olctx->fn_iocp_done != nullptr);
-				if ( ec !=0 && (olctx->action_status&AS_DONE)) {
-					//@NOTE: even the user has called aio_end_read(), he could get a incoming data from system
-						//pending data len
-					//user has called aio_end_read() ;
-					//store len into accept_fd
-					olctx->accept_fd = dwTrans;
+				if (olctx->action_status&AS_DONE) {
+					olctx->accept_fd = ec == 0 ? dwTrans : ec;
 					return;
 				}
-
-				ec = olctx->fn_iocp_done( { olctx->fd, ec == 0 ? (int)dwTrans : ec, olctx->buf } );
-				if (ec == netp::E_CHANNEL_OVERLAPPED_OP_TRY && (olctx->action_status&AS_DONE) == 0 ) {
-					ec = _do_read(olctx);
-					if (ec == netp::OK) {
-						olctx->action_status |= AS_WAIT_IOCP;
-					} else {
-						olctx->fn_iocp_done({ olctx->fd, ec ,0 });
-					}
-				}
+				NETP_ASSERT(olctx->fn_ol_done != nullptr);
+				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, olctx->aioctx);
 			}
 			break;
 			case iocp_ol_action::WSASEND:
 			{
 				NETP_ASSERT(olctx->fd != NETP_INVALID_SOCKET);
 				NETP_ASSERT(olctx->accept_fd == NETP_INVALID_SOCKET);
-				NETP_ASSERT(olctx->fn_iocp_done != nullptr);
-				ec = olctx->fn_iocp_done({ olctx->fd, ec == 0 ? (int)dwTrans : ec, 0 });
-				if (ec == netp::E_CHANNEL_OVERLAPPED_OP_TRY && (olctx->action_status&AS_DONE) == 0 ) {
-					ec = olctx->fn_overlapped((void*)(&olctx->overlapped));
-					if (ec == netp::OK) {
-						olctx->action_status |= AS_WAIT_IOCP;
-					} else {
-						olctx->fn_iocp_done({ olctx->fd, ec, 0 });
-					}
+				if (olctx->action_status & AS_DONE) {
+					return;
 				}
+				NETP_ASSERT(olctx->fn_ol_done != nullptr);
+				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, olctx->aioctx );
 			}
 			break;
 			case iocp_ol_action::ACCEPTEX:
 			{
 				NETP_ASSERT(olctx->fd != NETP_INVALID_SOCKET);
+				if (olctx->action_status & AS_DONE) {
+					if (olctx->accept_fd != NETP_INVALID_SOCKET) {
+						NETP_CLOSE_SOCKET(olctx->accept_fd);
+						olctx->accept_fd = NETP_INVALID_SOCKET;
+					}
+					return;
+				}
+
 				NETP_ASSERT(olctx->accept_fd != NETP_INVALID_SOCKET);
-				NETP_ASSERT(olctx->fn_iocp_done != nullptr);
+				NETP_ASSERT(olctx->fn_ol_done != nullptr);
 
 				if (ec == netp::OK) {
-					ec = ::setsockopt(olctx->accept_fd, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&olctx->fd, sizeof(olctx->fd));
+					ec = netp::default_socket_api.setsockopt(olctx->accept_fd, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&olctx->fd, sizeof(olctx->fd));
 				}
 
 				if (NETP_LIKELY(ec == 0)) {
 					NETP_TRACE_IOE("[iocp][#%u]accept done, new fd: %u", olctx->fd, olctx->accept_fd);
-					ec = olctx->fn_iocp_done({ olctx->accept_fd,ec, olctx->buf });
+					olctx->fn_ol_done(ec, olctx->aioctx);
 				} else {
 					NETP_CLOSE_SOCKET(olctx->accept_fd);
-				}
-
-				if (ec == netp::E_CHANNEL_OVERLAPPED_OP_TRY && (olctx->action_status & AS_DONE) == 0 ) {
-					ec = _do_accept_ex(olctx);
-					if (ec == netp::OK) {
-						olctx->action_status |= AS_WAIT_IOCP;
-					} else {
-						olctx->fn_iocp_done({ NETP_INVALID_SOCKET, ec, 0 });
-					}
 				}
 			}
 			break;
@@ -199,36 +183,46 @@ namespace netp {
 						ec = netp_socket_get_last_errno();
 					}
 				}
-				NETP_ASSERT(olctx->fn_iocp_done != nullptr);
-				olctx->fn_iocp_done({ olctx->fd, ec == 0 ? (int)dwTrans : ec, 0 });
+				if (olctx->action_status & AS_DONE) {
+					return;
+				}
+				NETP_ASSERT(olctx->fn_ol_done != nullptr);
+				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, olctx->aioctx );
 			}
 			break;
-			default:
-			{
-				NETP_THROW("unknown io event flag");
-			}
 			}
 		}
 	public:
-		poller_iocp(poller_cfg const& cfg) :
-			io_event_loop(T_IOCP, cfg),
+		poller_iocp() :
+			poller_abstract(),
 			m_handle(nullptr)
+#ifdef NETP_DEBUG_AIO_CTX_
+		,m_aio_ctx_count_alloc(0)
+		,m_aio_ctx_count_free(0)
+		,m_ol_count_alloc(0)
+		,m_ol_count_free(0)
+#endif
 		{}
 
-		void _do_poller_init() override {
+		void init() override {
+			netp::list_init(&m_aio_ctx_list);
 			NETP_ASSERT(m_handle == nullptr);
 			m_handle = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, (u_long)0, 1);
 			NETP_ALLOC_CHECK(m_handle, sizeof(m_handle));
 		}
 
-		void _do_poller_deinit() override {
+		void deinit() override {
 			NETP_ASSERT(m_handle != nullptr);
-			_do_poller_interrupt_wait();
+			interrupt_wait();
 			::CloseHandle(m_handle);
 			m_handle = nullptr;
+#ifdef NETP_DEBUG_AIO_CTX_
+			NETP_ASSERT(m_aio_ctx_count_alloc == m_aio_ctx_count_free);
+			NETP_ASSERT(m_ol_count_alloc == m_ol_count_free);
+#endif
 		}
 
-		void _do_poll(long long wait_in_nano) override {
+		void poll(long long wait_in_nano, std::atomic<bool>& W) override {
 			NETP_ASSERT(m_handle > 0);
 			const long long wait_in_milli = wait_in_nano != ~0 ? (wait_in_nano / 1000000L) : ~0;
 			//INFINITE == -1
@@ -276,7 +270,7 @@ namespace netp {
 			ULONG_PTR ckey; // it'w our fd here
 			LPOVERLAPPED ol;
 			BOOL getOk = ::GetQueuedCompletionStatus(m_handle, &len, &ckey, &ol, (DWORD)wait_in_milli);
-			__LOOP_EXIT_WAITING__();
+			__LOOP_EXIT_WAITING__(W);
 
 			if (NETP_UNLIKELY(getOk == FALSE)) {
 				ec = netp_socket_get_last_errno();
@@ -300,7 +294,7 @@ namespace netp {
 				return;
 			}
 			NETP_ASSERT(ol != nullptr);
-			iocp_overlapped_ctx* olctx=(CONTAINING_RECORD(ol, iocp_overlapped_ctx, overlapped));
+			ol_ctx* olctx=(CONTAINING_RECORD(ol, ol_ctx, ol));
 			olctx->action_status &= ~AS_WAIT_IOCP;
 
 			if (NETP_UNLIKELY(ec != 0)) {
@@ -314,293 +308,112 @@ namespace netp {
 				NETP_ASSERT(dwTrans == len);
 			}
 
-			if (olctx->is_ch_end == CH_END_YES) {
-				iocp_olctx_free(olctx);
+			if (olctx->action_status&AS_CH_END) {
+				ol_ctx_deallocate(olctx);
+#ifdef NETP_DEBUG_AIO_CTX_
+				++m_ol_count_free;
+#endif
 			} else {
 				_handle_iocp_event(olctx, len, ec);
 			}
 #endif
 		}
 
-		void _do_iocp_begin(SOCKET fd, fn_iocp_event_t const& fn_iocp) {
+		virtual aio_ctx* aio_begin(SOCKET fd) {
+			NETP_ASSERT(fd > 0);
+
 			NETP_TRACE_IOE("[#%d][CreateIoCompletionPort]init", fd);
 			NETP_ASSERT(m_handle != nullptr);
 			HANDLE bindcp = ::CreateIoCompletionPort((HANDLE)fd, m_handle, 0, 0);
 			if (bindcp == nullptr) {
-				int ec = netp_socket_get_last_errno();
-				fn_iocp({ fd,ec,0 });
-				NETP_TRACE_IOE("[#%d][CreateIoCompletionPort]init error: %d", fd, ec);
-				return;
+				NETP_TRACE_IOE("[#%d][CreateIoCompletionPort]init error: %d", fd);
+				return 0;
 			}
 
-			iocp_ctx_map_t::iterator&& it = m_ctxs.find(fd);
-			NETP_ASSERT(it == m_ctxs.end());
-			NRP<iocp_ctx> iocpctx = netp::make_ref<iocp_ctx>();
-			iocpctx->fd = fd;
-			iocpctx->fn_notify = fn_iocp;
-
-			iocp_overlapped_ctx* ol_r = iocp_olctx_malloc();
-			NETP_ALLOC_CHECK(ol_r, sizeof(iocp_overlapped_ctx));
-			iocpctx->ol_ctxs[READ] = ol_r;
-			ol_r->fd = fd;
-			ol_r->action_status = 0;
-			ol_r->is_ch_end = CH_END_NO;
-
-			iocp_overlapped_ctx* ol_w = iocp_olctx_malloc();
-			NETP_ALLOC_CHECK(ol_w, sizeof(iocp_overlapped_ctx));
-			iocpctx->ol_ctxs[WRITE] = ol_w;
-			ol_w->fd = fd;
-			ol_w->action_status = 0;
-			ol_r->is_ch_end = CH_END_NO;
-
-			m_ctxs.insert({ fd, iocpctx });
-			fn_iocp({ fd,netp::OK, 0 } );
-			NETP_TRACE_IOE("[#%d][_do_iocp_begin]", fd);
+			aio_ctx* ctx = netp::aio_ctx_allocate(fd);
+			if (ctx == 0) {
+				return 0;
+			}
+			netp::list_append(&m_aio_ctx_list, ctx);
+#ifdef NETP_DEBUG_AIO_CTX_
+			++m_aio_ctx_count_alloc;
+			m_ol_count_alloc += 2;
+#endif
+			return ctx;
 		}
 
-		void _do_iocp_end(SOCKET fd, fn_iocp_event_t const& fn) {
-			iocp_ctx_map_t::iterator&& it = m_ctxs.find(fd);
-			NETP_ASSERT(it != m_ctxs.end());
-			NRP<iocp_ctx>& iocpctx = it->second;
-			
-			iocpctx->ol_ctxs[iocp_ol_type::READ]->fn_overlapped = nullptr;
-			iocpctx->ol_ctxs[iocp_ol_type::READ]->fn_iocp_done = nullptr;
-			iocpctx->ol_ctxs[iocp_ol_type::READ]->action_status |= AS_DONE;
-			iocpctx->ol_ctxs[iocp_ol_type::READ]->is_ch_end = CH_END_YES;
-			if ((iocpctx->ol_ctxs[iocp_ol_type::READ]->action_status & AS_WAIT_IOCP) == 0){
-				iocp_olctx_free(iocpctx->ol_ctxs[iocp_ol_type::READ]);
-			}
-			iocpctx->ol_ctxs[iocp_ol_type::WRITE]->fn_overlapped = nullptr;
-			iocpctx->ol_ctxs[iocp_ol_type::WRITE]->fn_iocp_done = nullptr;
-			iocpctx->ol_ctxs[iocp_ol_type::WRITE]->action_status |= AS_DONE;
-			iocpctx->ol_ctxs[iocp_ol_type::WRITE]->is_ch_end = CH_END_YES;
-			if ((iocpctx->ol_ctxs[iocp_ol_type::WRITE]->action_status & AS_WAIT_IOCP) == 0) {
-				iocp_olctx_free(iocpctx->ol_ctxs[iocp_ol_type::WRITE]);
-			}
+		virtual void aio_end(aio_ctx* ctx) {
 
-			iocpctx->fn_notify = nullptr;
-			m_ctxs.erase(it);
-			fn({ fd,0,0 });
-			NETP_TRACE_IOE("[#%d][_do_iocp_end]", fd);
+#ifdef NETP_DEBUG_AIO_CTX_
+			++m_aio_ctx_count_free;
+			if ( (ctx->ol_r->action_status & AS_WAIT_IOCP) == 0) {
+				++m_ol_count_free;
+			}
+			if ((ctx->ol_w->action_status & AS_WAIT_IOCP) == 0) {
+				++m_ol_count_free;
+			}
+#endif
+
+			netp::list_delete(ctx);
+			netp::aio_ctx_deallocate(ctx);
 		}
 
-		void __do_execute_act() override {
-			std::size_t vecs = m_iocp_acts.size();
-			if (vecs == 0) {
-				return;
-			}
-			std::size_t acti = 0;
-			while (acti < m_iocp_acts.size()) {
-				iocp_act_op& actop = m_iocp_acts[acti++];
-				iocp_action& act = actop.act;
-				SOCKET& fd = actop.fd;
-				fn_overlapped_io_event& fn_overlapped=actop.fn_overlapped;
-				fn_iocp_event_t& fn_iocp =actop.fn_iocp;
-
+		int aio_do(aio_action act, aio_ctx* ctx) override {
 				switch (act) {
-				case iocp_action::BEGIN:
+				case aio_action::READ:
 				{
-					_do_iocp_begin(fd, fn_iocp);
-				}
-				break;
-				case iocp_action::END:
-				{
-					_do_iocp_end(fd, fn_iocp);
-				}
-				break;
-				case iocp_action::READ:
-				{
-					iocp_ctx_map_t::iterator&& it = m_ctxs.find(fd);
-					NETP_ASSERT(it != m_ctxs.end());
-					NRP<iocp_ctx>& iocpctx = it->second;
-
-					iocp_overlapped_ctx* olctx = iocpctx->ol_ctxs[iocp_ol_type::READ];
+					ol_ctx* olctx = ctx->ol_r;
 					NETP_ASSERT(olctx != nullptr);
-					NETP_ASSERT(olctx->is_ch_end == 0);
-					NETP_ASSERT((olctx->action_status&AS_WAIT_IOCP) == 0);
+					olctx->action_status &= ~AS_DONE;
+				}
+				break;
+				case aio_action::END_READ:
+				{
+					ol_ctx* olctx = ctx->ol_r;
+					NETP_ASSERT(olctx != nullptr);
+					olctx->action_status |= AS_DONE;
+				}
+				break;
+				case aio_action::WRITE:
+				{
+					ol_ctx* olctx = ctx->ol_r;
+					NETP_ASSERT(olctx != nullptr);
+					olctx->action_status &= ~AS_DONE;
+				}
+				break;
+				case aio_action::END_WRITE:
+				{
+					ol_ctx* olctx = ctx->ol_r;
+					NETP_ASSERT(olctx != nullptr);
+					olctx->action_status |= AS_DONE;
+				}
+				break;
+				case aio_action::NOTIFY_TERMINATING:
+				{
+					aio_ctx* _ctx, *_ctx_n;
+					for (_ctx = m_aio_ctx_list.next, _ctx_n = _ctx->next; _ctx != &m_aio_ctx_list; _ctx = _ctx_n,_ctx_n = _ctx->next) {
+						NETP_ASSERT( _ctx->fd >0 );
+						NETP_ASSERT(_ctx->fn_notify != nullptr);
 
-					int ec;
-					if (olctx->accept_fd != NETP_INVALID_SOCKET) {
-						//deliver pending data first
-						int len = olctx->accept_fd;
-						olctx->accept_fd = NETP_INVALID_SOCKET;
-						ec = fn_iocp({olctx->fd, len, olctx->buf});
-						if (ec != netp::E_CHANNEL_OVERLAPPED_OP_TRY) {
-							//cancel read
-							return;
+						if (_ctx->ol_r->fn_ol_done != nullptr) {
+							_ctx->ol_r->fn_ol_done(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
+						}
+						if (_ctx->ol_w->fn_ol_done != nullptr) {
+							_ctx->ol_w->fn_ol_done(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
+						}
+						//in case , close would result in _ctx->fn_notify be nullptr
+						if (_ctx->fn_notify != nullptr) {
+							_ctx->fn_notify(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
 						}
 					}
-
-					olctx->action = iocp_ol_action::WSAREAD;
-					olctx->fn_iocp_done = fn_iocp;
-					ec = _do_read(olctx);
-					if (ec == netp::OK) {
-						olctx->action_status &= ~AS_DONE;
-						olctx->action_status |= AS_WAIT_IOCP;
-					} else {
-						olctx->fn_iocp_done({ olctx->fd, ec, 0 });
-					}
-				}
-				break;
-				case iocp_action::END_READ:
-				{
-					iocp_ctx_map_t::iterator&& it = m_ctxs.find(fd);
-					NRP<iocp_ctx>& iocpctx = it->second;
-					NETP_ASSERT(iocpctx != nullptr);
-					iocpctx->ol_ctxs[iocp_ol_type::READ]->action_status |= AS_DONE;
-				}
-				break;
-				case iocp_action::WRITE:
-				{
-					iocp_ctx_map_t::iterator&& it = m_ctxs.find(fd);
-					NETP_ASSERT(it != m_ctxs.end());
-					NRP<iocp_ctx>& iocpctx = it->second;
-					NETP_ASSERT(iocpctx != nullptr);
-
-					iocp_overlapped_ctx* olctx = iocpctx->ol_ctxs[iocp_ol_type::WRITE];
-					NETP_ASSERT(olctx != nullptr);
-					NETP_ASSERT((olctx->action_status & AS_WAIT_IOCP) == 0);
-					olctx->action = iocp_ol_action::WSASEND;
-					olctx->fn_iocp_done = fn_iocp;
-					olctx->fn_overlapped = fn_overlapped;
-
-					iocp_olctx_reset_overlapped(olctx);
-					int wrt = fn_overlapped((void*)&olctx->overlapped);
-					if (wrt == netp::OK) {
-						olctx->action_status &= ~AS_DONE;
-						olctx->action_status |= AS_WAIT_IOCP;
-					} else {
-						olctx->fn_iocp_done({ fd, wrt, 0 });
-					}
-				}
-				break;
-				case iocp_action::END_WRITE:
-				{
-					iocp_ctx_map_t::iterator&& it = m_ctxs.find(fd);
-					NETP_ASSERT(it != m_ctxs.end());
-					NRP<iocp_ctx>& iocpctx = it->second;
-					NETP_ASSERT(iocpctx != nullptr);
-
-					iocp_overlapped_ctx* olctx = iocpctx->ol_ctxs[iocp_ol_type::WRITE];
-					olctx->action_status |= AS_DONE;
-				}
-				break;
-				case iocp_action::READFROM:
-				{
-
-				}
-				break;
-				case iocp_action::SENDTO:
-				{
-				}
-				break;
-				case iocp_action::ACCEPT:
-				{
-					iocp_ctx_map_t::iterator&& it = m_ctxs.find(fd);
-					NETP_ASSERT(it != m_ctxs.end());
-					NRP<iocp_ctx>& iocpctx = it->second;
-					NETP_ASSERT(iocpctx != nullptr);
-
-					iocp_overlapped_ctx* olctx = iocpctx->ol_ctxs[iocp_ol_type::READ];
-					NETP_ASSERT(olctx != nullptr);
-					NETP_ASSERT((olctx->action_status & AS_WAIT_IOCP) == 0);
-
-					olctx->fn_iocp_done = fn_iocp;
-					olctx->fn_overlapped = fn_overlapped;
-					olctx->action = iocp_ol_action::ACCEPTEX;
-					iocp_olctx_reset_overlapped(olctx);
-					int ec = _do_accept_ex(olctx);
-					if (ec == netp::OK) {
-						olctx->action_status &= ~AS_DONE;
-						olctx->action_status |= AS_WAIT_IOCP;
-					} else {
-						olctx->fn_iocp_done({ NETP_INVALID_SOCKET, ec, nullptr });
-					}
-				}
-				break;
-				case iocp_action::END_ACCEPT:
-				{
-					iocp_ctx_map_t::iterator&& it = m_ctxs.find(fd);
-					NETP_ASSERT(it != m_ctxs.end());
-					NRP<iocp_ctx>& iocpctx = it->second;
-					NETP_ASSERT(iocpctx != nullptr);
-
-					iocp_overlapped_ctx* olctx = iocpctx->ol_ctxs[iocp_ol_type::READ];
-					NETP_ASSERT(olctx != nullptr);
-					olctx->action_status |= AS_DONE;
-				}
-				break;
-				case iocp_action::CONNECT:
-				{
-					iocp_ctx_map_t::iterator&& it = m_ctxs.find(fd);
-					NETP_ASSERT(it != m_ctxs.end());
-					NRP<iocp_ctx>& iocpctx = it->second;
-					NETP_ASSERT(iocpctx != nullptr);
-
-					iocp_overlapped_ctx* olctx = iocpctx->ol_ctxs[iocp_ol_type::WRITE];
-					NETP_ASSERT(olctx != nullptr);
-					NETP_ASSERT((olctx->action_status& AS_WAIT_IOCP) == 0);
-
-					iocp_olctx_reset_overlapped(olctx);
-					olctx->action = iocp_ol_action::CONNECTEX;
-					olctx->fn_iocp_done = fn_iocp;
-
-					const int crt = fn_overlapped((void*)&olctx->overlapped);
-					if (crt == netp::OK) {
-						olctx->action_status |= AS_WAIT_IOCP;
-					} else {
-						fn_iocp({ olctx->fd, (int)(crt & 0xFFFFFFFF), 0 });
-					}
-				}
-				break;
-				case iocp_action::END_CONNECT:
-				{
-					iocp_ctx_map_t::iterator&& it = m_ctxs.find(fd);
-					NETP_ASSERT(it != m_ctxs.end());
-					NRP<iocp_ctx>& iocpctx = it->second;
-					NETP_ASSERT(iocpctx != nullptr);
-					iocp_overlapped_ctx* olctx = iocpctx->ol_ctxs[iocp_ol_type::WRITE];
-					NETP_ASSERT(olctx != nullptr);
-					olctx->action_status |= AS_DONE;
-				}
-				break;
-				case iocp_action::NOTIFY_TERMINATING:
-				{
-#ifdef NETP_DEBUG_TERMINATING
-					NETP_ASSERT(m_terminated == false);
-					m_terminated = true;
-#endif
-					iocp_ctx_map_t::iterator&& it = m_ctxs.begin();
-					while (it != m_ctxs.end()) {
-						NRP<iocp_ctx>& iocpctx = (it++)->second;
-						NETP_ASSERT(iocpctx != nullptr);
-						NETP_ASSERT(iocpctx->fn_notify != nullptr);
-						iocpctx->fn_notify({ iocpctx->fd, netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING,0 });
-					}
-					//no competitor here, store directly
-					NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_TERMINATING));
-					m_state.store(u8_t(loop_state::S_TERMINATED), std::memory_order_release);
-
-					NETP_ASSERT(m_tb != nullptr);
-					m_tb->expire_all();
 				}
 				break;
 				}
+				return netp::OK;
 			}
-			m_iocp_acts.clear();
-			if (vecs > 8192) {
-				iocp_act_op_queue_t().swap(m_iocp_acts);
-			}
-		}
 
-		int _do_watch(SOCKET , u8_t , NRP<watch_ctx> const& )  override {
-			NETP_ASSERT(!"what: wrong call");
-			return netp::OK;
-		}
-		int _do_unwatch(SOCKET , u8_t , NRP<watch_ctx> const& ) override {
-			NETP_ASSERT(!"what: wrong call");
-			return netp::OK;
-		}
+		virtual int watch(u8_t, aio_ctx*) override { return netp::OK; }
+		virtual int unwatch(u8_t, aio_ctx*) override { return netp::OK; }
 	};
 }
 

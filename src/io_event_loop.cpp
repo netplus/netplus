@@ -1,14 +1,4 @@
 #include <netp/core.hpp>
-#if defined(NETP_HAS_POLLER_EPOLL)
-	#include <netp/poller_epoll.hpp>
-#elif defined(NETP_HAS_POLLER_IOCP)
-	#include <netp/poller_iocp.hpp>
-#elif defined(NETP_HAS_POLLER_KQUEUE)
-	#include <netp/poller_kqueue.hpp>
-#else
-	#include <netp/poller_select.hpp>
-#endif
-
 #include <netp/io_event_loop.hpp>
 
 namespace netp {
@@ -45,13 +35,6 @@ namespace netp {
 		}
 		break;
 #endif
-		case T_DUMMY:
-		{
-			poller = netp::make_ref<poller_dummy>();
-			NETP_ALLOC_CHECK(poller, sizeof(poller_dummy));
-			NETP_DEBUG("dummy poller created");
-		}
-		break;
 		default:
 		{
 			NETP_THROW("invalid poll type");
@@ -135,15 +118,7 @@ namespace netp {
 			u8_t running = u8_t(loop_state::S_RUNNING);
 			if (m_state.compare_exchange_strong(running, u8_t(loop_state::S_TERMINATING), std::memory_order_acq_rel, std::memory_order_acquire)) {
 				schedule([L = NRP<io_event_loop>(this)]() {
-#ifdef NETP_HAS_POLLER_IOCP
-					if (L->type() == T_IOCP) {
-						L->iocp_do(iocp_action::NOTIFY_TERMINATING, 0, nullptr, nullptr);
-					} else {//patch for bye
-						L->aio_do(aio_action::NOTIFY_TERMINATING, 0, nullptr);
-					}
-#else
 					L->__do_notify_terminating();
-#endif
 				});
 			}
 		}
@@ -228,7 +203,7 @@ namespace netp {
 				bye_event_loop_state idle = bye_event_loop_state::S_IDLE;
 				if (m_bye_state.compare_exchange_strong(idle, bye_event_loop_state::S_PREPARING, std::memory_order_acq_rel, std::memory_order_acquire)) {
 					NETP_ASSERT(m_bye_event_loop == nullptr, "m_bye_event_loop check failed");
-					m_bye_event_loop = default_event_loop_maker(T_DUMMY, { 0 });
+					m_bye_event_loop = default_event_loop_maker(NETP_DEFAULT_POLLER_TYPE, { 0 });
 					int rt = m_bye_event_loop->__launch();
 					NETP_ASSERT(rt == netp::OK);
 					m_bye_ref_count = m_bye_event_loop.ref_count();

@@ -8,13 +8,13 @@
 #define NETP_KEVT_COUNT (256)
 namespace netp {
 	class poller_kqueue final :
-		public io_event_loop
+		public poller_interruptable_by_fd
 	{
 		int m_kq;
 		struct kevent* m_kevts;
 	public:
 		poller_kqueue() :
-			poller_abstract(),
+			poller_interruptable_by_fd(),
 			m_kq(-1),
 			m_kevts(0)
 		{}
@@ -28,11 +28,11 @@ namespace netp {
 			NETP_DEBUG("CREATE KQUEUE DONE");
 			m_kevts = (struct kevent*)netp::aligned_malloc( sizeof(struct kevent)* NETP_KEVT_COUNT, NETP_DEFAULT_ALIGN);
 			NETP_ALLOC_CHECK(m_kevts, sizeof(struct kevent)* NETP_KEVT_COUNT);
-			poller_abstract::init();
+			poller_interruptable_by_fd::init();
 		}
 
 		void deinit() override {
-			poller_abstract::deinit();
+			poller_interruptable_by_fd::deinit();
 			close(m_kq);
 			m_kq = -1;
 			netp::aligned_free(m_kevts);

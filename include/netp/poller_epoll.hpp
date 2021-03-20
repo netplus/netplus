@@ -12,13 +12,13 @@
 namespace netp {
 
 	class poller_epoll final:
-		public poller_abstract
+		public poller_interruptable_by_fd
 	{
 		int m_epfd;
 
 	public:
 		poller_epoll():
-			poller_abstract(),
+			poller_interruptable_by_fd(),
 			m_epfd(-1)
 		{
 		}
@@ -93,11 +93,11 @@ namespace netp {
 				NETP_THROW("create epoll handle failed");
 			}
 			NETP_DEBUG("[EPOLL]init write epoll handle ok");
-			poller_abstract::init();
+			poller_interruptable_by_fd::init();
 		}
 
 		void deinit() override {
-			poller_abstract::deinit();
+			poller_interruptable_by_fd::deinit();
 			NETP_ASSERT(m_epfd != NETP_INVALID_SOCKET);
 			int rt = ::close(m_epfd);
 			if (-1 == rt) {
