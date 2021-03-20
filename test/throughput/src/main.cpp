@@ -36,6 +36,7 @@ int main(int argc, char** argv) {
 		appcfg.cfg_channel_rcv_buf(NETP_DEFAULT_POLLER_TYPE, 64);
 
 		netp::app _app(appcfg);
+
 		netp::benchmark bmarker("start");
 		handler_start_listener(g_param);
 		bmarker.mark("listen done");

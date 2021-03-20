@@ -258,6 +258,22 @@ namespace netp {
 		return netp::OK;
 	}
 
+	int socket_base::bind_any() {
+		//connectex requires the socket to be initially bound
+		struct sockaddr_in addr_in;
+		::memset(&addr_in, 0, sizeof(addr_in));
+		addr_in.sin_family = m_family;
+		addr_in.sin_addr.s_addr = INADDR_ANY;
+		addr_in.sin_port = 0;
+		int bindrt = ::bind(m_fd, reinterpret_cast<sockaddr*>(&addr_in), sizeof(addr_in));
+		if (bindrt != netp::OK) {
+			bindrt = netp_socket_get_last_errno();
+			NETP_DEBUG("bind failed: %d\n", bindrt);
+			return bindrt;
+		}
+		return netp::OK;
+	}
+
 	int socket_base::listen(int backlog) {
 		NETP_ASSERT(m_fd>0);
 		int rt;
@@ -284,16 +300,9 @@ namespace netp {
 
 #ifdef NETP_HAS_POLLER_IOCP
 		//connectex requires the socket to be initially bound
-		struct sockaddr_in addr_in;
-		::memset(&addr_in, 0, sizeof(addr_in));
-		addr_in.sin_family = m_family;
-		addr_in.sin_addr.s_addr = INADDR_ANY;
-		addr_in.sin_port = 0;
-		int bindrt = ::bind( m_fd, reinterpret_cast<sockaddr*>(&addr_in), sizeof(addr_in));
-		if (bindrt != netp::OK ) {
-			bindrt = netp_socket_get_last_errno();
-			NETP_DEBUG("bind failed: %d\n", bindrt );
-			return bindrt;
+		int rt = bind_any();
+		if (rt != netp::OK) {
+			return rt;
 		}
 		return netp::E_EINPROGRESS;
 #else

@@ -67,6 +67,8 @@ namespace netp {
 			return;
 		}
 
+
+
 		m_tm_dnstimeout = netp::make_ref<netp::timer>(std::chrono::milliseconds(200), &dns_resolver::cb_dns_timeout, this, std::placeholders::_1);
 		//tm always finished before loop terminated
 
@@ -83,6 +85,11 @@ namespace netp {
 			return;
 		}
 
+		rt = m_so->bind_any();
+		if (rt != netp::OK) {
+			p->set(rt);
+			return;
+		}
 		//libudns do not support iocp
 		m_so->ch_set_active();
 		m_so->ch_set_connected();
@@ -93,7 +100,7 @@ namespace netp {
 			if (aiort == netp::OK) {
 				NETP_DEBUG("[dns_resolver][%s]init done", dnsr->m_so->info().c_str());
 				dnsr->m_flag |= dns_resolver_flag::f_running;
-				dnsr->m_so->ch_aio_read_from(std::bind(&dns_resolver::async_read_dns_reply, dns_resolver::instance(), std::placeholders::_1, std::placeholders::_2));
+				dnsr->m_so->ch_aio_read(std::bind(&dns_resolver::async_read_dns_reply, dns_resolver::instance(), std::placeholders::_1, std::placeholders::_2));
 				dnsr->m_so->ch_close_promise()->if_done([dnsr](int const&) {
 					dnsr->m_flag &= ~dns_resolver_flag::f_running;
 					dnsr->m_so = nullptr;
@@ -158,10 +165,17 @@ namespace netp {
 		}
 	}
 
-	void dns_resolver::async_read_dns_reply(int aiort_, aio_ctx* ctx) {
+	void dns_resolver::async_read_dns_reply(int status, aio_ctx* ctx) {
 		NETP_ASSERT(m_loop->in_event_loop());
 		//NETP_ASSERT(aiort_ == netp::OK);
-		if (aiort_ == netp::OK) {
+
+		if (status > 0) {
+			NETP_ASSERT(ctx->is_iocp);
+			dns_ioevent_with_udpdata_in(m_dns_ctx, 0, (unsigned char*) ctx->ol_r->wsabuf_rcv.buf, status, ctx->ol_r->from_ptr );
+			dns_ioevent(m_dns_ctx, 0);
+			return;
+		}
+		if (status == netp::OK) {
 			//struct sockaddr_in addr_in;
 			//::memset(&addr_in, 0, sizeof(addr_in));
 			//addr_in.sin_family = u16_t(addr.family());
@@ -172,7 +186,7 @@ namespace netp {
 			return;
 		}
 
-		NETP_ERR("[dns_resolver]dns read error: %d", aiort_);
+		NETP_ERR("[dns_resolver]dns read error: %d", status);
 		_do_stop(netp::make_ref<netp::promise<int>>());
 	}
 

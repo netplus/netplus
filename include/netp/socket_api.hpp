@@ -135,9 +135,7 @@ namespace netp {
 			int type,
 			int protocol
 		) {
-			return
-			::socket(af, type, protocol);
-
+			return ::socket(af, type, protocol);
 		}
 
 		__NETP_FORCE_INLINE int bind(

@@ -776,7 +776,7 @@ namespace netp {
 
 #ifdef NETP_HAS_POLLER_IOCP
 			NETP_ASSERT(L->type() == T_IOCP);
-			int rt = _iocp_do_accept_ex(m_aio_ctx->ol_r);
+			int rt = __iocp_do_AcceptEx(m_aio_ctx->ol_r);
 			if (rt != netp::OK) {
 				ch_errno() = rt;
 				ch_close();
@@ -813,27 +813,9 @@ namespace netp {
 
 #ifdef NETP_HAS_POLLER_IOCP
 
-		inline static int _do_read_from(ol_ctx* olctx) {
-			ol_ctx_reset(olctx);
-			DWORD flags = 0;
-			int ec = ::WSARecv(olctx->fd, &olctx->wsabuf, 1, nullptr, &flags, &olctx->ol, nullptr);
-			if (ec == -1) {
-				ec = netp_socket_get_last_errno();
-				if (ec == netp::E_WSA_IO_PENDING) {
-					ec = netp::OK;
-				}
-			}
-			return ec;
-		}
-
-
-		SOCKET __iocp_do_create_fd() {
-			return netp::open(*m_api, m_family, m_type, m_protocol);
-		}
-
-		inline int _iocp_do_accept_ex(ol_ctx* olctx) {
+		inline int __iocp_do_AcceptEx(ol_ctx* olctx) {
 			NETP_ASSERT(olctx != nullptr);
-			olctx->accept_fd = __iocp_do_create_fd();
+			olctx->accept_fd = netp::open(*m_api, m_family, m_type, m_protocol);
 			int ec = netp::OK;
 			if (olctx->accept_fd == NETP_INVALID_SOCKET) {
 				ec = netp_socket_get_last_errno();
@@ -845,7 +827,7 @@ namespace netp {
 
 			const static LPFN_ACCEPTEX lpfnAcceptEx = (LPFN_ACCEPTEX)netp::os::load_api_ex_address(netp::os::API_ACCEPT_EX);
 			NETP_ASSERT(lpfnAcceptEx != 0);
-			BOOL acceptrt = lpfnAcceptEx(olctx->fd, olctx->accept_fd, olctx->wsabuf.buf, 0,
+			BOOL acceptrt = lpfnAcceptEx(olctx->fd, olctx->accept_fd, olctx->wsabuf_rcv.buf, 0,
 				sizeof(struct sockaddr_in) + 16, sizeof(struct sockaddr_in) + 16,
 				nullptr, &(olctx->ol));
 
@@ -877,7 +859,7 @@ namespace netp {
 
 				const static LPFN_GETACCEPTEXSOCKADDRS fn_getacceptexsockaddrs = (LPFN_GETACCEPTEXSOCKADDRS)netp::os::load_api_ex_address(netp::os::API_GET_ACCEPT_EX_SOCKADDRS);
 				NETP_ASSERT(fn_getacceptexsockaddrs != 0);
-				fn_getacceptexsockaddrs(ctx->ol_r->wsabuf.buf, 0,
+				fn_getacceptexsockaddrs(ctx->ol_r->wsabuf_rcv.buf, 0,
 					sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16,
 					(LPSOCKADDR*)&laddr_in, &laddr_in_len,
 					(LPSOCKADDR*)&raddr_in, &raddr_in_len);
@@ -909,7 +891,7 @@ namespace netp {
 			}
 
 			if (IS_ERRNO_EQUAL_WOULDBLOCK(status) || status == netp::OK) {
-				status = _iocp_do_accept_ex(ctx->ol_r);
+				status = __iocp_do_AcceptEx(ctx->ol_r);
 				if (status == netp::OK) {
 					ctx->ol_r->action_status |= AS_WAIT_IOCP;
 					return;
@@ -948,18 +930,30 @@ namespace netp {
 			return ec;
 		}
 
-		//int __iocp_do_WSARecvfrom_done(const iocp_result& r) {
-		//	NETP_ASSERT("TODO");
-		//
-		//	//RE
-		//}
+		void __iocp_do_WSARecvfrom_done(int status, aio_ctx* ctx) {
+			if (status > 0) {
+				channel::ch_fire_readfrom(netp::make_ref<netp::packet>(ctx->ol_r->wsabuf_rcv.buf, status), address( *(ctx->ol_r->from_ptr)) );
+				status = netp::OK;
+				__cb_aio_read_from_impl(status, m_aio_ctx);
+			} else {
+				NETP_TRACE_SOCKET("[socket][%s]WSARecvfrom error: %d", info().c_str(), len);
+			}
+			if (m_chflag & int(channel_flag::F_WATCH_READ)) {
+				status = __iocp_do_WSARecvfrom(m_aio_ctx->ol_r, (SOCKADDR*)ctx->ol_r->from_ptr, ctx->ol_r->from_len_ptr );
+				if (status == netp::OK) {
+					m_aio_ctx->ol_r->action_status |= AS_WAIT_IOCP;
+				} else {
+					___aio_read_impl_done(status);
+				}
+			}
+		}
 
 		void __iocp_do_WSARecv_done( int status, aio_ctx* ctx) {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(!ch_is_listener());
 			NETP_ASSERT(m_chflag & int(channel_flag::F_WATCH_READ));
 			if (NETP_LIKELY(status) > 0) {
-				channel::ch_fire_read(netp::make_ref<netp::packet>(ctx->ol_r->wsabuf.buf, status)) ;
+				channel::ch_fire_read(netp::make_ref<netp::packet>(ctx->ol_r->wsabuf_rcv.buf, status)) ;
 				status = netp::OK;
 			} else if (status == 0) {
 				status = netp::E_SOCKET_GRACE_CLOSE;
@@ -968,7 +962,7 @@ namespace netp {
 			}
 			__cb_aio_read_impl(status, m_aio_ctx);
 			if (m_chflag&int(channel_flag::F_WATCH_READ)) {
-				status = __iocp_do_read(m_aio_ctx->ol_r);
+				status = __iocp_do_WSARecv(m_aio_ctx->ol_r);
 				if (status == netp::OK) {
 					m_aio_ctx->ol_r->action_status |= AS_WAIT_IOCP;
 				} else {
@@ -1007,9 +1001,9 @@ namespace netp {
 		}
 
 		//one shot one packet
-		int __iocp_do_WSASend(void* ol_for_write) {
+		int __iocp_do_WSASend( ol_ctx* olctx ) {
 			NETP_ASSERT(L->in_event_loop());
-			NETP_ASSERT(ol_for_write != nullptr);
+			NETP_ASSERT(olctx != nullptr);
 			NETP_ASSERT((m_chflag & int(channel_flag::F_WATCH_WRITE)) );
 
 			int wrt = netp::OK;
@@ -1017,9 +1011,9 @@ namespace netp {
 				NETP_ASSERT(m_noutbound_bytes > 0);
 				socket_outbound_entry& entry = m_outbound_entry_q.front();
 				NRP<packet>& outlet = entry.data;
-				::memset(ol_for_write, 0, sizeof( *((WSAOVERLAPPED*)(ol_for_write))) );
-				WSABUF wsabuf = { ULONG(outlet->len()), (char*)outlet->head() };
-				wrt = ::WSASend(m_fd, &wsabuf, 1, nullptr, 0, (WSAOVERLAPPED*)ol_for_write, nullptr);
+				::memset(&olctx->ol, 0, sizeof( *((WSAOVERLAPPED*)(&olctx->ol))) );
+				olctx->wsabuf_snd = { ULONG(outlet->len()), (char*)outlet->head() };
+				wrt = ::WSASend(m_fd, &olctx->wsabuf_snd, 1, nullptr, 0, (WSAOVERLAPPED*)&olctx->ol, nullptr);
 				if (wrt == netp::OK) {
 					break;
 				}
@@ -1069,45 +1063,27 @@ namespace netp {
 		void ch_close_write_impl(NRP<promise<int>> const& chp) override;
 		void ch_close_impl(NRP<promise<int>> const& chp) override;
 
-		void ch_aio_read_from(fn_aio_event_t const& fn_read = nullptr) {
-			if (!L->in_event_loop()) {
-				L->schedule([s = NRP<socket>(this), fn_read]()->void {
-					s->ch_aio_read_from(fn_read);
-				});
-				return;
-			}
-			NETP_ASSERT((m_chflag & int(channel_flag::F_READ_SHUTDOWNING)) == 0);
-			if (m_chflag & int(channel_flag::F_WATCH_READ)) {
-				NETP_TRACE_SOCKET("[socket][%s]aio_action::READ, ignore, flag: %d", info().c_str(), m_chflag);
-				return;
-			}
-
-			if (m_chflag & int(channel_flag::F_READ_SHUTDOWN)) {
-				NETP_ASSERT((m_chflag & int(channel_flag::F_WATCH_READ)) == 0);
-				if (fn_read != nullptr) {
-					fn_read(netp::E_CHANNEL_READ_CLOSED, 0 );
-				}
-				return;
-			}
-
 #ifdef NETP_HAS_POLLER_IOCP
-			NETP_ASSERT(L->type() == T_IOCP);
-			//L->iocp_do(iocp_action::READ, m_fd, nullptr, std::bind(&socket::__iocp_do_WSARecvfrom_done, NRP<socket>(this), fn_read, std::placeholders::_1));
-#else
-			int rt = L->aio_do(aio_action::READ, m_aio_ctx);
-			if (rt == netp::OK) {
-				m_chflag |= int(channel_flag::F_WATCH_READ);
-				m_aio_ctx->fn_read = fn_read != nullptr ? fn_read: std::bind(&socket::__cb_aio_read_from_impl, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
-			}
-#endif
-			NETP_TRACE_IOE("[socket][%s]aio_action::READ", info().c_str());
-		}
-
-#ifdef NETP_HAS_POLLER_IOCP
-		inline static int __iocp_do_read(ol_ctx* olctx) {
+		inline static int __iocp_do_WSARecv(ol_ctx* olctx) {
 			ol_ctx_reset(olctx);
 			DWORD flags = 0;
-			int ec = ::WSARecv(olctx->fd, &olctx->wsabuf, 1, nullptr, &flags, &olctx->ol, nullptr);
+			int ec = ::WSARecv(olctx->fd, &olctx->wsabuf_rcv, 1, NULL, &flags, &olctx->ol, NULL);
+			if (ec == -1) {
+				ec = netp_socket_get_last_errno();
+				if (ec == netp::E_WSA_IO_PENDING) {
+					ec = netp::OK;
+				}
+			}
+			return ec;
+		}
+		inline static int __iocp_do_WSARecvfrom(ol_ctx* olctx, SOCKADDR* from, int* fromlen) {
+			ol_ctx_reset(olctx);
+			DWORD flags = 0;
+			*fromlen = sizeof(sockaddr_in);
+			//sockaddr_in from_;
+			//int fromlen_ = sizeof(sockaddr_in);
+			int ec = ::WSARecvFrom(olctx->fd, &olctx->wsabuf_rcv, 1, NULL, &flags, from, fromlen, &olctx->ol, NULL);
+		
 			if (ec == -1) {
 				ec = netp_socket_get_last_errno();
 				if (ec == netp::E_WSA_IO_PENDING) {
@@ -1158,7 +1134,8 @@ namespace netp {
 				return;
 			}
 
-			int rt = __iocp_do_read(m_aio_ctx->ol_r);
+			int rt = m_protocol == NETP_PROTOCOL_TCP ? __iocp_do_WSARecv(m_aio_ctx->ol_r) :
+				__iocp_do_WSARecvfrom(m_aio_ctx->ol_r, (SOCKADDR*)m_aio_ctx->ol_r->from_ptr, m_aio_ctx->ol_r->from_len_ptr);
 			if (rt != netp::OK) {
 				if (fn_read != nullptr) { fn_read(rt, 0); }
 				return;
@@ -1170,12 +1147,17 @@ namespace netp {
 			m_chflag |= int(channel_flag::F_WATCH_READ);
 			m_aio_ctx->ol_r->action = iocp_ol_action::WSAREAD;
 			m_aio_ctx->ol_r->action_status |= AS_WAIT_IOCP;
-			m_aio_ctx->ol_r->fn_ol_done = std::bind(&socket::__iocp_do_WSARecv_done, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
+			m_aio_ctx->ol_r->fn_ol_done = fn_read != nullptr ? fn_read :
+				m_protocol == NETP_PROTOCOL_TCP ? std::bind(&socket::__iocp_do_WSARecv_done, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2) :
+				std::bind(&socket::__iocp_do_WSARecvfrom_done, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
+				
 #else
 			int rt = L->aio_do(aio_action::READ, m_aio_ctx);
 			if (rt == netp::OK) {
 				m_chflag |= int(channel_flag::F_WATCH_READ);
-				m_aio_ctx->fn_read = fn_read != nullptr ? fn_read: std::bind(&socket::__cb_aio_read_impl, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
+				m_aio_ctx->fn_read = fn_read != nullptr ? fn_read :
+					m_protocol == NETP_PROTOCOL_TCP ? std::bind(&socket::__cb_aio_read_impl, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2):
+					std::bind(&socket::__cb_aio_read_from_impl, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2) ;
 			}
 #endif
 
@@ -1230,7 +1212,7 @@ namespace netp {
 
 #ifdef NETP_HAS_POLLER_IOCP
 			NETP_ASSERT(L->type() == T_IOCP);
-			int rt = __iocp_do_WSASend(m_aio_ctx);
+			int rt = __iocp_do_WSASend(m_aio_ctx->ol_w);
 			if (rt != netp::OK) {
 				fn_write(rt, m_aio_ctx);
 				return;

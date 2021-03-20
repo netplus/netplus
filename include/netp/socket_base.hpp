@@ -98,6 +98,7 @@ namespace netp {
 		int shutdown(int flag);
 		int close();
 		int bind(address const& addr);
+		int bind_any();
 		int listen(int backlog);
 		SOCKET accept(address& addr);
 		int connect(address const& addr);
