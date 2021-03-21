@@ -14,7 +14,12 @@ public:
 		channel_handler_abstract(netp::channel_handler_api::CH_INBOUND_READ)
 	{}
 	void read(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& income) {
-		ctx->write(income);
+		NRP<netp::promise<int>> wp = ctx->write(income);
+		wp->if_done([](int const& rt) {
+			if (rt != netp::OK) {
+				NETP_ERR("write error: %d", rt);
+			}
+		});
 	}
 };
 
@@ -37,8 +42,14 @@ public:
 				//close listener once the test is done
 				::raise(SIGTERM);
 			}
+			return;
 		}
-		ctx->write(income);
+		NRP<netp::promise<int>> wp = ctx->write(income);
+		wp->if_done([](int const& rt) {
+			if (rt != netp::OK) {
+				NETP_ERR("write error: %d", rt);
+			}
+		});
 	}
 
 	netp::u64_t m_total_received;

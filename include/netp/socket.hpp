@@ -674,7 +674,6 @@ namespace netp {
 			m_cherrno = netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING;
 			m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
 			ch_close_impl(nullptr);
-			return;
 		}
 
 	public:
@@ -749,6 +748,9 @@ namespace netp {
 			NETP_ASSERT( (m_chflag&(int(channel_flag::F_WATCH_READ)|int(channel_flag::F_WATCH_WRITE))) == 0 );
 			NETP_TRACE_SOCKET("[socket][%s]aio_action::END, flag: %d", info().c_str(), m_chflag );
 
+			//****NOTE ON WINDOWS&IOCP****//
+			//Any pending overlapped sendand receive operations(WSASend / WSASendTo / WSARecv / WSARecvFrom with an overlapped socket) issued by any thread in this process are also canceled.Any event, completion routine, or completion port action specified for these overlapped operations is performed.The pending overlapped operations fail with the error status WSA_OPERATION_ABORTED.
+			//Refer to: https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-closesocket
 			ch_fire_closed(close());
 			if (m_chflag&int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE)) {
 				L->schedule([so=NRP<socket>(this)]() {
@@ -984,15 +986,14 @@ namespace netp {
 			NETP_ASSERT(m_noutbound_bytes > 0);
 			socket_outbound_entry entry = m_outbound_entry_q.front();
 			NETP_ASSERT(entry.data != nullptr);
-			entry.data->skip(status);
 			m_noutbound_bytes -= status;
+			entry.data->skip(status);
 			if (entry.data->len() == 0) {
 				entry.write_promise->set(netp::OK);
 				m_outbound_entry_q.pop_front();
 			}
 			status = netp::OK;
 			if (m_noutbound_bytes>0) {
-				NETP_ASSERT(m_outbound_entry_q.size());
 				status = __iocp_do_WSASend(m_aio_ctx->ol_w);
 				if (status == netp::OK) {
 					m_aio_ctx->ol_w->action_status |= AS_WAIT_IOCP;
@@ -1006,29 +1007,23 @@ namespace netp {
 		int __iocp_do_WSASend( ol_ctx* olctx ) {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(olctx != nullptr);
-			NETP_ASSERT((olctx->action_status & AS_WAIT_IOCP) ==0);
-			int wrt = netp::OK;
-			while (m_outbound_entry_q.size()) {
-				NETP_ASSERT(m_noutbound_bytes > 0);
-				socket_outbound_entry& entry = m_outbound_entry_q.front();
-				NRP<packet>& outlet = entry.data;
-				::memset(&olctx->ol, 0, sizeof( *((WSAOVERLAPPED*)(&olctx->ol))) );
-				olctx->wsabuf = { ULONG(outlet->len()), (char*)outlet->head() };
-				wrt = ::WSASend(m_fd, &olctx->wsabuf, 1, nullptr, 0, (WSAOVERLAPPED*)&olctx->ol, nullptr);
-				if (wrt == netp::OK) {
-					break;
-				}
-
-				//https://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-wsasend
-				//ACCORDING TO MSDN: nonblocking should not return with this value
-				//NETP_ASSERT(wrt == netp::E_WSAEINTR); 
-				NETP_ASSERT(wrt == NETP_SOCKET_ERROR);
-				wrt = netp_socket_get_last_errno();
-				if (wrt == netp::E_WSA_IO_PENDING) {
-					wrt = netp::OK;
+			NETP_ASSERT((olctx->action_status & (AS_WAIT_IOCP)) ==0);
+			
+			NETP_ASSERT(m_noutbound_bytes > 0);
+			socket_outbound_entry& entry = m_outbound_entry_q.front();
+			olctx->wsabuf = { ULONG(entry.data->len()), (char*)entry.data->head() };
+			ol_ctx_reset(olctx);
+			int rt = ::WSASend(m_fd, &olctx->wsabuf, 1, NULL, 0, &olctx->ol, NULL);
+			if (rt == NETP_SOCKET_ERROR) {
+				rt = netp_socket_get_last_errno();
+				if (rt == netp::E_WSA_IO_PENDING) {
+					rt = netp::OK;
 				}
 			}
-			return wrt;
+			//https://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-wsasend
+			//ACCORDING TO MSDN: nonblocking should not return with this value
+			//NETP_ASSERT(wrt == netp::E_WSAEINTR); 
+			return rt;
 		}
 #endif
 	public:
@@ -1070,7 +1065,7 @@ namespace netp {
 			ol_ctx_reset(olctx);
 			DWORD flags = 0;
 			int ec = ::WSARecv(olctx->fd, &olctx->wsabuf, 1, NULL, &flags, &olctx->ol, NULL);
-			if (ec == -1) {
+			if (ec == NETP_SOCKET_ERROR) {
 				ec = netp_socket_get_last_errno();
 				if (ec == netp::E_WSA_IO_PENDING) {
 					ec = netp::OK;
@@ -1087,7 +1082,7 @@ namespace netp {
 			//int fromlen_ = sizeof(sockaddr_in);
 			int ec = ::WSARecvFrom(olctx->fd, &olctx->wsabuf, 1, NULL, &flags, from, fromlen, &olctx->ol, NULL);
 		
-			if (ec == -1) {
+			if (ec == NETP_SOCKET_ERROR) {
 				ec = netp_socket_get_last_errno();
 				if (ec == netp::E_WSA_IO_PENDING) {
 					ec = netp::OK;
@@ -1142,7 +1137,7 @@ namespace netp {
 				return;
 			}
 
-			int rt = m_protocol == NETP_PROTOCOL_TCP ? __iocp_do_WSARecv(m_aio_ctx->ol_r) :
+			int rt = is_tcp() ? __iocp_do_WSARecv(m_aio_ctx->ol_r) :
 				__iocp_do_WSARecvfrom(m_aio_ctx->ol_r, (SOCKADDR*)m_aio_ctx->ol_r->from_ptr, m_aio_ctx->ol_r->from_len_ptr);
 			if (rt != netp::OK) {
 				if (fn_read != nullptr) { fn_read(rt, 0); }
@@ -1156,7 +1151,7 @@ namespace netp {
 			m_aio_ctx->ol_r->action = iocp_ol_action::WSAREAD;
 			m_aio_ctx->ol_r->action_status |= AS_WAIT_IOCP;
 			m_aio_ctx->ol_r->fn_ol_done = fn_read != nullptr ? fn_read :
-				m_protocol == NETP_PROTOCOL_TCP ? std::bind(&socket::__iocp_do_WSARecv_done, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2) :
+				is_tcp() ? std::bind(&socket::__iocp_do_WSARecv_done, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2) :
 				std::bind(&socket::__iocp_do_WSARecvfrom_done, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
 				
 #else
@@ -1220,9 +1215,15 @@ namespace netp {
 
 #ifdef NETP_HAS_POLLER_IOCP
 			NETP_ASSERT(L->type() == T_IOCP);
+			if (m_noutbound_bytes == 0) {
+				if (fn_write != nullptr) {
+					fn_write(netp::E_CHANNEL_OUTGO_LIST_EMPTY, 0);
+				}
+				return;
+			}
 			int rt = __iocp_do_WSASend(m_aio_ctx->ol_w);
 			if (rt != netp::OK) {
-				fn_write(rt, m_aio_ctx);
+				if (fn_write != nullptr) { fn_write(rt, m_aio_ctx); };
 				return;
 			}
 
@@ -1231,7 +1232,8 @@ namespace netp {
 			NETP_ASSERT(rt == netp::OK);
 			m_aio_ctx->ol_w->action = iocp_ol_action::WSASEND;
 			m_aio_ctx->ol_w->action_status |= AS_WAIT_IOCP;
-			m_aio_ctx->ol_w->fn_ol_done = std::bind(&socket::__iocp_do_WSASend_done, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
+			m_aio_ctx->ol_w->fn_ol_done = fn_write != nullptr ? fn_write: 
+			 std::bind(&socket::__iocp_do_WSASend_done, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
 #else
 			int rt = L->aio_do(aio_action::WRITE, m_aio_ctx);
 			if (rt == netp::OK) {

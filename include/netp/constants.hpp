@@ -358,14 +358,19 @@ const int  E_ERANGE = -34;         /* Result too large */
 
 
 #elif defined(_NETP_WIN)
+	const int E_ERROR_ACCESS_DENIED = -5;
 	const int E_WSA_INVALID_HANDLE = -6;
+	const int E_ERROR_HANDLE_EOF = -38;
 	const int E_WSA_INVALID_PARAMETER = -87;
+	const int E_ERROR_MORE_DATA            = -234;
 	const int E_WAIT_TIMEOUT = -258;
 	const int E_ERROR_ABANDONED_WAIT_0 = -735;
 
 	const int E_WSA_OPERATION_ABORTED = -995;
 	const int E_WSA_IO_INCOMPLETE = -996;
 	const int E_WSA_IO_PENDING = -997;
+	const int E_ERROR_PRIVILEGE_NOT_HELD = -1314;
+
 	const int E_ERROR_CONNECTION_ABORTED = -1236;
 
 // 1---19999; reserved for system call error code (windows)

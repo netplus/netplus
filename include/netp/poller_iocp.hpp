@@ -8,9 +8,6 @@
 #include <netp/poller_abstract.hpp>
 #include <netp/os/winsock_helper.hpp>
 
-#define NETP_IOCP_INTERRUPT_COMPLETE_KEY (-13)
-#define NETP_IOCP_INTERRUPT_COMPLETE_PARAM (-13)
-
 namespace netp {
 
 	enum iocp_ol_action {
@@ -65,7 +62,6 @@ namespace netp {
 	}
 
 	__NETP_FORCE_INLINE static void ol_ctx_reset(ol_ctx* ctx) {
-		NETP_ASSERT(ctx != 0);
 		::memset(&ctx->ol, 0, sizeof(ctx->ol));
 	}
 
@@ -120,7 +116,7 @@ namespace netp {
 
 		void interrupt_wait() override {
 			NETP_ASSERT(m_handle != nullptr);
-			BOOL postrt = ::PostQueuedCompletionStatus(m_handle, (DWORD)NETP_IOCP_INTERRUPT_COMPLETE_PARAM, (ULONG_PTR)NETP_IOCP_INTERRUPT_COMPLETE_KEY, 0);
+			BOOL postrt = ::PostQueuedCompletionStatus(m_handle, 0,0,0);
 			if (postrt == FALSE) {
 				NETP_ERR("PostQueuedCompletionStatus failed: %d", netp_socket_get_last_errno());
 				return;
@@ -128,15 +124,17 @@ namespace netp {
 			NETP_TRACE_IOE("[iocp]interrupt_wait");
 		}
 
-		void _handle_iocp_event(ol_ctx* olctx, DWORD& dwTrans, int& ec) {
+		inline void _handle_iocp_event(ol_ctx* olctx, DWORD& dwTrans, int& ec) {
 			NETP_ASSERT(olctx != nullptr);
+			NETP_ASSERT(olctx->fd != NETP_INVALID_SOCKET);
 			switch (olctx->action) {
 			case iocp_ol_action::WSAREAD:
 			{
-				NETP_ASSERT(olctx->fd != NETP_INVALID_SOCKET);
 				NETP_ASSERT(olctx->accept_fd == NETP_INVALID_SOCKET);
-				if (olctx->action_status&AS_DONE) {
-					olctx->accept_fd = ec == 0 ? dwTrans : ec;
+				if ((olctx->action_status&AS_DONE) ) {
+					if (ec == 0 && (dwTrans > 0)) {
+						olctx->accept_fd = dwTrans;
+					}
 					return;
 				}
 				NETP_ASSERT(olctx->fn_ol_done != nullptr);
@@ -145,8 +143,6 @@ namespace netp {
 			break;
 			case iocp_ol_action::WSASEND:
 			{
-				NETP_ASSERT(olctx->fd != NETP_INVALID_SOCKET);
-				NETP_ASSERT(olctx->accept_fd == NETP_INVALID_SOCKET);
 				if (olctx->action_status & AS_DONE) {
 					return;
 				}
@@ -156,12 +152,7 @@ namespace netp {
 			break;
 			case iocp_ol_action::ACCEPTEX:
 			{
-				NETP_ASSERT(olctx->fd != NETP_INVALID_SOCKET);
 				if (olctx->action_status & AS_DONE) {
-					if (olctx->accept_fd != NETP_INVALID_SOCKET) {
-						NETP_CLOSE_SOCKET(olctx->accept_fd);
-						olctx->accept_fd = NETP_INVALID_SOCKET;
-					}
 					return;
 				}
 
@@ -182,16 +173,14 @@ namespace netp {
 			break;
 			case iocp_ol_action::CONNECTEX:
 			{
-				NETP_ASSERT(olctx->fd != NETP_INVALID_SOCKET);
-				NETP_ASSERT(olctx->accept_fd == NETP_INVALID_SOCKET);
+				if (olctx->action_status & AS_DONE) {
+					return;
+				}
 				if (ec == netp::OK) {
 					ec = ::setsockopt(olctx->fd, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, nullptr, 0);
 					if (ec == NETP_SOCKET_ERROR) {
 						ec = netp_socket_get_last_errno();
 					}
-				}
-				if (olctx->action_status & AS_DONE) {
-					return;
 				}
 				NETP_ASSERT(olctx->fn_ol_done != nullptr);
 				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, olctx->aioctx );
@@ -237,43 +226,47 @@ namespace netp {
 			NETP_ASSERT(m_handle > 0);
 			const long long wait_in_milli = wait_in_nano != ~0 ? (wait_in_nano / 1000000L) : ~0;
 			//INFINITE == -1
-			// 
-			//#define NETP_USE_GET_QUEUED_COMPLETION_STATUS_EX
+			 
+#define NETP_USE_GET_QUEUED_COMPLETION_STATUS_EX
 #ifdef NETP_USE_GET_QUEUED_COMPLETION_STATUS_EX
 			OVERLAPPED_ENTRY entrys[64];
 			ULONG n = 64;
-			NETP_TRACE_IOE("[iocp]GetQueuedCompletionStatusEx wait: %llu:", dw_wait_in_nano);
-			BOOL getOk = ::GetQueuedCompletionStatusEx(m_handle, &entrys[0], n, &n, (DWORD)(dw_wait_in_nano), FALSE);
-			NETP_TRACE_IOE("[iocp]GetQueuedCompletionStatusEx wakenup");
+			int ec = netp::OK;
+			BOOL getOk = ::GetQueuedCompletionStatusEx(m_handle, &entrys[0], n, &n, (DWORD)(wait_in_milli), FALSE);
+			__LOOP_EXIT_WAITING__(W);
 			if (NETP_UNLIKELY(getOk) == FALSE) {
 				ec = netp_socket_get_last_errno();
-				NETP_TRACE_IOE("[iocp]GetQueuedCompletionStatusEx return: %d", ec);
-				return;
-			}
-			NETP_ASSERT(n > 0);
-
-			for (ULONG i = 0; i < n; ++i) {
-				ULONG_PTR fd = entrys[i].lpCompletionKey;
-				if (fd == NETP_IOCP_INTERRUPT_COMPLETE_KEY) {
-					NETP_TRACE_IOE("[iocp]GetQueuedCompletionStatusEx wakenup for interrupt");
-					NETP_ASSERT(entrys[i].dwNumberOfBytesTransferred == NETP_IOCP_INTERRUPT_COMPLETE_PARAM);
-					continue;
+				if (ec == netp::E_WAIT_TIMEOUT) {
+					NETP_TRACE_IOE("[iocp]GetQueuedCompletionStatus return: %d", ec);
+					return;
 				}
-
-				NETP_ASSERT(fd > 0 && fd != NETP_INVALID_SOCKET);
-				LPOVERLAPPED ol = entrys[i].lpOverlapped;
-				NETP_ASSERT(ol != 0);
+				NETP_THROW("GetQueuedCompletionStatusEx failed");
+			}
+			for (ULONG i = 0; i < n; ++i) {
+				LPOVERLAPPED& ol = entrys[i].lpOverlapped;
+				if (ol == 0) {
+					NETP_DEBUG("[iocp]GetQueuedCompletionStatus return: %d, no packet dequeue");
+					return;
+				}
+				ol_ctx* olctx = (CONTAINING_RECORD(ol, ol_ctx, ol));
+				olctx->action_status &= ~AS_WAIT_IOCP;
 
 				DWORD dwTrans;
 				DWORD dwFlags = 0;
-				if (FALSE == ::WSAGetOverlappedResult(fd, ol, &dwTrans, FALSE, &dwFlags)) {
+				ec = netp::OK;
+				if (FALSE == ::WSAGetOverlappedResult(olctx->fd, ol, &dwTrans, FALSE, &dwFlags)) {
 					ec = netp_socket_get_last_errno();
-					NETP_DEBUG("[#%d]dwTrans: %d, dwFlags: %d, update ec: %d", fd, dwTrans, dwFlags, ec);
+					NETP_DEBUG("[#%d]dwTrans: %d, dwFlags: %d, update ec: %d", olctx->fd, dwTrans, dwFlags, ec);
 				}
-				if (ec == netp::E_WSAENOTSOCK) {
-					return;
+
+				if (olctx->action_status & AS_CH_END) {
+					ol_ctx_deallocate(olctx);
+#ifdef NETP_DEBUG_AIO_CTX_
+					++m_ol_count_free;
+#endif
+				} else {
+					_handle_iocp_event(olctx, dwTrans, ec);
 				}
-				_handle_iocp_event(ol, dwTrans, ec);
 			}
 #else
 			int ec = 0;
@@ -290,34 +283,26 @@ namespace netp {
 					return;
 				}
 
-				//did not dequeue a completion packet from the completion port
-				if (ol == nullptr) {
-					NETP_DEBUG("[iocp]GetQueuedCompletionStatus return: %d, no packet dequeue", ec);
-					return;
-				}
 				NETP_ASSERT(len == 0);
 				NETP_ASSERT(ec != 0);
+				//leave this line here ,we need to check to free the ol
 				NETP_INFO("[iocp]GetQueuedCompletionStatus failed, %d", ec);
+				//return;
 			}
-			if (ckey == NETP_IOCP_INTERRUPT_COMPLETE_KEY) {
-				NETP_ASSERT(ol == nullptr);
-				NETP_TRACE_IOE("[iocp]GetQueuedCompletionStatus waken signal");
+			//did not dequeue a completion packet from the completion port
+			if (ol == 0) {
+				NETP_DEBUG("[iocp]GetQueuedCompletionStatus return: %d, no packet dequeue", ec);
 				return;
 			}
-			NETP_ASSERT(ol != nullptr);
 			ol_ctx* olctx=(CONTAINING_RECORD(ol, ol_ctx, ol));
 			olctx->action_status &= ~AS_WAIT_IOCP;
-
-			if (NETP_UNLIKELY(ec != 0)) {
-				//UPDATE EC
-				DWORD dwTrans = 0;
-				DWORD dwFlags = 0;
-				if (FALSE == ::WSAGetOverlappedResult(olctx->fd, ol, &dwTrans, FALSE, &dwFlags)) {
-					ec = netp_socket_get_last_errno();
-					NETP_DEBUG("[#%d]dwTrans: %d, dwFlags: %d, update ec: %d", ckey, dwTrans, dwFlags, ec);
-				}
-				NETP_ASSERT(dwTrans == len);
+			DWORD dwTrans = 0;
+			DWORD dwFlags = 0;
+			if (FALSE == ::WSAGetOverlappedResult(olctx->fd, ol, &dwTrans, FALSE, &dwFlags)) {
+				ec = netp_socket_get_last_errno();
+				NETP_DEBUG("[#%d]dwTrans: %d, dwFlags: %d, update ec: %d", ckey, dwTrans, dwFlags, ec);
 			}
+			NETP_ASSERT(dwTrans == len);
 
 			if (olctx->action_status&AS_CH_END) {
 				ol_ctx_deallocate(olctx);

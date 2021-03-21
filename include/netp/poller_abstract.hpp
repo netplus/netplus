@@ -108,8 +108,9 @@ namespace netp {
 		fn_aio_event_t fn_notify;
 	};
 
-	inline static aio_ctx* aio_ctx_allocate() {
+	inline static aio_ctx* aio_ctx_allocate(SOCKET fd) {
 		aio_ctx* ctx = netp::allocator<aio_ctx>::malloc(1);
+		ctx->fd = fd;
 		ctx->flag = 0;
 		new ((fn_aio_event_t*)&(ctx->fn_read))(fn_aio_event_t)();
 		new ((fn_aio_event_t*)&(ctx->fn_write))(fn_aio_event_t)();
@@ -225,9 +226,7 @@ namespace netp {
 		}
 
 		virtual aio_ctx* aio_begin(SOCKET fd) override {
-			aio_ctx* ctx = netp::aio_ctx_allocate();
-			ctx->fd = fd;
-			ctx->flag = 0;
+			aio_ctx* ctx = netp::aio_ctx_allocate(fd);
 			netp::list_append(&m_aio_ctx_list, ctx);
 
 #ifdef NETP_DEBUG_AIO_CTX_
