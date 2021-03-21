@@ -245,7 +245,7 @@ namespace netp {
 			for (ULONG i = 0; i < n; ++i) {
 				LPOVERLAPPED& ol = entrys[i].lpOverlapped;
 				if (ol == 0) {
-					NETP_DEBUG("[iocp]GetQueuedCompletionStatus return: %d, no packet dequeue");
+					NETP_TRACE_IOE("[iocp]GetQueuedCompletionStatusEx, no packet dequeue");
 					return;
 				}
 				ol_ctx* olctx = (CONTAINING_RECORD(ol, ol_ctx, ol));

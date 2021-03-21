@@ -1,6 +1,22 @@
 #include <netp/core.hpp>
 #include <netp/io_event_loop.hpp>
 
+#if defined(NETP_HAS_POLLER_EPOLL)
+#include <netp/poller_epoll.hpp>
+#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_EPOLL
+#elif defined(NETP_HAS_POLLER_SELECT)
+#include <netp/poller_select.hpp>
+#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_SELECT
+#elif defined(NETP_HAS_POLLER_KQUEUE)
+#include <netp/poller_kqueue.hpp>
+#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_KQUEUE
+#elif defined(NETP_HAS_POLLER_IOCP)
+#include <netp/poller_iocp.hpp>
+#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_IOCP
+#else
+#error "unknown poller type"
+#endif
+
 namespace netp {
 
 	inline static NRP<io_event_loop> default_event_loop_maker(io_poller_type t, event_loop_cfg const& cfg) {

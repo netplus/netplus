@@ -44,7 +44,6 @@ namespace netp { namespace task {
 namespace netp { namespace task {
 	
 	typedef std::vector< NRP<task_abstract>,netp::allocator<NRP<task_abstract>> > task_vector;
-	typedef std::vector< NRP<sequencial_task>, netp::allocator<NRP<sequencial_task>> > sequencial_task_vector;
 
 	enum task_runner_state {
 		TR_S_IDLE,
@@ -99,66 +98,6 @@ namespace netp { namespace task {
 		}
 	};
 
-	class sequencial_task;
-	class sequencial_runner final:
-		public thread_run_object_abstract
-	{
-		NETP_DECLARE_NONCOPYABLE(sequencial_runner)
-		enum State {
-			S_IDLE,
-			S_RUN,
-			S_WAITING,
-			S_EXIT
-		};
-
-	public:
-		sequencial_runner( u8_t const& id) ;
-		~sequencial_runner() ;
-
-		inline void assign_task( NRP<sequencial_task> const& task ) {
-			lock_guard<task_runner_mutex_t> _lg(m_mutex);
-			NETP_ASSERT(m_state == S_RUN || m_state == S_WAITING);
-			m_standby->push_back(task);
-
-			if(m_state == S_WAITING) {
-				m_condition.notify_one();
-			}
-		}
-
-		void stop();
-		void on_start() ;
-		void on_stop() ;
-		void run();
-
-		inline bool test_waiting_step1() {
-			if (m_state == S_WAITING) {
-				m_wait_flag = 1;
-				return true;
-			}
-			return false;
-		}
-
-		inline bool test_waiting_step2() {
-			return (m_wait_flag == 1) && (m_state == S_WAITING);
-		}
-
-	private:
-		task_runner_mutex_t m_mutex;
-
-#ifdef NETP_TASK_RUNNER_USE_SPIN_MUTEX
-		condition_any m_condition;
-#else
-		condition m_condition;
-#endif
-		u8_t m_wait_flag;
-		volatile State m_state;
-		u32_t m_id;
-
-		sequencial_task_vector* m_standby ;
-		sequencial_task_vector* m_assigning;
-	};
-
-
 	typedef std::vector< NRP<runner> > TRV;
 
 	class runner_pool {
@@ -198,53 +137,6 @@ namespace netp { namespace task {
 		bool m_is_running : 1;
 		u8_t m_max_concurrency;
 		u8_t m_last_runner_idx;
-	};
-
-	class sequencial_task;
-	typedef std::vector< NRP<sequencial_runner> > sequence_task_runner_vector;
-
-	class sequencial_runner_pool {
-		NETP_DECLARE_NONCOPYABLE(sequencial_runner_pool)
-	public:
-		sequencial_runner_pool(u8_t const& concurrency = 2);
-		~sequencial_runner_pool();
-
-		inline void assign_task(NRP<sequencial_task> const& ta ) const {
-			NETP_ASSERT(m_is_running == true);
-			NETP_ASSERT(ta != nullptr);
-
-			u32_t ridx = (ta->m_tag%m_concurrency);
-			NETP_ASSERT(m_runners[ridx] != nullptr);
-			m_runners[ridx]->assign_task(ta);
-		}
-
-		void init();
-		void deinit();
-
-		bool test_waiting_step1() {
-			for (u32_t i = 0; i < m_runners.size(); ++i) {
-				if (!m_runners[i]->test_waiting_step1()) {
-					return false;
-				}
-			}
-			return true;
-		}
-
-		bool test_waiting_step2() {
-			for (u32_t i = 0; i < m_runners.size(); ++i) {
-				if (!m_runners[i]->test_waiting_step2()) {
-					return false;
-				}
-			}
-			return true;
-		}
-
-	private:
-		mutex m_mutex;
-		bool m_is_running : 1;
-		u8_t m_concurrency;
-
-		sequence_task_runner_vector m_runners;
 	};
 }}
 #endif

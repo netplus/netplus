@@ -8,6 +8,10 @@
 #include <netp/packet.hpp>
 #include <netp/address.hpp>
 
+#ifdef NETP_HAS_POLLER_IOCP
+	#include <netp/poller_iocp.hpp>
+#endif
+
 #include <netp/socket_base.hpp>
 #include <netp/channel.hpp>
 #include <netp/dns_resolver.hpp>
@@ -18,9 +22,8 @@
 	#define NETP_DEFAULT_LISTEN_BACKLOG 256
 #endif
 
-#ifndef NETP_HAS_POLLER_IOCP
-	#define NETP_ENABLE_FAST_WRITE
-#endif
+//@NOTE: turn on this option would result in about 20% performance boost for EPOLL
+#define NETP_ENABLE_FAST_WRITE
 
 //in milliseconds
 #define NETP_SOCKET_BDLIMIT_TIMER_DELAY_DUR (250)
@@ -1025,6 +1028,37 @@ namespace netp {
 			//NETP_ASSERT(wrt == netp::E_WSAEINTR); 
 			return rt;
 		}
+
+		inline static int __iocp_do_WSARecv(ol_ctx* olctx) {
+			NETP_ASSERT((olctx->action_status & AS_WAIT_IOCP) == 0);
+			ol_ctx_reset(olctx);
+			DWORD flags = 0;
+			int ec = ::WSARecv(olctx->fd, &olctx->wsabuf, 1, NULL, &flags, &olctx->ol, NULL);
+			if (ec == NETP_SOCKET_ERROR) {
+				ec = netp_socket_get_last_errno();
+				if (ec == netp::E_WSA_IO_PENDING) {
+					ec = netp::OK;
+				}
+			}
+			return ec;
+		}
+		inline static int __iocp_do_WSARecvfrom(ol_ctx* olctx, SOCKADDR* from, int* fromlen) {
+			NETP_ASSERT((olctx->action_status & AS_WAIT_IOCP) == 0);
+			ol_ctx_reset(olctx);
+			DWORD flags = 0;
+			*fromlen = sizeof(sockaddr_in);
+			//sockaddr_in from_;
+			//int fromlen_ = sizeof(sockaddr_in);
+			int ec = ::WSARecvFrom(olctx->fd, &olctx->wsabuf, 1, NULL, &flags, from, fromlen, &olctx->ol, NULL);
+
+			if (ec == NETP_SOCKET_ERROR) {
+				ec = netp_socket_get_last_errno();
+				if (ec == netp::E_WSA_IO_PENDING) {
+					ec = netp::OK;
+				}
+			}
+			return ec;
+		}
 #endif
 	public:
 		__NETP_FORCE_INLINE channel_id_t ch_id() const override { return m_fd; }
@@ -1058,39 +1092,6 @@ namespace netp {
 
 		void ch_close_write_impl(NRP<promise<int>> const& chp) override;
 		void ch_close_impl(NRP<promise<int>> const& chp) override;
-
-#ifdef NETP_HAS_POLLER_IOCP
-		inline static int __iocp_do_WSARecv(ol_ctx* olctx) {
-			NETP_ASSERT((olctx->action_status & AS_WAIT_IOCP) == 0);
-			ol_ctx_reset(olctx);
-			DWORD flags = 0;
-			int ec = ::WSARecv(olctx->fd, &olctx->wsabuf, 1, NULL, &flags, &olctx->ol, NULL);
-			if (ec == NETP_SOCKET_ERROR) {
-				ec = netp_socket_get_last_errno();
-				if (ec == netp::E_WSA_IO_PENDING) {
-					ec = netp::OK;
-				}
-			}
-			return ec;
-		}
-		inline static int __iocp_do_WSARecvfrom(ol_ctx* olctx, SOCKADDR* from, int* fromlen) {
-			NETP_ASSERT((olctx->action_status & AS_WAIT_IOCP) == 0);
-			ol_ctx_reset(olctx);
-			DWORD flags = 0;
-			*fromlen = sizeof(sockaddr_in);
-			//sockaddr_in from_;
-			//int fromlen_ = sizeof(sockaddr_in);
-			int ec = ::WSARecvFrom(olctx->fd, &olctx->wsabuf, 1, NULL, &flags, from, fromlen, &olctx->ol, NULL);
-		
-			if (ec == NETP_SOCKET_ERROR) {
-				ec = netp_socket_get_last_errno();
-				if (ec == netp::E_WSA_IO_PENDING) {
-					ec = netp::OK;
-				}
-			}
-			return ec;
-		}
-#endif
 
 		void ch_aio_read(fn_aio_event_t const& fn_read = nullptr) {
 			if (!L->in_event_loop()) {
@@ -1153,7 +1154,6 @@ namespace netp {
 			m_aio_ctx->ol_r->fn_ol_done = fn_read != nullptr ? fn_read :
 				is_tcp() ? std::bind(&socket::__iocp_do_WSARecv_done, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2) :
 				std::bind(&socket::__iocp_do_WSARecvfrom_done, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
-				
 #else
 			int rt = L->aio_do(aio_action::READ, m_aio_ctx);
 			if (rt == netp::OK) {
