@@ -124,7 +124,7 @@ namespace netp {
 			NETP_TRACE_IOE("[iocp]interrupt_wait");
 		}
 
-		inline void _handle_iocp_event(ol_ctx* olctx, DWORD& dwTrans, int& ec) {
+		inline void _handle_iocp_event(ol_ctx* olctx, int& ec, DWORD& dwTrans) {
 			NETP_ASSERT(olctx != nullptr);
 			NETP_ASSERT(olctx->fd != NETP_INVALID_SOCKET);
 			switch (olctx->action) {
@@ -265,15 +265,15 @@ namespace netp {
 					++m_ol_count_free;
 #endif
 				} else {
-					_handle_iocp_event(olctx, dwTrans, ec);
+					_handle_iocp_event(olctx, ec, dwTrans);
 				}
 			}
 #else
 			int ec = 0;
-			DWORD len;
+			DWORD dwTrans_;
 			ULONG_PTR ckey; // it'w our fd here
 			LPOVERLAPPED ol;
-			BOOL getOk = ::GetQueuedCompletionStatus(m_handle, &len, &ckey, &ol, (DWORD)wait_in_milli);
+			BOOL getOk = ::GetQueuedCompletionStatus(m_handle, &dwTrans_, &ckey, &ol, (DWORD)wait_in_milli);
 			__LOOP_EXIT_WAITING__(W);
 
 			if (NETP_UNLIKELY(getOk == FALSE)) {
@@ -283,7 +283,7 @@ namespace netp {
 					return;
 				}
 
-				NETP_ASSERT(len == 0);
+				NETP_ASSERT(dwTrans_ == 0);
 				NETP_ASSERT(ec != 0);
 				//leave this line here ,we need to check to free the ol
 				NETP_INFO("[iocp]GetQueuedCompletionStatus failed, %d", ec);
@@ -302,7 +302,7 @@ namespace netp {
 				ec = netp_socket_get_last_errno();
 				NETP_DEBUG("[#%d]dwTrans: %d, dwFlags: %d, update ec: %d", ckey, dwTrans, dwFlags, ec);
 			}
-			NETP_ASSERT(dwTrans == len);
+			NETP_ASSERT(dwTrans == dwTrans_);
 
 			if (olctx->action_status&AS_CH_END) {
 				ol_ctx_deallocate(olctx);
@@ -310,7 +310,7 @@ namespace netp {
 				++m_ol_count_free;
 #endif
 			} else {
-				_handle_iocp_event(olctx, len, ec);
+				_handle_iocp_event(olctx, ec, dwTrans_);
 			}
 #endif
 		}
@@ -359,28 +359,24 @@ namespace netp {
 				case aio_action::READ:
 				{
 					ol_ctx* olctx = ctx->ol_r;
-					NETP_ASSERT(olctx != nullptr);
 					olctx->action_status &= ~AS_DONE;
 				}
 				break;
 				case aio_action::END_READ:
 				{
 					ol_ctx* olctx = ctx->ol_r;
-					NETP_ASSERT(olctx != nullptr);
 					olctx->action_status |= AS_DONE;
 				}
 				break;
 				case aio_action::WRITE:
 				{
 					ol_ctx* olctx = ctx->ol_w;
-					NETP_ASSERT(olctx != nullptr);
 					olctx->action_status &= ~AS_DONE;
 				}
 				break;
 				case aio_action::END_WRITE:
 				{
 					ol_ctx* olctx = ctx->ol_w;
-					NETP_ASSERT(olctx != nullptr);
 					olctx->action_status |= AS_DONE;
 				}
 				break;
