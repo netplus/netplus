@@ -18,7 +18,6 @@ namespace netp {
 		WSAREAD,
 		WSASEND,
 		CONNECTEX,
-		WSARECVFROM,
 		CALL_MAX
 	};
 
@@ -28,7 +27,6 @@ namespace netp {
 		AS_CH_END = 1 << 2
 	};
 
-#define NETP_IOCP_BUF_SIZE (32*1024)
 	struct aio_ctx;
 	struct ol_ctx
 	{
@@ -39,11 +37,10 @@ namespace netp {
 		u8_t action;
 		u8_t action_status;
 		fn_aio_event_t fn_ol_done;
-		WSABUF wsabuf_rcv;
-		WSABUF wsabuf_snd;
+		WSABUF wsabuf;
+		char* rcvbuf;
 		struct sockaddr_in* from_ptr;
 		int* from_len_ptr;
-		char* rcvbuf;
 	};
 
 	__NETP_FORCE_INLINE static ol_ctx* ol_ctx_allocate(SOCKET fd) {
@@ -54,8 +51,7 @@ namespace netp {
 		olctx->action = u8_t(-1);
 		olctx->action_status = 0;
 		new ((fn_aio_event_t*)&(olctx->fn_ol_done))(fn_aio_event_t)();
-		olctx->wsabuf_rcv = { 0,0 };
-		olctx->wsabuf_snd = { 0, 0 };
+		olctx->wsabuf = { 0,0 };
 		olctx->rcvbuf = 0;
 		return olctx;
 	}
@@ -201,6 +197,10 @@ namespace netp {
 				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, olctx->aioctx );
 			}
 			break;
+			default:
+			{
+				NETP_ASSERT(!"WHAT!!!, missing ol action");
+			}
 			}
 		}
 	public:

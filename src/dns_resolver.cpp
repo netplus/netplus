@@ -94,7 +94,7 @@ namespace netp {
 		m_so->ch_set_active();
 		m_so->ch_set_connected();
 		
-		m_so->aio_begin([dnsr=this, p](int aiort , aio_ctx* ctx) {
+		m_so->aio_begin([dnsr=this, p](int aiort , aio_ctx*) {
 			NETP_ASSERT(dnsr->m_flag & dns_resolver_flag::f_launching);
 			dnsr->m_flag &= dns_resolver_flag::f_launching;
 			if (aiort == netp::OK) {
@@ -171,7 +171,7 @@ namespace netp {
 
 #ifdef NETP_HAS_POLLER_IOCP
 		if (status > 0) {
-			dns_ioevent_with_udpdata_in(m_dns_ctx, 0, (unsigned char*) ctx->ol_r->wsabuf_rcv.buf, status, ctx->ol_r->from_ptr );
+			dns_ioevent_with_udpdata_in(m_dns_ctx, 0, (unsigned char*) ctx->ol_r->wsabuf.buf, status, ctx->ol_r->from_ptr );
 			dns_ioevent(m_dns_ctx, 0);
 			return;
 		}

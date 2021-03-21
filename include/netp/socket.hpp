@@ -616,14 +616,6 @@ namespace netp {
 				//NETP_TRACE_SOCKET("[socket][%s]__cb_aio_write_impl, write block", info().c_str());
 			}
 			break;
-#ifdef NETP_HAS_POLLER_IOCP
-			case netp::E_WSA_IO_PENDING:
-			{
-				NETP_ASSERT(!"WE SHOULD NEVER REACH HERE, AS WE'VE HARDCODE IT TO netp::OK");
-				NETP_ASSERT(m_chflag & int(channel_flag::F_WATCH_WRITE));
-			}
-			break;
-#endif
 			case netp::E_CHANNEL_BDLIMIT:
 			{
 				m_chflag |= int(channel_flag::F_BDLIMIT);
@@ -660,13 +652,16 @@ namespace netp {
 			m_chflag |= int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE);
 #ifdef NETP_HAS_POLLER_IOCP
 			NETP_ASSERT( ctx->ol_r->rcvbuf == 0 );
-			const int from_reserve = sizeof(struct sockaddr_in) + 16 + sizeof(int);
+			const int from_sockaddr_in_reserve = sizeof(struct sockaddr_in) + 16;
+			const int from_reserve = is_udp() ? (from_sockaddr_in_reserve + sizeof(int) ): 0;
 			ctx->ol_r->rcvbuf = netp::allocator<char>::malloc(from_reserve + m_wsabuf_size);
-			NETP_ALLOC_CHECK(ctx->ol_r->rcvbuf, m_wsabuf_size);
+			NETP_ALLOC_CHECK(ctx->ol_r->rcvbuf, from_reserve + m_wsabuf_size);
 
-			ctx->ol_r->wsabuf_rcv = { m_wsabuf_size, (ctx->ol_r->rcvbuf + (sizeof(struct sockaddr_in) + from_reserve)) };
-			ctx->ol_r->from_ptr = (struct sockaddr_in*)ctx->ol_r->rcvbuf;
-			ctx->ol_r->from_len_ptr = (int*)(ctx->ol_r->rcvbuf + sizeof(struct sockaddr_in) + 16);
+			ctx->ol_r->wsabuf = { m_wsabuf_size, (ctx->ol_r->rcvbuf + from_reserve) };
+			if (is_udp()) {
+				ctx->ol_r->from_ptr = (struct sockaddr_in*)ctx->ol_r->rcvbuf;
+				ctx->ol_r->from_len_ptr = (int*)(ctx->ol_r->rcvbuf + from_sockaddr_in_reserve);
+			}
 #endif
 		}
 
@@ -832,7 +827,7 @@ namespace netp {
 
 			const static LPFN_ACCEPTEX lpfnAcceptEx = (LPFN_ACCEPTEX)netp::os::load_api_ex_address(netp::os::API_ACCEPT_EX);
 			NETP_ASSERT(lpfnAcceptEx != 0);
-			BOOL acceptrt = lpfnAcceptEx(olctx->fd, olctx->accept_fd, olctx->wsabuf_rcv.buf, 0,
+			BOOL acceptrt = lpfnAcceptEx(olctx->fd, olctx->accept_fd, olctx->wsabuf.buf, 0,
 				sizeof(struct sockaddr_in) + 16, sizeof(struct sockaddr_in) + 16,
 				nullptr, &(olctx->ol));
 
@@ -864,7 +859,7 @@ namespace netp {
 
 				const static LPFN_GETACCEPTEXSOCKADDRS fn_getacceptexsockaddrs = (LPFN_GETACCEPTEXSOCKADDRS)netp::os::load_api_ex_address(netp::os::API_GET_ACCEPT_EX_SOCKADDRS);
 				NETP_ASSERT(fn_getacceptexsockaddrs != 0);
-				fn_getacceptexsockaddrs(ctx->ol_r->wsabuf_rcv.buf, 0,
+				fn_getacceptexsockaddrs(ctx->ol_r->wsabuf.buf, 0,
 					sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16,
 					(LPSOCKADDR*)&laddr_in, &laddr_in_len,
 					(LPSOCKADDR*)&raddr_in, &raddr_in_len);
@@ -937,7 +932,8 @@ namespace netp {
 
 		void __iocp_do_WSARecvfrom_done(int status, aio_ctx* ctx) {
 			if (status > 0) {
-				channel::ch_fire_readfrom(netp::make_ref<netp::packet>(ctx->ol_r->wsabuf_rcv.buf, status), address( *(ctx->ol_r->from_ptr)) );
+				NETP_ASSERT(ULONG(status) <= ctx->ol_r->wsabuf.len);
+				channel::ch_fire_readfrom(netp::make_ref<netp::packet>(ctx->ol_r->wsabuf.buf, status), address( *(ctx->ol_r->from_ptr)) );
 				status = netp::OK;
 				__cb_aio_read_from_impl(status, m_aio_ctx);
 			} else {
@@ -958,7 +954,8 @@ namespace netp {
 			NETP_ASSERT(!ch_is_listener());
 			NETP_ASSERT(m_chflag & int(channel_flag::F_WATCH_READ));
 			if (NETP_LIKELY(status) > 0) {
-				channel::ch_fire_read(netp::make_ref<netp::packet>(ctx->ol_r->wsabuf_rcv.buf, status)) ;
+				NETP_ASSERT( ULONG(status) <= ctx->ol_r->wsabuf.len);
+				channel::ch_fire_read(netp::make_ref<netp::packet>(ctx->ol_r->wsabuf.buf, status)) ;
 				status = netp::OK;
 			} else if (status == 0) {
 				status = netp::E_SOCKET_GRACE_CLOSE;
@@ -994,9 +991,8 @@ namespace netp {
 				m_outbound_entry_q.pop_front();
 			}
 			status = netp::OK;
-			if ((m_noutbound_bytes>0)) {
+			if (m_noutbound_bytes>0) {
 				NETP_ASSERT(m_outbound_entry_q.size());
-				NETP_ASSERT((m_chflag & int(channel_flag::F_WATCH_WRITE)) != 0);
 				status = __iocp_do_WSASend(m_aio_ctx->ol_w);
 				if (status == netp::OK) {
 					m_aio_ctx->ol_w->action_status |= AS_WAIT_IOCP;
@@ -1017,15 +1013,15 @@ namespace netp {
 				socket_outbound_entry& entry = m_outbound_entry_q.front();
 				NRP<packet>& outlet = entry.data;
 				::memset(&olctx->ol, 0, sizeof( *((WSAOVERLAPPED*)(&olctx->ol))) );
-				olctx->wsabuf_snd = { ULONG(outlet->len()), (char*)outlet->head() };
-				wrt = ::WSASend(m_fd, &olctx->wsabuf_snd, 1, nullptr, 0, (WSAOVERLAPPED*)&olctx->ol, nullptr);
+				olctx->wsabuf = { ULONG(outlet->len()), (char*)outlet->head() };
+				wrt = ::WSASend(m_fd, &olctx->wsabuf, 1, nullptr, 0, (WSAOVERLAPPED*)&olctx->ol, nullptr);
 				if (wrt == netp::OK) {
 					break;
 				}
 
 				//https://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-wsasend
 				//ACCORDING TO MSDN: nonblocking should not return with this value
-				NETP_ASSERT(wrt == netp::E_WSAEINTR); 
+				//NETP_ASSERT(wrt == netp::E_WSAEINTR); 
 				NETP_ASSERT(wrt == NETP_SOCKET_ERROR);
 				wrt = netp_socket_get_last_errno();
 				if (wrt == netp::E_WSA_IO_PENDING) {
@@ -1073,7 +1069,7 @@ namespace netp {
 			NETP_ASSERT((olctx->action_status & AS_WAIT_IOCP) == 0);
 			ol_ctx_reset(olctx);
 			DWORD flags = 0;
-			int ec = ::WSARecv(olctx->fd, &olctx->wsabuf_rcv, 1, NULL, &flags, &olctx->ol, NULL);
+			int ec = ::WSARecv(olctx->fd, &olctx->wsabuf, 1, NULL, &flags, &olctx->ol, NULL);
 			if (ec == -1) {
 				ec = netp_socket_get_last_errno();
 				if (ec == netp::E_WSA_IO_PENDING) {
@@ -1089,7 +1085,7 @@ namespace netp {
 			*fromlen = sizeof(sockaddr_in);
 			//sockaddr_in from_;
 			//int fromlen_ = sizeof(sockaddr_in);
-			int ec = ::WSARecvFrom(olctx->fd, &olctx->wsabuf_rcv, 1, NULL, &flags, from, fromlen, &olctx->ol, NULL);
+			int ec = ::WSARecvFrom(olctx->fd, &olctx->wsabuf, 1, NULL, &flags, from, fromlen, &olctx->ol, NULL);
 		
 			if (ec == -1) {
 				ec = netp_socket_get_last_errno();
@@ -1128,6 +1124,9 @@ namespace netp {
 				m_chflag |= int(channel_flag::F_WATCH_READ);
 				L->schedule([fn_read, so =NRP<socket>(this)]() {
 					if (so->m_chflag&int(channel_flag::F_WATCH_READ)) {
+						so->m_aio_ctx->ol_r->action = iocp_ol_action::WSAREAD;
+						int rt = so->L->aio_do(aio_action::READ, so->m_aio_ctx);
+						NETP_ASSERT(rt == netp::OK);
 						int status = int(so->m_aio_ctx->ol_r->accept_fd);
 						so->m_aio_ctx->ol_r->accept_fd = NETP_INVALID_SOCKET;
 						if (fn_read != nullptr) {
@@ -1135,6 +1134,8 @@ namespace netp {
 						} else {
 							so->__iocp_do_WSARecv_done(status, so->m_aio_ctx);
 						}
+					} else {
+						fn_read(netp::E_CHANNEL_ABORT, nullptr);
 					}
 				});
 				//schedule for the last read

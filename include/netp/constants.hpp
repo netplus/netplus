@@ -509,13 +509,12 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_CHANNEL_WRITE_SHUTDOWNING	= -34011;
 	const int E_CHANNEL_WRITING							= -34012;
 	const int E_CHANNEL_OUTGO_LIST_EMPTY		= -34013; //FOR IOCP
-	const int E_CHANNEL_CANCEL_WRITE				= -34014;
 
-	const int E_CHANNEL_READ_WRITE_ERROR		= -34015;
-	const int E_CHANNEL_ABORT								= -34016;
-	const int E_CHANNEL_CONTEXT_REMOVED		= -34017;
+	const int E_CHANNEL_READ_WRITE_ERROR		= -34014;
+	const int E_CHANNEL_ABORT								= -34015;
+	const int E_CHANNEL_CONTEXT_REMOVED		= -34016;
 
-	const int E_CHANNEL_OVERLAPPED_OP_TRY = -34018;
+	const int E_CHANNEL_OVERLAPPED_OP_TRY = -34017;
 
 	const int E_FORWARDER_DOMAIN_LEN_EXCEED	= -35001;
 	const int E_FORWARDER_INVALID_IPV4					= -35002;
