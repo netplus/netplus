@@ -5,6 +5,8 @@
 #include <netp/signal_broker.hpp>
 #include <netp/test.hpp>
 
+//#define NETP_DEBUG_OBJECT_SIZE
+
 namespace netp {
 
 	typedef std::function<void()> fn_app_hook_t;
@@ -116,7 +118,7 @@ namespace netp {
 		void dump_arch_info();
 #endif
 
-#ifdef _DEBUG
+#ifdef NETP_DEBUG_OBJECT_SIZE
 		void __dump_sizeof();
 #endif
 

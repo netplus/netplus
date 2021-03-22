@@ -96,6 +96,9 @@ namespace netp {
 
 #ifdef _DEBUG
 		dump_arch_info();
+#endif
+		
+#ifdef NETP_DEBUG_OBJECT_SIZE
 		__dump_sizeof();
 #endif
 
@@ -250,13 +253,16 @@ namespace netp {
 		NETP_INFO("ARCH INFO: %s\n", arch_info.c_str());
 	}
 
-#ifdef _DEBUG
+#if defined(NETP_DEBUG_OBJECT_SIZE)
 	void app::__dump_sizeof() {
 
 		NETP_INFO("sizeof(void*): %u", sizeof(void*));
 
 		NETP_INFO("sizeof(std::atomic<long>): %u", sizeof(std::atomic<long>));
+		NETP_INFO("sizeof(netp::__atomic_counter): %u", sizeof(netp::__atomic_counter));
+		NETP_INFO("sizeof(netp::__non_atomic_counter): %u", sizeof(netp::__non_atomic_counter));
 		NETP_INFO("sizeof(netp::ref_base): %u", sizeof(netp::ref_base));
+		NETP_INFO("sizeof(netp::non_atomic_ref_base): %u", sizeof(netp::non_atomic_ref_base));
 		NETP_INFO("sizeof(netp::packet): %u", sizeof(netp::packet));
 		NETP_INFO("sizeof(ref_ptr<netp::packet>): %u", sizeof(NRP<netp::packet>));
 
@@ -266,13 +272,18 @@ namespace netp {
 		NETP_INFO("sizeof(netp::channel): %u", sizeof(netp::channel));
 		NETP_INFO("sizeof(netp::socket): %u", sizeof(netp::socket_channel));
 
+		NETP_INFO("sizeof(std::vector<int>): %u", sizeof(std::vector<int>));
+		NETP_INFO("sizeof(std::vector<std::function<void(int)>): %u", sizeof(std::vector<std::function<void(int)>>));
+		NETP_INFO("sizeof(std::vector<std::function<void(int, int)>>): %u", sizeof(std::vector<std::function<void(int, int)>>));
 		NETP_INFO("sizeof(netp::promise<int>): %u", sizeof(netp::promise<int>));
 		NETP_INFO("sizeof(netp::promise<tuple<int,NRP<socket>>>): %u", sizeof(netp::promise<std::tuple<int, NRP<netp::socket_channel>>>));
 		NETP_INFO("sizeof(netp::event_broker_promise): %u", sizeof(netp::event_broker_promise<int>));
 		NETP_INFO("sizeof(netp::spin_mutex): %u", sizeof(netp::spin_mutex));
 		NETP_INFO("sizeof(netp::mutex): %u", sizeof(netp::mutex));
 		NETP_INFO("sizeof(netp::condition): %u", sizeof(netp::condition));
+		NETP_INFO("sizeof(std::condition_variable): %u", sizeof(std::condition_variable));
 		NETP_INFO("sizeof(netp::condition_any): %u", sizeof(netp::condition_any));
+		NETP_INFO("sizeof(std::condition_variable_any): %u", sizeof(std::condition_variable_any));
 		NETP_INFO("sizeof(netp::fn_aio_event_t): %u", sizeof(fn_aio_event_t));
 		NETP_INFO("sizeof(netp::aio_ctx): %u", sizeof(netp::aio_ctx));
 	}

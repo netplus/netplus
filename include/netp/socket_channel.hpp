@@ -424,7 +424,18 @@ namespace netp {
 			return chp;
 		}
 
-		void ch_aio_begin(fn_aio_event_t const& fn_begin_done) {
+		__NETP_FORCE_INLINE channel_id_t ch_id() const override { return m_fd; }
+		std::string ch_info() const override {
+			return socketinfo{ m_fd, (m_family),(m_type),(m_protocol),local_addr(), remote_addr() }.to_string();
+		}
+		void ch_set_bdlimit(u32_t limit) override {
+			L->execute([s = NRP<socket_channel>(this), limit]() {
+				s->m_outbound_limit = limit;
+				s->m_outbound_budget = s->m_outbound_limit;
+			});
+		};
+
+		void ch_aio_begin(fn_aio_event_t const& fn_begin_done) override {
 			NETP_ASSERT(is_nonblocking());
 
 			if (!L->in_event_loop()) {
@@ -448,7 +459,7 @@ namespace netp {
 			fn_begin_done(netp::OK, m_aio_ctx);
 		}
 
-		void ch_aio_end() {
+		void ch_aio_end() override {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(m_outbound_entry_q.size() == 0);
 			NETP_ASSERT(m_noutbound_bytes == 0);
@@ -468,7 +479,6 @@ namespace netp {
 			}
 		}
 
-	private:
 		void ch_aio_accept(fn_channel_initializer_t const& fn_accepted_initializer) override {
 			if (!L->in_event_loop()) {
 				L->schedule([ch=NRP<channel>(this), fn_accepted_initializer ]() {
@@ -498,22 +508,9 @@ namespace netp {
 			}
 		}
 
-		void ch_aio_end_accept() {
+		void ch_aio_end_accept() override {
 			ch_aio_end_read();
 		}
-
-	public:
-		__NETP_FORCE_INLINE channel_id_t ch_id() const override { return m_fd; }
-		std::string ch_info() const override { 
-			return socketinfo{ m_fd, (m_family),(m_type),(m_protocol),local_addr(), remote_addr() }.to_string();
-		}
-
-		void ch_set_bdlimit(u32_t limit) override {
-			L->execute([s = NRP<socket_channel>(this), limit]() {
-				s->m_outbound_limit = limit;
-				s->m_outbound_budget = s->m_outbound_limit;
-			});
-		};
 
 		void ch_write_impl(NRP<packet> const& outlet, NRP<promise<int>> const& chp) override;
 		void ch_write_to_impl(NRP<packet> const& outlet, netp::address const& to, NRP<promise<int>> const& chp) override;
@@ -536,7 +533,7 @@ namespace netp {
 		void ch_close_write_impl(NRP<promise<int>> const& chp) override;
 		void ch_close_impl(NRP<promise<int>> const& chp) override;
 
-		void ch_aio_read(fn_aio_event_t const& fn_read = nullptr) {
+		void ch_aio_read(fn_aio_event_t const& fn_read = nullptr) override {
 			if (!L->in_event_loop()) {
 				L->schedule([s = NRP<socket_channel>(this), fn_read]()->void {
 					s->ch_aio_read(fn_read);
@@ -566,7 +563,7 @@ namespace netp {
 			NETP_TRACE_IOE("[socket][%s]aio_action::READ", ch_info().c_str());
 		}
 
-		void ch_aio_end_read() {
+		void ch_aio_end_read()override {
 			if (!L->in_event_loop()) {
 				L->schedule([_so = NRP<socket_channel>(this)]()->void {
 					_so->ch_aio_end_read();
