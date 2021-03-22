@@ -59,12 +59,12 @@ namespace netp {
 		{}
 	};
 
-	template <class socket_t>
-	std::tuple<int, NRP<socket_t>> create(NRP<socket_cfg> const& cfg) {
+	template <class socket_channel_t>
+	std::tuple<int, NRP<socket_channel_t>> create(NRP<socket_cfg> const& cfg) {
 		NETP_ASSERT(cfg->L != nullptr);
 		NETP_ASSERT(cfg->L->in_event_loop());
 		NETP_ASSERT(cfg->proto == NETP_PROTOCOL_USER ? cfg->L->poller_type() != NETP_DEFAULT_POLLER_TYPE : true);
-		NRP<socket_t> so = netp::make_ref<socket_t>(cfg);
+		NRP<socket_channel_t> so = netp::make_ref<socket_channel_t>(cfg);
 		int rt;
 		if (cfg->fd == NETP_INVALID_SOCKET) {
 			rt = so->open();
@@ -82,8 +82,8 @@ namespace netp {
 		return std::make_tuple(rt, so);
 	}
 
-	template <class socket_t>
-	std::tuple<int, NRP<socket_t>> accepted_create(NRP<io_event_loop> const& L, SOCKET nfd, address const& laddr, address const& raddr, NRP<socket_cfg> const& cfg) {
+	template <class socket_channel_t>
+	std::tuple<int, NRP<socket_channel_t>> accepted_create(NRP<io_event_loop> const& L, SOCKET nfd, address const& laddr, address const& raddr, NRP<socket_cfg> const& cfg) {
 		NETP_ASSERT(L->in_event_loop());
 		NRP<socket_cfg> ccfg = netp::make_ref<socket_cfg>();
 		ccfg->fd = nfd;
@@ -100,7 +100,7 @@ namespace netp {
 		ccfg->sock_buf = cfg->sock_buf;
 		ccfg->bdlimit = cfg->bdlimit;
 
-		return create<socket_t>(ccfg);
+		return create<socket_channel_t>(ccfg);
 	}
 
 	struct socket_outbound_entry final {
@@ -109,7 +109,7 @@ namespace netp {
 		address to;
 	};
 
-	class socket:
+	class socket_channel:
 		public channel,
 		public socket_base
 	{
@@ -131,7 +131,7 @@ namespace netp {
 
 		void _tmcb_BDL(NRP<timer> const& t);
 	public:
-		socket(NRP<socket_cfg> const& cfg) :
+		socket_channel(NRP<socket_cfg> const& cfg) :
 			channel(cfg->L),
 			socket_base(cfg->fd, cfg->family, cfg->type, cfg->proto, cfg->laddr, cfg->raddr, cfg->sockapi),
 			m_aio_ctx(0),
@@ -145,7 +145,7 @@ namespace netp {
 			NETP_ASSERT(cfg->L != nullptr);
 		}
 
-		~socket()
+		~socket_channel()
 		{
 		}
 
@@ -231,7 +231,7 @@ namespace netp {
 		void _do_dial_done_impl(int code, fn_channel_initializer_t const& initializer, NRP<promise<int>> const& chf);
 
 		void __do_accept_fire(fn_channel_initializer_t const& ch_initializer) {
-			ch_aio_begin([ch=NRP<socket>(this),ch_initializer](int status, aio_ctx*) {
+			ch_aio_begin([ch=NRP<socket_channel>(this),ch_initializer](int status, aio_ctx*) {
 				int aiort = status;
 				if (aiort != netp::OK) {
 					//begin failed
@@ -347,7 +347,7 @@ namespace netp {
 				ch_aio_end_write();
 				m_chflag |= int(channel_flag::F_WRITE_ERROR);
 				m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
-				socket::ch_errno() = (aiort);
+				ch_errno() = (aiort);
 				ch_close_impl(nullptr);
 				NETP_WARN("[socket][%s]__cb_aio_write_impl, call_ch_do_close_read_write, write error: %d, m_chflag: %u", ch_info().c_str(), aiort, m_chflag);
 			}
@@ -386,7 +386,7 @@ namespace netp {
 	public:
 		NRP<promise<int>> ch_set_read_buffer_size(u32_t size) override {
 			NRP<promise<int>> chp = make_ref<promise<int>>();
-			L->execute([S = NRP<socket>(this), size, chp]() {
+			L->execute([S = NRP<socket_channel>(this), size, chp]() {
 				chp->set(S->set_rcv_buffer_size(size));
 			});
 			return chp;
@@ -394,7 +394,7 @@ namespace netp {
 
 		NRP<promise<int>> ch_get_read_buffer_size() override {
 			NRP<promise<int>> chp = make_ref<promise<int>>();
-			L->execute([S = NRP<socket>(this), chp]() {
+			L->execute([S = NRP<socket_channel>(this), chp]() {
 				chp->set(S->m_sock_buf.rcvbuf_size);
 			});
 			return chp;
@@ -402,7 +402,7 @@ namespace netp {
 
 		NRP<promise<int>> ch_set_write_buffer_size(u32_t size) override {
 			NRP<promise<int>> chp = make_ref<promise<int>>();
-			L->execute([S = NRP<socket>(this), size, chp]() {
+			L->execute([S = NRP<socket_channel>(this), size, chp]() {
 				chp->set(S->set_snd_buffer_size(size));
 			});
 			return chp;
@@ -410,7 +410,7 @@ namespace netp {
 
 		NRP<promise<int>> ch_get_write_buffer_size() override {
 			NRP<promise<int>> chp = make_ref<promise<int>>();
-			L->execute([S = NRP<socket>(this), chp]() {
+			L->execute([S = NRP<socket_channel>(this), chp]() {
 				chp->set(S->m_sock_buf.sndbuf_size);
 			});
 			return chp;
@@ -418,7 +418,7 @@ namespace netp {
 
 		NRP<promise<int>> ch_set_nodelay() override {
 			NRP<promise<int>> chp = make_ref<promise<int>>();
-			L->execute([s = NRP<socket>(this), chp]() {
+			L->execute([s = NRP<socket_channel>(this), chp]() {
 				chp->set(s->turnon_nodelay());
 			});
 			return chp;
@@ -428,7 +428,7 @@ namespace netp {
 			NETP_ASSERT(is_nonblocking());
 
 			if (!L->in_event_loop()) {
-				L->schedule([s = NRP<socket>(this), fn_begin_done]() {
+				L->schedule([s = NRP<socket_channel>(this), fn_begin_done]() {
 					s->ch_aio_begin(fn_begin_done);
 				});
 				return;
@@ -443,7 +443,7 @@ namespace netp {
 				fn_begin_done(netp::E_AIO_BEGIN_FAILED, 0);
 				return;
 			}
-			m_aio_ctx->fn_notify = std::bind(&socket::__aio_notify_terminating, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
+			m_aio_ctx->fn_notify = std::bind(&socket_channel::__aio_notify_terminating, NRP<socket_channel>(this), std::placeholders::_1, std::placeholders::_2);
 			__aio_begin_done(m_aio_ctx);
 			fn_begin_done(netp::OK, m_aio_ctx);
 		}
@@ -461,7 +461,7 @@ namespace netp {
 			//Refer to: https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-closesocket
 			ch_fire_closed(close());
 			if (m_chflag & int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE)) {
-				L->schedule([so = NRP<socket>(this)]() {
+				L->schedule([so = NRP<socket_channel>(this)]() {
 					so->m_aio_ctx->fn_notify = nullptr;
 					so->L->aio_end(so->m_aio_ctx);
 				});
@@ -494,7 +494,7 @@ namespace netp {
 			int rt = L->aio_do(aio_action::READ, m_aio_ctx);
 			if (rt == netp::OK) {
 				m_chflag |= int(channel_flag::F_WATCH_READ);
-				m_aio_ctx->fn_read = std::bind(&socket::__cb_aio_accept_impl, NRP<socket>(this), fn_accepted_initializer, std::placeholders::_1, std::placeholders::_2);
+				m_aio_ctx->fn_read = std::bind(&socket_channel::__cb_aio_accept_impl, NRP<socket_channel>(this), fn_accepted_initializer, std::placeholders::_1, std::placeholders::_2);
 			}
 		}
 
@@ -509,7 +509,7 @@ namespace netp {
 		}
 
 		void ch_set_bdlimit(u32_t limit) override {
-			L->execute([s = NRP<socket>(this), limit]() {
+			L->execute([s = NRP<socket_channel>(this), limit]() {
 				s->m_outbound_limit = limit;
 				s->m_outbound_budget = s->m_outbound_limit;
 			});
@@ -541,7 +541,7 @@ namespace netp {
 
 		void ch_aio_read(fn_aio_event_t const& fn_read = nullptr) {
 			if (!L->in_event_loop()) {
-				L->schedule([s = NRP<socket>(this), fn_read]()->void {
+				L->schedule([s = NRP<socket_channel>(this), fn_read]()->void {
 					s->ch_aio_read(fn_read);
 				});
 				return;
@@ -563,15 +563,15 @@ namespace netp {
 			if (rt == netp::OK) {
 				m_chflag |= int(channel_flag::F_WATCH_READ);
 				m_aio_ctx->fn_read = fn_read != nullptr ? fn_read :
-					m_protocol == NETP_PROTOCOL_TCP ? std::bind(&socket::__cb_aio_read_impl, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2) :
-					std::bind(&socket::__cb_aio_read_from_impl, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
+					m_protocol == NETP_PROTOCOL_TCP ? std::bind(&socket_channel::__cb_aio_read_impl, NRP<socket_channel>(this), std::placeholders::_1, std::placeholders::_2) :
+					std::bind(&socket_channel::__cb_aio_read_from_impl, NRP<socket_channel>(this), std::placeholders::_1, std::placeholders::_2);
 			}
 			NETP_TRACE_IOE("[socket][%s]aio_action::READ", info().c_str());
 		}
 
 		void ch_aio_end_read() {
 			if (!L->in_event_loop()) {
-				L->schedule([_so = NRP<socket>(this)]()->void {
+				L->schedule([_so = NRP<socket_channel>(this)]()->void {
 					_so->ch_aio_end_read();
 				});
 				return;
@@ -587,7 +587,7 @@ namespace netp {
 
 		void ch_aio_write(fn_aio_event_t const& fn_write = nullptr) override {
 			if (!L->in_event_loop()) {
-				L->schedule([_so = NRP<socket>(this), fn_write]()->void {
+				L->schedule([_so = NRP<socket_channel>(this), fn_write]()->void {
 					_so->ch_aio_write(fn_write);
 				});
 				return;
@@ -614,13 +614,13 @@ namespace netp {
 			if (rt == netp::OK) {
 				m_chflag |= int(channel_flag::F_WATCH_WRITE);
 				m_aio_ctx->fn_write = fn_write != nullptr ? fn_write :
-					std::bind(&socket::__cb_aio_write_impl, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
+					std::bind(&socket_channel::__cb_aio_write_impl, NRP<socket_channel>(this), std::placeholders::_1, std::placeholders::_2);
 			}
 		}
 
 		void ch_aio_end_write() override {
 			if (!L->in_event_loop()) {
-				L->schedule([_so = NRP<socket>(this)]()->void {
+				L->schedule([_so = NRP<socket_channel>(this)]()->void {
 					_so->ch_aio_end_write();
 				});
 				return;

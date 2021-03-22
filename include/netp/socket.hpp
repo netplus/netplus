@@ -1,10 +1,10 @@
 #ifndef _NETP_SOCKET_HPP
 #define _NETP_SOCKET_HPP
 
-#include <netp/socket_ch.hpp>
+#include <netp/socket_channel.hpp>
 
 #ifdef NETP_HAS_POLLER_IOCP
-	#include <netp/socket_ch_iocp.hpp>
+	#include <netp/socket_channel_iocp.hpp>
 #endif
 
 namespace netp {
@@ -16,11 +16,11 @@ namespace netp {
 
 	extern int parse_socket_url(const char* url, size_t len, socket_url_parse_info& info);
 	extern std::tuple<int, u8_t, u8_t, u16_t> inspect_address_info_from_dial_str(const char* dialstr);
-	extern std::tuple<int, NRP<socket>> create_socket(NRP<netp::socket_cfg> const& cfg);
+	extern std::tuple<int, NRP<socket_channel>> create_socket(NRP<netp::socket_cfg> const& cfg);
 
 	//we must make sure that the creation of the socket happens on its thead(L)
-	extern void do_async_create_socket(NRP<netp::socket_cfg> const& cfg, NRP <netp::promise<std::tuple<int, NRP<socket>>>> const& p);
-	extern NRP<netp::promise<std::tuple<int, NRP<socket>>>> async_create_socket(NRP<netp::socket_cfg> const& cfg);
+	extern void do_async_create_socket(NRP<netp::socket_cfg> const& cfg, NRP <netp::promise<std::tuple<int, NRP<socket_channel>>>> const& p);
+	extern NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> async_create_socket(NRP<netp::socket_cfg> const& cfg);
 
 	extern void do_dial(address const& addr, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_cfg> const& cfg);
 

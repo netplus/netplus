@@ -1,7 +1,7 @@
 #ifndef _THP_SOCKET_HPP
 #define _THP_SOCKET_HPP
 
-void read_and_write(NRP<netp::socket> const& so, NRP<netp::packet> const& buf, netp::u64_t total_received_to_exit) {
+void read_and_write(NRP<netp::socket_channel> const& so, NRP<netp::packet> const& buf, netp::u64_t total_received_to_exit) {
 	netp::u64_t total_received = 0;
 	do {
 		buf->reset();
@@ -40,7 +40,7 @@ void th_listener() {
 	cfg->proto = NETP_PROTOCOL_TCP;
 	cfg->L = netp::io_event_loop_group::instance()->next();
 	cfg->option &= ~netp::u8_t(netp::socket_option::OPTION_NON_BLOCKING);
-	std::tuple<int, NRP<netp::socket>> tupc = netp::create_socket(cfg);
+	std::tuple<int, NRP<netp::socket_channel>> tupc = netp::create_socket(cfg);
 
 	int rt = std::get<0>(tupc);
 	if (rt != netp::OK) {
@@ -48,7 +48,7 @@ void th_listener() {
 		return;
 	}
 
-	NRP<netp::socket> listener = std::get<1>(tupc);
+	NRP<netp::socket_channel> listener = std::get<1>(tupc);
 
 	netp::address laddr = netp::address("0.0.0.0", 32002, NETP_AF_INET);
 	rt = listener->bind(laddr);
@@ -78,14 +78,14 @@ void th_listener() {
 	acfg->L = netp::io_event_loop_group::instance()->next();
 	acfg->option &= ~netp::u8_t(netp::socket_option::OPTION_NON_BLOCKING);
 
-	std::tuple<int, NRP<netp::socket>> accepted_tupc = netp::create_socket(acfg);
+	std::tuple<int, NRP<netp::socket_channel>> accepted_tupc = netp::create_socket(acfg);
 	rt = std::get<0>(tupc);
 	if (rt != netp::OK) {
 		NETP_ERR("create accepted socket failed: %d", rt);
 		return;
 	}
 
-	NRP<netp::socket> accepted_so = std::get<1>(accepted_tupc);
+	NRP<netp::socket_channel> accepted_so = std::get<1>(accepted_tupc);
 
 	NRP<netp::packet> buf = netp::make_ref<netp::packet>(64 * 1024);
 	read_and_write(accepted_so, buf, 0);
@@ -99,7 +99,7 @@ void th_dialer() {
 	cfg->L = netp::io_event_loop_group::instance()->next();
 	cfg->option &= ~netp::u8_t(netp::socket_option::OPTION_NON_BLOCKING);
 
-	std::tuple<int, NRP<netp::socket>> tupc = netp::create_socket(cfg);
+	std::tuple<int, NRP<netp::socket_channel>> tupc = netp::create_socket(cfg);
 
 	int rt = std::get<0>(tupc);
 	if (rt != netp::OK) {
@@ -107,7 +107,7 @@ void th_dialer() {
 		return;
 	}
 
-	NRP<netp::socket> dialer = std::get<1>(tupc);
+	NRP<netp::socket_channel> dialer = std::get<1>(tupc);
 
 	netp::address raddr = netp::address("127.0.0.1", 32002, NETP_AF_INET);
 	rt = dialer->connect(raddr);

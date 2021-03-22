@@ -12,7 +12,7 @@
 #include <netp/ipv4.hpp>
 
 namespace netp {
-	class socket;
+	class socket_channel;
 	struct aio_ctx;
 	class io_event_loop;
 	class timer;
@@ -39,7 +39,7 @@ namespace netp {
 		};
 
 		NRP<io_event_loop> m_loop;
-		NRP<netp::socket> m_so;
+		NRP<netp::socket_channel> m_so;
 		struct dns_ctx* m_dns_ctx;
 		NRP<netp::timer> m_tm_dnstimeout;
 		std::vector<std::string> m_ns; //for restart

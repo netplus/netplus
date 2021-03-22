@@ -124,10 +124,10 @@
     <ClInclude Include="..\..\include\netp\singleton.hpp" />
     <ClInclude Include="..\..\include\netp\smart_ptr.hpp" />
     <ClInclude Include="..\..\include\netp\socket.hpp" />
-    <ClInclude Include="..\..\include\netp\socket_ch.hpp" />
+    <ClInclude Include="..\..\include\netp\socket_channel.hpp" />
     <ClInclude Include="..\..\include\netp\socket_api.hpp" />
     <ClInclude Include="..\..\include\netp\socket_base.hpp" />
-    <ClInclude Include="..\..\include\netp\socket_ch_iocp.hpp" />
+    <ClInclude Include="..\..\include\netp\socket_channel_iocp.hpp" />
     <ClInclude Include="..\..\include\netp\string.hpp" />
     <ClInclude Include="..\..\include\netp\task\runner.hpp" />
     <ClInclude Include="..\..\include\netp\task\scheduler.hpp" />
@@ -202,10 +202,10 @@
     <ClCompile Include="..\..\src\os\winsock_helper.cpp" />
     <ClCompile Include="..\..\src\rpc.cpp" />
     <ClCompile Include="..\..\src\signal_broker.cpp" />
-    <ClCompile Include="..\..\src\socket.cpp" />
+    <ClCompile Include="..\..\src\socket_channel.cpp" />
     <ClCompile Include="..\..\src\socket_base.cpp" />
     <ClCompile Include="..\..\src\socket_func.cpp" />
-    <ClCompile Include="..\..\src\socket_iocp.cpp" />
+    <ClCompile Include="..\..\src\socket_channel_iocp.cpp" />
     <ClCompile Include="..\..\src\task\runner.cpp" />
     <ClCompile Include="..\..\src\task\scheduler.cpp" />
     <ClCompile Include="..\..\src\thread.cpp" />

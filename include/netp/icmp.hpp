@@ -73,7 +73,7 @@ namespace netp {
 	class ICMP {
 
 	private:
-		NRP<netp::socket> m_so;
+		NRP<netp::socket_channel> m_so;
 		netp::byte_t* icmp_data;
 
 	public:

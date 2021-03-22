@@ -47,33 +47,33 @@ namespace netp {
 		return std::make_tuple(netp::OK, family, stype, sproto);
 	}
 
-	std::tuple<int, NRP<socket>> create_socket(NRP<netp::socket_cfg> const& cfg) {
+	std::tuple<int, NRP<socket_channel>> create_socket(NRP<netp::socket_cfg> const& cfg) {
 		NETP_ASSERT(cfg->L != nullptr);
 		NETP_ASSERT(cfg->L->in_event_loop());
 #ifdef NETP_HAS_POLLER_IOCP
 		if (cfg->L->poller_type() == T_IOCP) {
-			return netp::create<socket_iocp>(cfg);
+			return netp::create<socket_channel_iocp>(cfg);
 		}
 #endif
-		return netp::create<socket>(cfg);
+		return netp::create<socket_channel>(cfg);
 	}
 
 	//we must make sure that the creation of the socket happens on its thead(L)
-	void do_async_create_socket(NRP<netp::socket_cfg> const& cfg, NRP <netp::promise<std::tuple<int, NRP<socket>>>> const& p) {
+	void do_async_create_socket(NRP<netp::socket_cfg> const& cfg, NRP <netp::promise<std::tuple<int, NRP<socket_channel>>>> const& p) {
 		NETP_ASSERT(cfg->L != nullptr);
 		cfg->L->execute([cfg, p]() {
 #ifdef NETP_HAS_POLLER_IOCP
 			if (cfg->L->poller_type() == T_IOCP) {
-				p->set(netp::create<socket_iocp>(cfg));
+				p->set(netp::create<socket_channel_iocp>(cfg));
 				return;
 			}
 #endif
-			p->set(netp::create<socket>(cfg));
-			});
+			p->set(netp::create<socket_channel>(cfg));
+		});
 	}
 
-	NRP<netp::promise<std::tuple<int, NRP<socket>>>> async_create_socket(NRP<netp::socket_cfg> const& cfg) {
-		NRP <netp::promise<std::tuple<int, NRP<socket>>>> p = netp::make_ref<netp::promise<std::tuple<int, NRP<socket>>>>();
+	NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> async_create_socket(NRP<netp::socket_cfg> const& cfg) {
+		NRP <netp::promise<std::tuple<int, NRP<socket_channel>>>> p = netp::make_ref<netp::promise<std::tuple<int, NRP<socket_channel>>>>();
 		if (cfg->L == nullptr) {
 			cfg->L = netp::io_event_loop_group::instance()->next(NETP_DEFAULT_POLLER_TYPE);
 		}
@@ -93,7 +93,7 @@ namespace netp {
 			return;
 		}
 
-		std::tuple<int, NRP<socket>> tupc = create_socket(cfg);
+		std::tuple<int, NRP<socket_channel>> tupc = create_socket(cfg);
 		int rt = std::get<0>(tupc);
 		if (rt != netp::OK) {
 			ch_dialf->set(std::make_tuple(rt, nullptr));
@@ -101,7 +101,7 @@ namespace netp {
 		}
 
 		NRP<promise<int>> so_dialf = netp::make_ref<promise<int>>();
-		NRP<socket> so = std::get<1>(tupc);
+		NRP<socket_channel> so = std::get<1>(tupc);
 		so_dialf->if_done([ch_dialf, so](int const& rt) {
 			if (rt == netp::OK) {
 				ch_dialf->set(std::make_tuple(rt, so));
@@ -186,7 +186,7 @@ namespace netp {
 		cfg->option &= ~int(socket_option::OPTION_KEEP_ALIVE);
 		cfg->option &= ~int(socket_option::OPTION_NODELAY);
 
-		std::tuple<int, NRP<socket>> tupc = create_socket(cfg);
+		std::tuple<int, NRP<socket_channel>> tupc = create_socket(cfg);
 		int rt = std::get<0>(tupc);
 		if (rt != netp::OK) {
 			NETP_WARN("[socket]do_listen_on failed: %d, listen addr: %s", rt, laddr.to_string().c_str());
@@ -194,7 +194,7 @@ namespace netp {
 			return;
 		}
 
-		NRP<socket> so = std::get<1>(tupc);
+		NRP<socket_channel> so = std::get<1>(tupc);
 		NRP<promise<int>> listen_f = netp::make_ref<promise<int>>();
 		listen_f->if_done([listenp, so](int const& rt) {
 			if (rt == netp::OK) {

@@ -264,10 +264,10 @@ namespace netp {
 
 		NETP_INFO("sizeof(netp::socket_base): %u", sizeof(netp::socket_base));
 		NETP_INFO("sizeof(netp::channel): %u", sizeof(netp::channel));
-		NETP_INFO("sizeof(netp::socket): %u", sizeof(netp::socket));
+		NETP_INFO("sizeof(netp::socket): %u", sizeof(netp::socket_channel));
 
 		NETP_INFO("sizeof(netp::promise<int>): %u", sizeof(netp::promise<int>));
-		NETP_INFO("sizeof(netp::promise<tuple<int,NRP<socket>>>): %u", sizeof(netp::promise<std::tuple<int, NRP<netp::socket>>>));
+		NETP_INFO("sizeof(netp::promise<tuple<int,NRP<socket>>>): %u", sizeof(netp::promise<std::tuple<int, NRP<netp::socket_channel>>>));
 		NETP_INFO("sizeof(netp::event_broker_promise): %u", sizeof(netp::event_broker_promise<int>));
 		NETP_INFO("sizeof(netp::spin_mutex): %u", sizeof(netp::spin_mutex));
 		NETP_INFO("sizeof(netp::mutex): %u", sizeof(netp::mutex));
