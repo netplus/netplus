@@ -40,7 +40,7 @@ void th_listener() {
 	cfg->proto = NETP_PROTOCOL_TCP;
 	cfg->L = netp::io_event_loop_group::instance()->next();
 	cfg->option &= ~netp::u8_t(netp::socket_option::OPTION_NON_BLOCKING);
-	std::tuple<int, NRP<netp::socket>> tupc = netp::socket::create(cfg);
+	std::tuple<int, NRP<netp::socket>> tupc = netp::create_socket(cfg);
 
 	int rt = std::get<0>(tupc);
 	if (rt != netp::OK) {
@@ -78,7 +78,7 @@ void th_listener() {
 	acfg->L = netp::io_event_loop_group::instance()->next();
 	acfg->option &= ~netp::u8_t(netp::socket_option::OPTION_NON_BLOCKING);
 
-	std::tuple<int, NRP<netp::socket>> accepted_tupc = netp::socket::create(acfg);
+	std::tuple<int, NRP<netp::socket>> accepted_tupc = netp::create_socket(acfg);
 	rt = std::get<0>(tupc);
 	if (rt != netp::OK) {
 		NETP_ERR("create accepted socket failed: %d", rt);
@@ -99,7 +99,7 @@ void th_dialer() {
 	cfg->L = netp::io_event_loop_group::instance()->next();
 	cfg->option &= ~netp::u8_t(netp::socket_option::OPTION_NON_BLOCKING);
 
-	std::tuple<int, NRP<netp::socket>> tupc = netp::socket::create(cfg);
+	std::tuple<int, NRP<netp::socket>> tupc = netp::create_socket(cfg);
 
 	int rt = std::get<0>(tupc);
 	if (rt != netp::OK) {

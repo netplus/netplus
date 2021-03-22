@@ -79,7 +79,6 @@ namespace netp {
 	class channel :
 		public netp::ref_base
 	{
-
 	public:
 		NRP<io_event_loop> L;
 	protected:
@@ -133,8 +132,6 @@ namespace netp {
 
 			inline void ch_init() {
 				NETP_ASSERT((m_chflag&int(channel_flag::F_CLOSED)));
-				m_chflag &= ~int(channel_flag::F_CLOSED);
-
 				NETP_ASSERT(m_ch_close_p == nullptr);
 				m_ch_close_p = netp::make_ref<promise<int>>();
 				m_ch_close_p->if_done([ch=NRP<channel>(this)](int const&) {
@@ -306,6 +303,12 @@ public: \
 		virtual void ch_close_write_impl(NRP<promise<int>> const& chp) = 0;
 		virtual void ch_close_impl(NRP<promise<int>> const& chp) = 0;
 		
+		virtual void ch_aio_begin(fn_aio_event_t const& fn = nullptr) = 0;
+		virtual void ch_aio_end() = 0;
+
+		virtual void ch_aio_accept(fn_channel_initializer_t const& fn = nullptr) = 0;
+		virtual void ch_aio_end_accept() = 0;
+
 		virtual void ch_aio_read( fn_aio_event_t const& fn = nullptr) = 0;
 		virtual void ch_aio_end_read() = 0;
 

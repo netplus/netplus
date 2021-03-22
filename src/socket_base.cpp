@@ -335,9 +335,7 @@ namespace netp {
 
 		rt = socket_base::setsockopt(SOL_SOCKET, SO_SNDBUF, (char*)&(size), sizeof(size));
 		if (rt == NETP_SOCKET_ERROR) {
-			const int errno_ = netp_socket_get_last_errno();
-			NETP_WARN("[socket_base][%s]setsockopt failed: %d", info().c_str(), errno_);
-			return errno_;
+			return netp_socket_get_last_errno();
 		}
 
 		int nsize = get_snd_buffer_size();
@@ -354,9 +352,7 @@ namespace netp {
 		socklen_t opt_length = sizeof(u32_t);
 		int rt = socket_base::getsockopt(SOL_SOCKET, SO_SNDBUF, (char*)&size, &opt_length);
 		if (rt == NETP_SOCKET_ERROR) {
-			const int errno_ = netp_socket_get_last_errno();
-			NETP_WARN("[socket_base][%s]getsockopt failed: %d", info().c_str(), errno_);
-			return errno_;
+			return netp_socket_get_last_errno();
 		}
 		return size;
 	}
@@ -401,9 +397,7 @@ namespace netp {
 
 		rt = socket_base::setsockopt(SOL_SOCKET, SO_RCVBUF, (char*)&(size), sizeof(size));
 		if (rt == NETP_SOCKET_ERROR) {
-			const int errno_ = netp_socket_get_last_errno();
-			NETP_WARN("[socket_base][%s]setsockopt failed: %d", info().c_str(), errno_);
-			return errno_;
+			return netp_socket_get_last_errno();
 		}
 		int nsize = get_rcv_buffer_size();
 		NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
@@ -418,9 +412,7 @@ namespace netp {
 		socklen_t opt_length = sizeof(size);
 		int rt = socket_base::getsockopt(SOL_SOCKET, SO_RCVBUF, (char*)&size, &opt_length);
 		if (rt == NETP_SOCKET_ERROR) {
-			const int errno_ = netp_socket_get_last_errno();
-			NETP_WARN("[socket_base][%s]getsockopt failed: %d", info().c_str(), errno_);
-			return errno_;
+			return netp_socket_get_last_errno();
 		}
 		return size;
 	}

@@ -87,13 +87,12 @@ namespace netp {
 		int _cfg_broadcast(bool onoff);
 		int _cfg_option(u16_t opt, keep_alive_vals const& vlas);
 
+	public:
 		int init(u16_t opt, keep_alive_vals const& kvals, channel_buf_cfg const& cbc) {
-			int rt = _cfg_option(opt,kvals);
+			int rt = _cfg_option(opt, kvals);
 			NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
 			return _cfg_buffer(cbc);
 		}
-
-	public:
 		int open();
 		int shutdown(int flag);
 		int close();
@@ -138,10 +137,6 @@ namespace netp {
 				return netp::OK;
 			}
 			return netp_socket_get_last_errno();
-		}
-
-		std::string info() const {
-			return socketinfo{ m_fd, (m_family),(m_type),(m_protocol),local_addr(), remote_addr() }.to_string();
 		}
 
 		__NETP_FORCE_INLINE int getsockopt(int level, int option_name, void* value, socklen_t* option_len) const {

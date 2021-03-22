@@ -412,11 +412,17 @@ namespace netp { namespace handler {
 		}
 
 		//for channel compatible
-		void ch_aio_write(fn_aio_event_t const& fn = nullptr) override { (void)fn; }
+		void ch_aio_begin(fn_aio_event_t const& ) override {};
+		void ch_aio_end() override {};
+		void ch_aio_accept(fn_channel_initializer_t const& ) override {}
+		void ch_aio_end_accept() override {}
+
+		//for channel compatible
+		void ch_aio_write(fn_aio_event_t const& ) override { }
 		void ch_aio_end_write() override {}
 
 		//for channel compatible
-		void ch_aio_connect(fn_aio_event_t const& fn) override { (void)fn; }
+		void ch_aio_connect(fn_aio_event_t const& ) override {  }
 		void ch_aio_end_connect() override {}
 
 		void ch_write_impl(NRP<packet> const& outlet, NRP<promise<int>> const& write_p) override {

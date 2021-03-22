@@ -282,7 +282,7 @@ namespace netp { namespace http {
 			ch->pipeline()->add_last(httph);
 		};
 
-		netp::socket::do_dial(dial_url.c_str(), dial_url.length(), fn_initializer, ch_dp, dcfg.cfg);
+		netp::do_dial(dial_url.c_str(), dial_url.length(), fn_initializer, ch_dp, dcfg.cfg);
 	}
 	void do_dial(std::string const& host, NRP<client_dial_promise> const& dp, dial_cfg const& dcfg) {
 		do_dial(host.c_str(), host.length(), dp, dcfg);

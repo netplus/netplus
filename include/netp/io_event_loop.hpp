@@ -58,7 +58,6 @@ namespace netp {
 		friend class io_event_loop_group;
 
 	protected:
-
 		std::atomic<bool> m_waiting;
 		std::atomic<u8_t> m_state;
 		io_poller_type m_type;
@@ -101,8 +100,8 @@ namespace netp {
 			if (m_tq_standby.size() != 0) {
 				return 0;
 			}
-			NETP_ASSERT( u64_t(TIMER_TIME_INFINITE) > (27));
-			if ( (u64_t(ndelayns)>(27)) ) {
+			NETP_ASSERT( u64_t(TIMER_TIME_INFINITE) > (NETP_POLLER_WAIT_IGNORE_DUR));
+			if ( (u64_t(ndelayns)>(NETP_POLLER_WAIT_IGNORE_DUR)) ) {
 				m_waiting.store(true, std::memory_order_release);
 			}
 			return ndelayns;
@@ -235,7 +234,7 @@ namespace netp {
 			}
 		}
 
-		inline io_poller_type type() const { return m_type; }
+		inline io_poller_type poller_type() const { return m_type; }
 
 		__NETP_FORCE_INLINE NRP<netp::packet> const& channel_rcv_buf() const {
 			return m_channel_rcv_buf;

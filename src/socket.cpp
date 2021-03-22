@@ -102,6 +102,7 @@ namespace netp {
 		//int rt = -10043;
 		int rt = socket::bind(addr);
 		if (rt != netp::OK) {
+			m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
 			NETP_WARN("[socket]socket::bind(): %d, addr: %s", rt, addr.to_string().c_str() );
 			chp->set(rt);
 			return;
@@ -109,23 +110,29 @@ namespace netp {
 
 		rt = socket::listen(backlog);
 		if (rt != netp::OK) {
+			m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
 			NETP_WARN("[socket]socket::listen(%u): %d, addr: %s",backlog, rt, addr.to_string().c_str());
 			chp->set(rt);
 			return;
 		}
 
 		NETP_ASSERT(rt == netp::OK);
-		aio_begin([fn_accepted_initializer, ccfg,chp, so = NRP<socket>(this)]( int aiort_, aio_ctx*){
+		m_listen_cfg = ccfg;
+		m_listen_cfg->family = m_family;
+		m_listen_cfg->type = m_type;
+		m_listen_cfg->proto = m_protocol;
+
+		ch_aio_begin([fn_accepted_initializer,chp, so = NRP<socket>(this)]( int aiort_, aio_ctx*){
 			chp->set(aiort_);
 			if(aiort_ == netp::OK) {
-				so->_do_aio_accept(fn_accepted_initializer, ccfg);
+				so->ch_aio_accept(fn_accepted_initializer);
 			}
 		});
 	}
 
 	void socket::do_dial(address const& addr, fn_channel_initializer_t const& initializer, NRP<promise<int>> const& so_dialf) {
 		NETP_ASSERT(L->in_event_loop());
-		aio_begin([so=NRP<socket>(this),addr, initializer, so_dialf](int aiort_, aio_ctx*) {
+		ch_aio_begin([so=NRP<socket>(this),addr, initializer, so_dialf](int aiort_, aio_ctx*) {
 			NETP_ASSERT(so->L->in_event_loop());
 			if (aiort_ != netp::OK) {
 				so_dialf->set(aiort_);
@@ -156,13 +163,13 @@ namespace netp {
 		if (rt != netp::OK) {
 		_set_fail_and_return:
 			NETP_ASSERT(rt != netp::OK);
-			NETP_ERR("[socket][%s]socket dial error: %d", info().c_str(), rt );
+			NETP_ERR("[socket][%s]socket dial error: %d", ch_info().c_str(), rt );
 			so_dialf->set(rt);
 			return;
 		}
 
 		if( m_chflag& int(channel_flag::F_CLOSED)) {
-			NETP_ERR("[socket][%s]socket closed already, dial promise set abort, errno: %d", info().c_str(), ch_errno() );
+			NETP_ERR("[socket][%s]socket closed already, dial promise set abort, errno: %d", ch_info().c_str(), ch_errno() );
 			so_dialf->set(netp::E_ECONNABORTED);
             return ;
 		}
@@ -191,7 +198,7 @@ namespace netp {
 
 		if (local_addr() == remote_addr()) {
 			rt = netp::E_SOCKET_SELF_CONNCTED;
-			NETP_WARN("[socket][%s]socket selfconnected", info().c_str());
+			NETP_WARN("[socket][%s]socket selfconnected", ch_info().c_str());
 			goto _set_fail_and_return;
 		}
 
@@ -207,18 +214,18 @@ namespace netp {
 			if (rt == netp::OK) {
 				rt = netp::E_UNKNOWN;
 			}
-			NETP_ERR("[socket][%s]dial error: %d: %s", info().c_str(), rt, e.what());
+			NETP_ERR("[socket][%s]dial error: %d: %s", ch_info().c_str(), rt, e.what());
 			goto _set_fail_and_return;
 		} catch(...) {
 			rt = netp_socket_get_last_errno();
 			if (rt == netp::OK) {
 				rt = netp::E_UNKNOWN;
 			}
-			NETP_ERR("[socket][%s]dial error: %d: unknown", info().c_str(), rt);
+			NETP_ERR("[socket][%s]dial error: %d: unknown", ch_info().c_str(), rt);
 			goto _set_fail_and_return;
 		}
 
-		NETP_TRACE_SOCKET("[socket][%s]async connected", info().c_str());
+		NETP_TRACE_SOCKET("[socket][%s]async connected", ch_info().c_str());
 		NETP_ASSERT( m_chflag& (int(channel_flag::F_CONNECTING)|int(channel_flag::F_CONNECTED)) );
 		ch_set_connected();
 		so_dialf->set(netp::OK);
@@ -229,7 +236,7 @@ namespace netp {
 		ch_aio_read();
 	}
 
-	void socket::__cb_aio_accept_impl(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& ccfg, int status, aio_ctx* ) {
+	void socket::__cb_aio_accept_impl(fn_channel_initializer_t const& fn_initializer, int status, aio_ctx* ) {
 
 		NETP_ASSERT(L->in_event_loop());
 		/*ignore the left fds, cuz we're closed*/
@@ -253,19 +260,28 @@ namespace netp {
 			address laddr;
 			status = netp::getsockname(*m_api, nfd, laddr);
 			if (status != netp::OK) {
-				NETP_ERR("[socket][%s][accept]load local addr failed: %d", info().c_str(), netp_socket_get_last_errno());
+				NETP_ERR("[socket][%s][accept]load local addr failed: %d", ch_info().c_str(), netp_socket_get_last_errno());
 				NETP_CLOSE_SOCKET(nfd);
 				continue;
 			}
 
 			NETP_ASSERT(laddr.family() == (m_family));
 			if (laddr == raddr) {
-				NETP_ERR("[socket][%s][accept]laddr == raddr, force close", info().c_str());
+				NETP_ERR("[socket][%s][accept]laddr == raddr, force close", ch_info().c_str());
 				NETP_CLOSE_SOCKET(nfd);
 				continue;
 			}
 
-			__do_create_accepted_socket(nfd, laddr, raddr, fn_initializer, ccfg);
+			NRP<io_event_loop> LL = io_event_loop_group::instance()->next(L->poller_type());
+			LL->execute([LL,fn_initializer,nfd, laddr, raddr, cfg=m_listen_cfg]() {
+				std::tuple<int, NRP<socket>> tupc = accepted_create<socket>(LL,nfd, laddr,raddr, cfg);
+				int rt = std::get<0>(tupc);
+				if (rt != netp::OK) {
+					NETP_CLOSE_SOCKET(nfd);
+				}
+				NRP<socket> const& ch = std::get<1>(tupc);
+				ch->__do_accept_fire(fn_initializer);
+			});
 		}
 
 		if (IS_ERRNO_EQUAL_WOULDBLOCK(status)) {
@@ -275,11 +291,11 @@ namespace netp {
 		}
 
 		if(status == netp::E_EMFILE ) {
-			NETP_WARN("[socket][%s]accept error, EMFILE", info().c_str() );
+			NETP_WARN("[socket][%s]accept error, EMFILE", ch_info().c_str() );
 			return ;
 		}
 
-		NETP_ERR("[socket][%s]accept error: %d", info().c_str(), status);
+		NETP_ERR("[socket][%s]accept error: %d", ch_info().c_str(), status);
 		ch_errno()=(status);
 		m_chflag |= int(channel_flag::F_READ_ERROR);
 		ch_close_impl(nullptr);
@@ -323,11 +339,11 @@ namespace netp {
 			if (m_chflag&int(channel_flag::F_WRITE_ERROR)) {
 				NETP_ASSERT(m_outbound_entry_q.size() != 0);
 				NETP_ASSERT(ch_errno() != netp::OK);
-				NETP_WARN("[socket][%s]__cb_aio_write_impl(), but socket error already: %d, m_chflag: %u", info().c_str(), ch_errno(), m_chflag);
+				NETP_WARN("[socket][%s]__cb_aio_write_impl(), but socket error already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
 				return ;
 			} else if (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWN))) {
 				NETP_ASSERT( m_outbound_entry_q.size() == 0);
-				NETP_WARN("[socket][%s]__cb_aio_write_impl(), but socket write closed already: %d, m_chflag: %u", info().c_str(), ch_errno(), m_chflag);
+				NETP_WARN("[socket][%s]__cb_aio_write_impl(), but socket write closed already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
 				return;
 			} else {
 				m_chflag |= int(channel_flag::F_WRITING);
@@ -346,7 +362,7 @@ namespace netp {
 	//this api would be called right after a check of writeable of the current socket
 	int socket::_do_ch_write_impl() {
 
-		NETP_ASSERT(m_outbound_entry_q.size() != 0, "%s, flag: %u", info().c_str(), m_chflag);
+		NETP_ASSERT(m_outbound_entry_q.size() != 0, "%s, flag: %u", ch_info().c_str(), m_chflag);
 		NETP_ASSERT( m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)) );
 		NETP_ASSERT( (m_chflag&int(channel_flag::F_BDLIMIT)) ==0);
 
@@ -393,7 +409,7 @@ namespace netp {
 
 	int socket::_do_ch_write_to_impl() {
 
-		NETP_ASSERT(m_outbound_entry_q.size() != 0, "%s, flag: %u", info().c_str(), m_chflag);
+		NETP_ASSERT(m_outbound_entry_q.size() != 0, "%s, flag: %u", ch_info().c_str(), m_chflag);
 		NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)));
 
 		//there might be a chance to be blocked a while in this loop, if set trigger another write
@@ -419,8 +435,9 @@ namespace netp {
 		NETP_ASSERT((m_chflag & int(channel_flag::F_CLOSED)) ==0 );
 
 		m_chflag |= int(channel_flag::F_CLOSED);
-		socket::_do_aio_end_accept();
-		aio_end();
+		m_listen_cfg = nullptr;
+		ch_aio_end_accept();
+		ch_aio_end();
 		NETP_TRACE_SOCKET("[socket][%s]ch_do_close_listener end", info().c_str());
 	}
 
@@ -445,7 +462,7 @@ namespace netp {
 		NETP_ASSERT(m_outbound_entry_q.size() == 0);
 		NETP_ASSERT(m_noutbound_bytes == 0);
 
-		aio_end();
+		ch_aio_end();
 	}
 
 	void socket::ch_close_write_impl(NRP<promise<int>> const& closep) {

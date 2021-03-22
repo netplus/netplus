@@ -6,12 +6,13 @@
 #include <netp/address.hpp>
 #include <netp/socket_api.hpp>
 
-
 #ifdef _DEBUG
-#define NETP_DEBUG_TERMINATING
-#define NETP_DEBUG_AIO_CTX_
+	#define NETP_DEBUG_TERMINATING
+	#define NETP_DEBUG_AIO_CTX_
 #endif
 
+//in nano
+#define NETP_POLLER_WAIT_IGNORE_DUR (27)
 namespace netp {
 
 	template<class list_t>
@@ -97,7 +98,6 @@ namespace netp {
 		virtual int unwatch(u8_t, aio_ctx*) = 0;
 	};
 
-#ifndef NETP_HAS_POLLER_IOCP
 	struct aio_ctx
 	{
 		aio_ctx* prev, *next;
@@ -325,6 +325,5 @@ namespace netp {
 			return netp::OK;
 		}
 	};
-#endif
 }
 #endif

@@ -61,7 +61,7 @@ void handler_start_listener(thp_param const& param_) {
 	NRP<netp::socket_cfg> cfg = netp::make_ref<netp::socket_cfg>();
 	cfg->sock_buf = { netp::u32_t(param_.rcvwnd), netp::u32_t(param_.sndwnd) };
 
-	NRP<netp::channel_listen_promise> lp = netp::socket::listen_on("tcp://0.0.0.0:32002", [](NRP<netp::channel> const& ch) {
+	NRP<netp::channel_listen_promise> lp = netp::listen_on("tcp://0.0.0.0:32002", [](NRP<netp::channel> const& ch) {
 		ch->pipeline()->add_last(netp::make_ref<netp::handler::hlen>());
 		ch->pipeline()->add_last(netp::make_ref<server_echo_handler>());
 		}, cfg);
@@ -85,7 +85,7 @@ void handler_dial_one_client(thp_param const& param_) {
 	NRP<netp::socket_cfg> cfg = netp::make_ref<netp::socket_cfg>();
 	cfg->sock_buf = { netp::u32_t(param_.rcvwnd), netp::u32_t(param_.sndwnd) };
 
-	NRP<netp::channel_dial_promise> dp = netp::socket::dial("tcp://127.0.0.1:32002", [&param_](NRP<netp::channel> const& ch) {
+	NRP<netp::channel_dial_promise> dp = netp::dial("tcp://127.0.0.1:32002", [&param_](NRP<netp::channel> const& ch) {
 		ch->pipeline()->add_last(netp::make_ref<netp::handler::hlen>());
 		ch->pipeline()->add_last(netp::make_ref<client_echo_handler>( netp::u64_t (param_.packet_size) * netp::u64_t(param_.packet_number)) );
 	}, cfg);

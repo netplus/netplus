@@ -129,7 +129,7 @@ namespace netp { namespace traffic {
 
 		NRP<socket_cfg> cfg = netp::make_ref<socket_cfg>();
 		cfg->sock_buf = { m_src_snd_wnd, m_src_rcv_wnd };
-		netp::socket::do_dial(dialurl.c_str(), dialurl.length(), [F = NRP<forwarder_iptcp_payload>(this)](NRP<netp::channel> const& ch) {
+		netp::do_dial(dialurl.c_str(), dialurl.length(), [F = NRP<forwarder_iptcp_payload>(this)](NRP<netp::channel> const& ch) {
 			ch->pipeline()->add_last(netp::make_ref<iptcp_payload_dst_handler>(F));
 		},dial_p, std::move(cfg) );
 	}

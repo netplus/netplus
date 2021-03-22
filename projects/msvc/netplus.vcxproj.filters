@@ -474,6 +474,12 @@
     <ClInclude Include="..\..\include\netp\poller_abstract.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\socket_ch.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\socket_ch_iocp.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">
@@ -516,9 +522,6 @@
       <Filter>Source Files\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\signal_broker.cpp">
-      <Filter>Source Files\src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\socket.cpp">
       <Filter>Source Files\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\socket_base.cpp">
@@ -670,6 +673,15 @@
     </ClCompile>
     <ClCompile Include="..\..\src\os\winsock_helper.cpp">
       <Filter>Source Files\src\os</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\socket.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\socket_iocp.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\socket_func.cpp">
+      <Filter>Source Files\src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

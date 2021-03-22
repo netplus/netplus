@@ -519,7 +519,7 @@ namespace netp {
 			rdf->set(std::make_tuple(err, nullptr));
 		};
 
-		netp::socket::do_dial(host, len, __decorate_initializer(fn_notify_connected, fn_notify_err, fn_ch_initializer), ch_df, cfg);
+		netp::do_dial(host, len, __decorate_initializer(fn_notify_connected, fn_notify_err, fn_ch_initializer), ch_df, cfg);
 		return rdf;
 	}
 
@@ -528,6 +528,6 @@ namespace netp {
 	}
 
 	NRP<rpc_listen_promise> rpc::listen(std::string const& host, fn_rpc_activity_notify_t const& fn_accepted, netp::fn_channel_initializer_t const& fn_ch_initializer, NRP<socket_cfg> const& cfg ) {
-		return netp::socket::listen_on(host.c_str(), host.length(), __decorate_initializer(fn_accepted, nullptr, fn_ch_initializer), cfg);
+		return netp::listen_on(host.c_str(), host.length(), __decorate_initializer(fn_accepted, nullptr, fn_ch_initializer), cfg);
 	}
 }

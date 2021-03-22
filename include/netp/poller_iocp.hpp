@@ -24,16 +24,17 @@ namespace netp {
 		AS_CH_END = 1 << 2
 	};
 
-	struct aio_ctx;
+	struct iocp_ctx;
+	typedef std::function<void(int status, iocp_ctx*)> fn_ol_event_t;
 	struct ol_ctx
 	{
 		WSAOVERLAPPED ol;
 		SOCKET fd;
 		SOCKET accept_fd;
-		aio_ctx* aioctx;
+		iocp_ctx* iocpctx;
 		u8_t action;
 		u8_t action_status;
-		fn_aio_event_t fn_ol_done;
+		fn_ol_event_t fn_ol_done;
 		WSABUF wsabuf;
 		char* rcvbuf;
 		struct sockaddr_in* from_ptr;
@@ -47,7 +48,7 @@ namespace netp {
 		olctx->accept_fd = NETP_INVALID_SOCKET;
 		olctx->action = u8_t(-1);
 		olctx->action_status = 0;
-		new ((fn_aio_event_t*)&(olctx->fn_ol_done))(fn_aio_event_t)();
+		new ((fn_ol_event_t*)&(olctx->fn_ol_done))(fn_ol_event_t)();
 		olctx->wsabuf = { 0,0 };
 		olctx->rcvbuf = 0;
 		return olctx;
@@ -65,26 +66,26 @@ namespace netp {
 		::memset(&ctx->ol, 0, sizeof(ctx->ol));
 	}
 
-	struct aio_ctx {
-		aio_ctx* prev, * next;
+	struct iocp_ctx {
+		iocp_ctx* prev, * next;
 		SOCKET fd;
 		ol_ctx* ol_r;
 		ol_ctx* ol_w;
 		fn_aio_event_t fn_notify;
 	};
 
-	inline static aio_ctx* aio_ctx_allocate( SOCKET fd ) {
-		aio_ctx* ctx = netp::allocator<aio_ctx>::malloc(1);
+	inline static iocp_ctx* iocp_ctx_allocate( SOCKET fd ) {
+		iocp_ctx* ctx = netp::allocator<iocp_ctx>::malloc(1);
 		ctx->fd = fd;
 		ctx->ol_r = ol_ctx_allocate(fd);
-		ctx->ol_r->aioctx = ctx;
+		ctx->ol_r->iocpctx = ctx;
 		ctx->ol_w = ol_ctx_allocate(fd);
-		ctx->ol_w->aioctx = ctx;
+		ctx->ol_w->iocpctx = ctx;
 		new ((fn_aio_event_t*)&(ctx->fn_notify))(fn_aio_event_t)();
 		return ctx;
 	}
 
-	inline static void aio_ctx_deallocate(aio_ctx* ctx) {
+	inline static void iocp_ctx_deallocate(iocp_ctx* ctx) {
 		NETP_ASSERT(ctx->fn_notify == nullptr);
 		NETP_ASSERT(ctx->ol_r->fn_ol_done == nullptr);
 		NETP_ASSERT(ctx->ol_w->fn_ol_done == nullptr);
@@ -97,14 +98,14 @@ namespace netp {
 		if ((ctx->ol_w->action_status & AS_WAIT_IOCP) == 0) {
 			ol_ctx_deallocate(ctx->ol_w);
 		}
-		netp::allocator<aio_ctx>::free(ctx);
+		netp::allocator<iocp_ctx>::free(ctx);
 	}
 
 	class poller_iocp final :
 		public poller_abstract
 	{
 		HANDLE m_handle;
-		aio_ctx m_aio_ctx_list;
+		iocp_ctx m_aio_ctx_list;
 
 #ifdef NETP_DEBUG_AIO_CTX_
 		long m_aio_ctx_count_alloc;
@@ -138,7 +139,7 @@ namespace netp {
 					return;
 				}
 				NETP_ASSERT(olctx->fn_ol_done != nullptr);
-				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, olctx->aioctx);
+				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, olctx->iocpctx);
 			}
 			break;
 			case iocp_ol_action::WSASEND:
@@ -147,7 +148,7 @@ namespace netp {
 					return;
 				}
 				NETP_ASSERT(olctx->fn_ol_done != nullptr);
-				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, olctx->aioctx );
+				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, olctx->iocpctx );
 			}
 			break;
 			case iocp_ol_action::ACCEPTEX:
@@ -165,7 +166,7 @@ namespace netp {
 
 				if (NETP_LIKELY(ec == 0)) {
 					NETP_TRACE_IOE("[iocp][#%u]accept done, new fd: %u", olctx->fd, olctx->accept_fd);
-					olctx->fn_ol_done(ec, olctx->aioctx);
+					olctx->fn_ol_done(ec, olctx->iocpctx);
 				} else {
 					NETP_CLOSE_SOCKET(olctx->accept_fd);
 				}
@@ -183,7 +184,7 @@ namespace netp {
 					}
 				}
 				NETP_ASSERT(olctx->fn_ol_done != nullptr);
-				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, olctx->aioctx );
+				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, olctx->iocpctx );
 			}
 			break;
 			default:
@@ -326,7 +327,7 @@ namespace netp {
 				return 0;
 			}
 
-			aio_ctx* ctx = netp::aio_ctx_allocate(fd);
+			iocp_ctx* ctx = netp::iocp_ctx_allocate(fd);
 			if (ctx == 0) {
 				return 0;
 			}
@@ -335,7 +336,7 @@ namespace netp {
 			++m_aio_ctx_count_alloc;
 			m_ol_count_alloc += 2;
 #endif
-			return ctx;
+			return (aio_ctx*)ctx;
 		}
 
 		virtual void aio_end(aio_ctx* ctx) {
@@ -350,39 +351,39 @@ namespace netp {
 			}
 #endif
 
-			netp::list_delete(ctx);
-			netp::aio_ctx_deallocate(ctx);
+			netp::list_delete((iocp_ctx*)ctx);
+			netp::iocp_ctx_deallocate((iocp_ctx*)ctx);
 		}
 
 		int aio_do(aio_action act, aio_ctx* ctx) override {
 				switch (act) {
 				case aio_action::READ:
 				{
-					ol_ctx* olctx = ctx->ol_r;
+					ol_ctx* olctx = ((iocp_ctx*)ctx)->ol_r;
 					olctx->action_status &= ~AS_DONE;
 				}
 				break;
 				case aio_action::END_READ:
 				{
-					ol_ctx* olctx = ctx->ol_r;
+					ol_ctx* olctx = ((iocp_ctx*)ctx)->ol_r;
 					olctx->action_status |= AS_DONE;
 				}
 				break;
 				case aio_action::WRITE:
 				{
-					ol_ctx* olctx = ctx->ol_w;
+					ol_ctx* olctx = ((iocp_ctx*)ctx)->ol_w;
 					olctx->action_status &= ~AS_DONE;
 				}
 				break;
 				case aio_action::END_WRITE:
 				{
-					ol_ctx* olctx = ctx->ol_w;
+					ol_ctx* olctx = ((iocp_ctx*)ctx)->ol_w;
 					olctx->action_status |= AS_DONE;
 				}
 				break;
 				case aio_action::NOTIFY_TERMINATING:
 				{
-					aio_ctx* _ctx, *_ctx_n;
+					iocp_ctx* _ctx, *_ctx_n;
 					for (_ctx = m_aio_ctx_list.next, _ctx_n = _ctx->next; _ctx != &m_aio_ctx_list; _ctx = _ctx_n,_ctx_n = _ctx->next) {
 						NETP_ASSERT( _ctx->fd >0 );
 						NETP_ASSERT(_ctx->fn_notify != nullptr);
@@ -395,7 +396,7 @@ namespace netp {
 						}
 						//in case , close would result in _ctx->fn_notify be nullptr
 						if (_ctx->fn_notify != nullptr) {
-							_ctx->fn_notify(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
+							_ctx->fn_notify(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, (aio_ctx*)_ctx);
 						}
 					}
 				}
@@ -404,8 +405,8 @@ namespace netp {
 				return netp::OK;
 			}
 
-		virtual int watch(u8_t, aio_ctx*) override { return netp::OK; }
-		virtual int unwatch(u8_t, aio_ctx*) override { return netp::OK; }
+		int watch(u8_t, aio_ctx*) override { return netp::OK; }
+		int unwatch(u8_t, aio_ctx*) override { return netp::OK; }
 	};
 }
 #endif //NETP_HAS_POLLER_IOCP
