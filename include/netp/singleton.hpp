@@ -24,8 +24,13 @@ namespace netp {
 				//if there is a exception , we just let it bubbling up
 				//try {
 					ins = new T();
-					singleton<T>::schedule_for_destroy(singleton<T>::destroy_instance);
 					s_instance.store(ins, std::memory_order_release);
+
+					//in case of debuging purpose
+					if (!s_exit_registered.load(std::memory_order_acquire)) {
+						singleton<T>::schedule_for_destroy(singleton<T>::destroy_instance);
+						s_exit_registered.store(true,std::memory_order_release);
+					}
 				//} catch (...) {
 					//issue might be
 				//	delete ins;
@@ -40,6 +45,7 @@ namespace netp {
 			if (nullptr != ins) {
 				static std::mutex __s_instance_for_destroy_mutex;
 				std::lock_guard<std::mutex> lg(__s_instance_for_destroy_mutex);
+				ins = s_instance.load(std::memory_order_acquire);
 				if (ins != nullptr) {
 					delete ins;
 					s_instance.store(nullptr, std::memory_order_release);
@@ -59,10 +65,14 @@ namespace netp {
 		singleton<T>& operator=(const singleton<T>&);
 
 		static std::atomic<T*> s_instance;
+		static std::atomic<bool> s_exit_registered;
 	};
 
 	template<class T>
 	std::atomic<T*> singleton<T>::s_instance(nullptr);
+
+	template<class T>
+	std::atomic<bool> singleton<T>::s_exit_registered(false);
 
 #define DECLARE_SINGLETON_FRIEND(T) \
 	friend class netp::singleton<T>

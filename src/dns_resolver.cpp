@@ -16,7 +16,7 @@ namespace netp {
 		netp::E_DNS_BADQUERY
 	};
 
-	void dns_resolver::reset(NRP<io_event_loop> const& L) {
+	void dns_resolver::reset( NRP<io_event_loop> const& L ) {
 		m_loop = L;
 		m_ns.clear();
 		m_flag = 0;

@@ -359,8 +359,8 @@ namespace netp {
 		}
 #endif
 		
-		netp::dns_resolver::instance()
-			->reset(io_event_loop_group::instance()->internal_next());
+		netp::dns_resolver::instance()->reset(io_event_loop_group::instance()->internal_next());
+
 		if (m_cfg.dnsnses.size()) {
 			netp::dns_resolver::instance()->add_name_server(m_cfg.dnsnses);
 		}
@@ -377,10 +377,10 @@ namespace netp {
 
 	void app::___event_loop_deinit() {
 		netp::dns_resolver::instance()->stop();
-		netp::io_event_loop_group::instance()->deinit();
-
 		//reset loop after all loop reference dattached from business code
+		netp::io_event_loop_group::instance()->deinit();
 		netp::dns_resolver::instance()->reset(nullptr);
+		netp::dns_resolver::destroy_instance();
 	}
 
 	//ISSUE: if the waken thread is main thread, we would get stuck here

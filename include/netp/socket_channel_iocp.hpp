@@ -462,8 +462,8 @@ namespace netp {
 			if (rt == netp::OK) {
 				m_chflag |= int(channel_flag::F_WATCH_READ);
 				m_aio_ctx->fn_read = fn_read != nullptr ? fn_read :
-					m_protocol == NETP_PROTOCOL_TCP ? std::bind(&socket::__cb_aio_read_impl, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2) :
-					std::bind(&socket::__cb_aio_read_from_impl, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
+					is_udp() ? std::bind(&socket::__cb_aio_read_from_impl, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2) : 
+					std::bind(&socket::__cb_aio_read_impl, NRP<socket>(this), std::placeholders::_1, std::placeholders::_2);
 			}
 #endif
 

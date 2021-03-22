@@ -46,7 +46,7 @@ namespace netp {
 		u8_t m_flag;
 
 	private:
-		void reset(NRP<io_event_loop> const& L);
+		void reset( NRP<io_event_loop> const& L );
 		void _do_add_name_server();
 
 		void _do_start(NRP<netp::promise<int>> const& p);

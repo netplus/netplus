@@ -176,11 +176,9 @@ namespace netp {
 			m_bye_ref_count(0),
 			m_bye_state(bye_event_loop_state::S_IDLE)
 		{
-			//NETP_DEBUG("netp::io_event_loop_group::io_event_loop_group()");
 		}
 		io_event_loop_group::~io_event_loop_group()
 		{
-			//NETP_DEBUG("netp::io_event_loop_group::~io_event_loop_group()");
 		}
 
 		void io_event_loop_group::notify_terminating(io_poller_type t) {
@@ -197,12 +195,12 @@ namespace netp {
 			while (count-- > 0) {
 				NRP<io_event_loop> o = fn_maker == nullptr ?
 					default_event_loop_maker(t,cfg) : 
-					fn_maker(cfg);
+					fn_maker(t,cfg);
 
 				int rt = o->__launch();
 				NETP_ASSERT(rt == netp::OK);
-				m_loop[t].push_back(o);
-				o->__internal_ref_count_inc();
+				o->store_internal_ref_count(o.ref_count());
+				m_loop[t].push_back(std::move(o));
 			}
 		}
 
@@ -361,15 +359,17 @@ namespace netp {
 			NETP_THROW("io_event_loop_group deinit logic issue");
 		}
 
+		
 		NRP<io_event_loop> io_event_loop_group::internal_next(io_poller_type t) {
 			shared_lock_guard<shared_mutex> lg(m_loop_mtx[t]);
 			const io_event_loop_vector& pollers = m_loop[t];
 			NETP_ASSERT(m_loop[t].size() != 0);
 			int idx = netp::atomic_incre(&m_curr_loop_idx[t]) % pollers.size();
-			pollers[idx]->__internal_ref_count_inc();
+			pollers[idx]->inc_internal_ref_count();
 			return pollers[idx];
 			//NETP_THROW("io_event_loop_group deinit logic issue");
 		}
+		
 
 		void io_event_loop_group::execute(fn_io_event_task_t&& f, io_poller_type poller_t) {
 			next(poller_t)->execute(std::forward<fn_io_event_task_t>(f));

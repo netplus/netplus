@@ -80,6 +80,7 @@ namespace netp {
 		public netp::ref_base
 	{
 	protected:
+
 	public:
 		poller_abstract() {}
 		~poller_abstract() {}
@@ -199,11 +200,11 @@ namespace netp {
 
 		void init() {
 			netp::list_init(&m_aio_ctx_list);
-			__init_interrupt_fd();
 #ifdef NETP_DEBUG_AIO_CTX_
 			m_aio_ctx_count_alloc = 0;
 			m_aio_ctx_count_free = 0;
 #endif
+			__init_interrupt_fd();
 		}
 
 		void deinit() {

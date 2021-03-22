@@ -37,7 +37,7 @@ namespace netp {
 	};
 
 	class io_event_loop;
-	typedef std::function< NRP<io_event_loop>(event_loop_cfg const& cfg) > fn_event_loop_maker_t;
+	typedef std::function< NRP<io_event_loop>(io_poller_type t, event_loop_cfg const& cfg) > fn_event_loop_maker_t;
 
 	enum class loop_state {
 		S_IDLE,
@@ -74,15 +74,17 @@ namespace netp {
 		NRP<netp::thread> m_th;
 
 		//timer_timepoint_t m_wait_until;
-		std::atomic<u16_t> m_internal_ref_count;
+		std::atomic<long> m_internal_ref_count;
 		event_loop_cfg m_cfg;
 
 #ifdef NETP_DEBUG_TERMINATING
 		bool m_terminated;
 #endif
 	protected:
-		inline u16_t internal_ref_count() { return m_internal_ref_count.load(std::memory_order_acquire); }
-		inline void __internal_ref_count_inc() { netp::atomic_incre(&m_internal_ref_count); }
+		inline long internal_ref_count() { return m_internal_ref_count.load(std::memory_order_acquire); }
+		inline void store_internal_ref_count( long count ) { m_internal_ref_count.store( count, std::memory_order_release); }
+		inline void inc_internal_ref_count() { netp::atomic_incre(&m_internal_ref_count); }
+		//inline void __internal_ref_count_inc() { netp::atomic_incre(&m_internal_ref_count); }
 		//0,	NO WAIT
 		//~0,	INFINITE WAIT
 		//>0,	WAIT nanosecond
@@ -150,7 +152,7 @@ namespace netp {
 			m_state(u8_t(loop_state::S_IDLE)),
 			m_type(t),
 			m_poller(poller),
-			m_internal_ref_count(1),
+			m_internal_ref_count(0),
 			m_cfg(cfg)
 		{}
 
