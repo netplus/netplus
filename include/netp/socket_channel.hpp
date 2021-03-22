@@ -193,7 +193,7 @@ namespace netp {
 			m_chflag |= int(channel_flag::F_READ_SHUTDOWN);
 			m_chflag &= ~int(channel_flag::F_READ_SHUTDOWNING);
 			ch_fire_read_closed();
-			NETP_TRACE_SOCKET("[socket][%s]ch_do_close_read end, errno: %d, flag: %d", info().c_str(), ch_errno(), m_chflag);
+			NETP_TRACE_SOCKET("[socket][%s]ch_do_close_read end, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
 			ch_rdwr_shutdown_check();
 		}
 
@@ -224,7 +224,7 @@ namespace netp {
 			//unset boundary
 			m_chflag &= ~int(channel_flag::F_WRITE_SHUTDOWNING);
 			ch_fire_write_closed();
-			NETP_TRACE_SOCKET("[socket][%s]ch_do_close_write end, errno: %d, flag: %d", info().c_str(), ch_errno(), m_chflag);
+			NETP_TRACE_SOCKET("[socket][%s]ch_do_close_write end, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
 			ch_rdwr_shutdown_check();
 		}
 
@@ -312,11 +312,11 @@ namespace netp {
 				NETP_ASSERT(m_outbound_entry_q.size() == 0);
 				if (m_chflag & int(channel_flag::F_CLOSE_PENDING)) {
 					_ch_do_close_read_write();
-					NETP_TRACE_SOCKET("[socket][%s]aio_write, end F_CLOSE_PENDING, _ch_do_close_read_write, errno: %d, flag: %d", info().c_str(), ch_errno(), m_chflag);
+					NETP_TRACE_SOCKET("[socket][%s]aio_write, end F_CLOSE_PENDING, _ch_do_close_read_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
 				}
 				else if (m_chflag & int(channel_flag::F_WRITE_SHUTDOWN_PENDING)) {
 					_ch_do_close_write();
-					NETP_TRACE_SOCKET("[socket][%s]aio_write, end F_WRITE_SHUTDOWN_PENDING, ch_close_write, errno: %d, flag: %d", info().c_str(), ch_errno(), m_chflag);
+					NETP_TRACE_SOCKET("[socket][%s]aio_write, end F_WRITE_SHUTDOWN_PENDING, ch_close_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
 				}
 				else {
 					std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>().swap(m_outbound_entry_q);
@@ -368,11 +368,11 @@ namespace netp {
 		void _ch_do_close_listener();
 		void _ch_do_close_read_write();
 
-		void __aio_begin_done(aio_ctx*) {
+		virtual void __aio_begin_done(aio_ctx*) {
 			m_chflag |= int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE);
 		}
 
-		void __aio_notify_terminating(int status, aio_ctx*) {
+		virtual void __aio_notify_terminating(int status, aio_ctx*) {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(status == netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING);
 			//terminating notify, treat as a error
@@ -454,7 +454,7 @@ namespace netp {
 			NETP_ASSERT(m_noutbound_bytes == 0);
 			NETP_ASSERT(m_chflag & int(channel_flag::F_CLOSED));
 			NETP_ASSERT((m_chflag & (int(channel_flag::F_WATCH_READ) | int(channel_flag::F_WATCH_WRITE))) == 0);
-			NETP_TRACE_SOCKET("[socket][%s]aio_action::END, flag: %d", info().c_str(), m_chflag);
+			NETP_TRACE_SOCKET("[socket][%s]aio_action::END, flag: %d", ch_info().c_str(), m_chflag);
 
 			//****NOTE ON WINDOWS&IOCP****//
 			//Any pending overlapped sendand receive operations(WSASend / WSASendTo / WSARecv / WSARecvFrom with an overlapped socket) issued by any thread in this process are also canceled.Any event, completion routine, or completion port action specified for these overlapped operations is performed.The pending overlapped operations fail with the error status WSA_OPERATION_ABORTED.
@@ -521,18 +521,15 @@ namespace netp {
 		void ch_close_read_impl(NRP<promise<int>> const& closep) override
 		{
 			NETP_ASSERT(L->in_event_loop());
-			NETP_TRACE_SOCKET("[socket][%s]ch_close_read_impl, _ch_do_close_read, errno: %d, flag: %d", info().c_str(), ch_errno(), m_chflag);
+			NETP_TRACE_SOCKET("[socket][%s]ch_close_read_impl, _ch_do_close_read, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
 			int prt = netp::OK;
 			if (m_chflag & (int(channel_flag::F_READ_SHUTDOWNING) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING))) {
 				prt = (netp::E_OP_INPROCESS);
-			}
-			else if ((m_chflag & int(channel_flag::F_READ_SHUTDOWN)) != 0) {
+			} else if ((m_chflag & int(channel_flag::F_READ_SHUTDOWN)) != 0) {
 				prt = (netp::E_CHANNEL_WRITE_CLOSED);
-			}
-			else {
+			} else {
 				_ch_do_close_read();
 			}
-
 			if (closep) { closep->set(prt); }
 		}
 
@@ -548,7 +545,7 @@ namespace netp {
 			}
 			NETP_ASSERT((m_chflag & int(channel_flag::F_READ_SHUTDOWNING)) == 0);
 			if (m_chflag & int(channel_flag::F_WATCH_READ)) {
-				NETP_TRACE_SOCKET("[socket][%s]aio_action::READ, ignore, flag: %d", info().c_str(), m_chflag);
+				NETP_TRACE_SOCKET("[socket][%s]aio_action::READ, ignore, flag: %d", ch_info().c_str(), m_chflag);
 				return;
 			}
 
@@ -566,7 +563,7 @@ namespace netp {
 					is_udp() ? std::bind(&socket_channel::__cb_aio_read_from_impl, NRP<socket_channel>(this), std::placeholders::_1, std::placeholders::_2) :
 					std::bind(&socket_channel::__cb_aio_read_impl, NRP<socket_channel>(this), std::placeholders::_1, std::placeholders::_2);
 			}
-			NETP_TRACE_IOE("[socket][%s]aio_action::READ", info().c_str());
+			NETP_TRACE_IOE("[socket][%s]aio_action::READ", ch_info().c_str());
 		}
 
 		void ch_aio_end_read() {
@@ -581,7 +578,7 @@ namespace netp {
 				m_chflag &= ~int(channel_flag::F_WATCH_READ);
 				L->aio_do(aio_action::END_READ, m_aio_ctx);
 				m_aio_ctx->fn_read = nullptr;
-				NETP_TRACE_IOE("[socket][%s]aio_action::END_READ", info().c_str());
+				NETP_TRACE_IOE("[socket][%s]aio_action::END_READ", ch_info().c_str());
 			}
 		}
 
@@ -603,7 +600,7 @@ namespace netp {
 
 			if (m_chflag & int(channel_flag::F_WRITE_SHUTDOWN)) {
 				NETP_ASSERT((m_chflag & int(channel_flag::F_WATCH_WRITE)) == 0);
-				NETP_TRACE_SOCKET("[socket][%s]aio_action::WRITE, cancel for wr closed already", info().c_str());
+				NETP_TRACE_SOCKET("[socket][%s]aio_action::WRITE, cancel for wr closed already", ch_info().c_str());
 				if (fn_write != nullptr) {
 					fn_write(netp::E_CHANNEL_WRITE_CLOSED, 0);
 				}
@@ -631,7 +628,7 @@ namespace netp {
 
 				L->aio_do(aio_action::END_WRITE, m_aio_ctx);
 				m_aio_ctx->fn_write = nullptr;
-				NETP_TRACE_IOE("[socket][%s]aio_action::END_WRITE", info().c_str());
+				NETP_TRACE_IOE("[socket][%s]aio_action::END_WRITE", ch_info().c_str());
 			}
 		}
 

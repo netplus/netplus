@@ -35,7 +35,7 @@ namespace netp {
 			});
 		} else {
 			//ok or error
-			NETP_TRACE_SOCKET("[socket][%s]socket connected directly", info().c_str());
+			NETP_TRACE_SOCKET("[socket][%s]socket connected directly", ch_info().c_str());
 			p->set(rt);
 		}
 	}
@@ -74,7 +74,7 @@ namespace netp {
 			return netp::E_SOCKET_INVALID_STATE;
 		}
 		int rt = socket_base::bind(addr);
-		NETP_TRACE_SOCKET("[socket][%s]socket bind rt: %d", info().c_str(), rt );
+		NETP_TRACE_SOCKET("[socket][%s]socket bind rt: %d", ch_info().c_str(), rt );
 		return rt;
 	}
 
@@ -87,7 +87,7 @@ namespace netp {
 		NETP_ASSERT((m_fd > 0)&&(m_chflag & int(channel_flag::F_LISTENING)) == 0);
 		m_chflag |= int(channel_flag::F_LISTENING);
 		int rt = socket_base::listen( backlog);
-		NETP_TRACE_SOCKET("[socket][%s]socket listen rt: %d", info().c_str(), rt);
+		NETP_TRACE_SOCKET("[socket][%s]socket listen rt: %d", ch_info().c_str(), rt);
 		return rt;
 	}
 
@@ -438,7 +438,7 @@ namespace netp {
 		m_listen_cfg = nullptr;
 		ch_aio_end_accept();
 		ch_aio_end();
-		NETP_TRACE_SOCKET("[socket][%s]ch_do_close_listener end", info().c_str());
+		NETP_TRACE_SOCKET("[socket][%s]ch_do_close_listener end", ch_info().c_str());
 	}
 
 	inline void socket_channel::_ch_do_close_read_write() {
@@ -451,7 +451,7 @@ namespace netp {
 		NETP_ASSERT((m_chflag & int(channel_flag::F_CLOSED)) == 0);
 		m_chflag |= int(channel_flag::F_CLOSING);
 		m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CONNECTED));
-		NETP_TRACE_SOCKET("[socket][%s]ch_do_close_read_write, errno: %d, flag: %d", info().c_str(), ch_errno(), m_chflag);
+		NETP_TRACE_SOCKET("[socket][%s]ch_do_close_read_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
 
 		_ch_do_close_read();
 		_ch_do_close_write();

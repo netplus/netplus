@@ -75,6 +75,7 @@ namespace netp {
 		cfg->family = NETP_AF_INET;
 		cfg->type = NETP_SOCK_DGRAM;
 		cfg->proto = NETP_PROTOCOL_UDP;
+		cfg->L = m_loop;
 
 		int rt;
 		std::tie(rt, m_so) = netp::create_socket(cfg);
@@ -163,11 +164,11 @@ namespace netp {
 		}
 	}
 
-	void dns_resolver::async_read_dns_reply(int status, aio_ctx* ctx) {
+	void dns_resolver::async_read_dns_reply(int status, aio_ctx* ctx_) {
 		NETP_ASSERT(m_loop->in_event_loop());
 		//NETP_ASSERT(aiort_ == netp::OK);
-		(void*)ctx;
 #ifdef NETP_HAS_POLLER_IOCP
+		iocp_ctx* ctx = (iocp_ctx*)ctx_;
 		if (status > 0) {
 			dns_ioevent_with_udpdata_in(m_dns_ctx, 0, (unsigned char*) ctx->ol_r->wsabuf.buf, status, ctx->ol_r->from_ptr );
 			dns_ioevent(m_dns_ctx, 0);

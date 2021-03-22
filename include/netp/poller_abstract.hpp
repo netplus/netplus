@@ -249,7 +249,7 @@ namespace netp {
 			switch (act) {
 			case aio_action::READ:
 			{
-				NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::READ", m_type, ctx->fd);
+				NETP_TRACE_IOE("[io_event_loop][#%d]aio_action::READ", ctx->fd);
 				NETP_ASSERT((ctx->flag & aio_flag::AIO_READ) == 0);
 				int rt = watch(aio_flag::AIO_READ, ctx);
 				if (netp::OK == rt) {
@@ -260,7 +260,7 @@ namespace netp {
 			break;
 			case aio_action::END_READ:
 			{
-				NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::END_READ", m_type, ctx->fd);
+				NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::END_READ", ctx->fd);
 				if (ctx->flag & aio_flag::AIO_READ) {
 					ctx->flag &= ~aio_flag::AIO_READ;
 					//we need this condition check ,cuz epoll might fail to watch
@@ -271,7 +271,7 @@ namespace netp {
 			break;
 			case aio_action::WRITE:
 			{
-				NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::WRITE", m_type, ctx->fd);
+				NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::WRITE", ctx->fd);
 				NETP_ASSERT((ctx->flag & aio_flag::AIO_WRITE) == 0);
 				int rt = watch(aio_flag::AIO_WRITE, ctx);
 				if (netp::OK == rt) {
@@ -282,7 +282,7 @@ namespace netp {
 			break;
 			case aio_action::END_WRITE:
 			{
-				NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::END_WRITE", m_type, ctx->fd);
+				NETP_TRACE_IOE("[io_event_loop][type:%d][#%d]aio_action::END_WRITE", ctx->fd);
 				if (ctx->flag & aio_flag::AIO_WRITE) {
 					ctx->flag &= ~aio_flag::AIO_WRITE;
 					//we need this condition check ,cuz epoll might fail to watch

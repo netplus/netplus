@@ -25,7 +25,6 @@ namespace netp {
 	};
 
 	struct iocp_ctx;
-	typedef std::function<void(int status, iocp_ctx*)> fn_ol_event_t;
 	struct ol_ctx
 	{
 		WSAOVERLAPPED ol;
@@ -34,7 +33,7 @@ namespace netp {
 		iocp_ctx* iocpctx;
 		u8_t action;
 		u8_t action_status;
-		fn_ol_event_t fn_ol_done;
+		fn_aio_event_t fn_ol_done;
 		WSABUF wsabuf;
 		char* rcvbuf;
 		struct sockaddr_in* from_ptr;
@@ -48,7 +47,7 @@ namespace netp {
 		olctx->accept_fd = NETP_INVALID_SOCKET;
 		olctx->action = u8_t(-1);
 		olctx->action_status = 0;
-		new ((fn_ol_event_t*)&(olctx->fn_ol_done))(fn_ol_event_t)();
+		new ((fn_aio_event_t*)&(olctx->fn_ol_done))(fn_aio_event_t)();
 		olctx->wsabuf = { 0,0 };
 		olctx->rcvbuf = 0;
 		return olctx;
@@ -139,7 +138,7 @@ namespace netp {
 					return;
 				}
 				NETP_ASSERT(olctx->fn_ol_done != nullptr);
-				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, olctx->iocpctx);
+				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, (aio_ctx*)olctx->iocpctx);
 			}
 			break;
 			case iocp_ol_action::WSASEND:
@@ -148,7 +147,7 @@ namespace netp {
 					return;
 				}
 				NETP_ASSERT(olctx->fn_ol_done != nullptr);
-				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, olctx->iocpctx );
+				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, (aio_ctx*)olctx->iocpctx );
 			}
 			break;
 			case iocp_ol_action::ACCEPTEX:
@@ -166,7 +165,7 @@ namespace netp {
 
 				if (NETP_LIKELY(ec == 0)) {
 					NETP_TRACE_IOE("[iocp][#%u]accept done, new fd: %u", olctx->fd, olctx->accept_fd);
-					olctx->fn_ol_done(ec, olctx->iocpctx);
+					olctx->fn_ol_done(ec, (aio_ctx*)olctx->iocpctx);
 				} else {
 					NETP_CLOSE_SOCKET(olctx->accept_fd);
 				}
@@ -184,7 +183,7 @@ namespace netp {
 					}
 				}
 				NETP_ASSERT(olctx->fn_ol_done != nullptr);
-				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, olctx->iocpctx );
+				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, (aio_ctx*)olctx->iocpctx );
 			}
 			break;
 			default:
@@ -339,8 +338,8 @@ namespace netp {
 			return (aio_ctx*)ctx;
 		}
 
-		virtual void aio_end(aio_ctx* ctx) {
-
+		virtual void aio_end(aio_ctx* ctx_) {
+			iocp_ctx* ctx = (iocp_ctx*)ctx_;
 #ifdef NETP_DEBUG_AIO_CTX_
 			++m_aio_ctx_count_free;
 			if ( (ctx->ol_r->action_status & AS_WAIT_IOCP) == 0) {
@@ -389,10 +388,10 @@ namespace netp {
 						NETP_ASSERT(_ctx->fn_notify != nullptr);
 
 						if (_ctx->ol_r->fn_ol_done != nullptr) {
-							_ctx->ol_r->fn_ol_done(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
+							_ctx->ol_r->fn_ol_done(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, (aio_ctx*)_ctx);
 						}
 						if (_ctx->ol_w->fn_ol_done != nullptr) {
-							_ctx->ol_w->fn_ol_done(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
+							_ctx->ol_w->fn_ol_done(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, (aio_ctx*)_ctx);
 						}
 						//in case , close would result in _ctx->fn_notify be nullptr
 						if (_ctx->fn_notify != nullptr) {

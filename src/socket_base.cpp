@@ -330,7 +330,7 @@ namespace netp {
 		int rt;
 #ifdef _DEBUG
 		rt = get_snd_buffer_size();
-		NETP_TRACE_SOCKET("[socket_base][%s]snd buffer size: %u, try to set: %u", info().c_str(), rt, size );
+		NETP_TRACE_SOCKET("[socket_base][#%d]snd buffer size: %u, try to set: %u", m_fd, rt, size );
 #endif
 
 		rt = socket_base::setsockopt(SOL_SOCKET, SO_SNDBUF, (char*)&(size), sizeof(size));
@@ -341,7 +341,7 @@ namespace netp {
 		int nsize = get_snd_buffer_size();
 		NETP_RETURN_V_IF_MATCH(nsize, nsize <0);
 		m_sock_buf.sndbuf_size = nsize;
-		NETP_TRACE_SOCKET("[socket_base][%s]snd buffer size new: %u", info().c_str(), m_sock_buf.sndbuf_size);
+		NETP_TRACE_SOCKET("[socket_base][#%d]snd buffer size new: %u", m_fd, m_sock_buf.sndbuf_size);
 
 		return netp::OK;
 	}
@@ -392,7 +392,7 @@ namespace netp {
 		int rt;
 #ifdef _DEBUG
 		rt = get_rcv_buffer_size();
-		NETP_TRACE_SOCKET("[socket_base][%s]rcv buffer size: %u, try to set: %u", info().c_str(), rt, size );
+		NETP_TRACE_SOCKET("[socket_base][#%d]rcv buffer size: %u, try to set: %u", m_fd, rt, size );
 #endif
 
 		rt = socket_base::setsockopt(SOL_SOCKET, SO_RCVBUF, (char*)&(size), sizeof(size));
@@ -402,7 +402,7 @@ namespace netp {
 		int nsize = get_rcv_buffer_size();
 		NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
 		m_sock_buf.rcvbuf_size = nsize;
-		NETP_TRACE_SOCKET("[socket_base][%s]rcv buffer size new: %u", info().c_str(), m_sock_buf.rcvbuf_size);
+		NETP_TRACE_SOCKET("[socket_base][#%d]rcv buffer size new: %u", m_fd, m_sock_buf.rcvbuf_size);
 		return netp::OK;
 	}
 
