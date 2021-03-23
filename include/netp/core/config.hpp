@@ -74,7 +74,7 @@
 #define NETP_ENABLE_KQUEUE
 
 //#ifndef NETP_DISABLE_IOCP
-	#define NETP_ENABLE_IOCP
+//	#define NETP_ENABLE_IOCP
 //#endif
 
 //FOR IO MODE

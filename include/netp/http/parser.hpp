@@ -34,7 +34,7 @@ namespace netp { namespace http {
 		public netp::ref_base
 	{
 		http_parser* _p;
-		//NRP<netp::ref_base> ctx;
+		NRP<netp::ref_base> ctx;
 
 		parser_cb_header on_headers_complete;
 		parser_cb_data on_body;

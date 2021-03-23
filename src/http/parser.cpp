@@ -218,7 +218,7 @@ namespace netp { namespace http {
 
 	parser::parser() :
 		_p(nullptr),
-		//ctx(nullptr),
+		ctx(nullptr),
 		on_headers_complete(nullptr),
 		on_body(nullptr),
 		on_message_complete(nullptr),

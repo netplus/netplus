@@ -566,7 +566,7 @@ namespace netp { namespace handler {
 			NETP_TRACE_STREAM("[mux][s%u]insert stream", id);
 			muxs->ch_close_promise()->if_done([x = NRP<mux>(this), muxs](int const&) {
 				muxs->deinit();
-				::size_t c = x->m_stream_map.erase(muxs->ch_id());
+				::size_t c = x->m_stream_map.erase(u32_t(muxs->ch_id()));
 				NETP_ASSERT(c == 1);
 			});
 
