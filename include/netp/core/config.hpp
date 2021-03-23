@@ -73,7 +73,9 @@
 #define NETP_ENABLE_EPOLL
 #define NETP_ENABLE_KQUEUE
 
-#define NETP_ENABLE_IOCP
+#ifndef NETP_DISABLE_IOCP
+	#define NETP_ENABLE_IOCP
+#endif
 
 //FOR IO MODE
 #if defined(NETP_ENABLE_IOCP) && defined(_NETP_WIN)
