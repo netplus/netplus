@@ -87,12 +87,12 @@ namespace netp {
 		int _cfg_broadcast(bool onoff);
 		int _cfg_option(u16_t opt, keep_alive_vals const& vlas);
 
-	public:
 		int init(u16_t opt, keep_alive_vals const& kvals, channel_buf_cfg const& cbc) {
 			int rt = _cfg_option(opt, kvals);
 			NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
 			return _cfg_buffer(cbc);
 		}
+	public:
 		int open();
 		int shutdown(int flag);
 		int close();

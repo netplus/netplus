@@ -301,17 +301,17 @@ namespace netp {
 		ch_close_impl(nullptr);
 	}
 
-	void socket_channel::__cb_aio_read_from_impl(int aiort, aio_ctx* ) {
+	void socket_channel::__cb_aio_read_from_impl(int status, aio_ctx* ) {
 		NETP_ASSERT(m_protocol == u8_t(NETP_PROTOCOL_UDP));
-		while (aiort == netp::OK) {
+		while (status == netp::OK) {
 			NETP_ASSERT((m_chflag & (int(channel_flag::F_READ_SHUTDOWNING))) == 0);
 			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN) | int(channel_flag::F_CLOSE_PENDING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
-			netp::u32_t nbytes = socket_base::recvfrom(m_rcv_buf_ptr, m_rcv_buf_size, m_raddr, aiort);
+			netp::u32_t nbytes = socket_base::recvfrom(m_rcv_buf_ptr, m_rcv_buf_size, m_raddr, status);
 			if (NETP_LIKELY(nbytes > 0)) {
 				channel::ch_fire_readfrom(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes), m_raddr) ;
 			}
 		}
-		___aio_read_impl_done(aiort);
+		___aio_read_impl_done(status);
 	}
 
 	void socket_channel::__cb_aio_read_impl(int status, aio_ctx*) {
@@ -444,11 +444,11 @@ namespace netp {
 	inline void socket_channel::_ch_do_close_read_write() {
 		NETP_ASSERT(L->in_event_loop());
 
-		if (m_chflag & (int(channel_flag::F_READ_SHUTDOWNING) | int(channel_flag::F_WRITE_SHUTDOWNING))) {
+		if (m_chflag & (int(channel_flag::F_CLOSING) | int(channel_flag::F_CLOSED))) {
 			return;
 		}
 
-		NETP_ASSERT((m_chflag & int(channel_flag::F_CLOSED)) == 0);
+		//NETP_ASSERT((m_chflag & int(channel_flag::F_CLOSED)) == 0);
 		m_chflag |= int(channel_flag::F_CLOSING);
 		m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CONNECTED));
 		NETP_TRACE_SOCKET("[socket][%s]ch_do_close_read_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
@@ -456,13 +456,13 @@ namespace netp {
 		_ch_do_close_read();
 		_ch_do_close_write();
 
-		m_chflag |= int(channel_flag::F_CLOSED);
 		m_chflag &= ~int(channel_flag::F_CLOSING);
 
 		NETP_ASSERT(m_outbound_entry_q.size() == 0);
 		NETP_ASSERT(m_noutbound_bytes == 0);
 
-		ch_aio_end();
+		//close read, close write might result in F_CLOSED
+		ch_rdwr_shutdown_check();
 	}
 
 	void socket_channel::ch_close_write_impl(NRP<promise<int>> const& closep) {

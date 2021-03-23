@@ -134,9 +134,9 @@ namespace netp {
 				NETP_ASSERT((m_chflag&int(channel_flag::F_CLOSED)));
 				NETP_ASSERT(m_ch_close_p == nullptr);
 				m_ch_close_p = netp::make_ref<promise<int>>();
-				m_ch_close_p->if_done([ch=NRP<channel>(this)](int const&) {
-					ch->ch_deinit();
-				});
+				//m_ch_close_p->if_done([ch=NRP<channel>(this)](int const&) {
+				//	ch->ch_deinit();
+				//});
 
 				m_pipeline = netp::make_ref<channel_pipeline>(NRP<channel>(this));
 				m_pipeline->init();
@@ -146,7 +146,8 @@ namespace netp {
 				NETP_ASSERT(L->in_event_loop());
 				if ( ((m_chflag&(int(channel_flag::F_CLOSED)|int(channel_flag::F_CLOSING)))==0) && ((m_chflag & (int(channel_flag::F_READWRITE_SHUTDOWN))) == int(channel_flag::F_READWRITE_SHUTDOWN)) ) {
 					NETP_TRACE_CHANNEL("[channel][%s]ch_rdwr_shutdown_check trigger ch_close_impl()", ch_info().c_str() );
-					ch_close_impl(nullptr);
+					m_chflag |= int(channel_flag::F_CLOSED);
+					ch_aio_end();
 				}
 			}
 

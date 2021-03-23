@@ -84,6 +84,15 @@ namespace netp {
 			fn_begin_done(netp::OK, m_aio_ctx);
 		}
 
+		void __ch_clean() override {
+			ch_deinit();
+			if (m_chflag & int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE)) {
+				((iocp_ctx*)m_aio_ctx)->fn_notify = nullptr;
+				L->aio_end(m_aio_ctx);
+			}
+		}
+
+		/*
 		void ch_aio_end() override {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(m_outbound_entry_q.size() == 0);
@@ -92,17 +101,19 @@ namespace netp {
 			NETP_ASSERT((m_chflag & (int(channel_flag::F_WATCH_READ) | int(channel_flag::F_WATCH_WRITE))) == 0);
 			NETP_TRACE_SOCKET("[socket][%s]aio_action::END, flag: %d", ch_info().c_str(), m_chflag);
 
-			//****NOTE ON WINDOWS&IOCP****//
+			///NOTE ON WINDOWS&IOCP
 			//Any pending overlapped sendand receive operations(WSASend / WSASendTo / WSARecv / WSARecvFrom with an overlapped socket) issued by any thread in this process are also canceled.Any event, completion routine, or completion port action specified for these overlapped operations is performed.The pending overlapped operations fail with the error status WSA_OPERATION_ABORTED.
 			//Refer to: https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-closesocket
 			ch_fire_closed(close());
 			if (m_chflag & int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE)) {
+				//delay one tick to hold this and iocp_ctx*
 				L->schedule([so = NRP<socket_channel_iocp>(this)]() {
 					((iocp_ctx*)so->m_aio_ctx)->fn_notify = nullptr;
 					so->L->aio_end(so->m_aio_ctx);
 				});
 			}
 		}
+	*/
 
 		void ch_aio_accept(fn_channel_initializer_t const& fn_accepted_initializer) override {
 			NETP_ASSERT(L->in_event_loop());

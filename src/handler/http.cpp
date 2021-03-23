@@ -27,7 +27,8 @@ namespace netp { namespace handler {
 	void http::__unsetup_parser() {
 		if (m_http_parser != nullptr ) {
 			m_http_parser->reset();
-			m_http_parser = nullptr;
+			
+			//m_http_parser = nullptr;
 			//NETP_DEBUG("[http]parser reset");
 		}
 	}

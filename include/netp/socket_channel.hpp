@@ -73,7 +73,7 @@ namespace netp {
 				return std::make_tuple(rt,nullptr);
 			}
 		}
-		rt = so->init(cfg->option, cfg->kvals, cfg->sock_buf);
+		rt = so->ch_init(cfg->option, cfg->kvals, cfg->sock_buf);
 		if (rt != netp::OK) {
 			so->close();
 			NETP_WARN("[socket][%s]init failed: %d", so->ch_info().c_str(), rt);
@@ -151,7 +151,7 @@ namespace netp {
 		}
 
 	public:
-		int init(u16_t opt, keep_alive_vals const& kvals, channel_buf_cfg const& cbc) {
+		int ch_init(u16_t opt, keep_alive_vals const& kvals, channel_buf_cfg const& cbc) {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(m_chflag&int(channel_flag::F_CLOSED));
 			channel::ch_init();
@@ -164,6 +164,7 @@ namespace netp {
 			m_chflag &= ~int(channel_flag::F_CLOSED);
 			return rt;
 		}
+
 		int bind(address const& addr);
 		int listen(int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
 
@@ -182,29 +183,25 @@ namespace netp {
 		//NRP<promise<int>> dial(address const& addr, fn_channel_initializer_t const& initializer);
 
 		void _ch_do_close_read() {
-			if ((m_chflag & int(channel_flag::F_READ_SHUTDOWN))) { return; }
+			if (m_chflag & (int(channel_flag::F_READ_SHUTDOWNING)|int(channel_flag::F_READ_SHUTDOWN)) ) { return; }
 
-			NETP_ASSERT((m_chflag & int(channel_flag::F_READ_SHUTDOWNING)) == 0);
 			m_chflag |= int(channel_flag::F_READ_SHUTDOWNING);
-
 			ch_aio_end_read();
 			//end_read and log might result in F_READ_SHUTDOWN state. (FOR net_logger)
-
 			socket_base::shutdown(SHUT_RD);
-			m_chflag |= int(channel_flag::F_READ_SHUTDOWN);
-			m_chflag &= ~int(channel_flag::F_READ_SHUTDOWNING);
 			ch_fire_read_closed();
 			NETP_TRACE_SOCKET("[socket][%s]ch_do_close_read end, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
+			m_chflag &= ~int(channel_flag::F_READ_SHUTDOWNING);
+			m_chflag |= int(channel_flag::F_READ_SHUTDOWN);
+
 			ch_rdwr_shutdown_check();
 		}
 
 		void _ch_do_close_write() {
-			if (m_chflag & int(channel_flag::F_WRITE_SHUTDOWN)) { return; }
+			if (m_chflag & (int(channel_flag::F_WRITE_SHUTDOWN)|int(channel_flag::F_WRITE_SHUTDOWNING)) ) { return; }
 
 			//boundary checking&set
-			NETP_ASSERT((m_chflag & int(channel_flag::F_WRITE_SHUTDOWNING)) == 0);
 			m_chflag |= int(channel_flag::F_WRITE_SHUTDOWNING);
-
 			m_chflag &= ~int(channel_flag::F_WRITE_SHUTDOWN_PENDING);
 			ch_aio_end_write();
 
@@ -221,11 +218,11 @@ namespace netp {
 			}
 
 			socket_base::shutdown(SHUT_WR);
-			m_chflag |= int(channel_flag::F_WRITE_SHUTDOWN);
 			//unset boundary
-			m_chflag &= ~int(channel_flag::F_WRITE_SHUTDOWNING);
 			ch_fire_write_closed();
 			NETP_TRACE_SOCKET("[socket][%s]ch_do_close_write end, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
+			m_chflag &= ~int(channel_flag::F_WRITE_SHUTDOWNING);
+			m_chflag |= int(channel_flag::F_WRITE_SHUTDOWN);
 			ch_rdwr_shutdown_check();
 		}
 
@@ -276,8 +273,8 @@ namespace netp {
 
 		void __cb_aio_accept_impl(fn_channel_initializer_t const& fn_initializer, int status, aio_ctx* ctx);
 
-		__NETP_FORCE_INLINE void ___aio_read_impl_done(const int aiort) {
-			switch (aiort) {
+		__NETP_FORCE_INLINE void ___aio_read_impl_done(int status) {
+			switch (status) {
 			case netp::OK:
 			case netp::E_SOCKET_READ_BLOCK:
 			{}
@@ -291,13 +288,13 @@ namespace netp {
 			break;
 			default:
 			{
-				NETP_ASSERT(aiort < 0);
+				NETP_ASSERT(status < 0);
 				ch_aio_end_read();
 				m_chflag |= int(channel_flag::F_READ_ERROR);
 				m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
-				ch_errno() = (aiort);
+				ch_errno() = (status);
 				ch_close_impl(nullptr);
-				NETP_WARN("[socket][%s]___aio_read_impl_done, _ch_do_close_read_write, read error: %d, close, flag: %u", ch_info().c_str(), aiort, m_chflag);
+				NETP_WARN("[socket][%s]___aio_read_impl_done, _ch_do_close_read_write, read error: %d, close, flag: %u", ch_info().c_str(), status, m_chflag);
 			}
 			}
 		}
@@ -460,6 +457,14 @@ namespace netp {
 			fn_begin_done(netp::OK, m_aio_ctx);
 		}
 
+		virtual void __ch_clean() {
+			ch_deinit();
+			if (m_chflag & int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE)) {
+				m_aio_ctx->fn_notify = nullptr;
+				L->aio_end(m_aio_ctx);
+			}
+		}
+
 		void ch_aio_end() override {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(m_outbound_entry_q.size() == 0);
@@ -468,16 +473,11 @@ namespace netp {
 			NETP_ASSERT((m_chflag & (int(channel_flag::F_WATCH_READ) | int(channel_flag::F_WATCH_WRITE))) == 0);
 			NETP_TRACE_SOCKET("[socket][%s]aio_action::END, flag: %d", ch_info().c_str(), m_chflag);
 
-			//****NOTE ON WINDOWS&IOCP****//
-			//Any pending overlapped sendand receive operations(WSASend / WSASendTo / WSARecv / WSARecvFrom with an overlapped socket) issued by any thread in this process are also canceled.Any event, completion routine, or completion port action specified for these overlapped operations is performed.The pending overlapped operations fail with the error status WSA_OPERATION_ABORTED.
-			//Refer to: https://docs.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-closesocket
 			ch_fire_closed(close());
-			if (m_chflag & int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE)) {
-				L->schedule([so = NRP<socket_channel>(this)]() {
-					so->m_aio_ctx->fn_notify = nullptr;
-					so->L->aio_end(so->m_aio_ctx);
-				});
-			}
+			//delay one tick to hold this
+			L->schedule([so = NRP<socket_channel>(this)]() {
+				so->__ch_clean();
+			});
 		}
 
 		void ch_aio_accept(fn_channel_initializer_t const& fn_accepted_initializer) override {

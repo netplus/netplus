@@ -73,9 +73,9 @@
 #define NETP_ENABLE_EPOLL
 #define NETP_ENABLE_KQUEUE
 
-#ifndef NETP_DISABLE_IOCP
-//	#define NETP_ENABLE_IOCP
-#endif
+//#ifndef NETP_DISABLE_IOCP
+	#define NETP_ENABLE_IOCP
+//#endif
 
 //FOR IO MODE
 #if defined(NETP_ENABLE_IOCP) && defined(_NETP_WIN)
@@ -135,8 +135,8 @@
 #endif
 
 #ifdef NETP_HAS_POLLER_IOCP
-	#define NETP_ENABLE_TRACE_SOCKET
-	#define NETP_ENABLE_TRACE_IOE
+	//#define NETP_ENABLE_TRACE_SOCKET
+	//#define NETP_ENABLE_TRACE_IOE
 #endif
 
 #ifdef NETP_ENABLE_TRACE_SOCKET_API

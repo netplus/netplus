@@ -11,6 +11,8 @@ class http_server_handler :
 	public netp::ref_base
 {
 public:
+	~http_server_handler() {}
+
 	void on_connected(NRP<netp::channel_handler_context> const& ctx) {
 		//ctx->channel()->ch_set_nodelay();
 	}
@@ -101,7 +103,7 @@ int main(int argc, char** argv) {
 	//}
 
 	NRP<http_server_handler> http_handler = netp::make_ref<http_server_handler>();
-	NRP<netp::channel_listen_promise> ch_lpromise = netp::socket::listen_on("tcp://0.0.0.0:8083", [http_handler](NRP<netp::channel> const& ch) {
+	NRP<netp::channel_listen_promise> ch_lpromise = netp::listen_on("tcp://0.0.0.0:8083", [http_handler](NRP<netp::channel> const& ch) {
 		NRP<netp::handler::http> h = netp::make_ref<netp::handler::http>();
 		h->bind<netp::handler::http::fn_http_activity_t>(netp::handler::http::http_event::E_CONNECTED, &http_server_handler::on_connected, http_handler, std::placeholders::_1);
 		h->bind<netp::handler::http::fn_http_activity_t>(netp::handler::http::http_event::E_READ_CLOSED, &http_server_handler::on_read_closed, http_handler, std::placeholders::_1);

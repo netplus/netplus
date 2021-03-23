@@ -9,7 +9,7 @@ int main(int argc, char** argv) {
 	NRP<netp::handler::mux> h_mux = netp::make_ref<netp::handler::mux>(L);
 	NRP<netp::socket_cfg> sockcfg = netp::make_ref<netp::socket_cfg>();
 	sockcfg->L = L;
-	NRP<netp::channel_dial_promise> dial_f = netp::socket::dial(dialurl, [h_mux](NRP <netp::channel> const& ch) {
+	NRP<netp::channel_dial_promise> dial_f = netp::dial(dialurl, [h_mux](NRP <netp::channel> const& ch) {
 		ch->pipeline()->add_last(h_mux);
 	}, sockcfg);
 
@@ -35,5 +35,6 @@ int main(int argc, char** argv) {
 	std::get<1>(dial_mux_stream_f->get())->ch_close();
 	std::get<1>(dial_mux_stream_f->get())->ch_close_promise()->wait();
 
+	app.run();
 	return 0;
 }
