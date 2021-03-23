@@ -13,10 +13,10 @@ namespace netp {
 		m_api(sockapi==nullptr?((netp::socket_api*)&netp::default_socket_api):sockapi),
 
 		m_laddr(laddr),
-		m_raddr(raddr),
+		m_raddr(raddr)
 
-		m_kvals({0}),
-		m_sock_buf({0,0})
+//		m_kvals({0}),
+//		m_sock_buf({0,0})
 	{
 		NETP_ASSERT(proto < NETP_PROTOCOL_MAX);
 	}
@@ -162,7 +162,7 @@ namespace netp {
 #else
 		#error
 #endif
-		m_kvals = vals;
+//		m_kvals = vals;
 		return netp::OK;
 	}
 
@@ -317,9 +317,10 @@ namespace netp {
 		NETP_ASSERT(m_fd > 0);
 
 		if(size ==0) {
-			int nsize = get_snd_buffer_size();
-			NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
-			m_sock_buf.sndbuf_size = nsize;
+			//default
+			//int nsize = get_snd_buffer_size();
+			//NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
+			//m_sock_buf.sndbuf_size = nsize;
 			return netp::OK;
 		} else if (size < u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE) ) {
 			size = u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE);
@@ -338,10 +339,10 @@ namespace netp {
 			return netp_socket_get_last_errno();
 		}
 
-		int nsize = get_snd_buffer_size();
-		NETP_RETURN_V_IF_MATCH(nsize, nsize <0);
-		m_sock_buf.sndbuf_size = nsize;
-		NETP_TRACE_SOCKET("[socket_base][#%d]snd buffer size new: %u", m_fd, m_sock_buf.sndbuf_size);
+		//int nsize = get_snd_buffer_size();
+		//NETP_RETURN_V_IF_MATCH(nsize, nsize <0);
+		//m_sock_buf.sndbuf_size = nsize;
+		//NETP_TRACE_SOCKET("[socket_base][#%d]snd buffer size new: %u", m_fd, m_sock_buf.sndbuf_size);
 
 		return netp::OK;
 	}
@@ -379,9 +380,10 @@ namespace netp {
 		NETP_ASSERT(m_fd != NETP_INVALID_SOCKET );
 
 		if (size == 0) {
-			int nsize = get_rcv_buffer_size();
-			NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
-			m_sock_buf.rcvbuf_size = nsize;
+			//os default
+			//int nsize = get_rcv_buffer_size();
+			//NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
+			//m_sock_buf.rcvbuf_size = nsize;
 			return netp::OK;
 		} else if (size < u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE)) {
 			size = u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE);
@@ -399,10 +401,10 @@ namespace netp {
 		if (rt == NETP_SOCKET_ERROR) {
 			return netp_socket_get_last_errno();
 		}
-		int nsize = get_rcv_buffer_size();
-		NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
-		m_sock_buf.rcvbuf_size = nsize;
-		NETP_TRACE_SOCKET("[socket_base][#%d]rcv buffer size new: %u", m_fd, m_sock_buf.rcvbuf_size);
+		//int nsize = get_rcv_buffer_size();
+		//NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
+		//m_sock_buf.rcvbuf_size = nsize;
+		//NETP_TRACE_SOCKET("[socket_base][#%d]rcv buffer size new: %u", m_fd, m_sock_buf.rcvbuf_size);
 		return netp::OK;
 	}
 

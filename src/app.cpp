@@ -270,8 +270,8 @@ namespace netp {
 
 		NETP_INFO("sizeof(netp::socket_base): %u", sizeof(netp::socket_base));
 		NETP_INFO("sizeof(netp::channel): %u", sizeof(netp::channel));
+		NETP_INFO("sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>): %u", sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>));
 		NETP_INFO("sizeof(netp::socket): %u", sizeof(netp::socket_channel));
-
 		NETP_INFO("sizeof(std::vector<int>): %u", sizeof(std::vector<int>));
 		NETP_INFO("sizeof(std::vector<std::function<void(int)>): %u", sizeof(std::vector<std::function<void(int)>>));
 		NETP_INFO("sizeof(std::vector<std::function<void(int, int)>>): %u", sizeof(std::vector<std::function<void(int, int)>>));

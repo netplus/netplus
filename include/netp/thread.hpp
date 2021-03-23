@@ -30,7 +30,7 @@
 	#define NETP_TRACE_THREAD(...)
 #endif
 
-#define NETP_ENABLE_DEBUG_STACK_SIZE
+//#define NETP_ENABLE_DEBUG_STACK_SIZE
 
 namespace netp {
 

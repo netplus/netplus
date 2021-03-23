@@ -63,15 +63,35 @@ namespace netp {
 		std::atomic<u8_t> m_state;//memory order constraint var
 		V m_v;
 		spin_mutex m_mutex;
-		condition_variable_any m_cond;
+		condition_variable_any* m_cond;
 		int m_waiter;
+
+		__NETP_FORCE_INLINE void __cond_allocate_check() {
+			if (m_cond == 0) {
+				m_cond = netp::allocator<condition_variable_any>::malloc(1);
+				new((void*)m_cond)condition_variable_any();
+			}
+		}
+
+		__NETP_FORCE_INLINE void __cond_deallocate_check() {
+			if (m_cond != 0) {
+				m_cond->~condition_variable_any();
+				netp::allocator< condition_variable_any>::free(m_cond);
+				m_cond = 0;
+			}
+		}
 
 	public:
 		promise():
 			m_state(u8_t(promise_state::S_IDLE)),
 			m_v(V()),
+			m_cond(0),
 			m_waiter(0)
 		{}
+
+		~promise() {
+			__cond_deallocate_check();
+		}
 
 		inline const V& get() {
 			wait();
@@ -93,14 +113,15 @@ namespace netp {
 				lock_guard<spin_mutex> lg(m_mutex);
 				if (m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE) ) {
 					++promise_t::m_waiter;
-					m_cond.wait(m_mutex);
+					__cond_allocate_check();
+					m_cond->wait(m_mutex);
 					--promise_t::m_waiter;
 				}
 			}
 		}
 
 		template <class _Rep, class _Period>
-		inline void wait_for(std::chrono::duration<_Rep, _Period>&& dur) {
+		void wait_for(std::chrono::duration<_Rep, _Period>&& dur) {
 			if (m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE)) {
 				lock_guard<spin_mutex> lg(m_mutex);
 				const std::chrono::time_point< std::chrono::steady_clock> tp_expire = std::chrono::steady_clock::now() + dur;
@@ -110,7 +131,8 @@ namespace netp {
 						break;
 					}
 					++promise_t::m_waiter;
-					m_cond.wait_for<_Rep, _Period>(m_mutex, now- tp_expire);
+					__cond_allocate_check();
+					m_cond->wait_for<_Rep, _Period>(m_mutex, now- tp_expire);
 					--promise_t::m_waiter;
 				}
 			}
@@ -133,7 +155,7 @@ namespace netp {
 			}
 
 			NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_CANCELLED));
-			m_cond.notify_all();
+			promise_t::m_waiter >0 ? m_cond->notify_all():(void)0;
 			event_broker_promise_t::invoke(V());
 			return true;
 		}
@@ -151,7 +173,7 @@ namespace netp {
 
 		template<class _callable
 			, class = typename std::enable_if<std::is_convertible<_callable, fn_promise_callee_t>::value>::type>
-			void if_done(_callable const& callee) {
+		void if_done(_callable const& callee) {
 			lock_guard<spin_mutex> lg(m_mutex);
 			event_broker_promise_t::bind(std::bind(std::forward<_callable>(callee), std::placeholders::_1));
 			if (is_done()) {
@@ -182,7 +204,7 @@ namespace netp {
 				NETP_DEBUG_STACK_SIZE();
 				lock_guard<spin_mutex> lg(promise_t::m_mutex);
 				event_broker_promise_t::invoke(m_v);
-				m_waiter>0 ?m_cond.notify_all():(void)0;
+				promise_t::m_waiter >0 ?m_cond->notify_all():(void)0;
 				return;
 			}
 			NETP_THROW("set failed: DO NOT set twice on a same promise");
@@ -195,7 +217,7 @@ namespace netp {
 				NETP_DEBUG_STACK_SIZE();
 				lock_guard<spin_mutex> lg(promise_t::m_mutex);
 				event_broker_promise_t::invoke(m_v);
-				m_waiter > 0 ? m_cond.notify_all() : (void)0;
+				promise_t::m_waiter > 0 ? m_cond->notify_all() : (void)0;
 				return;
 			}
 			NETP_THROW("set failed: DO NOT set twice on a same promise");

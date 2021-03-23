@@ -115,19 +115,20 @@ namespace netp {
 	{
 		friend void do_dial(address const& addr, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_cfg> const& cfg);
 		friend void do_listen_on(NRP<channel_listen_promise> const& listenp, address const& laddr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg, int backlog);
+		typedef std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>> socket_outbound_entry_t;
 
 	protected:
 		aio_ctx* m_aio_ctx;
 		byte_t* m_rcv_buf_ptr;
 		u32_t m_rcv_buf_size;
-		NRP<socket_cfg> m_listen_cfg;
 
-		typedef std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>> socket_outbound_entry_t;
+		u32_t m_noutbound_bytes;
 		socket_outbound_entry_t m_outbound_entry_q;
-		netp::size_t m_noutbound_bytes;
 
 		netp::size_t m_outbound_budget;
 		netp::size_t m_outbound_limit; //in byte
+
+		NRP<socket_cfg> m_listen_cfg;
 
 		void _tmcb_BDL(NRP<timer> const& t);
 	public:
@@ -137,10 +138,10 @@ namespace netp {
 			m_aio_ctx(0),
 			m_rcv_buf_ptr(cfg->L->channel_rcv_buf()->head()),
 			m_rcv_buf_size(u32_t(cfg->L->channel_rcv_buf()->left_right_capacity())),
-
 			m_noutbound_bytes(0),
 			m_outbound_budget(cfg->bdlimit),
-			m_outbound_limit(cfg->bdlimit)
+			m_outbound_limit(cfg->bdlimit),
+			m_listen_cfg(nullptr)
 		{
 			NETP_ASSERT(cfg->L != nullptr);
 		}
@@ -213,7 +214,7 @@ namespace netp {
 				NETP_WARN("[socket][%s]cancel outbound, nbytes:%u, errno: %d", ch_info().c_str(), entry.data->len(), ch_errno());
 				//hold a copy before we do pop it from queue
 				NRP<promise<int>> wp = entry.write_promise;
-				m_noutbound_bytes -= entry.data->len();
+				m_noutbound_bytes -= u32_t(entry.data->len());
 				m_outbound_entry_q.pop_front();
 				NETP_ASSERT(wp->is_idle());
 				wp->set(ch_errno());
@@ -395,7 +396,7 @@ namespace netp {
 		NRP<promise<int>> ch_get_read_buffer_size() override {
 			NRP<promise<int>> chp = make_ref<promise<int>>();
 			L->execute([S = NRP<socket_channel>(this), chp]() {
-				chp->set(S->m_sock_buf.rcvbuf_size);
+				chp->set(S->get_rcv_buffer_size());
 			});
 			return chp;
 		}
@@ -411,7 +412,7 @@ namespace netp {
 		NRP<promise<int>> ch_get_write_buffer_size() override {
 			NRP<promise<int>> chp = make_ref<promise<int>>();
 			L->execute([S = NRP<socket_channel>(this), chp]() {
-				chp->set(S->m_sock_buf.sndbuf_size);
+				chp->set(S->get_snd_buffer_size());
 			});
 			return chp;
 		}
@@ -428,7 +429,7 @@ namespace netp {
 		std::string ch_info() const override {
 			return socketinfo{ m_fd, (m_family),(m_type),(m_protocol),local_addr(), remote_addr() }.to_string();
 		}
-		void ch_set_bdlimit(u32_t limit) override {
+		void ch_set_bdlimit(netp::size_t limit) override {
 			L->execute([s = NRP<socket_channel>(this), limit]() {
 				s->m_outbound_limit = limit;
 				s->m_outbound_budget = s->m_outbound_limit;
