@@ -76,6 +76,7 @@ namespace netp {
 			if (m_aio_ctx == 0) {
 				ch_errno() = netp::E_AIO_BEGIN_FAILED;
 				m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
+				ch_close(nullptr);
 				fn_begin_done(netp::E_AIO_BEGIN_FAILED, 0);
 				return;
 			}
