@@ -178,9 +178,9 @@ const static size_t TABLE_5[T15] = {
 	void pool_align_allocator::init_table_slot(u8_t t, u8_t slot, std::vector<void*>& slotv, size_t capacity) {
 		slotv.reserve(capacity);
 
-		//if (t > TABLE::T4) { 
-		//	return;
-		//}
+		if (t > TABLE::T4) { 
+			return;
+		}
 
 		for (size_t i = 0; i < (capacity >> 1); ++i) {
 			size_t size = 0;

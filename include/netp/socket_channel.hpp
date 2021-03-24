@@ -118,7 +118,7 @@ namespace netp {
 		typedef std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>> socket_outbound_entry_t;
 
 	protected:
-		aio_ctx* m_aio_ctx;
+		io_ctx* m_io_ctx;
 		byte_t* m_rcv_buf_ptr;
 		u32_t m_rcv_buf_size;
 
@@ -135,7 +135,7 @@ namespace netp {
 		socket_channel(NRP<socket_cfg> const& cfg) :
 			channel(cfg->L),
 			socket_base(cfg->fd, cfg->family, cfg->type, cfg->proto, cfg->laddr, cfg->raddr, cfg->sockapi),
-			m_aio_ctx(0),
+			m_io_ctx(0),
 			m_rcv_buf_ptr(cfg->L->channel_rcv_buf()->head()),
 			m_rcv_buf_size(u32_t(cfg->L->channel_rcv_buf()->left_right_capacity())),
 			m_noutbound_bytes(0),
@@ -186,7 +186,7 @@ namespace netp {
 			if (m_chflag & (int(channel_flag::F_READ_SHUTDOWNING)|int(channel_flag::F_READ_SHUTDOWN)) ) { return; }
 
 			m_chflag |= int(channel_flag::F_READ_SHUTDOWNING);
-			ch_aio_end_read();
+			ch_io_end_read();
 			//end_read and log might result in F_READ_SHUTDOWN state. (FOR net_logger)
 			socket_base::shutdown(SHUT_RD);
 			ch_fire_read_closed();
@@ -203,7 +203,7 @@ namespace netp {
 			//boundary checking&set
 			m_chflag |= int(channel_flag::F_WRITE_SHUTDOWNING);
 			m_chflag &= ~int(channel_flag::F_WRITE_SHUTDOWN_PENDING);
-			ch_aio_end_write();
+			ch_io_end_write();
 
 			while (m_outbound_entry_q.size()) {
 				NETP_ASSERT((ch_errno() != 0) && (m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_READ_ERROR) | int(channel_flag::F_IO_EVENT_LOOP_NOTIFY_TERMINATING))));
@@ -229,9 +229,8 @@ namespace netp {
 		void _do_dial_done_impl(int code, fn_channel_initializer_t const& initializer, NRP<promise<int>> const& chf);
 
 		void __do_accept_fire(fn_channel_initializer_t const& ch_initializer) {
-			ch_aio_begin([ch=NRP<socket_channel>(this),ch_initializer](int status, aio_ctx*) {
-				int aiort = status;
-				if (aiort != netp::OK) {
+			ch_io_begin([ch=NRP<socket_channel>(this),ch_initializer](int status, io_ctx*) {
+				if (status != netp::OK) {
 					//begin failed
 					NETP_ASSERT(ch->ch_flag() & int(channel_flag::F_CLOSED));
 					return;
@@ -242,38 +241,38 @@ namespace netp {
 					}
 				} catch (netp::exception const& e) {
 					NETP_ASSERT(e.code() != netp::OK);
-					aiort = e.code();
+					status = e.code();
 				} catch (std::exception const& e) {
-					aiort = netp_socket_get_last_errno();
-					if (aiort == netp::OK) {
-						aiort = netp::E_UNKNOWN;
+					status = netp_socket_get_last_errno();
+					if (status == netp::OK) {
+						status = netp::E_UNKNOWN;
 					}
-					NETP_ERR("[socket]accept failed: %d:%s", aiort, e.what());
+					NETP_ERR("[socket]accept failed: %d:%s", status, e.what());
 				} catch (...) {
-					aiort = netp_socket_get_last_errno();
-					if (aiort == netp::OK) {
-						aiort = netp::E_UNKNOWN;
+					status = netp_socket_get_last_errno();
+					if (status == netp::OK) {
+						status = netp::E_UNKNOWN;
 					}
-					NETP_ERR("[socket]accept failed, %d: unknown", aiort);
+					NETP_ERR("[socket]accept failed, %d: unknown", status);
 				}
 
-				if (aiort != netp::OK) {
-					ch->ch_errno() = aiort;
+				if (status != netp::OK) {
+					ch->ch_errno() = status;
 					ch->ch_flag() |= int(channel_flag::F_READ_ERROR);
 					ch->ch_close_impl(nullptr);
-					NETP_ERR("[socket][%s]accept failed: %d", ch->ch_info().c_str(), aiort);
+					NETP_ERR("[socket][%s]accept failed: %d", ch->ch_info().c_str(), status);
 					return;
 				}
 
 				ch->ch_set_connected();
 				ch->ch_fire_connected();
-				ch->ch_aio_read();
+				ch->ch_io_read();
 			});
 		}
 
-		void __cb_aio_accept_impl(fn_channel_initializer_t const& fn_initializer, int status, aio_ctx* ctx);
+		void __cb_io_accept_impl(fn_channel_initializer_t const& fn_initializer, int status, io_ctx* ctx);
 
-		__NETP_FORCE_INLINE void ___aio_read_impl_done(int status) {
+		__NETP_FORCE_INLINE void ___io_read_impl_done(int status) {
 			switch (status) {
 			case netp::OK:
 			case netp::E_SOCKET_READ_BLOCK:
@@ -289,36 +288,36 @@ namespace netp {
 			default:
 			{
 				NETP_ASSERT(status < 0);
-				ch_aio_end_read();
+				ch_io_end_read();
 				m_chflag |= int(channel_flag::F_READ_ERROR);
 				m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
 				ch_errno() = (status);
 				ch_close_impl(nullptr);
-				NETP_WARN("[socket][%s]___aio_read_impl_done, _ch_do_close_read_write, read error: %d, close, flag: %u", ch_info().c_str(), status, m_chflag);
+				NETP_WARN("[socket][%s]___io_read_impl_done, _ch_do_close_read_write, read error: %d, close, flag: %u", ch_info().c_str(), status, m_chflag);
 			}
 			}
 		}
 
-		void __cb_aio_read_from_impl(int status, aio_ctx* ctx);
-		void __cb_aio_read_impl(int status, aio_ctx* ctx);
+		void __cb_io_read_from_impl(int status, io_ctx* ctx);
+		void __cb_io_read_impl(int status, io_ctx* ctx);
 
-		inline void __handle_aio_write_impl_done(const int aiort) {
-			switch (aiort) {
+		inline void __handle_io_write_impl_done(const int status) {
+			switch (status) {
 			case netp::OK:
 			{
 				NETP_ASSERT((m_chflag & int(channel_flag::F_BDLIMIT)) == 0);
 				NETP_ASSERT(m_outbound_entry_q.size() == 0);
 				if (m_chflag & int(channel_flag::F_CLOSE_PENDING)) {
 					_ch_do_close_read_write();
-					NETP_TRACE_SOCKET("[socket][%s]aio_write, end F_CLOSE_PENDING, _ch_do_close_read_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
+					NETP_TRACE_SOCKET("[socket][%s]IO_WRITE, end F_CLOSE_PENDING, _ch_do_close_read_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
 				}
 				else if (m_chflag & int(channel_flag::F_WRITE_SHUTDOWN_PENDING)) {
 					_ch_do_close_write();
-					NETP_TRACE_SOCKET("[socket][%s]aio_write, end F_WRITE_SHUTDOWN_PENDING, ch_close_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
+					NETP_TRACE_SOCKET("[socket][%s]IO_WRITE, end F_WRITE_SHUTDOWN_PENDING, ch_close_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
 				}
 				else {
 					std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>().swap(m_outbound_entry_q);
-					ch_aio_end_write();
+					ch_io_end_write();
 				}
 			}
 			break;
@@ -327,32 +326,32 @@ namespace netp {
 				NETP_ASSERT(m_outbound_entry_q.size() > 0);
 #ifdef NETP_ENABLE_FAST_WRITE
 				NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER) | int(channel_flag::F_WATCH_WRITE)));
-				ch_aio_write();
+				ch_io_write();
 #else
 				NETP_ASSERT(m_chflag & int(channel_flag::F_WATCH_WRITE));
 #endif
-				//NETP_TRACE_SOCKET("[socket][%s]__cb_aio_write_impl, write block", info().c_str());
+				//NETP_TRACE_SOCKET("[socket][%s]__cb_io_write_impl, write block", info().c_str());
 			}
 			break;
 			case netp::E_CHANNEL_BDLIMIT:
 			{
 				m_chflag |= int(channel_flag::F_BDLIMIT);
-				ch_aio_end_write();
+				ch_io_end_write();
 			}
 			break;
 			default:
 			{
-				ch_aio_end_write();
+				ch_io_end_write();
 				m_chflag |= int(channel_flag::F_WRITE_ERROR);
 				m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
-				ch_errno() = (aiort);
+				ch_errno() = (status);
 				ch_close_impl(nullptr);
-				NETP_WARN("[socket][%s]__cb_aio_write_impl, call_ch_do_close_read_write, write error: %d, m_chflag: %u", ch_info().c_str(), aiort, m_chflag);
+				NETP_WARN("[socket][%s]__cb_io_write_impl, call_ch_do_close_read_write, write error: %d, m_chflag: %u", ch_info().c_str(), status, m_chflag);
 			}
 			break;
 			}
 		}
-		void __cb_aio_write_impl(int status, aio_ctx* ctx);
+		void __cb_io_write_impl(int status, io_ctx* ctx);
 
 		//@note, we need simulate a async write, so for write operation, we'll flush outbound buffer in the next loop
 		//flush until error
@@ -366,11 +365,11 @@ namespace netp {
 		void _ch_do_close_listener();
 		void _ch_do_close_read_write();
 
-		virtual void __aio_begin_done(aio_ctx*) {
+		virtual void __io_begin_done(io_ctx*) {
 			m_chflag |= int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE);
 		}
 
-		virtual void __aio_notify_terminating(int status, aio_ctx*) {
+		virtual void __io_notify_terminating(int status, io_ctx*) {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(status == netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING);
 			//terminating notify, treat as a error
@@ -433,46 +432,46 @@ namespace netp {
 			});
 		};
 
-		void ch_aio_begin(fn_aio_event_t const& fn_begin_done) override {
+		void ch_io_begin(fn_io_event_t const& fn_begin_done) override {
 			NETP_ASSERT(is_nonblocking());
 
 			if (!L->in_event_loop()) {
 				L->schedule([s = NRP<socket_channel>(this), fn_begin_done]() {
-					s->ch_aio_begin(fn_begin_done);
+					s->ch_io_begin(fn_begin_done);
 				});
 				return;
 			}
 
 			NETP_ASSERT((m_chflag & (int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE))) == 0);
 
-			m_aio_ctx = L->aio_begin(m_fd);
-			if (m_aio_ctx == 0) {
-				ch_errno() = netp::E_AIO_BEGIN_FAILED;
+			m_io_ctx = L->io_begin(m_fd);
+			if (m_io_ctx == 0) {
+				ch_errno() = netp::E_IO_BEGIN_FAILED;
 				m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
 				ch_close(nullptr);
-				fn_begin_done(netp::E_AIO_BEGIN_FAILED, 0);
+				fn_begin_done(netp::E_IO_BEGIN_FAILED, 0);
 				return;
 			}
-			m_aio_ctx->fn_notify = std::bind(&socket_channel::__aio_notify_terminating, NRP<socket_channel>(this), std::placeholders::_1, std::placeholders::_2);
-			__aio_begin_done(m_aio_ctx);
-			fn_begin_done(netp::OK, m_aio_ctx);
+			m_io_ctx->fn_notify = std::bind(&socket_channel::__io_notify_terminating, NRP<socket_channel>(this), std::placeholders::_1, std::placeholders::_2);
+			__io_begin_done(m_io_ctx);
+			fn_begin_done(netp::OK, m_io_ctx);
 		}
 
 		virtual void __ch_clean() {
 			ch_deinit();
 			if (m_chflag & int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE)) {
-				m_aio_ctx->fn_notify = nullptr;
-				L->aio_end(m_aio_ctx);
+				m_io_ctx->fn_notify = nullptr;
+				L->io_end(m_io_ctx);
 			}
 		}
 
-		void ch_aio_end() override {
+		void ch_io_end() override {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(m_outbound_entry_q.size() == 0);
 			NETP_ASSERT(m_noutbound_bytes == 0);
 			NETP_ASSERT(m_chflag & int(channel_flag::F_CLOSED));
 			NETP_ASSERT((m_chflag & (int(channel_flag::F_WATCH_READ) | int(channel_flag::F_WATCH_WRITE))) == 0);
-			NETP_TRACE_SOCKET("[socket][%s]aio_action::END, flag: %d", ch_info().c_str(), m_chflag);
+			NETP_TRACE_SOCKET("[socket][%s]io_action::END, flag: %d", ch_info().c_str(), m_chflag);
 
 			ch_fire_closed(close());
 			//delay one tick to hold this
@@ -481,37 +480,37 @@ namespace netp {
 			});
 		}
 
-		void ch_aio_accept(fn_channel_initializer_t const& fn_accepted_initializer) override {
+		void ch_io_accept(fn_channel_initializer_t const& fn_accepted_initializer) override {
 			if (!L->in_event_loop()) {
 				L->schedule([ch=NRP<channel>(this), fn_accepted_initializer ]() {
-					ch->ch_aio_accept();
+					ch->ch_io_accept();
 				});
 				return;
 			}
 			NETP_ASSERT(L->in_event_loop());
 
 			if (m_chflag & int(channel_flag::F_WATCH_READ)) {
-				NETP_TRACE_SOCKET("[socket][%s][_do_aio_accept]F_WATCH_READ state already", ch_info().c_str());
+				NETP_TRACE_SOCKET("[socket][%s][_do_io_accept]F_WATCH_READ state already", ch_info().c_str());
 				return;
 			}
 
 			if (m_chflag & int(channel_flag::F_READ_SHUTDOWN)) {
-				NETP_TRACE_SOCKET("[socket][%s][_do_aio_accept]cancel for rd closed already", ch_info().c_str());
+				NETP_TRACE_SOCKET("[socket][%s][_do_io_accept]cancel for rd closed already", ch_info().c_str());
 				return;
 			}
-			NETP_TRACE_SOCKET("[socket][%s][_do_aio_accept]watch AIO_READ", ch_info().c_str());
+			NETP_TRACE_SOCKET("[socket][%s][_do_io_accept]watch IO_READ", ch_info().c_str());
 
 			//@TODO: provide custome accept feature
-			//const fn_aio_event_t _fn = cb_accepted == nullptr ? std::bind(&socket::__cb_async_accept_impl, NRP<socket>(this), std::placeholders::_1) : cb_accepted;
-			int rt = L->aio_do(aio_action::READ, m_aio_ctx);
+			//const fn_io_event_t _fn = cb_accepted == nullptr ? std::bind(&socket::__cb_async_accept_impl, NRP<socket>(this), std::placeholders::_1) : cb_accepted;
+			int rt = L->io_do(io_action::READ, m_io_ctx);
 			if (rt == netp::OK) {
 				m_chflag |= int(channel_flag::F_WATCH_READ);
-				m_aio_ctx->fn_read = std::bind(&socket_channel::__cb_aio_accept_impl, NRP<socket_channel>(this), fn_accepted_initializer, std::placeholders::_1, std::placeholders::_2);
+				m_io_ctx->fn_read = std::bind(&socket_channel::__cb_io_accept_impl, NRP<socket_channel>(this), fn_accepted_initializer, std::placeholders::_1, std::placeholders::_2);
 			}
 		}
 
-		void ch_aio_end_accept() override {
-			ch_aio_end_read();
+		void ch_io_end_accept() override {
+			ch_io_end_read();
 		}
 
 		void ch_write_impl(NRP<packet> const& outlet, NRP<promise<int>> const& chp) override;
@@ -535,16 +534,16 @@ namespace netp {
 		void ch_close_write_impl(NRP<promise<int>> const& chp) override;
 		void ch_close_impl(NRP<promise<int>> const& chp) override;
 
-		void ch_aio_read(fn_aio_event_t const& fn_read = nullptr) override {
+		void ch_io_read(fn_io_event_t const& fn_read = nullptr) override {
 			if (!L->in_event_loop()) {
 				L->schedule([s = NRP<socket_channel>(this), fn_read]()->void {
-					s->ch_aio_read(fn_read);
+					s->ch_io_read(fn_read);
 				});
 				return;
 			}
 			NETP_ASSERT((m_chflag & int(channel_flag::F_READ_SHUTDOWNING)) == 0);
 			if (m_chflag & int(channel_flag::F_WATCH_READ)) {
-				NETP_TRACE_SOCKET("[socket][%s]aio_action::READ, ignore, flag: %d", ch_info().c_str(), m_chflag);
+				NETP_TRACE_SOCKET("[socket][%s]io_action::READ, ignore, flag: %d", ch_info().c_str(), m_chflag);
 				return;
 			}
 
@@ -555,36 +554,36 @@ namespace netp {
 				}
 				return;
 			}
-			int rt = L->aio_do(aio_action::READ, m_aio_ctx);
+			int rt = L->io_do(io_action::READ, m_io_ctx);
 			if (rt == netp::OK) {
 				m_chflag |= int(channel_flag::F_WATCH_READ);
-				m_aio_ctx->fn_read = fn_read != nullptr ? fn_read :
-					is_udp() ? std::bind(&socket_channel::__cb_aio_read_from_impl, NRP<socket_channel>(this), std::placeholders::_1, std::placeholders::_2) :
-					std::bind(&socket_channel::__cb_aio_read_impl, NRP<socket_channel>(this), std::placeholders::_1, std::placeholders::_2);
+				m_io_ctx->fn_read = fn_read != nullptr ? fn_read :
+					is_udp() ? std::bind(&socket_channel::__cb_io_read_from_impl, NRP<socket_channel>(this), std::placeholders::_1, std::placeholders::_2) :
+					std::bind(&socket_channel::__cb_io_read_impl, NRP<socket_channel>(this), std::placeholders::_1, std::placeholders::_2);
 			}
-			NETP_TRACE_IOE("[socket][%s]aio_action::READ", ch_info().c_str());
+			NETP_TRACE_IOE("[socket][%s]io_action::READ", ch_info().c_str());
 		}
 
-		void ch_aio_end_read()override {
+		void ch_io_end_read()override {
 			if (!L->in_event_loop()) {
 				L->schedule([_so = NRP<socket_channel>(this)]()->void {
-					_so->ch_aio_end_read();
+					_so->ch_io_end_read();
 				});
 				return;
 			}
 
 			if ((m_chflag & int(channel_flag::F_WATCH_READ))) {
 				m_chflag &= ~int(channel_flag::F_WATCH_READ);
-				L->aio_do(aio_action::END_READ, m_aio_ctx);
-				m_aio_ctx->fn_read = nullptr;
-				NETP_TRACE_IOE("[socket][%s]aio_action::END_READ", ch_info().c_str());
+				L->io_do(io_action::END_READ, m_io_ctx);
+				m_io_ctx->fn_read = nullptr;
+				NETP_TRACE_IOE("[socket][%s]io_action::END_READ", ch_info().c_str());
 			}
 		}
 
-		void ch_aio_write(fn_aio_event_t const& fn_write = nullptr) override {
+		void ch_io_write(fn_io_event_t const& fn_write = nullptr) override {
 			if (!L->in_event_loop()) {
 				L->schedule([_so = NRP<socket_channel>(this), fn_write]()->void {
-					_so->ch_aio_write(fn_write);
+					_so->ch_io_write(fn_write);
 				});
 				return;
 			}
@@ -599,25 +598,25 @@ namespace netp {
 
 			if (m_chflag & int(channel_flag::F_WRITE_SHUTDOWN)) {
 				NETP_ASSERT((m_chflag & int(channel_flag::F_WATCH_WRITE)) == 0);
-				NETP_TRACE_SOCKET("[socket][%s]aio_action::WRITE, cancel for wr closed already", ch_info().c_str());
+				NETP_TRACE_SOCKET("[socket][%s]io_action::WRITE, cancel for wr closed already", ch_info().c_str());
 				if (fn_write != nullptr) {
 					fn_write(netp::E_CHANNEL_WRITE_CLOSED, 0);
 				}
 				return;
 			}
 
-			int rt = L->aio_do(aio_action::WRITE, m_aio_ctx);
+			int rt = L->io_do(io_action::WRITE, m_io_ctx);
 			if (rt == netp::OK) {
 				m_chflag |= int(channel_flag::F_WATCH_WRITE);
-				m_aio_ctx->fn_write = fn_write != nullptr ? fn_write :
-					std::bind(&socket_channel::__cb_aio_write_impl, NRP<socket_channel>(this), std::placeholders::_1, std::placeholders::_2);
+				m_io_ctx->fn_write = fn_write != nullptr ? fn_write :
+					std::bind(&socket_channel::__cb_io_write_impl, NRP<socket_channel>(this), std::placeholders::_1, std::placeholders::_2);
 			}
 		}
 
-		void ch_aio_end_write() override {
+		void ch_io_end_write() override {
 			if (!L->in_event_loop()) {
 				L->schedule([_so = NRP<socket_channel>(this)]()->void {
-					_so->ch_aio_end_write();
+					_so->ch_io_end_write();
 				});
 				return;
 			}
@@ -625,23 +624,23 @@ namespace netp {
 			if (m_chflag & int(channel_flag::F_WATCH_WRITE)) {
 				m_chflag &= ~int(channel_flag::F_WATCH_WRITE);
 
-				L->aio_do(aio_action::END_WRITE, m_aio_ctx);
-				m_aio_ctx->fn_write = nullptr;
-				NETP_TRACE_IOE("[socket][%s]aio_action::END_WRITE", ch_info().c_str());
+				L->io_do(io_action::END_WRITE, m_io_ctx);
+				m_io_ctx->fn_write = nullptr;
+				NETP_TRACE_IOE("[socket][%s]io_action::END_WRITE", ch_info().c_str());
 			}
 		}
 
-		void ch_aio_connect(fn_aio_event_t const& fn = nullptr) override {
+		void ch_io_connect(fn_io_event_t const& fn = nullptr) override {
 			NETP_ASSERT(fn != nullptr);
 			if (m_chflag & int(channel_flag::F_WATCH_WRITE)) {
 				return;
 			}
-			ch_aio_write(fn);
+			ch_io_write(fn);
 		}
 
-		void ch_aio_end_connect() override {
+		void ch_io_end_connect() override {
 			NETP_ASSERT(!ch_is_passive());
-			ch_aio_end_write();
+			ch_io_end_write();
 		}
 	};
 }

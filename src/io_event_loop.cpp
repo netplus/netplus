@@ -120,7 +120,7 @@ namespace netp {
 
 	void io_event_loop::__do_notify_terminating() {
 		NETP_ASSERT( in_event_loop() );
-		aio_do(aio_action::NOTIFY_TERMINATING, 0);
+		io_do(io_action::NOTIFY_TERMINATING, 0);
 		//no competitor here, store directly
 		NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_TERMINATING));
 		m_state.store(u8_t(loop_state::S_TERMINATED), std::memory_order_release);

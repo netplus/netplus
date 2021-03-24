@@ -284,8 +284,8 @@ namespace netp {
 		NETP_INFO("sizeof(std::condition_variable): %u", sizeof(std::condition_variable));
 		NETP_INFO("sizeof(netp::condition_any): %u", sizeof(netp::condition_any));
 		NETP_INFO("sizeof(std::condition_variable_any): %u", sizeof(std::condition_variable_any));
-		NETP_INFO("sizeof(netp::fn_aio_event_t): %u", sizeof(fn_aio_event_t));
-		NETP_INFO("sizeof(netp::aio_ctx): %u", sizeof(netp::aio_ctx));
+		NETP_INFO("sizeof(netp::fn_io_event_t): %u", sizeof(fn_io_event_t));
+		NETP_INFO("sizeof(netp::io_ctx): %u", sizeof(netp::io_ctx));
 	}
 #endif
 
@@ -484,40 +484,40 @@ namespace netp {
 
 	void app_test_unit::test_netp_allocator(size_t loop) {
 		{
-			netp::benchmark mk("netp_allocator");
-			test_vector_pushback<std::vector<size_t, netp::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
+			netp::benchmark mk("std::vector<size_t,netp::allocator<size_t>");
+			test_vector_pushback<std::vector<size_t,netp::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 		{
-			netp::benchmark mk("netp_allocator");
-			test_vector_pushback<std::vector<size_t, netp::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
+			netp::benchmark mk("std::vector<size_t,netp::allocator<size_t>");
+			test_vector_pushback<std::vector<size_t,netp::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 
 		{
-			netp::benchmark mk("netp_allocator_nonpod");
+			netp::benchmark mk("std::vector<NRP<__nonpod>,netp::allocator<NRP<__nonpod>>");
 			test_vector_pushback_nonpod<std::vector<NRP<__nonpod>, netp::allocator<NRP<__nonpod>>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 		{
-			netp::benchmark mk("netp_allocator_nonpod");
+			netp::benchmark mk("std::vector<NRP<__nonpod>,netp::allocator<NRP<__nonpod>>");
 			test_vector_pushback_nonpod<std::vector<NRP<__nonpod>, netp::allocator<NRP<__nonpod>>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 	}
 
 	void app_test_unit::test_std_allocator(size_t loop) {
 		{
-			netp::benchmark mk("std_allocator");
+			netp::benchmark mk("std::vector<size_t,std::allocator<size_t>");
 			test_vector_pushback<std::vector<size_t, std::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 		{
-			netp::benchmark mk("std_allocator");
+			netp::benchmark mk("std::vector<size_t,std::allocator<size_t>");
 			test_vector_pushback<std::vector<size_t, std::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 
 		{
-			netp::benchmark mk("std_allocator_nonpod");
+			netp::benchmark mk("std::vector<NRP<__nonpod>,std::allocator<NRP<__nonpod>>");
 			test_vector_pushback_nonpod<std::vector<NRP<__nonpod>, std::allocator<NRP<__nonpod>>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 		{
-			netp::benchmark mk("std_allocator_nonpod");
+			netp::benchmark mk("std::vector<NRP<__nonpod>,std::allocator<NRP<__nonpod>>");
 			test_vector_pushback_nonpod<std::vector<NRP<__nonpod>, std::allocator<NRP<__nonpod>>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 	}

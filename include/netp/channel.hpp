@@ -147,7 +147,7 @@ namespace netp {
 				if ( ((m_chflag&(int(channel_flag::F_CLOSED)|int(channel_flag::F_CLOSING)))==0) && ((m_chflag & (int(channel_flag::F_READWRITE_SHUTDOWN))) == int(channel_flag::F_READWRITE_SHUTDOWN)) ) {
 					NETP_TRACE_CHANNEL("[channel][%s]ch_rdwr_shutdown_check trigger ch_close_impl()", ch_info().c_str() );
 					m_chflag |= int(channel_flag::F_CLOSED);
-					ch_aio_end();
+					ch_io_end();
 				}
 			}
 
@@ -304,20 +304,20 @@ public: \
 		virtual void ch_close_write_impl(NRP<promise<int>> const& chp) = 0;
 		virtual void ch_close_impl(NRP<promise<int>> const& chp) = 0;
 		
-		virtual void ch_aio_begin(fn_aio_event_t const& fn = nullptr) = 0;
-		virtual void ch_aio_end() = 0;
+		virtual void ch_io_begin(fn_io_event_t const& fn = nullptr) = 0;
+		virtual void ch_io_end() = 0;
 
-		virtual void ch_aio_accept(fn_channel_initializer_t const& fn = nullptr) = 0;
-		virtual void ch_aio_end_accept() = 0;
+		virtual void ch_io_accept(fn_channel_initializer_t const& fn = nullptr) = 0;
+		virtual void ch_io_end_accept() = 0;
 
-		virtual void ch_aio_read( fn_aio_event_t const& fn = nullptr) = 0;
-		virtual void ch_aio_end_read() = 0;
+		virtual void ch_io_read( fn_io_event_t const& fn = nullptr) = 0;
+		virtual void ch_io_end_read() = 0;
 
-		virtual void ch_aio_write(fn_aio_event_t const& fn = nullptr) = 0;
-		virtual void ch_aio_end_write() = 0;
+		virtual void ch_io_write(fn_io_event_t const& fn = nullptr) = 0;
+		virtual void ch_io_end_write() = 0;
 
-		virtual void ch_aio_connect( fn_aio_event_t const& fn ) = 0;
-		virtual void ch_aio_end_connect() = 0;
+		virtual void ch_io_connect( fn_io_event_t const& fn ) = 0;
+		virtual void ch_io_end_connect() = 0;
 	};
 }
 #endif

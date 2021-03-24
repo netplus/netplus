@@ -26,12 +26,12 @@ namespace netp {
 
 			~poller_select() {}
 
-			int watch(u8_t, aio_ctx*) override
+			int watch(u8_t, io_ctx*) override
 			{
 				return netp::OK;
 			}
 
-			int unwatch(u8_t, aio_ctx*) override
+			int unwatch(u8_t, io_ctx*) override
 			{
 				return netp::OK;
 			}
@@ -56,9 +56,9 @@ namespace netp {
 			FD_ZERO(&m_fds[fds_w]);
 
 			SOCKET max_fd_v = (SOCKET)0;
-			aio_ctx* ctx;
-			for (ctx = m_aio_ctx_list.next; ctx != &m_aio_ctx_list; ctx = ctx->next) {
-				for (int i = aio_flag::AIO_READ; i < aio_flag::AIO_FLAG_MAX; ++i) {
+			io_ctx* ctx;
+			for (ctx = m_io_ctx_list.next; ctx != &m_io_ctx_list; ctx = ctx->next) {
+				for (int i = io_flag::IO_READ; i < io_flag::IO_FLAG_MAX; ++i) {
 					if (ctx->flag&i) {
 						FD_SET((ctx->fd), &m_fds[i]);
 						if (2 == i) {
@@ -82,8 +82,8 @@ namespace netp {
 				return;
 			}
 
-			aio_ctx* ctx_n;
-			for (ctx = (m_aio_ctx_list.next), ctx_n = ctx->next; ctx != &m_aio_ctx_list && nready>0; ctx = ctx_n, ctx_n = ctx->next) {
+			io_ctx* ctx_n;
+			for (ctx = (m_io_ctx_list.next), ctx_n = ctx->next; ctx != &m_io_ctx_list && nready>0; ctx = ctx_n, ctx_n = ctx->next) {
 				int status = netp::OK;
 
 				if (FD_ISSET(ctx->fd, &m_fds[fds_e])) {
@@ -100,7 +100,7 @@ namespace netp {
 					NETP_DEBUG("[select]socket getsockopt failed, fd: %d, errno: %d", ctx->fd, status);
 					NETP_ASSERT(status != netp::OK);
 				}
-				if (FD_ISSET(ctx->fd, &m_fds[AIO_READ])) {
+				if (FD_ISSET(ctx->fd, &m_fds[IO_READ])) {
 					//FD_CLR(fd, &m_fds[i]);
 					--nready;
 
@@ -109,7 +109,7 @@ namespace netp {
 					continue;
 				}
 
-				if (FD_ISSET(ctx->fd, &m_fds[AIO_WRITE])) {
+				if (FD_ISSET(ctx->fd, &m_fds[IO_WRITE])) {
 					//FD_CLR(fd, &m_fds[i]);
  					--nready;
 					//fn_read might result in fn_write be reset

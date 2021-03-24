@@ -17,7 +17,7 @@ namespace netp {
 
 		~benchmark() {
 			std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> end = std::chrono::steady_clock::now();
-			NETP_INFO("[%s][end]cost: %lld micro second", m_tag.c_str(), ((end - begin).count() / 1000));
+			NETP_INFO("[%s][end]cost: %lld us", m_tag.c_str(), ((end - begin).count() / 1000));
 		}
 
 		inline std::chrono::steady_clock::duration elapsed() const {
@@ -26,7 +26,7 @@ namespace netp {
 
 		std::chrono::steady_clock::duration mark(std::string const& tag) {
 			std::chrono::steady_clock::duration elapsed_ = elapsed();
-			NETP_INFO("[%s][%s]cost: %lld micro second", m_tag.c_str(), tag.c_str(), ((elapsed_).count() / 1000));
+			NETP_INFO("[%s][%s]cost: %lld us", m_tag.c_str(), tag.c_str(), ((elapsed_).count() / 1000));
 			return elapsed_;
 		}
 	};

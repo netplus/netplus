@@ -13,7 +13,7 @@
 
 namespace netp {
 	class socket_channel;
-	struct aio_ctx;
+	struct io_ctx;
 	class io_event_loop;
 	class timer;
 
@@ -56,7 +56,7 @@ namespace netp {
 		NRP<netp::promise<int>> stop();
 
 		void cb_dns_timeout(NRP<netp::timer> const& t);
-		void async_read_dns_reply( int aiort_,aio_ctx* ctx);
+		void async_read_dns_reply( int status,io_ctx* ctx);
 
 		void _do_resolve(string_t const& domain, NRP<dns_query_promise> const& p);
 

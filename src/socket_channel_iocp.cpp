@@ -38,7 +38,7 @@ namespace netp {
 		return ec;
 	}
 
-	void socket_channel_iocp::__iocp_do_AcceptEx_done(fn_channel_initializer_t const& fn_initializer, int status, aio_ctx* ctx_) {
+	void socket_channel_iocp::__iocp_do_AcceptEx_done(fn_channel_initializer_t const& fn_initializer, int status, io_ctx* ctx_) {
 		NETP_ASSERT(L->in_event_loop());
 		iocp_ctx* ctx = (iocp_ctx*)ctx_;
 		NETP_ASSERT( (ctx->ol_r->action_status & AS_DONE) == 0);
@@ -123,35 +123,35 @@ namespace netp {
 		return ec;
 	}
 
-	void socket_channel_iocp::__iocp_do_WSARecvfrom_done(int status, aio_ctx* ctx_) {
+	void socket_channel_iocp::__iocp_do_WSARecvfrom_done(int status, io_ctx* ctx_) {
 		iocp_ctx* ctx = (iocp_ctx*)ctx_;
 		if (status < 0) {
 			NETP_TRACE_SOCKET("[socket][%s]WSARecvfrom error: %d", ch_info().c_str(), status);
-			___aio_read_impl_done(status);
+			___io_read_impl_done(status);
 			return;
 		}
 
 		NETP_ASSERT(ULONG(status) <= ctx->ol_r->wsabuf.len);
 		channel::ch_fire_readfrom(netp::make_ref<netp::packet>(ctx->ol_r->wsabuf.buf, status), address(*(ctx->ol_r->from_ptr)));
 		status = netp::OK;
-		__cb_aio_read_from_impl(status, m_aio_ctx);
-		NETP_ASSERT((iocp_ctx*)m_aio_ctx == ctx);
+		__cb_io_read_from_impl(status, m_io_ctx);
+		NETP_ASSERT((iocp_ctx*)m_io_ctx == ctx);
 		if (m_chflag & int(channel_flag::F_WATCH_READ)) {
 			status = __iocp_do_WSARecvfrom(ctx->ol_r, (SOCKADDR*)ctx->ol_r->from_ptr, ctx->ol_r->from_len_ptr);
 			if (status == netp::OK) {
 				ctx->ol_r->action_status |= AS_WAIT_IOCP;
 			}
 			else {
-				___aio_read_impl_done(status);
+				___io_read_impl_done(status);
 			}
 		}
 	}
 
-	void socket_channel_iocp::__iocp_do_WSARecv_done(int status, aio_ctx* ctx_) {
+	void socket_channel_iocp::__iocp_do_WSARecv_done(int status, io_ctx* ctx_) {
 
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(!ch_is_listener());
-		NETP_ASSERT(m_aio_ctx == ctx_);
+		NETP_ASSERT(m_io_ctx == ctx_);
 		iocp_ctx* ctx = (iocp_ctx*)ctx_;
 		NETP_ASSERT(m_chflag & int(channel_flag::F_WATCH_READ));
 		if (NETP_LIKELY(status) > 0) {
@@ -165,25 +165,25 @@ namespace netp {
 		else {
 			NETP_TRACE_SOCKET("[socket][%s]WSARecv error: %d", ch_info().c_str(), status);
 		}
-		__cb_aio_read_impl(status, m_aio_ctx);
+		__cb_io_read_impl(status, m_io_ctx);
 		if (m_chflag & int(channel_flag::F_WATCH_READ)) {
 			status = __iocp_do_WSARecv(ctx->ol_r);
 			if (status == netp::OK) {
 				ctx->ol_r->action_status |= AS_WAIT_IOCP;
 			}
 			else {
-				___aio_read_impl_done(status);
+				___io_read_impl_done(status);
 			}
 		}
 	}
 
-	void socket_channel_iocp::__iocp_do_WSASend_done(int status, aio_ctx* ctx_) {
+	void socket_channel_iocp::__iocp_do_WSASend_done(int status, io_ctx* ctx_) {
 		NETP_ASSERT(L->in_event_loop());
-		NETP_ASSERT(m_aio_ctx == ctx_);
+		NETP_ASSERT(m_io_ctx == ctx_);
 		NETP_ASSERT((m_chflag & int(channel_flag::F_WATCH_WRITE)) != 0);
 
 		if (status < 0) {
-			__handle_aio_write_impl_done(status);
+			__handle_io_write_impl_done(status);
 			return;
 		}
 		iocp_ctx* ctx = (iocp_ctx*)ctx_;
@@ -204,7 +204,7 @@ namespace netp {
 				return;
 			}
 		}
-		__handle_aio_write_impl_done(status);
+		__handle_io_write_impl_done(status);
 	}
 
 	//one shot one packet

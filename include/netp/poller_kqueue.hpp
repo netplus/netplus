@@ -59,7 +59,7 @@ namespace netp {
 				for (int j = 0; j < rt; ++j) {
 					struct kevent* e = (m_kevts + j);
 					NETP_ASSERT(e->udata != nullptr);
-					aio_ctx* ctx = (static_cast<aio_ctx*> (e->udata));
+					io_ctx* ctx = (static_cast<io_ctx*> (e->udata));
 					if (e->filter==EVFILT_READ && ctx->fn_read != nullptr) {
 						ctx->fn_read(ec);
 					}
@@ -69,28 +69,28 @@ namespace netp {
 				}
 			}
 		}
-		int watch( u8_t flag, aio_ctx* ctx) {
+		int watch( u8_t flag, io_ctx* ctx) {
 			struct kevent ke;
-			if (flag&aio_flag::AIO_READ) {
+			if (flag&io_flag::IO_READ) {
 				EV_SET(&ke, fd, EVFILT_READ, EV_ADD, 0, 0, (void*)(ctx));
 				int rt = kevent(m_kq, &ke, 1, NULL, 0, NULL);
 				NETP_RETURN_V_IF_MATCH(rt, rt == -1);
 			}
-			if (flag&aio_flag::AIO_WRITE) {
+			if (flag&io_flag::IO_WRITE) {
 				EV_SET(&ke, fd, EVFILT_WRITE, EV_ADD, 0, 0, (void*)(ctx));
 				int rt = kevent(m_kq, &ke, 1, NULL, 0, NULL);
 				NETP_RETURN_V_IF_MATCH(rt, rt == -1);
 			}
 			return netp::OK;
 		}
-		int unwatch(u8_t flag, aio_ctx* ctx) {
+		int unwatch(u8_t flag, io_ctx* ctx) {
 			struct kevent ke;
-			if (flag & aio_flag::AIO_READ) {
+			if (flag & io_flag::IO_READ) {
 				EV_SET(&ke, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
 				int rt = kevent(m_kq, &ke, 1, NULL, 0, NULL);
 				NETP_RETURN_V_IF_MATCH(rt, rt == -1);
 			}
-			if (flag & aio_flag::AIO_WRITE) {
+			if (flag & io_flag::IO_WRITE) {
 				EV_SET(&ke, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
 				int rt = kevent(m_kq, &ke, 1, NULL, 0, NULL);
 				NETP_RETURN_V_IF_MATCH(rt, rt == -1);

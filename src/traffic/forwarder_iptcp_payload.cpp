@@ -52,10 +52,10 @@ namespace netp { namespace traffic {
 			src_ch->ch_close_read();
 		});
 		m_repeater_src_to_dst->bind<netp::traffic::fn_repeater_event_t>(netp::traffic::repeater_event::e_buffer_full, [src_ch = m_src_ch]() {
-			src_ch->ch_aio_end_read();
+			src_ch->ch_io_end_read();
 		});
 		m_repeater_src_to_dst->bind<netp::traffic::fn_repeater_event_t>(netp::traffic::repeater_event::e_buffer_empty, [src_ch = m_src_ch]() {
-			src_ch->ch_aio_read();
+			src_ch->ch_io_read();
 		});
 
 		m_repeater_dst_to_src->bind<netp::traffic::fn_repeater_error_event_t>(netp::traffic::repeater_event::e_write_error, [src_ch_id = m_src_channel_id, dst_ch = ctx->ch](int err) {
@@ -64,11 +64,11 @@ namespace netp { namespace traffic {
 		});
 
 		m_repeater_dst_to_src->bind<netp::traffic::fn_repeater_event_t>(netp::traffic::repeater_event::e_buffer_full, [dst_ch = ctx->ch]() {
-			dst_ch->ch_aio_end_read();
+			dst_ch->ch_io_end_read();
 		});
 
 		m_repeater_dst_to_src->bind<netp::traffic::fn_repeater_event_t>(netp::traffic::repeater_event::e_buffer_empty, [dst_ch = ctx->ch]() {
-			dst_ch->ch_aio_read();
+			dst_ch->ch_io_read();
 		});
 
 		//relay dial ok

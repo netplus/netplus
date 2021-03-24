@@ -242,25 +242,25 @@ namespace netp {
 			return m_channel_rcv_buf;
 		}
 
-		inline int aio_do(aio_action act, aio_ctx* ctx) {
+		inline int io_do(io_action act, io_ctx* ctx) {
 			NETP_ASSERT(in_event_loop());
-			if (((u8_t(act) & u8_t(aio_action::READ_WRITE)) == 0) || m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
-				m_poller->aio_do(act, ctx);
+			if (((u8_t(act) & u8_t(io_action::READ_WRITE)) == 0) || m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
+				m_poller->io_do(act, ctx);
 				return netp::OK;
 			} else {
 				return netp::E_IO_EVENT_LOOP_TERMINATED;
 			}
 		}
-		inline aio_ctx* aio_begin(SOCKET fd) {
+		inline io_ctx* io_begin(SOCKET fd) {
 			NETP_ASSERT(in_event_loop());
 			if (m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
-				return m_poller->aio_begin(fd);
+				return m_poller->io_begin(fd);
 			}
 			return 0;
 		}
-		inline void aio_end(aio_ctx* ctx) {
+		inline void io_end(io_ctx* ctx) {
 			NETP_ASSERT(in_event_loop());
-			m_poller->aio_end(ctx);
+			m_poller->io_end(ctx);
 		}
 	};
 

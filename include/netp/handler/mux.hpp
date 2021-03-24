@@ -123,7 +123,7 @@ namespace netp { namespace handler {
 
 			m_chflag |= int(channel_flag::F_READ_SHUTDOWNING);
 
-			ch_aio_end_read();
+			ch_io_end_read();
 			//update wndinc to remote
 			NETP_TRACE_STREAM("[muxs][s%u]_ch_do_close_read, left read packet: %u", ch_id(), m_incomes_buffer_q.size());
 			while (m_incomes_buffer_q.size()) {
@@ -243,7 +243,7 @@ namespace netp { namespace handler {
 		}
 
 		void _do_ch_zero_outlets_check();
-		void _ch_flush_done(const int aiort_, u16_t wt);
+		void _ch_flush_done(const int status, u16_t wt);
 		void _do_ch_flush_impl() ;
 
 		void _ch_do_cancel_all_outlets() {
@@ -385,10 +385,10 @@ namespace netp { namespace handler {
 			});
 			return p;
 		}
-		void ch_aio_read(fn_aio_event_t const& fn_read = nullptr) {
+		void ch_io_read(fn_io_event_t const& fn_read = nullptr) {
 			if (!L->in_event_loop()) {
 				L->schedule([ch = NRP<channel>(this)](){
-					ch->ch_aio_read();
+					ch->ch_io_read();
 				});
 				return;
 			}
@@ -402,10 +402,10 @@ namespace netp { namespace handler {
 			(void)fn_read;
 		}
 
-		void ch_aio_end_read() {
+		void ch_io_end_read() {
 			if (!L->in_event_loop()) {
 				L->schedule([ch = NRP<channel>(this)](){
-					ch->ch_aio_end_read();
+					ch->ch_io_end_read();
 				});
 				return;
 			}
@@ -413,23 +413,23 @@ namespace netp { namespace handler {
 		}
 
 		//for channel compatible
-		void ch_aio_begin(fn_aio_event_t const& ) override {};
-		void ch_aio_end() override {
+		void ch_io_begin(fn_io_event_t const& ) override {};
+		void ch_io_end() override {
 			L->schedule([xs=NRP<mux_stream>(this)]() {
 				xs->ch_fire_closed(netp::OK);
 			});
 		};
 
-		void ch_aio_accept(fn_channel_initializer_t const& ) override {}
-		void ch_aio_end_accept() override {}
+		void ch_io_accept(fn_channel_initializer_t const& ) override {}
+		void ch_io_end_accept() override {}
 
 		//for channel compatible
-		void ch_aio_write(fn_aio_event_t const& ) override { }
-		void ch_aio_end_write() override {}
+		void ch_io_write(fn_io_event_t const& ) override { }
+		void ch_io_end_write() override {}
 
 		//for channel compatible
-		void ch_aio_connect(fn_aio_event_t const& ) override {  }
-		void ch_aio_end_connect() override {}
+		void ch_io_connect(fn_io_event_t const& ) override {  }
+		void ch_io_end_connect() override {}
 
 		void ch_write_impl(NRP<packet> const& outlet, NRP<promise<int>> const& write_p) override {
 			NETP_ASSERT(L->in_event_loop());

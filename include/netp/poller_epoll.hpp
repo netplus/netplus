@@ -27,7 +27,7 @@ namespace netp {
 			NETP_ASSERT( m_epfd == -1 );
 		}
 
-		int watch(u8_t flag, aio_ctx* ctx) override {
+		int watch(u8_t flag, io_ctx* ctx) override {
 			NETP_ASSERT( ctx->fd != NETP_INVALID_SOCKET);
 //			const u8_t f2 = (!(--flag)) + 1;
 
@@ -56,7 +56,7 @@ namespace netp {
 			return epoll_ctl(m_epfd, epoll_op, ctx->fd, &epEvent);
 		}
 
-		int unwatch( u8_t flag, aio_ctx* ctx ) override {
+		int unwatch( u8_t flag, io_ctx* ctx ) override {
 
 			NETP_ASSERT(ctx->fd != NETP_INVALID_SOCKET);
 			//const u8_t f2 = (!(--flag)) + 1;
@@ -122,7 +122,7 @@ namespace netp {
 			for( int i=0;i<nEvents;++i) {
 
 				NETP_ASSERT( epEvents[i].data.ptr != nullptr );
-				aio_ctx* ctx =(static_cast<aio_ctx*> (epEvents[i].data.ptr)) ;
+				io_ctx* ctx =(static_cast<io_ctx*> (epEvents[i].data.ptr)) ;
 				NETP_ASSERT(ctx->fd != NETP_INVALID_SOCKET);
 
 				uint32_t events = ((epEvents[i].events) & 0xFFFFFFFF) ;
@@ -151,11 +151,11 @@ namespace netp {
 				}
 
 				if ( ((events&EPOLLIN) || ec != netp::OK) && ctx->fn_read != nullptr ) {
-					NETP_ASSERT(ctx->flag & u8_t(aio_flag::AIO_READ));
+					NETP_ASSERT(ctx->flag & u8_t(io_flag::IO_READ));
 					ctx->fn_read(ec, ctx);
 				}
 				if ( ( (events&EPOLLOUT) || ec != netp::OK) && ctx->fn_write != nullptr ) {
-					NETP_ASSERT(ctx->flag & u8_t(aio_flag::AIO_WRITE));
+					NETP_ASSERT(ctx->flag & u8_t(io_flag::IO_WRITE));
 					ctx->fn_write(ec, ctx);
 				}
 				events &= ~(EPOLLOUT|EPOLLIN);

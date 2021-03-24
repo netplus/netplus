@@ -481,7 +481,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_IO_EVENT_LOOP_NOTIFY_TERMINATING = -25001;
 	const int E_IO_EVENT_LOOP_TERMINATED = -25002;
 	const int E_IO_EVENT_LOOP_BYE_DO_NOTHING = -25003;
-	const int E_AIO_BEGIN_FAILED = -25004;
+	const int E_IO_BEGIN_FAILED = -25004;
 
 	//30000 - 30999 //system level socket error
 	const int E_SOCKET_EPOLLHUP			= -30001;

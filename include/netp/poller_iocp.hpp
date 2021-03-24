@@ -33,7 +33,7 @@ namespace netp {
 		iocp_ctx* iocpctx;
 		u8_t action;
 		u8_t action_status;
-		fn_aio_event_t fn_ol_done;
+		fn_io_event_t fn_ol_done;
 		WSABUF wsabuf;
 		char* rcvbuf;
 		struct sockaddr_in* from_ptr;
@@ -47,7 +47,7 @@ namespace netp {
 		olctx->accept_fd = NETP_INVALID_SOCKET;
 		olctx->action = u8_t(-1);
 		olctx->action_status = 0;
-		new ((fn_aio_event_t*)&(olctx->fn_ol_done))(fn_aio_event_t)();
+		new ((fn_io_event_t*)&(olctx->fn_ol_done))(fn_io_event_t)();
 		olctx->wsabuf = { 0,0 };
 		olctx->rcvbuf = 0;
 		return olctx;
@@ -70,7 +70,7 @@ namespace netp {
 		SOCKET fd;
 		ol_ctx* ol_r;
 		ol_ctx* ol_w;
-		fn_aio_event_t fn_notify;
+		fn_io_event_t fn_notify;
 	};
 
 	inline static iocp_ctx* iocp_ctx_allocate( SOCKET fd ) {
@@ -80,7 +80,7 @@ namespace netp {
 		ctx->ol_r->iocpctx = ctx;
 		ctx->ol_w = ol_ctx_allocate(fd);
 		ctx->ol_w->iocpctx = ctx;
-		new ((fn_aio_event_t*)&(ctx->fn_notify))(fn_aio_event_t)();
+		new ((fn_io_event_t*)&(ctx->fn_notify))(fn_io_event_t)();
 		return ctx;
 	}
 
@@ -104,11 +104,11 @@ namespace netp {
 		public poller_abstract
 	{
 		HANDLE m_handle;
-		iocp_ctx m_aio_ctx_list;
+		iocp_ctx m_io_ctx_list;
 
-#ifdef NETP_DEBUG_AIO_CTX_
-		long m_aio_ctx_count_alloc;
-		long m_aio_ctx_count_free;
+#ifdef NETP_DEBUG_IO_CTX_
+		long m_io_ctx_count_alloc;
+		long m_io_ctx_count_free;
 
 		long m_ol_count_alloc;
 		long m_ol_count_free;
@@ -138,7 +138,7 @@ namespace netp {
 					return;
 				}
 				NETP_ASSERT(olctx->fn_ol_done != nullptr);
-				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, (aio_ctx*)olctx->iocpctx);
+				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, (io_ctx*)olctx->iocpctx);
 			}
 			break;
 			case iocp_ol_action::WSASEND:
@@ -147,7 +147,7 @@ namespace netp {
 					return;
 				}
 				NETP_ASSERT(olctx->fn_ol_done != nullptr);
-				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, (aio_ctx*)olctx->iocpctx );
+				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, (io_ctx*)olctx->iocpctx );
 			}
 			break;
 			case iocp_ol_action::ACCEPTEX:
@@ -165,7 +165,7 @@ namespace netp {
 
 				if (NETP_LIKELY(ec == 0)) {
 					NETP_TRACE_IOE("[iocp][#%u]accept done, new fd: %u", olctx->fd, olctx->accept_fd);
-					olctx->fn_ol_done(ec, (aio_ctx*)olctx->iocpctx);
+					olctx->fn_ol_done(ec, (io_ctx*)olctx->iocpctx);
 				} else {
 					NETP_CLOSE_SOCKET(olctx->accept_fd);
 				}
@@ -183,7 +183,7 @@ namespace netp {
 					}
 				}
 				NETP_ASSERT(olctx->fn_ol_done != nullptr);
-				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, (aio_ctx*)olctx->iocpctx );
+				olctx->fn_ol_done(ec == 0 ? (int)dwTrans : ec, (io_ctx*)olctx->iocpctx );
 			}
 			break;
 			default:
@@ -196,16 +196,16 @@ namespace netp {
 		poller_iocp() :
 			poller_abstract(),
 			m_handle(nullptr)
-#ifdef NETP_DEBUG_AIO_CTX_
-		,m_aio_ctx_count_alloc(0)
-		,m_aio_ctx_count_free(0)
+#ifdef NETP_DEBUG_IO_CTX_
+		,m_io_ctx_count_alloc(0)
+		,m_io_ctx_count_free(0)
 		,m_ol_count_alloc(0)
 		,m_ol_count_free(0)
 #endif
 		{}
 
 		void init() override {
-			netp::list_init(&m_aio_ctx_list);
+			netp::list_init(&m_io_ctx_list);
 			NETP_ASSERT(m_handle == nullptr);
 			m_handle = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, (u_long)0, 1);
 			NETP_ALLOC_CHECK(m_handle, sizeof(m_handle));
@@ -216,8 +216,8 @@ namespace netp {
 			interrupt_wait();
 			::CloseHandle(m_handle);
 			m_handle = nullptr;
-#ifdef NETP_DEBUG_AIO_CTX_
-			NETP_ASSERT(m_aio_ctx_count_alloc == m_aio_ctx_count_free);
+#ifdef NETP_DEBUG_IO_CTX_
+			NETP_ASSERT(m_io_ctx_count_alloc == m_io_ctx_count_free);
 			NETP_ASSERT(m_ol_count_alloc == m_ol_count_free);
 #endif
 		}
@@ -261,7 +261,7 @@ namespace netp {
 
 				if (olctx->action_status & AS_CH_END) {
 					ol_ctx_deallocate(olctx);
-#ifdef NETP_DEBUG_AIO_CTX_
+#ifdef NETP_DEBUG_IO_CTX_
 					++m_ol_count_free;
 #endif
 				} else {
@@ -306,7 +306,7 @@ namespace netp {
 
 			if (olctx->action_status&AS_CH_END) {
 				ol_ctx_deallocate(olctx);
-#ifdef NETP_DEBUG_AIO_CTX_
+#ifdef NETP_DEBUG_IO_CTX_
 				++m_ol_count_free;
 #endif
 			} else {
@@ -315,7 +315,7 @@ namespace netp {
 #endif
 		}
 
-		virtual aio_ctx* aio_begin(SOCKET fd) {
+		virtual io_ctx* io_begin(SOCKET fd) {
 			NETP_ASSERT(fd > 0);
 
 			NETP_TRACE_IOE("[#%d][CreateIoCompletionPort]init", fd);
@@ -330,18 +330,18 @@ namespace netp {
 			if (ctx == 0) {
 				return 0;
 			}
-			netp::list_append(&m_aio_ctx_list, ctx);
-#ifdef NETP_DEBUG_AIO_CTX_
-			++m_aio_ctx_count_alloc;
+			netp::list_append(&m_io_ctx_list, ctx);
+#ifdef NETP_DEBUG_IO_CTX_
+			++m_io_ctx_count_alloc;
 			m_ol_count_alloc += 2;
 #endif
-			return (aio_ctx*)ctx;
+			return (io_ctx*)ctx;
 		}
 
-		virtual void aio_end(aio_ctx* ctx_) {
+		virtual void io_end(io_ctx* ctx_) {
 			iocp_ctx* ctx = (iocp_ctx*)ctx_;
-#ifdef NETP_DEBUG_AIO_CTX_
-			++m_aio_ctx_count_free;
+#ifdef NETP_DEBUG_IO_CTX_
+			++m_io_ctx_count_free;
 			if ( (ctx->ol_r->action_status & AS_WAIT_IOCP) == 0) {
 				++m_ol_count_free;
 			}
@@ -354,48 +354,48 @@ namespace netp {
 			netp::iocp_ctx_deallocate((iocp_ctx*)ctx);
 		}
 
-		int aio_do(aio_action act, aio_ctx* ctx) override {
+		int io_do(io_action act, io_ctx* ctx) override {
 				switch (act) {
-				case aio_action::READ:
+				case io_action::READ:
 				{
 					ol_ctx* olctx = ((iocp_ctx*)ctx)->ol_r;
 					olctx->action_status &= ~AS_DONE;
 				}
 				break;
-				case aio_action::END_READ:
+				case io_action::END_READ:
 				{
 					ol_ctx* olctx = ((iocp_ctx*)ctx)->ol_r;
 					olctx->action_status |= AS_DONE;
 				}
 				break;
-				case aio_action::WRITE:
+				case io_action::WRITE:
 				{
 					ol_ctx* olctx = ((iocp_ctx*)ctx)->ol_w;
 					olctx->action_status &= ~AS_DONE;
 				}
 				break;
-				case aio_action::END_WRITE:
+				case io_action::END_WRITE:
 				{
 					ol_ctx* olctx = ((iocp_ctx*)ctx)->ol_w;
 					olctx->action_status |= AS_DONE;
 				}
 				break;
-				case aio_action::NOTIFY_TERMINATING:
+				case io_action::NOTIFY_TERMINATING:
 				{
 					iocp_ctx* _ctx, *_ctx_n;
-					for (_ctx = m_aio_ctx_list.next, _ctx_n = _ctx->next; _ctx != &m_aio_ctx_list; _ctx = _ctx_n,_ctx_n = _ctx->next) {
+					for (_ctx = m_io_ctx_list.next, _ctx_n = _ctx->next; _ctx != &m_io_ctx_list; _ctx = _ctx_n,_ctx_n = _ctx->next) {
 						NETP_ASSERT( _ctx->fd >0 );
 						NETP_ASSERT(_ctx->fn_notify != nullptr);
 
 						if (_ctx->ol_r->fn_ol_done != nullptr) {
-							_ctx->ol_r->fn_ol_done(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, (aio_ctx*)_ctx);
+							_ctx->ol_r->fn_ol_done(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, (io_ctx*)_ctx);
 						}
 						if (_ctx->ol_w->fn_ol_done != nullptr) {
-							_ctx->ol_w->fn_ol_done(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, (aio_ctx*)_ctx);
+							_ctx->ol_w->fn_ol_done(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, (io_ctx*)_ctx);
 						}
 						//in case , close would result in _ctx->fn_notify be nullptr
 						if (_ctx->fn_notify != nullptr) {
-							_ctx->fn_notify(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, (aio_ctx*)_ctx);
+							_ctx->fn_notify(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, (io_ctx*)_ctx);
 						}
 					}
 				}
@@ -404,8 +404,8 @@ namespace netp {
 				return netp::OK;
 			}
 
-		int watch(u8_t, aio_ctx*) override { return netp::OK; }
-		int unwatch(u8_t, aio_ctx*) override { return netp::OK; }
+		int watch(u8_t, io_ctx*) override { return netp::OK; }
+		int unwatch(u8_t, io_ctx*) override { return netp::OK; }
 	};
 }
 #endif //NETP_HAS_POLLER_IOCP

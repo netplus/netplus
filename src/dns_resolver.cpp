@@ -93,13 +93,13 @@ namespace netp {
 		m_so->ch_set_active();
 		m_so->ch_set_connected();
 		
-		m_so->ch_aio_begin([dnsr=this, p](int aiort , aio_ctx*) {
+		m_so->ch_io_begin([dnsr=this, p](int status , io_ctx*) {
 			NETP_ASSERT(dnsr->m_flag & dns_resolver_flag::f_launching);
 			dnsr->m_flag &= dns_resolver_flag::f_launching;
-			if (aiort == netp::OK) {
+			if (status == netp::OK) {
 				NETP_DEBUG("[dns_resolver][%s]init done", dnsr->m_so->ch_info().c_str());
 				dnsr->m_flag |= dns_resolver_flag::f_running;
-				dnsr->m_so->ch_aio_read(std::bind(&dns_resolver::async_read_dns_reply, dns_resolver::instance(), std::placeholders::_1, std::placeholders::_2));
+				dnsr->m_so->ch_io_read(std::bind(&dns_resolver::async_read_dns_reply, dns_resolver::instance(), std::placeholders::_1, std::placeholders::_2));
 				dnsr->m_so->ch_close_promise()->if_done([dnsr](int const&) {
 					dnsr->m_flag &= ~dns_resolver_flag::f_running;
 					dnsr->m_so = nullptr;
@@ -107,7 +107,7 @@ namespace netp {
 				});
 				p->set(netp::OK);
 			} else {
-				p->set(aiort);
+				p->set(status);
 			}
 		});
 	}
@@ -164,9 +164,9 @@ namespace netp {
 		}
 	}
 
-	void dns_resolver::async_read_dns_reply(int status, aio_ctx* ctx_) {
+	void dns_resolver::async_read_dns_reply(int status, io_ctx* ctx_) {
 		NETP_ASSERT(m_loop->in_event_loop());
-		//NETP_ASSERT(aiort_ == netp::OK);
+		//NETP_ASSERT(status == netp::OK);
 #ifdef NETP_HAS_POLLER_IOCP
 		iocp_ctx* ctx = (iocp_ctx*)ctx_;
 		if (status > 0) {
@@ -175,6 +175,7 @@ namespace netp {
 			return;
 		}
 #endif
+		(void*)ctx_;
 		if (status == netp::OK) {
 			//struct sockaddr_in addr_in;
 			//::memset(&addr_in, 0, sizeof(addr_in));
