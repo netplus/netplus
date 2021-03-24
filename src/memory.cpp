@@ -2,215 +2,187 @@
 
 namespace netp {
 
-	/*
-const static size_t TABLE_1[TABLE_SIZE::S0] = {
-	16 * 1,
-	16 * 2,
-	16 * 3,
-	16 * 4,
-	16 * 5,
-	16 * 6,
-	16 * 7,
-	16 * 8
-	//end for 128 16*8
+/*
+const static size_t TABLE_1[T0] = {
+	8 * 1,
+	8 * 2,
+	8 * ...,
+	8 * 32,
+	//end: 256 32*8
+	//slot size: (slot+1)*(8)
 };
 
-const static size_t TABLE_2[TABLE_SIZE::S1] = {
-	[128--640
-	16 * 8 + 32 * 1,
-	16 * 8 + 32 * 2,
-	16 * 8 + 32 * 3,
-	16 * 8 + 32 * 4,
-	16 * 8 + 32 * 5,
-	16 * 8 + 32 * 6,
-	16 * 8 + 32 * 7,
-	16 * 8 + 32 * 8,
-	//end for 128+256=384=48*8
+const static size_t TABLE_2[T1] = {
+	32 * 8 + 32 * 1,
+	32 * 8 + 32 * 2,
+	32 * 8 + 32 * ...,
+	32 * 8 + 32 * 8,
+	//end: 256+256=512, 1<<9
+	//slot size: TABLE_UPBOUND[T0] + (1<<(4+1))*(slot+1)
 };
 
-const static size_t TABLE_3[TABLE_SIZE::S2] = {
-	//2048 -- 2048+512
-	16 * 8 + 32 * 8 + 64 * 1,
-	16 * 8 + 32 * 8 + 64 * 2,
-	16 * 8 + 32 * 8 + 64 * 3,
-	16 * 8 + 32 * 8 + 64 * 4,
-	16 * 8 + 32 * 8 + 64 * 5,
-	16 * 8 + 32 * 8 + 64 * 6,
-	16 * 8 + 32 * 8 + 64 * 7,
-	16 * 8 + 32 * 8 + 64 * 8
-	//end for 128+256+512=896=112*8
+const static size_t TABLE_3[T2] = {
+	32 * 8 + 32 * 8 + 64 * 1,
+	32 * 8 + 32 * 8 + 64 * 2,
+	32 * 8 + 32 * 8 + 64 * ...,
+	32 * 8 + 32 * 8 + 64 * 8
+	//end: 256+256+512=1024, 1<<10
+	//size slot: TABLE_UPBOUND[T1] + (1<<(4+2))*(slot+1)
 };
-const static size_t TABLE_4[TABLE_SIZE::S3] = {
-	16 * 8 + 32 * 8 + 64 * 8 + 128*1,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*2,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*3,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*4,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*5,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*6,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*7,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8
-	//end for 128+256+512+1024=1920=240*8
+const static size_t TABLE_4[T3] = {
+	32 * 8 + 32 * 8 + 64 * 8 + 128*1,
+	32 * 8 + 32 * 8 + 64 * 8 + 128*2,
+	32 * 8 + 32 * 8 + 64 * 8 + 128*...,
+	32 * 8 + 32 * 8 + 64 * 8 + 128*8
+	//end for 256+256+512+1024=2048, 1<<11
+	//size slot: TABLE_UPBOUND[T2] + (1<<(4+3))*(slot+1)
 };
-const static size_t TABLE_5[TABLE_SIZE::S4] = {
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*1,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*2,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*3,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*4,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*5,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*6,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*7,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8,
-	//end for 128+256+512+1024+2048=3968=496*8
+const static size_t TABLE_5[T4] = {
+	32 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*1,
+	32 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*2,
+	32 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*...,
+	32 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8,
+	//end: 256+256+512+1024+2048=4096, 1<<12
+	//size slot: TABLE_UPBOUND[T3] + (1<<(4+4))*(slot+1)
 };
-const static size_t TABLE_5[TABLE_SIZE::S5] = {
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*1,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*2,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*3,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*4,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*5,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*6,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*7,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8
-	//end for 128+256+512+1024+2048+4096=8064=1008*8
+const static size_t TABLE_5[T5] = {
+	32 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*1,
+	32 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*2,
+	32 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8
+	//end: 8192, 1<<13
+	//size slot: TABLE_UPBOUND[T4] + (1<<(4+5))*(slot+1)
 };
-const static size_t TABLE_5[TABLE_SIZE::S6] = {
-	(16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*2
-	(16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*4
-	(16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*6
-	(16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*8
-	(16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*10
-	(16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*12
-	(16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*14
-	(16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*16
+const static size_t TABLE_5[T6] = {
+	//end: 8192+8192=16384, 1<<14
+	//size slot: TABLE_UPBOUND[T5] + (1<<(4+6))*(slot+1)
+};
+const static size_t TABLE_5[T7] = {
+	//end: 32768, 1<<15
+	//size slot: TABLE_UPBOUND[T6] + (1<<(4+7))*(slot+1)
+};
+const static size_t TABLE_5[T8] = {
+	//end: 32768+32768, 1<<16
+	//size slot: TABLE_UPBOUND[T7] + (1<<(4+8))*(slot+1)
+};
+const static size_t TABLE_5[T9] = {
+	//end: 128k, 1<<17
+	//size slot: TABLE_UPBOUND[T8] + (1<<(4+9))*(slot+1)
+};
+const static size_t TABLE_5[T10] = {
+	//end: 256k, 1<<18
+	//size slot: TABLE_UPBOUND[T9] + (1<<(4+10))*(slot+1)
+};
+const static size_t TABLE_5[T11] = {
+	//end: 512k, 1<<19
+	//size slot: TABLE_UPBOUND[T10] + (1<<(4+11))*(slot+1)
+};
+const static size_t TABLE_5[T12] = {
+	//end: 1024k, 1<<20
+	//size slot: TABLE_UPBOUND[T11] + (1<<(4+12))*(slot+1)
+};
+const static size_t TABLE_5[T13] = {
+	//end: 2M, 1<<21
+	//size slot: TABLE_UPBOUND[T12] + (1<<(4+13))*(slot+1)
+};
+const static size_t TABLE_5[T14] = {
+	//end: 4M, 1<<22
+	//size slot: TABLE_UPBOUND[T13] + (1<<(4+13))*(slot+1)
+};
+const static size_t TABLE_5[T15] = {
+	//end: 8M, 1<<23
+	//size slot: TABLE_UPBOUND[T14] + (1<<(4+13))*(slot+1)
+};
 
-	//end for (128+256+512+1024+2048+4096)*16=8064*16=126K=16128*8
-};
-const static size_t TABLE_5[TABLE_SIZE::S7] = {
-	((16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*16)*2
-	((16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*16)*4
-	((16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*16)*6
-	((16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*16)*8
-	((16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*16)*10
-	((16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*16)*12
-	((16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*16)*14
-	((16 * 8 + 32 * 8 + 64 * 8 + 128*8 + 256*8+512*8)*16)*16
-
-	//end for ((128+256+512+1024+2048+4096)*16)*16=(8064*16)*16=126K*16=2016K=258048*8
-};
 */
-#define SLOT_MAX(t) (((t) == 0) ? u8_t(16):u8_t(8))
+#define SLOT_MAX(t) (((t) == 0) ? u8_t(32):u8_t(8))
 
-#ifdef _DEBUG
-	#define ___FACTOR (1)
-#else
-	#define ___FACTOR (4)
-#endif
+#define ___FACTOR (1)
 
 #ifdef _NETP_AM64
-#define INIT_FACTOR (___FACTOR<<1)
+#define __NETP_MEMORY_POOL_INIT_FACTOR (___FACTOR)
 #else
-#define INIT_FACTOR (___FACTOR)
+#define __NETP_MEMORY_POOL_INIT_FACTOR (___FACTOR)
 #endif
 
-//object pool does not suit for large memory gap objects, so when object size incres, reduce count greatly
-//slot count
-//[128,384,896,1920,3968,8064,126k,2M]
+//object pool does not suit for large memory gap objects
 	const static u32_t TABLE_SLOT_ENTRIES_INIT_LIMIT[TABLE::T_COUNT] = {
-		1024*2*(INIT_FACTOR),
-		1024*(INIT_FACTOR),
-		512* (INIT_FACTOR),
-		1024*(INIT_FACTOR),//2k
-		32*(INIT_FACTOR),
-		8*INIT_FACTOR,
-		2 * INIT_FACTOR,
-		NETP_MAX(1,1*(INIT_FACTOR>>1))
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 4096, //256 Byte
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2048, //512 Byte
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2048,//1k
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2048,//2k
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 512,//4k
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 256,//8k
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 128,//16k
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 64,//32k
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 32,//64k
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 16,//128k
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 8,//256k
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 4,//512k
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 4,//1024k
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2, //2M
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 1, //4M
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 1 //8M
 	};
 
-	const static size_t TABLE_UP_BOUND[TABLE::T_COUNT+1] = {
-		0,
-		8*16,
-		48*8,
-		112*8,
-		240*8,
-		496 * 8,
-		1008 * 8,
-		16128 * 8,
-		258048 * 8
+	const static size_t TABLE_BOUND[TABLE::T_COUNT] = {
+		1 << 8, //256
+		1 << 9, //512
+		1 << 10,//1k
+		1 << 11,//2k
+		1 << 12,//4k
+		1 << 13,//8k
+		1 << 14,//16k
+		1 << 15,//32k
+		1 << 16,//64k
+		1 << 17,//128k
+		1 << 18,//256k
+		1 << 19,//512k
+		1 << 20,//1024k
+		1 << 21, //2M
+		1 << 22, //4M
+		1 << 22 //8M
 	};
 
-	inline void calc_SIZE_by_TABLE_SLOT(size_t& size, u8_t table, u8_t slot) {
-		switch (table) {
-		case TABLE::T0:
-		{
-			size = ((slot + 1) << 3);
+	__NETP_FORCE_INLINE void calc_SIZE_by_TABLE_SLOT(size_t& size, u8_t table, u8_t slot) {
+		if (table == TABLE::T0) {
+			size = ((slot+1) * 8);
+			return;
 		}
-		break;
-		case TABLE::T1: 
-		case TABLE::T2:
-		case TABLE::T3:
-		case TABLE::T4:
-		case TABLE::T5:
-		{
-			size= TABLE_UP_BOUND[table] + ((slot+1) << (table+4));
-		}
-		break;
-		case TABLE::T6:
-		case TABLE::T7:
-		{
-			size= (TABLE_UP_BOUND[table ] * ((slot+1))<<1);
-		}
-		break;
-		}
+		size = TABLE_BOUND[table-1] + (1<<(table + 4)) * (slot + 1);
 	}
 
-	inline void calc_TABLE_SLOT(size_t& size, u8_t& table, u8_t& slot) {
-		for (u8_t t = 1; t < (TABLE::T_COUNT+1); ++t) {
-			if (size <= TABLE_UP_BOUND[t]) {
-				table = (--t);
+	__NETP_FORCE_INLINE void calc_TABLE_SLOT(size_t& size, u8_t& table, u8_t& slot) {
+		for (u8_t t = 0; t < (TABLE::T_COUNT); ++t) {
+			if (size <= TABLE_BOUND[t]) {
+				table = (t);
 				break;
 			}
 		}
 
-		if(table == TABLE::T0)
+		if(table ==TABLE::T0)
 		{
 			slot = u8_t(size >> 3);
-			(size % 8) != 0 ? ++slot : 0;
-			size = (slot << 3);
-			--slot;
+			(size % 8) == 0 ? --slot : 0;
+			size = ((slot+1)*8);
 			return;
 		}
-		else if(table < TABLE::T6)
-		{
-			size -= TABLE_UP_BOUND[table];
-			slot = u8_t(size >> (table + 4));
-			(size % size_t(1 << (table + 4))) != 0 ? ++slot : 0;
-			size = TABLE_UP_BOUND[table] + (slot << (table + 4));
-			--slot;
-			return;
-		} 
-		else if(table < TABLE::T_COUNT)
-		{
-			const size_t LIMIT = TABLE_UP_BOUND[table];
-			for (u8_t j = 0; j < 8; ++j) {
-				if (size <= (((j + 1) << 1) * LIMIT)) {
-					size = (((j + 1) << 1) * LIMIT);
-					slot = j;
-					return;
-				}
-			}
-		}
+
+		size -= TABLE_BOUND[table-1];
+		slot = u8_t(size >> (table + 4));
+		(size % (1 << (size_t(table) + 4))) == 0 ? --slot : 0;
+		size = TABLE_BOUND[table-1] + (1 << ((size_t(table) + 4))) *(slot+1);
 	}
 
 	void pool_align_allocator::init_table_slot(u8_t t, u8_t slot, std::vector<void*>& slotv, size_t capacity) {
-		slotv.reserve(capacity >> 1);
-		if (t > TABLE::T3) { 
+		slotv.reserve(capacity);
+
+		if (t > TABLE::T4) { 
 			return;
 		}
 
-		for (size_t i = 0; i < (capacity >> 2); ++i) {
-			size_t size = t==TABLE::T0 ? (slot + 1) << (3) : 
-				TABLE_UP_BOUND[t] + ((slot + 1) << (t + 4));
-
+		for (size_t i = 0; i < (capacity >> 1); ++i) {
+			size_t size = 0;
+			calc_SIZE_by_TABLE_SLOT(size, t, slot);
 			pool_align_allocator::free(pool_align_allocator::malloc(size, NETP_DEFAULT_ALIGN));
 		}
 	}
@@ -276,9 +248,12 @@ const static size_t TABLE_5[TABLE_SIZE::S7] = {
 				return uptr;
 			}
 		}
-		uptr = (u8_t*)netp::aligned_malloc(size, align_size);
+
+		//reserve 4 bytes for t&slot
+		uptr = (u8_t*)netp::aligned_malloc((size), align_size);
 		if (NETP_LIKELY(uptr != 0)) {
-			*(uptr - 2) = ((t << 4) | (slot & 0xf));
+			*(uptr - 3) = (slot);
+			*(uptr - 2) = (t);
 		}
 		return uptr;
 	}
@@ -286,9 +261,10 @@ const static size_t TABLE_5[TABLE_SIZE::S7] = {
 	void pool_align_allocator::free(void* ptr) {
 		if (NETP_UNLIKELY(ptr == nullptr)) { return; }
 
-		u8_t& slot_ = *((u8_t*)ptr-2);
-		u8_t t = (slot_ >>4);
-		u8_t slot = (slot_ & 0xf);
+		u8_t slot = *(((u8_t*)ptr)-3);
+		u8_t t = *(((u8_t*)ptr)-2);
+
+		//u8_t slot = (slot_ & 0xf);
 		if (NETP_UNLIKELY(t == T_COUNT)) {
 			return netp::aligned_free(ptr);
 		}
@@ -339,9 +315,8 @@ const static size_t TABLE_5[TABLE_SIZE::S7] = {
 			}
 		}
 
-		u8_t old_slot = *((u8_t*)ptr - 2);
-		u8_t old_t = (old_slot >> 4);
-		old_slot = (old_slot&0xf);
+		u8_t old_slot = *(((u8_t*)ptr) - 3);
+		u8_t old_t = *(((u8_t*)ptr) - 2);
 		size_t old_size=0;
 		calc_SIZE_by_TABLE_SLOT(old_size,old_t, old_slot);
 		NETP_ASSERT(old_size > 0);

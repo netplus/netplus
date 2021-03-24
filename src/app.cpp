@@ -427,12 +427,20 @@ namespace netp {
 
 		{
 			NRP<netp::packet> p = netp::make_ref<netp::packet>();
+#ifdef _DEBUG
+			for (size_t i = 0; i <= 1024 * 1024*8; ++i) {
+#else
 			for (size_t i = 0; i <= 1024 * 1024; ++i) {
+#endif
 				p->write<u8_t>(u8_t(1));
 			}
 
 			NRP<netp::packet> p2 = netp::make_ref<netp::packet>();
+#ifdef _DEBUG
+			for (size_t i = 0; i <= 1024 * 1024 * 8; ++i) {
+#else
 			for (size_t i = 0; i <= 1024 * 1024; ++i) {
+#endif
 				p2->write_left<u8_t>(u8_t(1));
 			}
 

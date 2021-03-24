@@ -25,11 +25,18 @@ namespace netp {
 
 	//ALIGN_SIZE SHOUDL BE LESS THAN 256
 	//STORE OFFSET IN PREVIOUS BYTES
+#define __NETP_ALIGNED_HEAD (4)
+
 	inline void* aligned_malloc(std::size_t size, std::size_t alignment)
 	{
-		void *original = std::malloc(size + alignment);
+#ifdef _DEBUG
+		NETP_ASSERT(alignment <= 32);
+#endif
+		//4 for header
+		void *original = std::malloc(size + alignment+ __NETP_ALIGNED_HEAD);
 		if (original == 0) return 0;
-		void *aligned = reinterpret_cast<void*>((reinterpret_cast<std::size_t>(original) & ~(std::size_t(alignment - 1))) + alignment);
+		void *aligned = reinterpret_cast<void*>(((reinterpret_cast<std::size_t>(original) + __NETP_ALIGNED_HEAD) & ~(std::size_t(alignment - 1))) + alignment);
+
 		//NETP_ASSERT( (size_t(aligned) - size_t(original)) >sizeof(void*) );
 		//NETP_ASSERT( (size_t(aligned) - size_t(original)) < 0xff);
 		*(reinterpret_cast<char*>(aligned) - 1) = u8_t(size_t(aligned) - size_t(original));
@@ -47,9 +54,9 @@ namespace netp {
 		if (ptr == 0) { return aligned_malloc(size, alignment); }
 		const u8_t previous_offset = *(reinterpret_cast<u8_t*>(ptr) - 1);
 		void* original = (u8_t*)ptr - previous_offset;
-		original = std::realloc(original, size + alignment);
+		original = std::realloc(original, size + alignment+__NETP_ALIGNED_HEAD);
 		if (original == 0) {return 0;}
-		void *aligned = reinterpret_cast<void*>((reinterpret_cast<std::size_t>(original) & ~(std::size_t(alignment - 1))) + alignment);
+		void *aligned = reinterpret_cast<void*>(((reinterpret_cast<std::size_t>(original)+ __NETP_ALIGNED_HEAD) & ~(std::size_t(alignment - 1))) + alignment);
 		void *previous_aligned = static_cast<u8_t *>(original) + previous_offset;
 		if (aligned != previous_aligned) {
 			//align data
@@ -62,14 +69,22 @@ namespace netp {
 
 	enum TABLE {
 		T0 = 0,
-		T1 = 1,
-		T2 = 2,
-		T3 = 3,
-		T4 = 4,
-		T5 = 5,
-		T6 = 6,
-		T7 = 7,
-		T_COUNT = 8
+		T1,
+		T2,
+		T3,
+		T4,
+		T5,
+		T6,
+		T7,
+		T8,
+		T9,
+		T10,
+		T11,
+		T12,
+		T13,
+		T14,
+		T15,
+		T_COUNT
 	};
 
 
