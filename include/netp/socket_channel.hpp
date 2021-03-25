@@ -462,7 +462,8 @@ namespace netp {
 			fn_begin_done(netp::OK, m_io_ctx);
 		}
 
-		virtual void __ch_clean() {
+	protected:
+	virtual void __ch_clean() {
 			ch_deinit();
 			if (m_chflag & int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE)) {
 				m_io_ctx->fn_notify = nullptr;
@@ -470,7 +471,8 @@ namespace netp {
 			}
 		}
 
-		void ch_io_end() override {
+	public:
+	void ch_io_end() override {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(m_outbound_entry_q.size() == 0);
 			NETP_ASSERT(m_noutbound_bytes == 0);
@@ -518,6 +520,7 @@ namespace netp {
 			ch_io_end_read();
 		}
 
+	protected:
 		void ch_write_impl(NRP<packet> const& outlet, NRP<promise<int>> const& chp) override;
 		void ch_write_to_impl(NRP<packet> const& outlet, netp::address const& to, NRP<promise<int>> const& chp) override;
 
@@ -539,6 +542,7 @@ namespace netp {
 		void ch_close_write_impl(NRP<promise<int>> const& chp) override;
 		void ch_close_impl(NRP<promise<int>> const& chp) override;
 
+	public:
 		void ch_io_read(fn_io_event_t const& fn_read = nullptr) override {
 			if (!L->in_event_loop()) {
 				L->schedule([s = NRP<socket_channel>(this), fn_read]()->void {
