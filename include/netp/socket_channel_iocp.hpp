@@ -26,7 +26,7 @@ namespace netp {
 		friend ref_ptr<_Ref_ty> make_ref(_Args&&... args);
 		u32_t m_wsabuf_size;
 
-	public:
+	private:
 		socket_channel_iocp(NRP<socket_cfg> const& cfg) :
 			socket_channel(cfg),
 			m_wsabuf_size(cfg->wsabuf_size)
@@ -38,7 +38,7 @@ namespace netp {
 		{
 		}
 
-	private:
+	
 		int __iocp_do_AcceptEx(ol_ctx* olctx);
 		void __iocp_do_AcceptEx_done(fn_channel_initializer_t const& fn_initializer, int status, io_ctx* ctx);
 		int __iocp_do_ConnectEx(void* ol_);
@@ -82,10 +82,10 @@ namespace netp {
 			
 			m_io_ctx = L->io_begin(m_fd);
 			if (m_io_ctx == 0) {
-				ch_errno() = netp::E_io_begin_FAILED;
+				ch_errno() = netp::E_IO_BEGIN_FAILED;
 				m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
 				ch_close(nullptr);
-				fn_begin_done(netp::E_io_begin_FAILED, 0);
+				fn_begin_done(netp::E_IO_BEGIN_FAILED, 0);
 				return;
 			}
 			((iocp_ctx*)m_io_ctx)->fn_notify = std::bind(&socket_channel_iocp::__io_notify_terminating, NRP<socket_channel_iocp>(this), std::placeholders::_1, std::placeholders::_2);
@@ -93,6 +93,7 @@ namespace netp {
 			fn_begin_done(netp::OK, m_io_ctx);
 		}
 
+	private:
 		void __ch_clean() override {
 			ch_deinit();
 			if (m_chflag & int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE)) {
@@ -123,7 +124,7 @@ namespace netp {
 			}
 		}
 	*/
-
+	public:
 		void ch_io_accept(fn_channel_initializer_t const& fn_accepted_initializer) override {
 			NETP_ASSERT(L->in_event_loop());
 			if (m_chflag & int(channel_flag::F_WATCH_READ)) {
