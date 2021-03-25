@@ -1447,7 +1447,7 @@ void dns_ioevent_with_udpdata_in(struct dns_ctx* ctx, time_t now, dnsc_t* udpdat
 
 }
 
-//end for netplus aio mode
+//end for netplus io mode
 
 
 /* handle all timeouts */

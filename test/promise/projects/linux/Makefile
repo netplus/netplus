@@ -7,8 +7,10 @@ DEFINES :=\
 	
 INCLUDES:= \
 	$(foreach include,$(LIB_INCLUDE_PATH_ALL_LIBS), -I"$(include)") \
+	
 
-LINK_LIBS := $(LINK_LIBS) $(LIB_LINK_LIBS_ALL_LIBS) 
+
+LINK_LIBS := $(LINK_CXX_LIBS) $(LIB_LINK_LIBS_ALL_LIBS)
 
 include _module-app-promise.inc
 

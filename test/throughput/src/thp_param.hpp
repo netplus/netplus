@@ -13,6 +13,7 @@ public:
 	long sndwnd;
 	long loopbufsize;
 	long thread;
+	long for_max;
 
 	thp_param() :
 		client_max(1),
@@ -21,7 +22,8 @@ public:
 		rcvwnd(128 * 1024),
 		sndwnd(64 * 1024),
 		loopbufsize(128 * 1024),
-		thread(0)
+		thread(0),
+		for_max(1)
 	{}
 };
 
@@ -34,11 +36,12 @@ public:
 		{"clients", optional_argument, 0, 'c'},
 		{"buf-for-evtloop", optional_argument, 0, 'b'},
 		{"thread-for-evtloop", optional_argument, 0, 't'},
+		{"for", optional_argument, 0, 'f'},
 		{"help", optional_argument, 0, 'h'},
 		{0,0,0,0}
 	};
 
-	const char* optstring = "l:n:c:r:s:b:t:h::";
+	const char* optstring = "l:n:c:r:s:b:t:f:h::";
 
 	int opt;
 	int opt_idx;
@@ -77,6 +80,11 @@ public:
 		case 't':
 		{
 			p.thread = std::atol(optarg);
+		}
+		break;
+		case 'f':
+		{
+			p.for_max = std::atol(optarg);
 		}
 		break;
 		case 'h':

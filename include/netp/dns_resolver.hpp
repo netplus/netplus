@@ -10,10 +10,10 @@
 #include <netp/singleton.hpp>
 #include <netp/promise.hpp>
 #include <netp/ipv4.hpp>
-#include <netp/io_event.hpp>
 
 namespace netp {
-	class socket;
+	class socket_channel;
+	struct io_ctx;
 	class io_event_loop;
 	class timer;
 
@@ -39,14 +39,14 @@ namespace netp {
 		};
 
 		NRP<io_event_loop> m_loop;
-		NRP<netp::socket> m_so;
+		NRP<netp::socket_channel> m_so;
 		struct dns_ctx* m_dns_ctx;
 		NRP<netp::timer> m_tm_dnstimeout;
 		std::vector<std::string> m_ns; //for restart
 		u8_t m_flag;
 
 	private:
-		void reset(NRP<io_event_loop> const& L);
+		void reset( NRP<io_event_loop> const& L );
 		void _do_add_name_server();
 
 		void _do_start(NRP<netp::promise<int>> const& p);
@@ -56,7 +56,7 @@ namespace netp {
 		NRP<netp::promise<int>> stop();
 
 		void cb_dns_timeout(NRP<netp::timer> const& t);
-		void async_read_dns_reply(const int aiort_, NRP<netp::packet> const& in, address const& addr);
+		void async_read_dns_reply( int status,io_ctx* ctx);
 
 		void _do_resolve(string_t const& domain, NRP<dns_query_promise> const& p);
 

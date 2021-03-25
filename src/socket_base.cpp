@@ -10,13 +10,13 @@ namespace netp {
 		m_protocol(u16_t(proto)),
 		m_option(0),
 
-		m_api(sockapi==nullptr?((netp::socket_api*)&netp::NETP_DEFAULT_SOCKAPI):sockapi),
+		m_api(sockapi==nullptr?((netp::socket_api*)&netp::default_socket_api):sockapi),
 
 		m_laddr(laddr),
-		m_raddr(raddr),
+		m_raddr(raddr)
 
-		m_kvals({0}),
-		m_sock_buf({0,0})
+//		m_kvals({0}),
+//		m_sock_buf({0,0})
 	{
 		NETP_ASSERT(proto < NETP_PROTOCOL_MAX);
 	}
@@ -162,7 +162,7 @@ namespace netp {
 #else
 		#error
 #endif
-		m_kvals = vals;
+//		m_kvals = vals;
 		return netp::OK;
 	}
 
@@ -258,6 +258,22 @@ namespace netp {
 		return netp::OK;
 	}
 
+	int socket_base::bind_any() {
+		//connectex requires the socket to be initially bound
+		struct sockaddr_in addr_in;
+		::memset(&addr_in, 0, sizeof(addr_in));
+		addr_in.sin_family = m_family;
+		addr_in.sin_addr.s_addr = INADDR_ANY;
+		addr_in.sin_port = 0;
+		int bindrt = ::bind(m_fd, reinterpret_cast<sockaddr*>(&addr_in), sizeof(addr_in));
+		if (bindrt != netp::OK) {
+			bindrt = netp_socket_get_last_errno();
+			NETP_DEBUG("bind failed: %d\n", bindrt);
+			return bindrt;
+		}
+		return netp::OK;
+	}
+
 	int socket_base::listen(int backlog) {
 		NETP_ASSERT(m_fd>0);
 		int rt;
@@ -284,16 +300,9 @@ namespace netp {
 
 #ifdef NETP_HAS_POLLER_IOCP
 		//connectex requires the socket to be initially bound
-		struct sockaddr_in addr_in;
-		::memset(&addr_in, 0, sizeof(addr_in));
-		addr_in.sin_family = m_family;
-		addr_in.sin_addr.s_addr = INADDR_ANY;
-		addr_in.sin_port = 0;
-		int bindrt = ::bind( m_fd, reinterpret_cast<sockaddr*>(&addr_in), sizeof(addr_in));
-		if (bindrt != netp::OK ) {
-			bindrt = netp_socket_get_last_errno();
-			NETP_DEBUG("bind failed: %d\n", bindrt );
-			return bindrt;
+		int rt = bind_any();
+		if (rt != netp::OK) {
+			return rt;
 		}
 		return netp::E_EINPROGRESS;
 #else
@@ -308,9 +317,10 @@ namespace netp {
 		NETP_ASSERT(m_fd > 0);
 
 		if(size ==0) {
-			int nsize = get_snd_buffer_size();
-			NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
-			m_sock_buf.sndbuf_size = nsize;
+			//default
+			//int nsize = get_snd_buffer_size();
+			//NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
+			//m_sock_buf.sndbuf_size = nsize;
 			return netp::OK;
 		} else if (size < u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE) ) {
 			size = u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE);
@@ -321,20 +331,18 @@ namespace netp {
 		int rt;
 #ifdef _DEBUG
 		rt = get_snd_buffer_size();
-		NETP_TRACE_SOCKET("[socket_base][%s]snd buffer size: %u, try to set: %u", info().c_str(), rt, size );
+		NETP_TRACE_SOCKET("[socket_base][#%d]snd buffer size: %u, try to set: %u", m_fd, rt, size );
 #endif
 
 		rt = socket_base::setsockopt(SOL_SOCKET, SO_SNDBUF, (char*)&(size), sizeof(size));
 		if (rt == NETP_SOCKET_ERROR) {
-			const int errno_ = netp_socket_get_last_errno();
-			NETP_WARN("[socket_base][%s]setsockopt failed: %d", info().c_str(), errno_);
-			return errno_;
+			return netp_socket_get_last_errno();
 		}
 
-		int nsize = get_snd_buffer_size();
-		NETP_RETURN_V_IF_MATCH(nsize, nsize <0);
-		m_sock_buf.sndbuf_size = nsize;
-		NETP_TRACE_SOCKET("[socket_base][%s]snd buffer size new: %u", info().c_str(), m_sock_buf.sndbuf_size);
+		//int nsize = get_snd_buffer_size();
+		//NETP_RETURN_V_IF_MATCH(nsize, nsize <0);
+		//m_sock_buf.sndbuf_size = nsize;
+		//NETP_TRACE_SOCKET("[socket_base][#%d]snd buffer size new: %u", m_fd, m_sock_buf.sndbuf_size);
 
 		return netp::OK;
 	}
@@ -345,9 +353,7 @@ namespace netp {
 		socklen_t opt_length = sizeof(u32_t);
 		int rt = socket_base::getsockopt(SOL_SOCKET, SO_SNDBUF, (char*)&size, &opt_length);
 		if (rt == NETP_SOCKET_ERROR) {
-			const int errno_ = netp_socket_get_last_errno();
-			NETP_WARN("[socket_base][%s]getsockopt failed: %d", info().c_str(), errno_);
-			return errno_;
+			return netp_socket_get_last_errno();
 		}
 		return size;
 	}
@@ -374,9 +380,10 @@ namespace netp {
 		NETP_ASSERT(m_fd != NETP_INVALID_SOCKET );
 
 		if (size == 0) {
-			int nsize = get_rcv_buffer_size();
-			NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
-			m_sock_buf.rcvbuf_size = nsize;
+			//os default
+			//int nsize = get_rcv_buffer_size();
+			//NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
+			//m_sock_buf.rcvbuf_size = nsize;
 			return netp::OK;
 		} else if (size < u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE)) {
 			size = u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE);
@@ -387,31 +394,27 @@ namespace netp {
 		int rt;
 #ifdef _DEBUG
 		rt = get_rcv_buffer_size();
-		NETP_TRACE_SOCKET("[socket_base][%s]rcv buffer size: %u, try to set: %u", info().c_str(), rt, size );
+		NETP_TRACE_SOCKET("[socket_base][#%d]rcv buffer size: %u, try to set: %u", m_fd, rt, size );
 #endif
 
 		rt = socket_base::setsockopt(SOL_SOCKET, SO_RCVBUF, (char*)&(size), sizeof(size));
 		if (rt == NETP_SOCKET_ERROR) {
-			const int errno_ = netp_socket_get_last_errno();
-			NETP_WARN("[socket_base][%s]setsockopt failed: %d", info().c_str(), errno_);
-			return errno_;
+			return netp_socket_get_last_errno();
 		}
-		int nsize = get_rcv_buffer_size();
-		NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
-		m_sock_buf.rcvbuf_size = nsize;
-		NETP_TRACE_SOCKET("[socket_base][%s]rcv buffer size new: %u", info().c_str(), m_sock_buf.rcvbuf_size);
+		//int nsize = get_rcv_buffer_size();
+		//NETP_RETURN_V_IF_MATCH(nsize, nsize < 0);
+		//m_sock_buf.rcvbuf_size = nsize;
+		//NETP_TRACE_SOCKET("[socket_base][#%d]rcv buffer size new: %u", m_fd, m_sock_buf.rcvbuf_size);
 		return netp::OK;
 	}
 
 	int socket_base::get_rcv_buffer_size() const {
 		NETP_ASSERT(m_fd > 0);
 		int size;
-		socklen_t opt_length = sizeof(u32_t);
+		socklen_t opt_length = sizeof(size);
 		int rt = socket_base::getsockopt(SOL_SOCKET, SO_RCVBUF, (char*)&size, &opt_length);
 		if (rt == NETP_SOCKET_ERROR) {
-			const int errno_ = netp_socket_get_last_errno();
-			NETP_WARN("[socket_base][%s]getsockopt failed: %d", info().c_str(), errno_);
-			return errno_;
+			return netp_socket_get_last_errno();
 		}
 		return size;
 	}

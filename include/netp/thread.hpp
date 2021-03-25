@@ -30,7 +30,7 @@
 	#define NETP_TRACE_THREAD(...)
 #endif
 
-#define NETP_ENABLE_DEBUG_STACK_SIZE
+//#define NETP_ENABLE_DEBUG_STACK_SIZE
 
 namespace netp {
 
@@ -196,16 +196,23 @@ _VARIADIC_EXPAND_0X(_THREAD_CONS, , , , )
 		int start(_Fun_t&& __fun, _Args&&... __args) {
 
 			NETP_ASSERT(m_th_data == nullptr);
-			m_th_data = new impl::thread_data();
-			NETP_ASSERT(m_th_data != nullptr);
 			NETP_ASSERT(m_handler == nullptr);
+			m_th_data = netp::allocator<impl::thread_data>::make();
+			NETP_ASSERT(m_th_data != nullptr);
 
 			try {
 				m_run_base_type = impl::_M_make_routine(std::bind(std::forward<typename std::remove_reference<_Fun_t>::type>(__fun), std::forward<_Args>(__args)...));
-				m_handler = new std::thread(&thread::__RUN_PROXY__, this);
+
+				//@NOTE: A thread object is joinable if it represents a thread of execution.
+				//A thread object is not joinable in any of these cases :
+				//if it was default - constructed.
+				//	if it has been moved from(either constructing another thread object, or assigning to it).
+				//		if either of its members join or detach has been called.
+				m_handler = ::new std::thread(&thread::__RUN_PROXY__, this);
 			} catch (...) {
-				NETP_DELETE(m_th_data);
+				netp::allocator<impl::thread_data>::trash(m_th_data);
 				NETP_DELETE(m_handler);
+
 				int _eno = netp_last_errno();
 				NETP_ERR("[thread]new std::thread(&thread::__RUN_PROXY__, _THH_) failed: %d", _eno);
 				return (_eno);
@@ -222,7 +229,8 @@ _VARIADIC_EXPAND_0X(_THREAD_CONS, , , , )
 			NETP_ASSERT(m_handler->joinable());
 			m_handler->join();
 			NETP_DELETE(m_handler);
-			NETP_DELETE(m_th_data);
+
+			netp::allocator<impl::thread_data>::trash(m_th_data);
 		}
 
 		void interrupt() {

@@ -15,20 +15,12 @@ namespace netp { namespace task {
 
 	//std::atomic<u64_t> task_abstract::s_auto_increment_id(0);
 
-	scheduler::scheduler( u8_t const& max_runner
-#ifdef NETP_ENABLE_SEQUENCIAL_RUNNER
-		, u8_t const& max_sequential_runner
-#endif
-	):
+	scheduler::scheduler( u8_t const& max_runner):
 		m_mutex(),
 		m_condition(),
 		m_state( S_IDLE ),
 		m_max_concurrency(max_runner),
 		m_runner_pool(nullptr)
-#ifdef NETP_ENABLE_SEQUENCIAL_RUNNER
-		m_max_seq_concurrency(max_sequential_runner),
-		,m_sequencial_runner_pool(nullptr)
-#endif
 	{
 	}
 
@@ -82,13 +74,6 @@ namespace netp { namespace task {
 		m_runner_pool = new runner_pool( m_max_concurrency ) ;
 		NETP_ALLOC_CHECK( m_runner_pool, sizeof(runner_pool) ) ;
 		m_runner_pool->init(this);
-
-#ifdef NETP_ENABLE_SEQUENCIAL_RUNNER
-		NETP_ASSERT(m_max_seq_concurrency>0&& m_max_seq_concurrency<128);
-		m_sequencial_runner_pool = new sequencial_runner_pool(m_max_seq_concurrency);
-		NETP_ALLOC_CHECK( m_sequencial_runner_pool, sizeof(sequencial_runner_pool) ) ;
-		m_sequencial_runner_pool->init();
-#endif
 	}
 
 	void scheduler::__on_stop() {
@@ -96,10 +81,7 @@ namespace netp { namespace task {
 		NETP_ASSERT( m_tasks_assigning->empty() );
 
 		m_runner_pool->deinit();
-#ifdef NETP_ENABLE_SEQUENCIAL_RUNNER
-		m_sequencial_runner_pool->deinit();
-		NETP_DELETE(m_sequencial_runner_pool);
-#endif
+
 		NETP_DELETE( m_tasks_assigning );
 		NETP_DELETE( m_runner_pool );
 	}
@@ -129,11 +111,7 @@ namespace netp { namespace task {
 			}
 
 			if (runner_flag == 0) {
-				while (!m_runner_pool->test_waiting_step1()
-#ifdef NETP_ENABLE_SEQUENCIAL_RUNNER
-					|| !m_sequencial_runner_pool->test_waiting_step1()
-#endif						
-					) {
+				while (!m_runner_pool->test_waiting_step1()) {
 					netp::this_thread::no_interrupt_yield(50);
 					self_flag = 0;
 					runner_flag = 0;
@@ -142,11 +120,7 @@ namespace netp { namespace task {
 				runner_flag = 1;
 			}
 			else if (runner_flag == 1) {
-				while (!m_runner_pool->test_waiting_step2()
-#ifdef NETP_ENABLE_SEQUENCIAL_RUNNER
-					|| !m_sequencial_runner_pool->test_waiting_step2()
-#endif
-					) {
+				while (!m_runner_pool->test_waiting_step2()	) {
 					netp::this_thread::no_interrupt_yield(50);
 					self_flag = 0;
 					runner_flag = 0;

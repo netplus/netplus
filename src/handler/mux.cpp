@@ -35,12 +35,12 @@ namespace netp { namespace handler {
 		}
 	}
 
-	void mux_stream::_ch_flush_done(const int aiort_, u16_t wt) {
+	void mux_stream::_ch_flush_done(const int status, u16_t wt) {
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(m_chflag & int(channel_flag::F_WRITING));
 		NETP_ASSERT( (m_chflag& int(channel_flag::F_CLOSED)) ==0 );
 
-		switch (aiort_) {
+		switch (status) {
 			case netp::OK:
 			{
 				NETP_ASSERT(m_outlets_q.size());
@@ -72,10 +72,10 @@ namespace netp { namespace handler {
 			break;
 			default:
 			{
-				NETP_ASSERT(aiort_ < 0 && aiort_ != netp::E_CHANNEL_WRITE_BLOCK);
+				NETP_ASSERT(status < 0 && status != netp::E_CHANNEL_WRITE_BLOCK);
 				m_chflag |= int(channel_flag::F_WRITE_ERROR);
 				m_chflag &= ~(int(channel_flag::F_WRITING)|int(channel_flag::F_CLOSE_PENDING)| int(channel_flag::F_BDLIMIT));
-				ch_errno()=(aiort_);
+				ch_errno()=(status);
 				ch_close_impl(nullptr);
 			}
 		}
@@ -143,7 +143,7 @@ namespace netp { namespace handler {
 				NETP_ASSERT(s->m_snd_wnd >0, "info: %s", s->ch_info().c_str());
 				NETP_ASSERT(s->m_rcv_wnd > 0, "info: %s", s->ch_info().c_str());
 				s->ch_fire_connected();
-				s->ch_aio_read();
+				s->ch_io_read();
 			});
 		});
 
@@ -499,7 +499,7 @@ namespace netp { namespace handler {
 			NETP_ASSERT(s->m_snd_wnd > 0, "info: %s", s->ch_info().c_str());
 			NETP_ASSERT(s->m_rcv_wnd > 0, "info: %s", s->ch_info().c_str());
 			s->ch_fire_connected();
-			s->ch_aio_read();
+			s->ch_io_read();
 			return;
 		}
 

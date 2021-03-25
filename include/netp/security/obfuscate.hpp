@@ -14,7 +14,7 @@ inline static TARGET_W obfuscate(SRC_X val, TARGET_W nonce ) {
 	//per bytes contain bit count
 	netp::u8_t pbcbc = (sizeof(SRC_X) * 8) / (sizeof(TARGET_W) / sizeof(netp::u8_t));
 
-	for (int i = 0; i < (sizeof(SRC_X) * 8); i++) {
+	for (::size_t i = 0; i < (sizeof(SRC_X) * 8); i++) {
 		if ((i%pbcbc) == 0) {
 			b[i] = ((nonce >> (5 + 8*(i / pbcbc)) & 0x7) % 5) & 0xFF;
 			bii[i] = b[i];
@@ -39,7 +39,7 @@ inline static SRC_X deobfuscate(TARGET_W val) {
 	netp::u8_t pbcbc = (sizeof(SRC_X) * 8) / (sizeof(TARGET_W) / sizeof(netp::u8_t));
 	netp::u8_t b[sizeof(SRC_X) * 8];
 
-	for (int i = 0; i < (sizeof(SRC_X) * 8); i++) {
+	for (::size_t i = 0; i < (sizeof(SRC_X) * 8); i++) {
 		if ((i%pbcbc) == 0) {
 			b[i] = ((val >> (5 + 8 * (i / pbcbc)) & 0x7) % 5) & 0xFF;
 		} else {

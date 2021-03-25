@@ -38,20 +38,18 @@ namespace netp {
 		F_CLOSING = 1 << 13,
 		F_CLOSED = 1 << 14,
 
-		F_CONNECTING =1<<16,
-		F_CONNECTED = 1<<17,
-		F_LISTENING = 1<<18,
+		F_CONNECTING =1<<15,
+		F_CONNECTED = 1<<16,
+		F_LISTENING = 1<<17,
 
-		F_ACTIVE = 1 << 20,
-		F_BDLIMIT = 1 << 21,
-		F_BDLIMIT_TIMER = 1 << 22,
+		F_ACTIVE = 1 << 18,
+		F_BDLIMIT = 1 << 19,
+		F_BDLIMIT_TIMER = 1 << 20,
 
-		F_IO_EVENT_LOOP_BEGINING = 1<<24,
-		F_IO_EVENT_LOOP_BEGIN_DONE = 1<<25,
-		F_IO_EVENT_LOOP_BEGIN_FAILED = 1<<26,
-		F_IO_EVENT_LOOP_NOTIFY_TERMINATING=1<<27,
+		F_IO_EVENT_LOOP_BEGIN_DONE = 1<<21,
+		F_IO_EVENT_LOOP_NOTIFY_TERMINATING=1<<22,
 
-		F_TIMER_1 = 1 << 28
+		F_TIMER_1 = 1 << 23
 	};
 
 	struct channel_buf_cfg {
@@ -81,7 +79,6 @@ namespace netp {
 	class channel :
 		public netp::ref_base
 	{
-
 	public:
 		NRP<io_event_loop> L;
 	protected:
@@ -135,13 +132,11 @@ namespace netp {
 
 			inline void ch_init() {
 				NETP_ASSERT((m_chflag&int(channel_flag::F_CLOSED)));
-				m_chflag &= ~int(channel_flag::F_CLOSED);
-
 				NETP_ASSERT(m_ch_close_p == nullptr);
 				m_ch_close_p = netp::make_ref<promise<int>>();
-				m_ch_close_p->if_done([ch=NRP<channel>(this)](int const&) {
-					ch->ch_deinit();
-				});
+				//m_ch_close_p->if_done([ch=NRP<channel>(this)](int const&) {
+				//	ch->ch_deinit();
+				//});
 
 				m_pipeline = netp::make_ref<channel_pipeline>(NRP<channel>(this));
 				m_pipeline->init();
@@ -151,7 +146,8 @@ namespace netp {
 				NETP_ASSERT(L->in_event_loop());
 				if ( ((m_chflag&(int(channel_flag::F_CLOSED)|int(channel_flag::F_CLOSING)))==0) && ((m_chflag & (int(channel_flag::F_READWRITE_SHUTDOWN))) == int(channel_flag::F_READWRITE_SHUTDOWN)) ) {
 					NETP_TRACE_CHANNEL("[channel][%s]ch_rdwr_shutdown_check trigger ch_close_impl()", ch_info().c_str() );
-					ch_close_impl(nullptr);
+					m_chflag |= int(channel_flag::F_CLOSED);
+					ch_io_end();
 				}
 			}
 
@@ -286,6 +282,7 @@ public: \
 
 		virtual channel_id_t ch_id() const = 0; //called by context in event_loop
 		virtual std::string ch_info() const = 0;
+		virtual void ch_set_bdlimit(netp::size_t) {};
 
 		virtual NRP<promise<int>> ch_set_read_buffer_size(u32_t size) = 0;
 		virtual NRP<promise<int>> ch_get_read_buffer_size() = 0;
@@ -293,7 +290,6 @@ public: \
 		virtual NRP<promise<int>> ch_set_write_buffer_size(u32_t size) = 0;
 		virtual NRP<promise<int>> ch_get_write_buffer_size() = 0;
 		virtual NRP<promise<int>> ch_set_nodelay() = 0;
-		virtual void ch_set_bdlimit(u32_t) {};
 
 		virtual void ch_write_impl(NRP<packet> const& outlet, NRP<promise<int>> const& chp) = 0;
 		virtual void ch_write_to_impl(NRP<packet> const& outlet, netp::address const& to, NRP<promise<int>> const& chp) { 
@@ -308,15 +304,20 @@ public: \
 		virtual void ch_close_write_impl(NRP<promise<int>> const& chp) = 0;
 		virtual void ch_close_impl(NRP<promise<int>> const& chp) = 0;
 		
-		virtual void ch_aio_read_from(fn_aio_read_from_event_t const& fn = nullptr) { (void)fn; }
-		virtual void ch_aio_read( fn_aio_read_event_t const& fn = nullptr) = 0;
-		virtual void ch_aio_end_read() = 0;
+		virtual void ch_io_begin(fn_io_event_t const& fn = nullptr) = 0;
+		virtual void ch_io_end() = 0;
 
-		virtual void ch_aio_write(fn_aio_event_t const& fn = nullptr) = 0;
-		virtual void ch_aio_end_write() = 0;
+		virtual void ch_io_accept(fn_channel_initializer_t const& fn = nullptr) = 0;
+		virtual void ch_io_end_accept() = 0;
 
-		virtual void ch_aio_connect( fn_aio_event_t const& fn ) = 0;
-		virtual void ch_aio_end_connect() = 0;
+		virtual void ch_io_read( fn_io_event_t const& fn = nullptr) = 0;
+		virtual void ch_io_end_read() = 0;
+
+		virtual void ch_io_write(fn_io_event_t const& fn = nullptr) = 0;
+		virtual void ch_io_end_write() = 0;
+
+		virtual void ch_io_connect( fn_io_event_t const& fn ) = 0;
+		virtual void ch_io_end_connect() = 0;
 	};
 }
 #endif

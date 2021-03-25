@@ -107,6 +107,10 @@ namespace netp { namespace handler {
 			channel::ch_init();
 		}
 
+		void deinit() {
+			channel::ch_deinit();
+		}
+
 		void __check_dial_ok() {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(m_transport_mux != nullptr);
@@ -115,12 +119,11 @@ namespace netp { namespace handler {
 		}
 
 		void _ch_do_close_read() {
-			if ((m_chflag&int(channel_flag::F_READ_SHUTDOWN))) { return; }
+			if (m_chflag& (int(channel_flag::F_READ_SHUTDOWN)|int(channel_flag::F_READ_SHUTDOWNING))) { return; }
 
-			NETP_ASSERT((m_chflag&int(channel_flag::F_READ_SHUTDOWNING)) == 0);
 			m_chflag |= int(channel_flag::F_READ_SHUTDOWNING);
 
-			ch_aio_end_read();
+			ch_io_end_read();
 			//update wndinc to remote
 			NETP_TRACE_STREAM("[muxs][s%u]_ch_do_close_read, left read packet: %u", ch_id(), m_incomes_buffer_q.size());
 			while (m_incomes_buffer_q.size()) {
@@ -128,25 +131,25 @@ namespace netp { namespace handler {
 				m_incomes_buffer_q.pop();
 			}
 			_check_rcv_data_inc();
+			ch_fire_read_closed();
+
 			m_chflag |= int(channel_flag::F_READ_SHUTDOWN);
 			m_chflag &= ~int(channel_flag::F_READ_SHUTDOWNING);
-
-			ch_fire_read_closed();
 			ch_rdwr_shutdown_check();
 		}
 
 		void _ch_do_close_write() {
-			if ((m_chflag&int(channel_flag::F_WRITE_SHUTDOWN))) { return; }
-			NETP_ASSERT((m_chflag & int(channel_flag::F_WRITE_SHUTDOWNING)) == 0);
+			if (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWN)|int(channel_flag::F_WRITE_SHUTDOWNING) )) { return; }
 			m_chflag |= int(channel_flag::F_WRITE_SHUTDOWNING);
 
 			m_chflag &= ~(int(channel_flag::F_WRITE_SHUTDOWN_PENDING)|int(channel_flag::F_WRITING));
 			_ch_do_cancel_all_outlets();
 
-			m_chflag |= int(channel_flag::F_WRITE_SHUTDOWN);
-			m_chflag &= ~int(channel_flag::F_WRITE_SHUTDOWNING);
 			ch_fire_write_closed();
 			NETP_TRACE_STREAM("[muxs][s%u]_ch_do_close_write", m_id);
+			m_chflag |= int(channel_flag::F_WRITE_SHUTDOWN);
+			m_chflag &= ~int(channel_flag::F_WRITE_SHUTDOWNING);
+
 			ch_rdwr_shutdown_check();
 		}
 
@@ -240,7 +243,7 @@ namespace netp { namespace handler {
 		}
 
 		void _do_ch_zero_outlets_check();
-		void _ch_flush_done(const int aiort_, u16_t wt);
+		void _ch_flush_done(const int status, u16_t wt);
 		void _do_ch_flush_impl() ;
 
 		void _ch_do_cancel_all_outlets() {
@@ -268,21 +271,19 @@ namespace netp { namespace handler {
 
 		void _ch_do_close_read_write() {
 			NETP_ASSERT(L->in_event_loop());
-			if (m_chflag & (int(channel_flag::F_READ_SHUTDOWNING) | int(channel_flag::F_WRITE_SHUTDOWNING))) {
+			if (m_chflag & (int(channel_flag::F_CLOSED) | int(channel_flag::F_CLOSING))) {
 				return;
 			}
 
-			NETP_ASSERT( (m_chflag&int(channel_flag::F_CLOSED)) == 0);
-			//NETP_ASSERT(m_chflag&int(channel_flag::F_CONNECTED));
-			NETP_TRACE_STREAM("[muxs][s%u]do_close mux_stream", m_id);
 			m_chflag |= int(channel_flag::F_CLOSING);
 			m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING)|int(channel_flag::F_CONNECTED));
+
+			NETP_TRACE_STREAM("[muxs][s%u]do_close mux_stream", m_id);
 			_ch_do_close_read();
 			_ch_do_close_write();
-			m_chflag |= int(channel_flag::F_CLOSED);
 			m_chflag &= ~int(channel_flag::F_CLOSING);
 
-			ch_fire_closed(netp::OK);
+			ch_rdwr_shutdown_check();
 		}
 
 		void __check_incomes_buffer() {
@@ -384,10 +385,10 @@ namespace netp { namespace handler {
 			});
 			return p;
 		}
-		void ch_aio_read(fn_aio_read_event_t const& fn_read = nullptr) {
+		void ch_io_read(fn_io_event_t const& fn_read = nullptr) {
 			if (!L->in_event_loop()) {
 				L->schedule([ch = NRP<channel>(this)](){
-					ch->ch_aio_read();
+					ch->ch_io_read();
 				});
 				return;
 			}
@@ -401,10 +402,10 @@ namespace netp { namespace handler {
 			(void)fn_read;
 		}
 
-		void ch_aio_end_read() {
+		void ch_io_end_read() {
 			if (!L->in_event_loop()) {
 				L->schedule([ch = NRP<channel>(this)](){
-					ch->ch_aio_end_read();
+					ch->ch_io_end_read();
 				});
 				return;
 			}
@@ -412,12 +413,23 @@ namespace netp { namespace handler {
 		}
 
 		//for channel compatible
-		void ch_aio_write(fn_aio_event_t const& fn = nullptr) override { (void)fn; }
-		void ch_aio_end_write() override {}
+		void ch_io_begin(fn_io_event_t const& ) override {};
+		void ch_io_end() override {
+			L->schedule([xs=NRP<mux_stream>(this)]() {
+				xs->ch_fire_closed(netp::OK);
+			});
+		};
+
+		void ch_io_accept(fn_channel_initializer_t const& ) override {}
+		void ch_io_end_accept() override {}
 
 		//for channel compatible
-		void ch_aio_connect(fn_aio_event_t const& fn) override { (void)fn; }
-		void ch_aio_end_connect() override {}
+		void ch_io_write(fn_io_event_t const& ) override { }
+		void ch_io_end_write() override {}
+
+		//for channel compatible
+		void ch_io_connect(fn_io_event_t const& ) override {  }
+		void ch_io_end_connect() override {}
 
 		void ch_write_impl(NRP<packet> const& outlet, NRP<promise<int>> const& write_p) override {
 			NETP_ASSERT(L->in_event_loop());
@@ -552,8 +564,9 @@ namespace netp { namespace handler {
 			muxs->init(bcfg);
 			m_stream_map.insert({ id, muxs });
 			NETP_TRACE_STREAM("[mux][s%u]insert stream", id);
-			muxs->ch_close_promise()->if_done([x = NRP<mux>(this), id](int const&) {
-				::size_t c = x->m_stream_map.erase(id);
+			muxs->ch_close_promise()->if_done([x = NRP<mux>(this), muxs](int const&) {
+				muxs->deinit();
+				::size_t c = x->m_stream_map.erase(u32_t(muxs->ch_id()));
 				NETP_ASSERT(c == 1);
 			});
 

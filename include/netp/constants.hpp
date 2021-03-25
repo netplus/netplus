@@ -295,7 +295,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_EMULTIHOP						= -72; //Multihop attempted
 	const int E_EDOTDOT							= -73; //RFS specific error
 	const int E_EBADMSG							= -74; //Not a data message
-	const int E_OVERFLOW						= -75; //Value too large for defined data type
+	const int E_EOVERFLOW						= -75; //Value too large for defined data type
 	const int E_ENOTUNIQ						= -76; //Name not unique on network
 	const int E_EBADFD								= -77; //File descriptor in bad state
 	const int E_REMCHG							= -78; //Remote address changed
@@ -358,14 +358,19 @@ const int  E_ERANGE = -34;         /* Result too large */
 
 
 #elif defined(_NETP_WIN)
+	const int E_ERROR_ACCESS_DENIED = -5;
 	const int E_WSA_INVALID_HANDLE = -6;
+	const int E_ERROR_HANDLE_EOF = -38;
 	const int E_WSA_INVALID_PARAMETER = -87;
+	const int E_ERROR_MORE_DATA            = -234;
 	const int E_WAIT_TIMEOUT = -258;
 	const int E_ERROR_ABANDONED_WAIT_0 = -735;
 
 	const int E_WSA_OPERATION_ABORTED = -995;
 	const int E_WSA_IO_INCOMPLETE = -996;
 	const int E_WSA_IO_PENDING = -997;
+	const int E_ERROR_PRIVILEGE_NOT_HELD = -1314;
+
 	const int E_ERROR_CONNECTION_ABORTED = -1236;
 
 // 1---19999; reserved for system call error code (windows)
@@ -431,6 +436,15 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_EINPROGRESS = E_WSAEWOULDBLOCK; //pls refer tohttps://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-connect
 
 	const int E_EMFILE = E_WSAEMFILE;
+
+
+	const int E_EBADF = E_WSAEBADF;
+	const int E_EALREADY = E_WSAEALREADY;
+	const int E_ECONNRESET = E_WSAECONNRESET;
+	const int E_ETIMEOUT = E_WSAETIMEDOUT;
+	const int E_EADDRINUSE = E_WSAEADDRINUSE;
+	const int E_EINVAL = E_WSAEINVAL;
+	const int E_ENOTCONN = E_WSAENOTCONN;
 #endif
 	//internal error
 	const int E_NETP_APP_EXIT								= -20000;
@@ -452,6 +466,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_OP_INPROCESS								= -20016;
 	const int E_OP_ABORT									= -20017;
 	const int E_OP_TIMEOUT								= -20018;
+	const int E_OP_ALREADY = -20019;
 
 	const int E_EVENT_BROKER_BINDED_ALREADY = -21001;
 	const int E_EVENT_BROKER_NO_LISTENER			= -21002;
@@ -466,7 +481,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_IO_EVENT_LOOP_NOTIFY_TERMINATING = -25001;
 	const int E_IO_EVENT_LOOP_TERMINATED = -25002;
 	const int E_IO_EVENT_LOOP_BYE_DO_NOTHING = -25003;
-	const int E_IO_EVENT_LOOP_MAXIMUM_CTX_LIMITATION = -25004;
+	const int E_IO_BEGIN_FAILED = -25004;
 
 	//30000 - 30999 //system level socket error
 	const int E_SOCKET_EPOLLHUP			= -30001;
@@ -499,13 +514,12 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_CHANNEL_WRITE_SHUTDOWNING	= -34011;
 	const int E_CHANNEL_WRITING							= -34012;
 	const int E_CHANNEL_OUTGO_LIST_EMPTY		= -34013; //FOR IOCP
-	const int E_CHANNEL_CANCEL_WRITE				= -34014;
 
-	const int E_CHANNEL_READ_WRITE_ERROR		= -34015;
-	const int E_CHANNEL_ABORT								= -34016;
-	const int E_CHANNEL_CONTEXT_REMOVED		= -34017;
+	const int E_CHANNEL_READ_WRITE_ERROR		= -34014;
+	const int E_CHANNEL_ABORT								= -34015;
+	const int E_CHANNEL_CONTEXT_REMOVED		= -34016;
 
-	const int E_CHANNEL_OVERLAPPED_OP_TRY = -34018;
+	const int E_CHANNEL_OVERLAPPED_OP_TRY = -34017;
 
 	const int E_FORWARDER_DOMAIN_LEN_EXCEED	= -35001;
 	const int E_FORWARDER_INVALID_IPV4					= -35002;

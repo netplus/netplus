@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
 
 	netp::app app;
 
-	NRP<netp::channel_listen_promise> f_listen = netp::socket::listen_on( "tcp://0.0.0.0:22310", [](NRP<netp::channel> const& ch) {
+	NRP<netp::channel_listen_promise> f_listen = netp::listen_on( "tcp://0.0.0.0:22310", [](NRP<netp::channel> const& ch) {
 		ch->pipeline()->add_last(netp::make_ref<example_handler>());
 		ch->pipeline()->add_last(netp::make_ref<my_echo>());
 	});

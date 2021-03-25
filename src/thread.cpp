@@ -20,7 +20,7 @@ namespace netp {
 		NETP_ASSERT(m_th_data != nullptr);
 		tls_set<impl::thread_data>(m_th_data);
 
-#ifdef USE_POOL
+#ifdef NETP_MEMORY_USE_TLS_POOL
 		tls_create<netp::pool_align_allocator_t>();
 #endif
 
@@ -67,7 +67,7 @@ namespace netp {
 
 		tls_set<impl::thread_data>(nullptr);
 		NETP_TRACE_THREAD("[thread]__POST_RUN_PROXY__");
-#ifdef USE_POOL
+#ifdef NETP_MEMORY_USE_TLS_POOL
 		tls_destroy<netp::pool_align_allocator_t>();
 #endif
 	}

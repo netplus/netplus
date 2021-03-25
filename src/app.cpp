@@ -96,6 +96,9 @@ namespace netp {
 
 #ifdef _DEBUG
 		dump_arch_info();
+#endif
+		
+#ifdef NETP_DEBUG_OBJECT_SIZE
 		__dump_sizeof();
 #endif
 
@@ -156,10 +159,11 @@ namespace netp {
 		NETP_ASSERT(netp::is_little_endian());
 #endif
 		netp::random_init_seed();
-#ifdef USE_POOL
+		netp::tls_create< netp::impl::thread_data>();
+
+#ifdef NETP_MEMORY_USE_TLS_POOL
 		netp::tls_create<netp::pool_align_allocator_t>();
 #endif
-		netp::tls_create< netp::impl::thread_data>();
 
 #if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
 		//for mutex/lock deubg
@@ -176,7 +180,7 @@ namespace netp {
 #endif
 		netp::tls_destroy< netp::impl::thread_data>();
 
-#ifdef USE_POOL
+#ifdef NETP_MEMORY_USE_TLS_POOL
 		netp::tls_destroy< netp::pool_align_allocator_t>();
 #endif
 	}
@@ -250,13 +254,16 @@ namespace netp {
 		NETP_INFO("ARCH INFO: %s\n", arch_info.c_str());
 	}
 
-#ifdef _DEBUG
+#if defined(NETP_DEBUG_OBJECT_SIZE)
 	void app::__dump_sizeof() {
 
 		NETP_INFO("sizeof(void*): %u", sizeof(void*));
 
 		NETP_INFO("sizeof(std::atomic<long>): %u", sizeof(std::atomic<long>));
+		NETP_INFO("sizeof(netp::__atomic_counter): %u", sizeof(netp::__atomic_counter));
+		NETP_INFO("sizeof(netp::__non_atomic_counter): %u", sizeof(netp::__non_atomic_counter));
 		NETP_INFO("sizeof(netp::ref_base): %u", sizeof(netp::ref_base));
+		NETP_INFO("sizeof(netp::non_atomic_ref_base): %u", sizeof(netp::non_atomic_ref_base));
 		NETP_INFO("sizeof(netp::packet): %u", sizeof(netp::packet));
 		NETP_INFO("sizeof(ref_ptr<netp::packet>): %u", sizeof(NRP<netp::packet>));
 
@@ -264,17 +271,22 @@ namespace netp {
 
 		NETP_INFO("sizeof(netp::socket_base): %u", sizeof(netp::socket_base));
 		NETP_INFO("sizeof(netp::channel): %u", sizeof(netp::channel));
-		NETP_INFO("sizeof(netp::socket): %u", sizeof(netp::socket));
-
+		NETP_INFO("sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>): %u", sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>));
+		NETP_INFO("sizeof(netp::socket): %u", sizeof(netp::socket_channel));
+		NETP_INFO("sizeof(std::vector<int>): %u", sizeof(std::vector<int>));
+		NETP_INFO("sizeof(std::vector<std::function<void(int)>): %u", sizeof(std::vector<std::function<void(int)>>));
+		NETP_INFO("sizeof(std::vector<std::function<void(int, int)>>): %u", sizeof(std::vector<std::function<void(int, int)>>));
 		NETP_INFO("sizeof(netp::promise<int>): %u", sizeof(netp::promise<int>));
-		NETP_INFO("sizeof(netp::promise<tuple<int,NRP<socket>>>): %u", sizeof(netp::promise<std::tuple<int, NRP<netp::socket>>>));
+		NETP_INFO("sizeof(netp::promise<tuple<int,NRP<socket>>>): %u", sizeof(netp::promise<std::tuple<int, NRP<netp::socket_channel>>>));
 		NETP_INFO("sizeof(netp::event_broker_promise): %u", sizeof(netp::event_broker_promise<int>));
 		NETP_INFO("sizeof(netp::spin_mutex): %u", sizeof(netp::spin_mutex));
 		NETP_INFO("sizeof(netp::mutex): %u", sizeof(netp::mutex));
 		NETP_INFO("sizeof(netp::condition): %u", sizeof(netp::condition));
+		NETP_INFO("sizeof(std::condition_variable): %u", sizeof(std::condition_variable));
 		NETP_INFO("sizeof(netp::condition_any): %u", sizeof(netp::condition_any));
-		NETP_INFO("sizeof(netp::fn_aio_event_t): %u", sizeof(fn_aio_event_t));
-		NETP_INFO("sizeof(netp::watch_ctx): %u", sizeof(netp::watch_ctx));
+		NETP_INFO("sizeof(std::condition_variable_any): %u", sizeof(std::condition_variable_any));
+		NETP_INFO("sizeof(netp::fn_io_event_t): %u", sizeof(fn_io_event_t));
+		NETP_INFO("sizeof(netp::io_ctx): %u", sizeof(netp::io_ctx));
 	}
 #endif
 
@@ -342,7 +354,7 @@ namespace netp {
 	}
 
 	void app::___event_loop_init() {
-		netp::io_event_loop_group::instance()->init(m_cfg.poller_count, m_cfg.poller_cfgs);
+		netp::io_event_loop_group::instance()->init(m_cfg.poller_count, m_cfg.event_loop_cfgs);
 		NETP_INFO("[app]init loop done");
 #ifdef _NETP_WIN
 		if (m_cfg.dnsnses.size() == 0) {
@@ -358,9 +370,9 @@ namespace netp {
 			NETP_ERR("[app]no dns nameserver");
 		}
 #endif
-		/*
-		netp::dns_resolver::instance()
-			->reset(io_event_loop_group::instance()->internal_next());
+		
+		netp::dns_resolver::instance()->reset(io_event_loop_group::instance()->internal_next());
+
 		if (m_cfg.dnsnses.size()) {
 			netp::dns_resolver::instance()->add_name_server(m_cfg.dnsnses);
 		}
@@ -371,16 +383,16 @@ namespace netp {
 			_exit();
 			exit(dnsp->get());
 		}
-		*/
+		
 		NETP_INFO("[app]init dns done");
 	}
 
 	void app::___event_loop_deinit() {
-//		netp::dns_resolver::instance()->stop();
-		netp::io_event_loop_group::instance()->deinit();
-
+		netp::dns_resolver::instance()->stop();
 		//reset loop after all loop reference dattached from business code
+		netp::io_event_loop_group::instance()->deinit();
 		netp::dns_resolver::instance()->reset(nullptr);
+		netp::dns_resolver::destroy_instance();
 	}
 
 	//ISSUE: if the waken thread is main thread, we would get stuck here
@@ -416,12 +428,20 @@ namespace netp {
 
 		{
 			NRP<netp::packet> p = netp::make_ref<netp::packet>();
-			for (size_t i = 0; i <= 1024 * 1024; ++i) {
+#ifdef _DEBUG_MEMORY
+			for (size_t i = 0; i <= 1024 * 1024*8; ++i) {
+#else
+			for (size_t i = 0; i <= 1024 * 1024*2; ++i) {
+#endif
 				p->write<u8_t>(u8_t(1));
 			}
 
 			NRP<netp::packet> p2 = netp::make_ref<netp::packet>();
-			for (size_t i = 0; i <= 1024 * 1024; ++i) {
+#ifdef _DEBUG_MEMORY
+			for (size_t i = 0; i <= 1024 * 1024 * 8; ++i) {
+#else
+			for (size_t i = 0; i <= 1024 * 1024*2; ++i) {
+#endif
 				p2->write_left<u8_t>(u8_t(1));
 			}
 
@@ -465,40 +485,40 @@ namespace netp {
 
 	void app_test_unit::test_netp_allocator(size_t loop) {
 		{
-			netp::benchmark mk("netp_allocator");
-			test_vector_pushback<std::vector<size_t, netp::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
+			netp::benchmark mk("std::vector<size_t,netp::allocator<size_t>");
+			test_vector_pushback<std::vector<size_t,netp::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 		{
-			netp::benchmark mk("netp_allocator");
-			test_vector_pushback<std::vector<size_t, netp::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
+			netp::benchmark mk("std::vector<size_t,netp::allocator<size_t>");
+			test_vector_pushback<std::vector<size_t,netp::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 
 		{
-			netp::benchmark mk("netp_allocator_nonpod");
+			netp::benchmark mk("std::vector<NRP<__nonpod>,netp::allocator<NRP<__nonpod>>");
 			test_vector_pushback_nonpod<std::vector<NRP<__nonpod>, netp::allocator<NRP<__nonpod>>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 		{
-			netp::benchmark mk("netp_allocator_nonpod");
+			netp::benchmark mk("std::vector<NRP<__nonpod>,netp::allocator<NRP<__nonpod>>");
 			test_vector_pushback_nonpod<std::vector<NRP<__nonpod>, netp::allocator<NRP<__nonpod>>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 	}
 
 	void app_test_unit::test_std_allocator(size_t loop) {
 		{
-			netp::benchmark mk("std_allocator");
+			netp::benchmark mk("std::vector<size_t,std::allocator<size_t>");
 			test_vector_pushback<std::vector<size_t, std::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 		{
-			netp::benchmark mk("std_allocator");
+			netp::benchmark mk("std::vector<size_t,std::allocator<size_t>");
 			test_vector_pushback<std::vector<size_t, std::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 
 		{
-			netp::benchmark mk("std_allocator_nonpod");
+			netp::benchmark mk("std::vector<NRP<__nonpod>,std::allocator<NRP<__nonpod>>");
 			test_vector_pushback_nonpod<std::vector<NRP<__nonpod>, std::allocator<NRP<__nonpod>>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 		{
-			netp::benchmark mk("std_allocator_nonpod");
+			netp::benchmark mk("std::vector<NRP<__nonpod>,std::allocator<NRP<__nonpod>>");
 			test_vector_pushback_nonpod<std::vector<NRP<__nonpod>, std::allocator<NRP<__nonpod>>>, POOL_CACHE_MAX_SIZE>(loop);
 		}
 	}

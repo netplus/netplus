@@ -64,6 +64,8 @@
     <ClInclude Include="..\..\include\netp\core\platform\win_x86_.hpp" />
     <ClInclude Include="..\..\include\netp\CPUID.hpp" />
     <ClInclude Include="..\..\include\netp\dns_resolver.hpp" />
+    <ClInclude Include="..\..\include\netp\list.hpp" />
+    <ClInclude Include="..\..\include\netp\poller_abstract.hpp" />
     <ClInclude Include="..\..\include\netp\poller_epoll.hpp" />
     <ClInclude Include="..\..\include\netp\event_broker.hpp" />
     <ClInclude Include="..\..\include\netp\exception.hpp" />
@@ -89,7 +91,6 @@
     <ClInclude Include="..\..\include\netp\http\parser.hpp" />
     <ClInclude Include="..\..\include\netp\icmp.hpp" />
     <ClInclude Include="..\..\include\netp\poller_iocp.hpp" />
-    <ClInclude Include="..\..\include\netp\io_event.hpp" />
     <ClInclude Include="..\..\include\netp\io_event_loop.hpp" />
     <ClInclude Include="..\..\include\netp\ipv4.hpp" />
     <ClInclude Include="..\..\include\netp\ipv6.hpp" />
@@ -123,8 +124,10 @@
     <ClInclude Include="..\..\include\netp\singleton.hpp" />
     <ClInclude Include="..\..\include\netp\smart_ptr.hpp" />
     <ClInclude Include="..\..\include\netp\socket.hpp" />
+    <ClInclude Include="..\..\include\netp\socket_channel.hpp" />
     <ClInclude Include="..\..\include\netp\socket_api.hpp" />
     <ClInclude Include="..\..\include\netp\socket_base.hpp" />
+    <ClInclude Include="..\..\include\netp\socket_channel_iocp.hpp" />
     <ClInclude Include="..\..\include\netp\string.hpp" />
     <ClInclude Include="..\..\include\netp\task\runner.hpp" />
     <ClInclude Include="..\..\include\netp\task\scheduler.hpp" />
@@ -199,8 +202,10 @@
     <ClCompile Include="..\..\src\os\winsock_helper.cpp" />
     <ClCompile Include="..\..\src\rpc.cpp" />
     <ClCompile Include="..\..\src\signal_broker.cpp" />
-    <ClCompile Include="..\..\src\socket.cpp" />
+    <ClCompile Include="..\..\src\socket_channel.cpp" />
     <ClCompile Include="..\..\src\socket_base.cpp" />
+    <ClCompile Include="..\..\src\socket_func.cpp" />
+    <ClCompile Include="..\..\src\socket_channel_iocp.cpp" />
     <ClCompile Include="..\..\src\task\runner.cpp" />
     <ClCompile Include="..\..\src\task\scheduler.cpp" />
     <ClCompile Include="..\..\src\thread.cpp" />

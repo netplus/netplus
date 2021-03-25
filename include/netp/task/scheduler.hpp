@@ -38,12 +38,6 @@ namespace netp { namespace task {
 		u8_t m_max_concurrency;
 		priority_task_queue* m_tasks_assigning;
 		runner_pool* m_runner_pool;
-
-#ifdef NETP_ENABLE_SEQUENCIAL_RUNNER
-		u8_t m_max_seq_concurrency;
-		sequencial_runner_pool* m_sequencial_runner_pool;
-#endif
-
 	public:
 		enum task_manager_state {
 			S_IDLE,
@@ -52,11 +46,7 @@ namespace netp { namespace task {
 		};
 
 
-		scheduler(u8_t const& max_runner_count = static_cast<u8_t>(std::thread::hardware_concurrency())
-#ifdef NETP_ENABLE_SEQUENCIAL_RUNNER
-			,u8_t const& max_sequential_runner = static_cast<u8_t>(NETP_MAX2(1, static_cast<int>(std::thread::hardware_concurrency() >> 2)))
-#endif
-		);
+		scheduler(u8_t const& max_runner_count = static_cast<u8_t>(std::thread::hardware_concurrency()));
 
 		~scheduler();
 
@@ -71,13 +61,6 @@ namespace netp { namespace task {
 			schedule(netp::make_ref<task>(task_fn_), priority);
 		}
 
-#ifdef NETP_ENABLE_SEQUENCIAL_RUNNER
-		inline void schedule(NRP<sequencial_task> const& ta) {
-			NETP_ASSERT(m_state == S_RUN);
-			m_sequencial_runner_pool->assign_task(ta);
-		}
-#endif
-
 		void set_concurrency( u8_t const& max ) {
 			unique_lock<scheduler_mutext_t> _lg( m_mutex );
 
@@ -85,14 +68,6 @@ namespace netp { namespace task {
 			m_max_concurrency = max;
 		}
 
-#ifdef NETP_ENABLE_SEQUENCIAL_RUNNER
-		void set_seq_concurrency(u8_t const& max) {
-			unique_lock<scheduler_mutext_t> _lg(m_mutex);
-
-			NETP_ASSERT(m_state != S_RUN);
-			m_max_seq_concurrency = max;
-		}
-#endif
 		inline u8_t const& get_max_task_runner() const {return m_runner_pool->get_max_task_runner();}
 
 		int start();

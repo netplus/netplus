@@ -9,12 +9,10 @@
 #include <unistd.h>
 
 namespace netp { namespace os {
-
 	int get_local_dns_server_list(vector_ipv4_t& ips) {
 		NETP_TODO("toimpl");
 		return 0;
 	}
-
 	int get_adapters(vector_adapter_t& adapters, int filter) {
 
 		struct ifaddrs* ifaddr;

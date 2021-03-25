@@ -2,13 +2,13 @@
 #define _NETP_SELECT_POLLER_HPP_
 
 #include <netp/core.hpp>
-#include <netp/io_event_loop.hpp>
 #include <netp/socket_api.hpp>
+#include <netp/poller_abstract.hpp>
 
 namespace netp {
 
 	class poller_select final :
-		public io_event_loop
+		public poller_interruptable_by_fd
 	{
 		enum fds_idx {
 			fds_e = 0,
@@ -19,19 +19,19 @@ namespace netp {
 
 	private:
 		public:
-			poller_select(poller_cfg const& cfg):
-				io_event_loop(T_SELECT, cfg)
+			poller_select():
+				poller_interruptable_by_fd()
 			{
 			}
 
 			~poller_select() {}
 
-			int _do_watch(SOCKET, u8_t, NRP<watch_ctx> const&) override
+			int watch(u8_t, io_ctx*) override
 			{
 				return netp::OK;
 			}
 
-			int _do_unwatch(SOCKET,u8_t, NRP<watch_ctx> const&) override
+			int unwatch(u8_t, io_ctx*) override
 			{
 				return netp::OK;
 			}
@@ -40,9 +40,7 @@ namespace netp {
     #pragma warning(push)
     #pragma warning(disable:4389)
 #endif
-		void _do_poll(long long wait_in_nano) override {
-			NETP_ASSERT(in_event_loop());
-
+		void poll(long long wait_in_nano, std::atomic<bool>& W) override {
 			timeval _tv = { 0,0 };
 			timeval* tv = 0;
 			if (wait_in_nano != ~0) {
@@ -53,25 +51,17 @@ namespace netp {
 				tv = &_tv;
 			}
 
-#ifdef DEBUG
-			netp::size_t total_ctxs = m_ctxs.size();
-#endif
 			FD_ZERO(&m_fds[fds_e]);
 			FD_ZERO(&m_fds[fds_r]);
 			FD_ZERO(&m_fds[fds_w]);
 
 			SOCKET max_fd_v = (SOCKET)0;
-
-			watch_ctx_map_t::iterator&& it = m_ctxs.begin();
-			while( it != m_ctxs.end() ) {
-				NRP<watch_ctx> const& ctx = (it++)->second ;
-				for (int i = aio_flag::AIO_READ; i <aio_flag::AIO_FLAG_MAX; ++i) {
-					if (ctx->iofn[i] != nullptr) {
-#ifdef NETP_DEBUG_WATCH_CTX_FLAG
-						NETP_ASSERT((ctx->flag&i), "fd: %d, flag: %u", ctx->fd, ctx->flag);
-#endif
+			io_ctx* ctx;
+			for (ctx = m_io_ctx_list.next; ctx != &m_io_ctx_list; ctx = ctx->next) {
+				for (int i = io_flag::IO_READ; i < io_flag::IO_FLAG_MAX; ++i) {
+					if (ctx->flag&i) {
 						FD_SET((ctx->fd), &m_fds[i]);
-						if (2==i) {
+						if (2 == i) {
 							FD_SET((ctx->fd), &m_fds[fds_e]);
 						}
 						if (ctx->fd > max_fd_v) {
@@ -82,7 +72,7 @@ namespace netp {
 			}
 
 			int nready = ::select((int)(max_fd_v + 1), &m_fds[fds_r], &m_fds[fds_w], &m_fds[fds_e], tv); //only read now
-			__LOOP_EXIT_WAITING__();
+			__LOOP_EXIT_WAITING__(W);
 
 			if (nready == 0) {
 				return;
@@ -92,55 +82,44 @@ namespace netp {
 				return;
 			}
 
-#ifdef DEBUG
-			NETP_ASSERT(total_ctxs == m_ctxs.size());
-#endif
-			it = m_ctxs.begin();
-			while (it != m_ctxs.end() && (nready > 0)) {
-				NRP<watch_ctx> ctx = (it++)->second;
-				SOCKET const& fd = ctx->fd;
-				int ec = netp::OK;
+			io_ctx* ctx_n;
+			for (ctx = (m_io_ctx_list.next), ctx_n = ctx->next; ctx != &m_io_ctx_list && nready>0; ctx = ctx_n, ctx_n = ctx->next) {
+				int status = netp::OK;
 
-				if (FD_ISSET(fd, &m_fds[fds_e])) {
+				if (FD_ISSET(ctx->fd, &m_fds[fds_e])) {
 					//FD_CLR(fd, &m_fds[fds_e]);
 					--nready;
 
 					socklen_t optlen = sizeof(int);
-					int getrt = ::getsockopt(fd, SOL_SOCKET, SO_ERROR, (char*)&ec, &optlen);
+					int getrt = ::getsockopt(ctx->fd, SOL_SOCKET, SO_ERROR, (char*)&status, &optlen);
 					if (getrt == -1) {
-						ec = netp_socket_get_last_errno();
+						status = netp_socket_get_last_errno();
 					} else {
-						ec = NETP_NEGATIVE(ec);
+						status = NETP_NEGATIVE(status);
 					}
-					NETP_DEBUG("[select]socket getsockopt failed, fd: %d, errno: %d", fd, ec);
-					NETP_ASSERT(ec != netp::OK);
+					NETP_DEBUG("[select]socket getsockopt failed, fd: %d, errno: %d", ctx->fd, status);
+					NETP_ASSERT(status != netp::OK);
 				}
-
-				if (FD_ISSET(fd, &m_fds[AIO_READ])) {
+				if (FD_ISSET(ctx->fd, &m_fds[IO_READ])) {
 					//FD_CLR(fd, &m_fds[i]);
 					--nready;
-#ifdef NETP_DEBUG_WATCH_CTX_FLAG
-					NETP_ASSERT((ctx->flag & AIO_READ), "fd: %d, flag: %u", ctx->fd, ctx->flag);
-					NETP_ASSERT(ctx->iofn[AIO_READ] != nullptr, "fd: %d, flag: %u", ctx->fd, ctx->flag);
-#endif
-					ctx->iofn[AIO_READ](ec);
+
+					NETP_ASSERT(ctx->fn_read != nullptr);
+					ctx->fn_read(status, ctx);
 					continue;
 				}
 
-				if (FD_ISSET(fd, &m_fds[AIO_WRITE])) {
+				if (FD_ISSET(ctx->fd, &m_fds[IO_WRITE])) {
 					//FD_CLR(fd, &m_fds[i]);
-					--nready;
-#ifdef NETP_DEBUG_WATCH_CTX_FLAG
-					NETP_ASSERT((ctx->flag & AIO_WRITE), "fd: %d, flag: %u", ctx->fd, ctx->flag);
-					NETP_ASSERT(ctx->iofn[AIO_WRITE] != nullptr, "fd: %d, flag: %u", ctx->fd, ctx->flag);
-#endif
-					ctx->iofn[AIO_WRITE](ec);
+ 					--nready;
+					//fn_read might result in fn_write be reset
+					if(ctx->fn_write != nullptr) ctx->fn_write(status, ctx);
 					continue;
 				}
 
-				if (ec != netp::OK) {
-					ctx->iofn[AIO_READ] != nullptr ? ctx->iofn[AIO_READ](ec) : (void)0;
-					ctx->iofn[AIO_WRITE] != nullptr ? ctx->iofn[AIO_WRITE](ec) : (void)0;
+				if (status != netp::OK) {
+					if(ctx->fn_read != nullptr)  ctx->fn_read(status, ctx) ;
+					if(ctx->fn_write != nullptr ) ctx->fn_write(status, ctx) ;
 				}
 			}
 		}

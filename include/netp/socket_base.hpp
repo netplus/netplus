@@ -71,8 +71,8 @@ namespace netp {
 		address m_laddr;
 		address m_raddr;
 
-		keep_alive_vals m_kvals;
-		channel_buf_cfg m_sock_buf;
+//		keep_alive_vals m_kvals;
+//		channel_buf_cfg m_sock_buf;
 
 	protected:
 		int _cfg_reuseaddr(bool onoff);
@@ -88,16 +88,16 @@ namespace netp {
 		int _cfg_option(u16_t opt, keep_alive_vals const& vlas);
 
 		int init(u16_t opt, keep_alive_vals const& kvals, channel_buf_cfg const& cbc) {
-			int rt = _cfg_option(opt,kvals);
+			int rt = _cfg_option(opt, kvals);
 			NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
 			return _cfg_buffer(cbc);
 		}
-
 	public:
 		int open();
 		int shutdown(int flag);
 		int close();
 		int bind(address const& addr);
+		int bind_any();
 		int listen(int backlog);
 		SOCKET accept(address& addr);
 		int connect(address const& addr);
@@ -137,10 +137,6 @@ namespace netp {
 				return netp::OK;
 			}
 			return netp_socket_get_last_errno();
-		}
-
-		std::string info() const {
-			return socketinfo{ m_fd, (m_family),(m_type),(m_protocol),local_addr(), remote_addr() }.to_string();
 		}
 
 		__NETP_FORCE_INLINE int getsockopt(int level, int option_name, void* value, socklen_t* option_len) const {

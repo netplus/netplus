@@ -13,9 +13,9 @@
 #include <netp/core/macros.hpp>
 #include <netp/tls.hpp>
 
-#define USE_POOL 1
-//#define USE_ALIGN_MALLOC 1
-//#define USE_STD_MALLOC
+#define NETP_MEMORY_USE_TLS_POOL 1
+//#define NETP_MEMORY_USE_ALIGN_MALLOC 1
+//#define NETP_MEMORY_USE_STD_MALLOC
 
 namespace netp {
 
@@ -25,11 +25,18 @@ namespace netp {
 
 	//ALIGN_SIZE SHOUDL BE LESS THAN 256
 	//STORE OFFSET IN PREVIOUS BYTES
+#define __NETP_ALIGNED_HEAD (4)
+
 	inline void* aligned_malloc(std::size_t size, std::size_t alignment)
 	{
-		void *original = std::malloc(size + alignment);
+#ifdef _DEBUG
+		NETP_ASSERT(alignment <= 32);
+#endif
+		//4 for header
+		void *original = std::malloc(size + alignment+ __NETP_ALIGNED_HEAD);
 		if (original == 0) return 0;
-		void *aligned = reinterpret_cast<void*>((reinterpret_cast<std::size_t>(original) & ~(std::size_t(alignment - 1))) + alignment);
+		void *aligned = reinterpret_cast<void*>(((reinterpret_cast<std::size_t>(original) + __NETP_ALIGNED_HEAD) & ~(std::size_t(alignment - 1))) + alignment);
+
 		//NETP_ASSERT( (size_t(aligned) - size_t(original)) >sizeof(void*) );
 		//NETP_ASSERT( (size_t(aligned) - size_t(original)) < 0xff);
 		*(reinterpret_cast<char*>(aligned) - 1) = u8_t(size_t(aligned) - size_t(original));
@@ -47,9 +54,9 @@ namespace netp {
 		if (ptr == 0) { return aligned_malloc(size, alignment); }
 		const u8_t previous_offset = *(reinterpret_cast<u8_t*>(ptr) - 1);
 		void* original = (u8_t*)ptr - previous_offset;
-		original = std::realloc(original, size + alignment);
+		original = std::realloc(original, size + alignment+__NETP_ALIGNED_HEAD);
 		if (original == 0) {return 0;}
-		void *aligned = reinterpret_cast<void*>((reinterpret_cast<std::size_t>(original) & ~(std::size_t(alignment - 1))) + alignment);
+		void *aligned = reinterpret_cast<void*>(((reinterpret_cast<std::size_t>(original)+ __NETP_ALIGNED_HEAD) & ~(std::size_t(alignment - 1))) + alignment);
 		void *previous_aligned = static_cast<u8_t *>(original) + previous_offset;
 		if (aligned != previous_aligned) {
 			//align data
@@ -62,14 +69,22 @@ namespace netp {
 
 	enum TABLE {
 		T0 = 0,
-		T1 = 1,
-		T2 = 2,
-		T3 = 3,
-		T4 = 4,
-		T5 = 5,
-		T6 = 6,
-		T7 = 7,
-		T_COUNT = 8
+		T1,
+		T2,
+		T3,
+		T4,
+		T5,
+		T6,
+		T7,
+		T8,
+		T9,
+		T10,
+		T11,
+		T12,
+		T13,
+		T14,
+		T15,
+		T_COUNT
 	};
 
 
@@ -106,7 +121,7 @@ namespace netp {
 	struct tag_allocator_std_malloc {};
 	struct tag_allocator_default_new {};
 	struct tag_allocator_align_malloc {};
-	struct tag_allocator_pool {};
+	struct tag_allocator_tls_pool {};
 
 	//std::allocator<T> AA;
 	template<class allocator_t>
@@ -167,15 +182,15 @@ namespace netp {
 	};
 
 	template<>
-	struct allocator_wrapper<tag_allocator_pool> {
+	struct allocator_wrapper<tag_allocator_tls_pool> {
 		static inline void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return tls_get<netp::pool_align_allocator_t>()->malloc(n, alignment);
+			return tls_get<netp::pool_align_allocator>()->malloc(n, alignment);
 		}
 		static inline void free(void* p) {
-			tls_get<netp::pool_align_allocator_t>()->free(p);
+			tls_get<netp::pool_align_allocator>()->free(p);
 		}
 		static inline void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return tls_get<netp::pool_align_allocator_t>()->realloc(ptr, size, alignment);
+			return tls_get<netp::pool_align_allocator>()->realloc(ptr, size, alignment);
 		}
 	};
 
@@ -203,6 +218,107 @@ namespace netp {
 			return static_cast<pointer>(allocator_wrapper_t::realloc(ptr,size,alignment));
 		}
 
+		template<class... _Args_t>
+		inline static pointer make(_Args_t&&... _Args) {
+			pointer p = static_cast<pointer>(allocator_wrapper_t::malloc(sizeof(value_type)));
+			if (p != 0) {
+				::new ((void*)p)(value_type)(std::forward<_Args_t>(_Args)...);
+			}
+			return p;
+		}
+
+		inline static void trash(pointer p) {
+			if (p != 0) {
+				p->~value_type();
+				allocator_wrapper_t::free(p);
+			}
+		}
+
+	private:
+		template<class array_ele_t, class _allocator_base_t>
+		struct __make_array_trait {
+			//this is track
+			//function template does not support partial specialised
+			inline static array_ele_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+				array_ele_t* ptr = (_allocator_base_t::malloc(n, alignment));
+				for (size_t i = 0; i < n; ++i) {
+					//TODO: might throw exception
+					//for standard impl, compiler would wrap these line with try...catch...delete
+					//NOTE: refer to https://isocpp.org/wiki/faq/dtors
+					//placement new have no related delete operation, we have to call destructor and free the memory by ourself
+					::new((void*)(ptr + i))(array_ele_t)();
+				}
+				return ptr;
+			}
+			inline static void __trash_array(array_ele_t* ptr, size_t n) {
+				for (size_t i = 0; i < n; ++i) {
+					ptr[i].~array_ele_t();
+				}
+				_allocator_base_t::free(ptr);
+			}
+		};
+
+		template<class _allocator_base_t>
+		struct __make_array_trait<byte_t, _allocator_base_t> {
+			//this is a track
+			//function template does not support partial specialised
+			inline static byte_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+				return (_allocator_base_t::malloc(n, alignment));
+			}
+			inline static void __trash_array(byte_t* ptr, size_t n) {
+				_allocator_base_t::free(ptr);
+				(void)n;
+			}
+		};
+
+		template<class _allocator_base_t>
+		struct __make_array_trait<u16_t, _allocator_base_t> {
+			//this is track
+			//function template does not support partial specialised
+			inline static u16_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+				return (_allocator_base_t::malloc(n, alignment));
+			}
+			inline static void __trash_array(u16_t* ptr, size_t n) {
+				_allocator_base_t::free(ptr);
+				(void)n;
+			}
+		};
+
+		template<class _allocator_base_t>
+		struct __make_array_trait<u32_t, _allocator_base_t> {
+			//this is track
+			//function template does not support partial specialised
+			inline static u32_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+				return (_allocator_base_t::malloc(n, alignment));
+			}
+			inline static void __trash_array(u32_t* ptr, size_t n) {
+				_allocator_base_t::free(ptr);
+				(void)n;
+			}
+		};
+
+		template<class _allocator_base_t>
+		struct __make_array_trait<u64_t, _allocator_base_t> {
+			//this is track
+			//function template does not support partial specialised
+			inline static u64_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+				return (_allocator_base_t::malloc(n, alignment));
+			}
+			inline static void __trash_array(u64_t* ptr, size_t n) {
+				_allocator_base_t::free(ptr);
+				(void)n;
+			}
+		};
+
+	public:
+		inline static pointer make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+			return __make_array_trait<value_type, allocator_base_t>::__make_array(n, alignment);
+		}
+
+		inline static void trash_array(pointer ptr, size_t n) {
+			__make_array_trait<value_type, allocator_base_t>::__trash_array(ptr, n);
+		}
+
 		//for container compliance below
 		inline pointer allocate(size_type n) {
 			return allocator_base_t::malloc(n);
@@ -213,15 +329,18 @@ namespace netp {
 			(void)n;
 		}
 
+		//for stl container
 		template<class _Objty,
 			class... _Types>
-			inline void construct(_Objty* _Ptr, _Types&&... _Args)
+		inline void construct(_Objty* _Ptr, _Types&&... _Args)
 		{	// construct _Objty(_Types...) at _Ptr
 			//all the object created instanced by operator placement new must not be called by operate delete.
 			//we have to call destructor by ourself first, then do memory free by ourown logic
 			//so, construct&destroy must be paired
 			::new ((void*)_Ptr) _Objty( std::forward<_Types>(_Args)...);
 		}
+
+		//for stl container
 		template<class _Uty>
 		inline void destroy(_Uty* _Ptr)
 		{	// destroy object at _Ptr
@@ -358,9 +477,9 @@ namespace netp {
 	//thread safe
 	template <class T>
 	struct allocator_pool :
-		public allocator_base<T, allocator_wrapper<tag_allocator_pool>>
+		public allocator_base<T, allocator_wrapper<tag_allocator_tls_pool>>
 	{
-		typedef  allocator_base<T, allocator_wrapper<tag_allocator_pool>> allocator_base_t;
+		typedef  allocator_base<T, allocator_wrapper<tag_allocator_tls_pool>> allocator_base_t;
 		typedef allocator_pool<T> allocator_t;
 
 		typedef typename allocator_base_t::size_type size_type;
@@ -398,9 +517,9 @@ namespace netp {
 	};
 
 	template<class T>
-#ifdef USE_POOL
+#ifdef NETP_MEMORY_USE_TLS_POOL
 	using allocator = netp::allocator_pool<T>;
-#elif defined(USE_ALIGN_MALLOC)
+#elif defined(NETP_MEMORY_USE_ALIGN_MALLOC)
 	using allocator = netp::allocator_align_malloc<T>;
 #else
 	using allocator = netp::allocator_std_malloc<T>;
@@ -430,90 +549,7 @@ namespace netp {
 		return false;
 	}
 
-	template<class T>
-	struct new_array_trait {
-		//this is track
-		//function template does not support partial specialised
-		inline static T* new_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			T* ptr = netp::allocator<T>::malloc(n,alignment);
-			for (size_t i = 0; i < n; ++i) {
-				//TODO: might throw exception
-				//for standard impl, compiler would wrap these line with try...catch...delete
-				//NOTE: refer to https://isocpp.org/wiki/faq/dtors
-				//placement new have no related delete operation, we have to call destructor and free the memory by ourself
-				new((void*)(ptr+i)) T();
-			}
-			return ptr;
-		}
-		inline static void delete_array(T* ptr, size_t n) {
-			for (size_t i = 0; i < n; ++i) {
-				ptr[i].~T();
-			}
-			netp::allocator<T>::free(ptr);
-		}
-	};
 
-	template<>
-	struct new_array_trait<byte_t> {
-		//this is a track
-		//function template does not support partial specialised
-		inline static byte_t* new_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return netp::allocator<byte_t>::malloc(n, alignment);
-		}
-		inline static void delete_array(byte_t* ptr, size_t n) {
-			netp::allocator<byte_t>::free(ptr);
-			(void)n;
-		}
-	};
-
-	template<>
-	struct new_array_trait<u16_t> {
-		//this is track
-		//function template does not support partial specialised
-		inline static u16_t* new_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return netp::allocator<u16_t>::malloc(n,alignment);
-		}
-		inline static void delete_array(u16_t* ptr, size_t n) {
-			netp::allocator<u16_t>::free(ptr);
-			(void)n;
-		}
-	};
-
-	template<>
-	struct new_array_trait<u32_t> {
-		//this is track
-		//function template does not support partial specialised
-		inline static u32_t* new_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return netp::allocator<u32_t>::malloc(n,alignment);
-		}
-		inline static void delete_array(u32_t* ptr, size_t n) {
-			netp::allocator<u32_t>::free(ptr);
-			(void)n;
-		}
-	};
-
-	template<>
-	struct new_array_trait<u64_t> {
-		//this is track
-		//function template does not support partial specialised
-		inline static u64_t* new_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return netp::allocator<u64_t>::malloc(n,alignment);
-		}
-		inline static void delete_array(u64_t* ptr, size_t n) {
-			netp::allocator<u64_t>::free(ptr);
-			(void)n;
-		}
-	};
-
-	template<class T>
-	inline T* new_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-		return new_array_trait<T>::new_array(n,alignment);
-	}
-
-	template<class T>
-	inline void delete_array(T* ptr, size_t n) {
-		new_array_trait<T>::delete_array(ptr,n);
-	}
 	
 	/*
 	namespace __gnugcc_impl {

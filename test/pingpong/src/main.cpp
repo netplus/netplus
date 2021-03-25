@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
 	netp::app app;
 	std::string host = "tcp://127.0.0.1:13103";
 
-	netp::ref_ptr<netp::channel_listen_promise> listenp = netp::socket::listen_on(host, [](netp::ref_ptr<netp::channel>const& ch) {
+	netp::ref_ptr<netp::channel_listen_promise> listenp = netp::listen_on(host, [](netp::ref_ptr<netp::channel>const& ch) {
 		ch->pipeline()->add_last( netp::make_ref<netp::handler::hlen>());
 		ch->pipeline()->add_last( netp::make_ref<Pong>() );
 	});
@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
 	}
 //	app.run();
 
-	netp::ref_ptr<netp::channel_dial_promise> dialp = netp::socket::dial(host, [](netp::ref_ptr<netp::channel> const& ch ) {
+	netp::ref_ptr<netp::channel_dial_promise> dialp = netp::dial(host, [](netp::ref_ptr<netp::channel> const& ch ) {
 		ch->pipeline()->add_last( netp::make_ref<netp::handler::hlen>() );
 		ch->pipeline()->add_last( netp::make_ref<Ping>() );
 	});

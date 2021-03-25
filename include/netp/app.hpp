@@ -5,6 +5,8 @@
 #include <netp/signal_broker.hpp>
 #include <netp/test.hpp>
 
+//#define NETP_DEBUG_OBJECT_SIZE
+
 namespace netp {
 
 	typedef std::function<void()> fn_app_hook_t;
@@ -14,7 +16,7 @@ namespace netp {
 		std::string logfilepathname;
 		std::vector<std::string> dnsnses; //dotip
 		int poller_count[T_POLLER_MAX];
-		poller_cfg poller_cfgs[T_POLLER_MAX];
+		event_loop_cfg event_loop_cfgs[T_POLLER_MAX];
 
 		fn_app_hook_t app_startup_prev;
 		fn_app_hook_t app_startup_post;
@@ -43,22 +45,17 @@ namespace netp {
 			for (size_t i = 0; i < T_POLLER_MAX; ++i) {
 				if (i == NETP_DEFAULT_POLLER_TYPE) {
 					poller_count[i] = int(std::ceil(corecount)*1.5f);
-
-					if (i == T_SELECT) {
-						poller_cfgs[i].maxiumctx = FD_SETSIZE;
-					}
 				}
 				else {
 					poller_count[i] = 0;
 				}
 
-				poller_cfgs[i].ch_buf_size = (128*1024);
-				poller_cfgs[i].maxiumctx = (0);
+				event_loop_cfgs[i].ch_buf_size = (128*1024);
 			}
 		}
 
-		void cfg_poller_cfg(io_poller_type t, poller_cfg const& cfg) {
-			poller_cfgs[t] = cfg;
+		void cfg_poller_cfg(io_poller_type t, event_loop_cfg const& cfg) {
+			event_loop_cfgs[t] = cfg;
 		}
 
 		void cfg_poller_count(io_poller_type t, int c) {
@@ -72,7 +69,7 @@ namespace netp {
 		}
 		
 		void cfg_channel_rcv_buf(io_poller_type t, int buf_in_kbytes) {
-			poller_cfgs[t].ch_buf_size = buf_in_kbytes*(1024);
+			event_loop_cfgs[t].ch_buf_size = buf_in_kbytes*(1024);
 		}
 
 		void cfg_add_dns(std::string const& dns_ns) {
@@ -121,7 +118,7 @@ namespace netp {
 		void dump_arch_info();
 #endif
 
-#ifdef _DEBUG
+#ifdef NETP_DEBUG_OBJECT_SIZE
 		void __dump_sizeof();
 #endif
 
