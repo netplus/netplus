@@ -22,24 +22,6 @@ namespace netp {
 		return rt;
 	}
 
-	void socket_channel::do_async_connect(address const& addr, NRP<promise<int>> const& p) {
-		NETP_ASSERT(L->in_event_loop());
-
-		int rt = connect(addr);
-		//NETP_INFO("connect rt: %d", rt);
-		if (IS_ERRNO_EQUAL_CONNECTING(rt)) {
-			ch_io_connect([so=NRP<socket_channel>(this), p](int status, io_ctx*) {
-				NRP< promise<int>> __p__barrier(p); //we dont need this line if act executed in Q
-				so->ch_io_end_connect();
-				p->set(status);
-			});
-		} else {
-			//ok or error
-			NETP_TRACE_SOCKET("[socket][%s]socket connected directly", ch_info().c_str());
-			p->set(rt);
-		}
-	}
-
 	void socket_channel::_tmcb_BDL(NRP<timer> const& t) {
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(m_outbound_limit > 0);
@@ -130,19 +112,25 @@ namespace netp {
 		});
 	}
 
-	void socket_channel::do_dial(address const& addr, fn_channel_initializer_t const& initializer, NRP<promise<int>> const& so_dialf) {
+	void socket_channel::do_dial(address const& addr, fn_channel_initializer_t const& fn_initializer, NRP<promise<int>> const& dialp) {
 		NETP_ASSERT(L->in_event_loop());
-		ch_io_begin([so=NRP<socket_channel>(this),addr, initializer, so_dialf](int status, io_ctx*) {
+		ch_io_begin([so=NRP<socket_channel>(this),addr, fn_initializer, dialp](int status, io_ctx*) {
 			NETP_ASSERT(so->L->in_event_loop());
 			if (status != netp::OK) {
-				so_dialf->set(status);
+				dialp->set(status);
 				return;
 			}
-			NRP<promise<int>> connp = netp::make_ref<promise<int>>();
-			connp->if_done([so,initializer, so_dialf, connp/*hold a copy*/](int const& rt) {
-				so->_do_dial_done_impl(rt, initializer, so_dialf);
-			});
-			so->do_async_connect(addr, connp);
+			int rt = so->connect(addr);
+			if (rt == netp::OK) {
+				NETP_TRACE_SOCKET("[socket][%s]socket connected directly", so->ch_info().c_str());
+				so->_ch_do_dial_done_impl(fn_initializer, dialp, netp::OK, so->m_io_ctx);
+				return;
+			} else if (IS_ERRNO_EQUAL_CONNECTING(rt)) {
+				auto fn_connect_done = std::bind(&socket_channel::_ch_do_dial_done_impl, so, fn_initializer, dialp, std::placeholders::_1, std::placeholders::_2);
+				so->ch_io_connect(fn_connect_done);
+				return;
+			}
+			dialp->set(rt);
 		});
 	}
 
@@ -157,81 +145,85 @@ namespace netp {
 		return socket_base::accept(raddr);
 	}
 
-	void socket_channel::_do_dial_done_impl(int rt, fn_channel_initializer_t const& fn_ch_initialize, NRP<promise<int>> const& so_dialf) {
+	void socket_channel::_ch_do_dial_done_impl(fn_channel_initializer_t const& fn_initializer, NRP<promise<int>> const& dialp_, int status, io_ctx* ctx) {
 		NETP_ASSERT(L->in_event_loop());
+		NRP<promise<int>> dialp = dialp_;
 
-		if (rt != netp::OK) {
+		if (status != netp::OK) {
 		_set_fail_and_return:
-			NETP_ASSERT(rt != netp::OK);
-			NETP_ERR("[socket][%s]socket dial error: %d", ch_info().c_str(), rt );
-			so_dialf->set(rt);
+			NETP_ASSERT(status != netp::OK);
+			m_chflag |= int(channel_flag::F_WRITE_ERROR);
+			ch_io_end_connect();
+			NETP_ERR("[socket][%s]socket dial error: %d", ch_info().c_str(), status);
+			dialp->set(status);
 			return;
 		}
 
 		if( m_chflag& int(channel_flag::F_CLOSED)) {
 			NETP_ERR("[socket][%s]socket closed already, dial promise set abort, errno: %d", ch_info().c_str(), ch_errno() );
-			so_dialf->set(netp::E_ECONNABORTED);
-            return ;
+			status = netp::E_ECONNABORTED;
+			goto _set_fail_and_return;
 		}
 
-		rt = load_sockname();
-		if (rt != netp::OK ) {
+		status = load_sockname();
+		if (status != netp::OK ) {
 			goto _set_fail_and_return;
 		}
 
 #ifdef _NETP_WIN
 		//not sure linux os behaviour, to test
 		if (0 == local_addr().ipv4() && m_type != u8_t(NETP_SOCK_USERPACKET/*FOR BFR*/) ) {
-			rt = netp::E_WSAENOTCONN;
+			status = netp::E_WSAENOTCONN;
 			goto _set_fail_and_return;
 		}
 #endif
 		netp::address raddr;
-		rt = netp::getpeername(*m_api, m_fd, raddr);
-		if (rt != netp::OK ) {
+		status = netp::getpeername(*m_api, m_fd, raddr);
+		if (status != netp::OK ) {
 			goto _set_fail_and_return;
 		}
 		if (raddr != m_raddr) {
-			rt = netp::E_UNKNOWN;
+			status = netp::E_UNKNOWN;
 			goto _set_fail_and_return;
 		}
 
 		if (local_addr() == remote_addr()) {
-			rt = netp::E_SOCKET_SELF_CONNCTED;
+			status = netp::E_SOCKET_SELF_CONNCTED;
 			NETP_WARN("[socket][%s]socket selfconnected", ch_info().c_str());
 			goto _set_fail_and_return;
 		}
 
 		try {
-			if (NETP_LIKELY(fn_ch_initialize != nullptr)) {
-				fn_ch_initialize(NRP<channel>(this));
+			if (NETP_LIKELY(fn_initializer != nullptr)) {
+				fn_initializer(NRP<channel>(this));
 			}
 		} catch(netp::exception const& e) {
 			NETP_ASSERT(e.code() != netp::OK );
-			rt = e.code();
+			status = e.code();
 		} catch(std::exception const& e) {
-			rt = netp_socket_get_last_errno();
-			if (rt == netp::OK) {
-				rt = netp::E_UNKNOWN;
+			status = netp_socket_get_last_errno();
+			if (status == netp::OK) {
+				status = netp::E_UNKNOWN;
 			}
-			NETP_ERR("[socket][%s]dial error: %d: %s", ch_info().c_str(), rt, e.what());
+			NETP_ERR("[socket][%s]dial error: %d: %s", ch_info().c_str(), status, e.what());
 			goto _set_fail_and_return;
 		} catch(...) {
-			rt = netp_socket_get_last_errno();
-			if (rt == netp::OK) {
-				rt = netp::E_UNKNOWN;
+			status = netp_socket_get_last_errno();
+			if (status == netp::OK) {
+				status = netp::E_UNKNOWN;
 			}
-			NETP_ERR("[socket][%s]dial error: %d: unknown", ch_info().c_str(), rt);
+			NETP_ERR("[socket][%s]dial error: %d: unknown", ch_info().c_str(), status);
 			goto _set_fail_and_return;
 		}
 
 		NETP_TRACE_SOCKET("[socket][%s]async connected", ch_info().c_str());
 		NETP_ASSERT( m_chflag& (int(channel_flag::F_CONNECTING)|int(channel_flag::F_CONNECTED)) );
+		
 		ch_set_connected();
-		so_dialf->set(netp::OK);
+		ch_io_end_connect();
 
-		//NETP_ASSERT(m_sock_buf.rcvbuf_size > 0, "info: %s", ch_info().c_str() );
-		//NETP_ASSERT(m_sock_buf.sndbuf_size > 0, "info: %s", ch_info().c_str());
+		dialp->set(netp::OK);
+
 		ch_fire_connected();
 		ch_io_read();
 	}
@@ -295,6 +287,7 @@ namespace netp {
 			return ;
 		}
 
+
 		NETP_ERR("[socket][%s]accept error: %d", ch_info().c_str(), status);
 		ch_errno()=(status);
 		m_chflag |= int(channel_flag::F_READ_ERROR);
@@ -332,9 +325,8 @@ namespace netp {
 	}
 
 	void socket_channel::__cb_io_write_impl( int status, io_ctx*) {
-		//int status = status;
 		NETP_ASSERT( (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWNING)|int(channel_flag::F_BDLIMIT)|int(channel_flag::F_CLOSING) )) == 0 );
-		//NETP_TRACE_SOCKET("[socket][%s]__cb_io_write_impl, write begin: %d, flag: %u", info().c_str(), status , m_chflag );
+		//NETP_TRACE_SOCKET("[socket][%s]__cb_io_write_impl, write begin: %d, flag: %u", ch_info().c_str(), status , m_chflag );
 		if (status == netp::OK) {
 			if (m_chflag&int(channel_flag::F_WRITE_ERROR)) {
 				NETP_ASSERT(m_outbound_entry_q.size() != 0);

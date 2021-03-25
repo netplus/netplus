@@ -117,6 +117,14 @@ namespace netp {
 		friend void do_listen_on(NRP<channel_listen_promise> const& listenp, address const& laddr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg, int backlog);
 		typedef std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>> socket_outbound_entry_t;
 
+		template <class socket_channel_t>
+		friend std::tuple<int, NRP<socket_channel_t>> accepted_create(NRP<io_event_loop> const& L, SOCKET nfd, address const& laddr, address const& raddr, NRP<socket_cfg> const& cfg);
+
+		template <class socket_channel_t>
+		friend std::tuple<int, NRP<socket_channel_t>> create(NRP<socket_cfg> const& cfg);
+
+		template <class _Ref_ty, typename... _Args>
+		friend ref_ptr<_Ref_ty> make_ref(_Args&&... args);
 	protected:
 		io_ctx* m_io_ctx;
 		byte_t* m_rcv_buf_ptr;
@@ -131,7 +139,7 @@ namespace netp {
 		NRP<socket_cfg> m_listen_cfg;
 
 		void _tmcb_BDL(NRP<timer> const& t);
-	public:
+
 		socket_channel(NRP<socket_cfg> const& cfg) :
 			channel(cfg->L),
 			socket_base(cfg->fd, cfg->family, cfg->type, cfg->proto, cfg->laddr, cfg->raddr, cfg->sockapi),
@@ -150,7 +158,6 @@ namespace netp {
 		{
 		}
 
-	public:
 		int ch_init(u16_t opt, keep_alive_vals const& kvals, channel_buf_cfg const& cbc) {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(m_chflag&int(channel_flag::F_CLOSED));
@@ -165,21 +172,13 @@ namespace netp {
 			return rt;
 		}
 
-		int bind(address const& addr);
-		int listen(int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
-
-		SOCKET accept(address& raddr);
-		int connect(address const& addr);
-		void do_async_connect(address const& addr, NRP<promise<int>> const& p);
-
-	protected:
 		//url example: tcp://0.0.0.0:80, udp://127.0.0.1:80
 		//@todo
 		//tcp6://ipv6address
 		void do_listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<promise<int>> const& chp, NRP<socket_cfg> const& ccfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
 		//NRP<promise<int>> listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<socket_cfg> const& cfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
 
-		void do_dial(address const& addr, fn_channel_initializer_t const& initializer, NRP<promise<int>> const& chp);
+		void do_dial(address const& addr, fn_channel_initializer_t const& fn_initializer, NRP<promise<int>> const& dialp);
 		//NRP<promise<int>> dial(address const& addr, fn_channel_initializer_t const& initializer);
 
 		void _ch_do_close_read() {
@@ -226,7 +225,7 @@ namespace netp {
 			ch_rdwr_shutdown_check();
 		}
 
-		void _do_dial_done_impl(int code, fn_channel_initializer_t const& initializer, NRP<promise<int>> const& chf);
+		void _ch_do_dial_done_impl(fn_channel_initializer_t const& fn_initializer, NRP<promise<int>> const& dialf, int status, io_ctx* ctx);
 
 		void __do_accept_fire(fn_channel_initializer_t const& ch_initializer) {
 			ch_io_begin([ch=NRP<socket_channel>(this),ch_initializer](int status, io_ctx*) {
@@ -381,6 +380,12 @@ namespace netp {
 		}
 
 	public:
+		/*for other purpose*/
+		int bind(address const& addr);
+		int listen(int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
+		SOCKET accept(address& raddr);
+		int connect(address const& addr);
+
 		NRP<promise<int>> ch_set_read_buffer_size(u32_t size) override {
 			NRP<promise<int>> chp = make_ref<promise<int>>();
 			L->execute([S = NRP<socket_channel>(this), size, chp]() {

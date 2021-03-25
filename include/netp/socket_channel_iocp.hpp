@@ -16,6 +16,14 @@ namespace netp {
 	class socket_channel_iocp final :
 		public socket_channel
 	{
+		template <class socket_channel_t>
+		friend std::tuple<int, NRP<socket_channel_t>> accepted_create(NRP<io_event_loop> const& L, SOCKET nfd, address const& laddr, address const& raddr, NRP<socket_cfg> const& cfg);
+
+		template <class socket_channel_t>
+		friend std::tuple<int, NRP<socket_channel_t>> create(NRP<socket_cfg> const& cfg);
+
+		template <class _Ref_ty, typename... _Args>
+		friend ref_ptr<_Ref_ty> make_ref(_Args&&... args);
 		u32_t m_wsabuf_size;
 
 	public:

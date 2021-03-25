@@ -89,7 +89,7 @@ namespace netp {
 		if (!cfg->L->in_event_loop()) {
 			cfg->L->schedule([addr, initializer, ch_dialf, cfg]() {
 				do_dial(addr, initializer, ch_dialf, cfg);
-				});
+			});
 			return;
 		}
 
@@ -105,14 +105,13 @@ namespace netp {
 		so_dialf->if_done([ch_dialf, so](int const& rt) {
 			if (rt == netp::OK) {
 				ch_dialf->set(std::make_tuple(rt, so));
-			}
-			else {
+			} else {
 				ch_dialf->set(std::make_tuple(rt, nullptr));
 				so->ch_errno() = rt;
 				so->ch_flag() |= int(channel_flag::F_WRITE_ERROR);
 				so->ch_close_impl(nullptr);
 			}
-			});
+		});
 
 		so->do_dial(addr, initializer, so_dialf);
 	}

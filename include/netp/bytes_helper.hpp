@@ -23,7 +23,7 @@ namespace netp {
 			template <class T, class OutIt>
 			static inline netp::u32_t write_impl(T val, OutIt const& start_addr ) {
 				netp::u32_t write_idx = 0;
-				for (::size_t i = (sizeof(T) - 1); i != ~0; --i) {
+				for (::size_t i = (sizeof(T) - 1); i != ::size_t(~0); --i) {
 					*(start_addr + write_idx++) = ((val >> (i * 8)) & 0xff);
 				}
 				return write_idx;
@@ -34,7 +34,7 @@ namespace netp {
 			template <class T, class ReadIt>
 			static inline T read_impl(ReadIt const& start, type<T>) {
 				T ret = 0;
-				for (::size_t i = (sizeof(T) - 1); i != ~0; --i) {
+				for (::size_t i = (sizeof(T) - 1); i != ::size_t(~0); --i) {
 					ret <<= 8;
 					ret |= static_cast<u8_t>(*(start + i));
 				}
