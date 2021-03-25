@@ -191,6 +191,11 @@ namespace netp {
 		_do_stop(netp::make_ref<netp::promise<int>>());
 	}
 
+//#define NETP_FREE_ASYNC_DNS_QUERY(Q) \
+//	Q->~async_dns_query(); \
+//	netp::allocator<async_dns_query>::free(Q); \
+//	Q = nullptr;
+
 	static void dns_submit_a4_cb(struct dns_ctx* ctx, struct dns_rr_a4* result, void* data) {
 		NETP_ASSERT(ctx != NULL);
 		NETP_ASSERT(data != NULL);
@@ -202,7 +207,7 @@ namespace netp {
 			NETP_ASSERT(code >= ::DNS_E_BADQUERY && code <= ::DNS_E_TEMPFAIL);
 			NETP_ERR("[dns_resolver]dns resolve failed: %d:%s", code, dns_strerror(code));
 			adq->dnsquery_p->set(std::make_tuple(dns_error_map[NETP_ABS(code)], std::vector<ipv4_t, netp::allocator<ipv4_t>>()));
-			NETP_DELETE(adq);
+			netp::allocator<async_dns_query>::trash(adq);
 			return;
 		}
 
@@ -219,7 +224,7 @@ namespace netp {
 			adq->dnsquery_p->set(std::make_tuple(netp::E_DNS_DOMAIN_NO_DATA, ipv4s));
 		}
 		dns_free_ptr(result);
-		NETP_DELETE(adq);
+		netp::allocator<async_dns_query>::trash(adq);
 	}
 
 	void dns_resolver::_do_resolve(string_t const& domain, NRP<dns_query_promise> const& p) {
@@ -230,12 +235,14 @@ namespace netp {
 		}
 		NETP_ASSERT(m_dns_ctx != NULL);
 
-		async_dns_query* adq= new async_dns_query();
+		async_dns_query* adq= netp::allocator<async_dns_query>::make();
+
 		adq->dnsr = this;
 		adq->dnsquery_p = p;
 		struct dns_query* q = dns_submit_a4(m_dns_ctx, domain.c_str(), 0, dns_submit_a4_cb, (void*)adq);
 		if (q == NULL) {
-			NETP_DELETE(adq);
+			dns_free_ptr(q);
+			netp::allocator<async_dns_query>::trash(adq);
 
 			int code = dns_status(m_dns_ctx);
 			NETP_ASSERT(code != netp::OK);

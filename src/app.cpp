@@ -159,10 +159,11 @@ namespace netp {
 		NETP_ASSERT(netp::is_little_endian());
 #endif
 		netp::random_init_seed();
+		netp::tls_create< netp::impl::thread_data>();
+
 #ifdef NETP_MEMORY_USE_TLS_POOL
 		netp::tls_create<netp::pool_align_allocator_t>();
 #endif
-		netp::tls_create< netp::impl::thread_data>();
 
 #if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
 		//for mutex/lock deubg

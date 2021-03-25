@@ -7,7 +7,7 @@
 #define BHEAP_R(i) ((i<<1)+2)
 //#define DEFAULT_BHEAP_CAPACITY 1024
 namespace netp {
-	template <class T, class Fx_compare = less<T>, int initial_capacity = 1000 >
+	template <class T, class Fx_compare = less<T>, netp::size_t initial_capacity = 1000 >
 	class binary_heap final
 	{
 		Fx_compare __fn_cmp__;
@@ -16,22 +16,34 @@ namespace netp {
 		netp::size_t m_capacity;
 		inline void __realloc__(netp::size_t count ) {
 			NETP_ASSERT(count > m_size);
-			T* arr = new T[count];
+			//T* arr = new T[count];
+			T* arr = netp::allocator<T>::make_array(count);
+
 			NETP_ALLOC_CHECK(arr, count * sizeof(T));
 			for (u32_t _i = 0; _i < m_size; ++_i) {
 				arr[_i] = std::move(m_arr[_i]);
 			}
+			//delete[] arr;
+			netp::allocator<T>::trash_array(arr, m_capacity);
 			std::swap(arr, m_arr);
 			m_capacity = count;
-			delete[] arr;
+
 		}
 	public:
-		binary_heap() :m_arr(nullptr), m_size(0), m_capacity(initial_capacity) {
-			m_arr = new T[m_capacity];
+		binary_heap() :
+			m_arr(nullptr),
+			m_size(0),
+			m_capacity(initial_capacity) 
+		{
+			//m_arr = new T[m_capacity];
+			m_arr = netp::allocator<T>::make_array(m_capacity);
 			NETP_ALLOC_CHECK(m_arr, m_capacity * sizeof(T));
 		}
 
-		~binary_heap() { delete[] m_arr; }
+		~binary_heap() { 
+			netp::allocator<T>::trash_array(m_arr,m_capacity);
+			//delete[] m_arr; 
+		}
 		inline netp::size_t size() const { return m_size; }
 		inline bool empty() const { return m_size == 0; }
 

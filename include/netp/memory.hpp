@@ -218,6 +218,107 @@ namespace netp {
 			return static_cast<pointer>(allocator_wrapper_t::realloc(ptr,size,alignment));
 		}
 
+		template<class... _Args_t>
+		inline static pointer make(_Args_t&&... _Args) {
+			pointer p = static_cast<pointer>(allocator_wrapper_t::malloc(sizeof(value_type)));
+			if (p != 0) {
+				::new ((void*)p)(value_type)(std::forward<_Args_t>(_Args)...);
+			}
+			return p;
+		}
+
+		inline static void trash(pointer p) {
+			if (p != 0) {
+				p->~value_type();
+				allocator_wrapper_t::free(p);
+			}
+		}
+
+	private:
+		template<class T, class _allocator_base_t>
+		struct __make_array_trait {
+			//this is track
+			//function template does not support partial specialised
+			inline static T* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+				T* ptr = (_allocator_base_t::malloc(n, alignment));
+				for (size_t i = 0; i < n; ++i) {
+					//TODO: might throw exception
+					//for standard impl, compiler would wrap these line with try...catch...delete
+					//NOTE: refer to https://isocpp.org/wiki/faq/dtors
+					//placement new have no related delete operation, we have to call destructor and free the memory by ourself
+					::new((void*)(ptr + i))(T)();
+				}
+				return ptr;
+			}
+			inline static void __trash_array(T* ptr, size_t n) {
+				for (size_t i = 0; i < n; ++i) {
+					ptr[i].~T();
+				}
+				_allocator_base_t::free(ptr);
+			}
+		};
+
+		template<class _allocator_base_t>
+		struct __make_array_trait<byte_t, _allocator_base_t> {
+			//this is a track
+			//function template does not support partial specialised
+			inline static byte_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+				return (_allocator_base_t::malloc(n, alignment));
+			}
+			inline static void __trash_array(byte_t* ptr, size_t n) {
+				_allocator_base_t::free(ptr);
+				(void)n;
+			}
+		};
+
+		template<class _allocator_base_t>
+		struct __make_array_trait<u16_t, _allocator_base_t> {
+			//this is track
+			//function template does not support partial specialised
+			inline static u16_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+				return (_allocator_base_t::malloc(n, alignment));
+			}
+			inline static void __trash_array(u16_t* ptr, size_t n) {
+				_allocator_base_t::free(ptr);
+				(void)n;
+			}
+		};
+
+		template<class _allocator_base_t>
+		struct __make_array_trait<u32_t, _allocator_base_t> {
+			//this is track
+			//function template does not support partial specialised
+			inline static u32_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+				return (_allocator_base_t::malloc(n, alignment));
+			}
+			inline static void __trash_array(u32_t* ptr, size_t n) {
+				_allocator_base_t::free(ptr);
+				(void)n;
+			}
+		};
+
+		template<class _allocator_base_t>
+		struct __make_array_trait<u64_t, _allocator_base_t> {
+			//this is track
+			//function template does not support partial specialised
+			inline static u64_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+				return (_allocator_base_t::malloc(n, alignment));
+			}
+			inline static void __trash_array(u64_t* ptr, size_t n) {
+				_allocator_base_t::free(ptr);
+				(void)n;
+			}
+		};
+
+	public:
+		inline static pointer make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+			return __make_array_trait<value_type, allocator_base_t>::__make_array(n, alignment);
+		}
+
+		inline static void trash_array(pointer ptr, size_t n) {
+			__make_array_trait<value_type, allocator_base_t>::__trash_array(ptr, n);
+		}
+
 		//for container compliance below
 		inline pointer allocate(size_type n) {
 			return allocator_base_t::malloc(n);
@@ -231,7 +332,7 @@ namespace netp {
 		//for stl container
 		template<class _Objty,
 			class... _Types>
-			inline void construct(_Objty* _Ptr, _Types&&... _Args)
+		inline void construct(_Objty* _Ptr, _Types&&... _Args)
 		{	// construct _Objty(_Types...) at _Ptr
 			//all the object created instanced by operator placement new must not be called by operate delete.
 			//we have to call destructor by ourself first, then do memory free by ourown logic
@@ -448,90 +549,7 @@ namespace netp {
 		return false;
 	}
 
-	template<class T>
-	struct new_array_trait {
-		//this is track
-		//function template does not support partial specialised
-		inline static T* new_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			T* ptr = netp::allocator<T>::malloc(n,alignment);
-			for (size_t i = 0; i < n; ++i) {
-				//TODO: might throw exception
-				//for standard impl, compiler would wrap these line with try...catch...delete
-				//NOTE: refer to https://isocpp.org/wiki/faq/dtors
-				//placement new have no related delete operation, we have to call destructor and free the memory by ourself
-				new((void*)(ptr+i)) T();
-			}
-			return ptr;
-		}
-		inline static void delete_array(T* ptr, size_t n) {
-			for (size_t i = 0; i < n; ++i) {
-				ptr[i].~T();
-			}
-			netp::allocator<T>::free(ptr);
-		}
-	};
 
-	template<>
-	struct new_array_trait<byte_t> {
-		//this is a track
-		//function template does not support partial specialised
-		inline static byte_t* new_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return netp::allocator<byte_t>::malloc(n, alignment);
-		}
-		inline static void delete_array(byte_t* ptr, size_t n) {
-			netp::allocator<byte_t>::free(ptr);
-			(void)n;
-		}
-	};
-
-	template<>
-	struct new_array_trait<u16_t> {
-		//this is track
-		//function template does not support partial specialised
-		inline static u16_t* new_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return netp::allocator<u16_t>::malloc(n,alignment);
-		}
-		inline static void delete_array(u16_t* ptr, size_t n) {
-			netp::allocator<u16_t>::free(ptr);
-			(void)n;
-		}
-	};
-
-	template<>
-	struct new_array_trait<u32_t> {
-		//this is track
-		//function template does not support partial specialised
-		inline static u32_t* new_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return netp::allocator<u32_t>::malloc(n,alignment);
-		}
-		inline static void delete_array(u32_t* ptr, size_t n) {
-			netp::allocator<u32_t>::free(ptr);
-			(void)n;
-		}
-	};
-
-	template<>
-	struct new_array_trait<u64_t> {
-		//this is track
-		//function template does not support partial specialised
-		inline static u64_t* new_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return netp::allocator<u64_t>::malloc(n,alignment);
-		}
-		inline static void delete_array(u64_t* ptr, size_t n) {
-			netp::allocator<u64_t>::free(ptr);
-			(void)n;
-		}
-	};
-
-	template<class T>
-	inline T* new_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-		return new_array_trait<T>::new_array(n,alignment);
-	}
-
-	template<class T>
-	inline void delete_array(T* ptr, size_t n) {
-		new_array_trait<T>::delete_array(ptr,n);
-	}
 	
 	/*
 	namespace __gnugcc_impl {

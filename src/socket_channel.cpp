@@ -200,6 +200,7 @@ namespace netp {
 		} catch(netp::exception const& e) {
 			NETP_ASSERT(e.code() != netp::OK );
 			status = e.code();
+			goto _set_fail_and_return;
 		} catch(std::exception const& e) {
 			status = netp_socket_get_last_errno();
 			if (status == netp::OK) {
