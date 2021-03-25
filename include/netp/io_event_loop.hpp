@@ -2,7 +2,6 @@
 #define _NETP_IO_EVENT_LOOP_HPP
 
 #include <vector>
-#include <unordered_map>
 #include <set>
 
 #include <netp/singleton.hpp>

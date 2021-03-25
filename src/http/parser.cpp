@@ -249,6 +249,8 @@ namespace netp { namespace http {
 
 	void parser::deinit() {
 		if (_p != nullptr) {
+			//reserve ec first
+			_http_errno = _p->http_errno;
 			::free(_p);
 			_p = nullptr;
 		}
@@ -285,7 +287,8 @@ namespace netp { namespace http {
 
 		::size_t nparsed = http_parser_execute(_p, &_settings, data, len);
 
-		ec = _p->http_errno;
+		if (NETP_LIKELY(_p != 0)) { _http_errno = _p->http_errno; };
+		ec = _http_errno;
 		return nparsed;
 	}
 

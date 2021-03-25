@@ -235,24 +235,24 @@ namespace netp {
 		}
 
 	private:
-		template<class T, class _allocator_base_t>
+		template<class array_ele_t, class _allocator_base_t>
 		struct __make_array_trait {
 			//this is track
 			//function template does not support partial specialised
-			inline static T* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-				T* ptr = (_allocator_base_t::malloc(n, alignment));
+			inline static array_ele_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+				array_ele_t* ptr = (_allocator_base_t::malloc(n, alignment));
 				for (size_t i = 0; i < n; ++i) {
 					//TODO: might throw exception
 					//for standard impl, compiler would wrap these line with try...catch...delete
 					//NOTE: refer to https://isocpp.org/wiki/faq/dtors
 					//placement new have no related delete operation, we have to call destructor and free the memory by ourself
-					::new((void*)(ptr + i))(T)();
+					::new((void*)(ptr + i))(array_ele_t)();
 				}
 				return ptr;
 			}
-			inline static void __trash_array(T* ptr, size_t n) {
+			inline static void __trash_array(array_ele_t* ptr, size_t n) {
 				for (size_t i = 0; i < n; ++i) {
-					ptr[i].~T();
+					ptr[i].~array_ele_t();
 				}
 				_allocator_base_t::free(ptr);
 			}
