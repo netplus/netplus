@@ -60,11 +60,14 @@ namespace netp {
 					struct kevent* e = (m_kevts + j);
 					NETP_ASSERT(e->udata != nullptr);
 					io_ctx* ctx = (static_cast<io_ctx*> (e->udata));
-					if (e->filter==EVFILT_READ && ctx->fn_read != nullptr) {
-						ctx->fn_read(ec);
+					NRP<io_monitor>& iom = ctx->iom;
+					if (e->filter==EVFILT_READ) {
+						NETP_ASSERT(ctx->flag&io_flag::IO_READ);
+						iom->io_notify_read(ec);
 					}
-					if (e->filter==EVFILT_WRITE && ctx->fn_write != nullptr ) {
-						ctx->fn_write(ec);
+					if (e->filter==EVFILT_WRITE) {
+						NETP_ASSERT(ctx->flag & io_flag::IO_WRITE);
+						iom->io_notify_write(ec);
 					}
 				}
 			}

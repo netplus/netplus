@@ -6,7 +6,7 @@
 #include <poll.h>
 
 #include <netp/core.hpp>
-#include <netp/poller_abstract.hpp>
+#include <netp/poller_interruptable_by_fd.hpp>
 #include <netp/socket_api.hpp>
 
 namespace netp {
@@ -29,8 +29,6 @@ namespace netp {
 
 		int watch(u8_t flag, io_ctx* ctx) override {
 			NETP_ASSERT( ctx->fd != NETP_INVALID_SOCKET);
-//			const u8_t f2 = (!(--flag)) + 1;
-
 			struct epoll_event epEvent =
 			{
 #ifdef NETP_IO_POLLER_EPOLL_USE_ET
@@ -57,9 +55,7 @@ namespace netp {
 		}
 
 		int unwatch( u8_t flag, io_ctx* ctx ) override {
-
 			NETP_ASSERT(ctx->fd != NETP_INVALID_SOCKET);
-			//const u8_t f2 = (!(--flag)) + 1;
 
 			struct epoll_event epEvent =
 			{
@@ -150,13 +146,14 @@ namespace netp {
 					events &= ~(EPOLLERR | EPOLLHUP);
 				}
 
-				if ( ((events&EPOLLIN) || ec != netp::OK) && ctx->fn_read != nullptr ) {
+				NRP<io_monitor>& iom = ctx->iom;
+				if ( ((events&EPOLLIN) || ec != netp::OK) ) {
 					NETP_ASSERT(ctx->flag & u8_t(io_flag::IO_READ));
-					ctx->fn_read(ec, ctx);
+					iom->io_notify_read(ec, ctx);
 				}
-				if ( ( (events&EPOLLOUT) || ec != netp::OK) && ctx->fn_write != nullptr ) {
+				if ( ( (events&EPOLLOUT) || ec != netp::OK) ) {
 					NETP_ASSERT(ctx->flag & u8_t(io_flag::IO_WRITE));
-					ctx->fn_write(ec, ctx);
+					iom->io_notify_write(ec, ctx);
 				}
 				events &= ~(EPOLLOUT|EPOLLIN);
 
