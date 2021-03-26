@@ -80,7 +80,7 @@ namespace netp {
 
 			NETP_ASSERT((m_chflag & (int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE))) == 0);
 			
-			m_io_ctx = L->io_begin(m_fd);
+			m_io_ctx = L->io_begin(m_fd,NRP<io_monitor>(this));
 			if (m_io_ctx == 0) {
 				ch_errno() = netp::E_IO_BEGIN_FAILED;
 				m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
@@ -88,7 +88,7 @@ namespace netp {
 				fn_begin_done(netp::E_IO_BEGIN_FAILED, 0);
 				return;
 			}
-			((iocp_ctx*)m_io_ctx)->fn_notify = std::bind(&socket_channel_iocp::__io_notify_terminating, NRP<socket_channel_iocp>(this), std::placeholders::_1, std::placeholders::_2);
+			((iocp_ctx*)m_io_ctx)->fn_notify = std::bind(&socket_channel_iocp::io_notify_terminating, NRP<socket_channel_iocp>(this), std::placeholders::_1, std::placeholders::_2);
 			__io_begin_done(m_io_ctx);
 			fn_begin_done(netp::OK, m_io_ctx);
 		}

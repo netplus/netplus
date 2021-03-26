@@ -7,6 +7,7 @@
 
 #include <netp/poller_abstract.hpp>
 #include <netp/os/winsock_helper.hpp>
+#include <netp/socket_api.hpp>
 
 namespace netp {
 
@@ -23,6 +24,7 @@ namespace netp {
 		AS_DONE = 1 << 1,
 		AS_CH_END = 1 << 2
 	};
+	struct io_ctx;
 
 	struct iocp_ctx;
 	struct ol_ctx
@@ -315,9 +317,9 @@ namespace netp {
 #endif
 		}
 
-		virtual io_ctx* io_begin(SOCKET fd) {
+		virtual io_ctx* io_begin(SOCKET fd, NRP<io_monitor> const& iom) override {
 			NETP_ASSERT(fd > 0);
-
+			(void)iom;
 			NETP_TRACE_IOE("[#%d][CreateIoCompletionPort]init", fd);
 			NETP_ASSERT(m_handle != nullptr);
 			HANDLE bindcp = ::CreateIoCompletionPort((HANDLE)fd, m_handle, 0, 0);
@@ -338,7 +340,7 @@ namespace netp {
 			return (io_ctx*)ctx;
 		}
 
-		virtual void io_end(io_ctx* ctx_) {
+		virtual void io_end(io_ctx* ctx_) override {
 			iocp_ctx* ctx = (iocp_ctx*)ctx_;
 #ifdef NETP_DEBUG_IO_CTX_
 			++m_io_ctx_count_free;

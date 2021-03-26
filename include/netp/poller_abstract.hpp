@@ -69,6 +69,29 @@ namespace netp {
 		READ_WRITE = (READ | WRITE)
 	};
 
+	struct io_ctx
+	{
+		io_ctx* prev, * next;
+		SOCKET fd;
+		u8_t flag;
+		NRP<io_monitor> iom;
+	};
+	typedef std::function<void(int status, io_ctx* ctx)> fn_io_event_t;
+
+	inline static io_ctx* io_ctx_allocate(SOCKET fd, NRP<io_monitor> const& iom) {
+		io_ctx* ctx = netp::allocator<io_ctx>::make();
+		ctx->fd = fd;
+		ctx->flag = 0;
+		ctx->iom = iom;
+		return ctx;
+	}
+
+	inline static void io_ctx_deallocate(io_ctx* ctx) {
+		NETP_ASSERT(ctx->iom != nullptr);
+		ctx->iom = nullptr;
+		netp::allocator<io_ctx>::trash(ctx);
+	}
+
 
 	class poller_abstract:
 		public netp::ref_base
