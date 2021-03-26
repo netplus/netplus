@@ -71,9 +71,6 @@ namespace netp {
 		address m_laddr;
 		address m_raddr;
 
-//		keep_alive_vals m_kvals;
-//		channel_buf_cfg m_sock_buf;
-
 	protected:
 		int _cfg_reuseaddr(bool onoff);
 		int _cfg_reuseport(bool onoff);

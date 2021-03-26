@@ -420,7 +420,7 @@ namespace netp { namespace handler {
 			});
 		};
 
-		void ch_io_accept(fn_channel_initializer_t const& ) override {}
+		void ch_io_accept(fn_io_event_t const& ) override {}
 		void ch_io_end_accept() override {}
 
 		//for channel compatible
