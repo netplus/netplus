@@ -68,17 +68,13 @@ namespace netp {
 
 		__NETP_FORCE_INLINE void __cond_allocate_check() {
 			if (m_cond == 0) {
-				m_cond = netp::allocator<condition_variable_any>::malloc(1);
-				new((void*)m_cond)condition_variable_any();
+				m_cond = netp::allocator<condition_variable_any>::make();
 			}
 		}
 
 		__NETP_FORCE_INLINE void __cond_deallocate_check() {
-			if (m_cond != 0) {
-				m_cond->~condition_variable_any();
-				netp::allocator< condition_variable_any>::free(m_cond);
-				m_cond = 0;
-			}
+			netp::allocator<condition_variable_any>::trash(m_cond);
+			m_cond = 0;
 		}
 
 	public:
