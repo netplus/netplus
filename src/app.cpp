@@ -271,6 +271,10 @@ namespace netp {
 
 		NETP_INFO("sizeof(netp::socket_base): %u", sizeof(netp::socket_base));
 		NETP_INFO("sizeof(netp::channel): %u", sizeof(netp::channel));
+		NETP_INFO("sizeof(netp::io_ctx): %u", sizeof(netp::io_ctx));
+		NETP_INFO("sizeof(netp::fn_io_event_t): %u", sizeof(netp::fn_io_event_t));
+		NETP_INFO("sizeof(std::function<void(int)>): %u", sizeof(std::function<void(int)>));
+		NETP_INFO("sizeof(std::function<void(int, int)>): %u", sizeof(std::function<void(int, int)>));
 		NETP_INFO("sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>): %u", sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>));
 		NETP_INFO("sizeof(netp::socket): %u", sizeof(netp::socket_channel));
 		NETP_INFO("sizeof(std::vector<int>): %u", sizeof(std::vector<int>));
@@ -285,8 +289,6 @@ namespace netp {
 		NETP_INFO("sizeof(std::condition_variable): %u", sizeof(std::condition_variable));
 		NETP_INFO("sizeof(netp::condition_any): %u", sizeof(netp::condition_any));
 		NETP_INFO("sizeof(std::condition_variable_any): %u", sizeof(std::condition_variable_any));
-		NETP_INFO("sizeof(netp::fn_io_event_t): %u", sizeof(fn_io_event_t));
-		NETP_INFO("sizeof(netp::io_ctx): %u", sizeof(netp::io_ctx));
 	}
 #endif
 

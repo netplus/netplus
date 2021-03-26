@@ -134,12 +134,11 @@ namespace netp {
 		u32_t m_noutbound_bytes;
 		socket_outbound_entry_t m_outbound_entry_q;
 
-		netp::size_t m_outbound_budget;
-		netp::size_t m_outbound_limit; //in byte
+		u32_t m_outbound_budget;
+		u32_t m_outbound_limit; //in byte
 
-		NRP<socket_cfg> m_listen_cfg;
-		fn_io_event_t m_fn_read;
-		fn_io_event_t m_fn_write;
+		fn_io_event_t* m_fn_read;
+		fn_io_event_t* m_fn_write;
 
 		void _tmcb_BDL(NRP<timer> const& t);
 
@@ -152,7 +151,8 @@ namespace netp {
 			m_noutbound_bytes(0),
 			m_outbound_budget(cfg->bdlimit),
 			m_outbound_limit(cfg->bdlimit),
-			m_listen_cfg(nullptr)
+			m_fn_read(nullptr),
+			m_fn_write(nullptr)
 		{
 			NETP_ASSERT(cfg->L != nullptr);
 		}
@@ -272,7 +272,7 @@ namespace netp {
 			});
 		}
 
-		void __cb_io_accept_impl(fn_channel_initializer_t const& fn_initializer, int status, io_ctx* ctx);
+		void __cb_io_accept_impl(NRP<socket_cfg> const& cfg, fn_channel_initializer_t const& fn_initializer, int status, io_ctx* ctx);
 
 		__NETP_FORCE_INLINE void ___io_read_impl_done(int status) {
 			switch (status) {
@@ -402,7 +402,7 @@ namespace netp {
 		void ch_io_begin(fn_io_event_t const& fn_begin_done) override;
 		void ch_io_end() override;
 
-		void ch_io_accept(fn_channel_initializer_t const& fn_accepted_initializer) override;
+		void ch_io_accept(fn_io_event_t const& fn = nullptr) override;
 		void ch_io_end_accept() override {
 			ch_io_end_read();
 		}
@@ -476,7 +476,7 @@ namespace netp {
 			std::string ch_info() const override {
 				return socketinfo{ m_fd, (m_family),(m_type),(m_protocol),local_addr(), remote_addr() }.to_string();
 			}
-			void ch_set_bdlimit(netp::size_t limit) override {
+			void ch_set_bdlimit(netp::u32_t limit) override {
 				L->execute([s = NRP<socket_channel>(this), limit]() {
 					s->m_outbound_limit = limit;
 					s->m_outbound_budget = s->m_outbound_limit;

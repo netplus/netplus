@@ -293,7 +293,7 @@ public: \
 
 		virtual channel_id_t ch_id() const = 0; //called by context in event_loop
 		virtual std::string ch_info() const = 0;
-		virtual void ch_set_bdlimit(netp::size_t) {};
+		virtual void ch_set_bdlimit(u32_t) {};
 
 		virtual NRP<promise<int>> ch_set_read_buffer_size(u32_t size) = 0;
 		virtual NRP<promise<int>> ch_get_read_buffer_size() = 0;
@@ -305,7 +305,6 @@ public: \
 		virtual void ch_write_impl(NRP<packet> const& outlet, NRP<promise<int>> const& chp) = 0;
 		virtual void ch_write_to_impl(NRP<packet> const& outlet, netp::address const& to, NRP<promise<int>> const& chp) { 
 			NETP_ASSERT("to_impl"); 
-		
 			(void)outlet;
 			(void)to;
 			(void)chp;
@@ -318,7 +317,7 @@ public: \
 		virtual void ch_io_begin(fn_io_event_t const& fn = nullptr) = 0;
 		virtual void ch_io_end() = 0;
 
-		virtual void ch_io_accept(fn_channel_initializer_t const& fn = nullptr) = 0;
+		virtual void ch_io_accept(fn_io_event_t const& fn=nullptr) = 0;
 		virtual void ch_io_end_accept() = 0;
 
 		virtual void ch_io_read( fn_io_event_t const& fn = nullptr) = 0;

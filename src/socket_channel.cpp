@@ -32,7 +32,7 @@ namespace netp {
 		}
 
 		NETP_ASSERT(m_outbound_limit>=m_outbound_budget);
-		std::size_t tokens = m_outbound_limit / (1000/NETP_SOCKET_BDLIMIT_TIMER_DELAY_DUR);
+		u32_t tokens = m_outbound_limit / (1000/NETP_SOCKET_BDLIMIT_TIMER_DELAY_DUR);
 		if ( m_outbound_limit < (tokens+ m_outbound_budget)) {
 			m_outbound_budget = m_outbound_limit;
 		} else {
@@ -99,15 +99,15 @@ namespace netp {
 		}
 
 		NETP_ASSERT(rt == netp::OK);
-		m_listen_cfg = ccfg;
-		m_listen_cfg->family = m_family;
-		m_listen_cfg->type = m_type;
-		m_listen_cfg->proto = m_protocol;
+		ccfg->family = m_family;
+		ccfg->type = m_type;
+		ccfg->proto = m_protocol;
 
-		ch_io_begin([fn_accepted_initializer,chp, so = NRP<socket_channel>(this)]( int status, io_ctx*){
+		ch_io_begin([fn_accepted_initializer,chp, ccfg, so = NRP<socket_channel>(this)]( int status, io_ctx*){
 			chp->set(status);
 			if(status == netp::OK) {
-				so->ch_io_accept(fn_accepted_initializer);
+				auto fn_accept = std::bind(&socket_channel::__cb_io_accept_impl, so, ccfg, fn_accepted_initializer, std::placeholders::_1, std::placeholders::_2);
+				so->ch_io_accept(fn_accept);
 			}
 		});
 	}
@@ -229,7 +229,7 @@ namespace netp {
 		ch_io_read();
 	}
 
-	void socket_channel::__cb_io_accept_impl(fn_channel_initializer_t const& fn_initializer, int status, io_ctx* ) {
+	void socket_channel::__cb_io_accept_impl(NRP<socket_cfg> const& cfg, fn_channel_initializer_t const& fn_initializer, int status, io_ctx* ) {
 
 		NETP_ASSERT(L->in_event_loop());
 		/*ignore the left fds, cuz we're closed*/
@@ -266,7 +266,7 @@ namespace netp {
 			}
 
 			NRP<io_event_loop> LL = io_event_loop_group::instance()->next(L->poller_type());
-			LL->execute([LL,fn_initializer,nfd, laddr, raddr, cfg=m_listen_cfg]() {
+			LL->execute([LL,fn_initializer,nfd, laddr, raddr, cfg]() {
 				std::tuple<int, NRP<socket_channel>> tupc = accepted_create<socket_channel>(LL,nfd, laddr,raddr, cfg);
 				int rt = std::get<0>(tupc);
 				if (rt != netp::OK) {
@@ -363,9 +363,9 @@ namespace netp {
 		while ( _errno == netp::OK && m_outbound_entry_q.size() ) {
 			NETP_ASSERT( (m_noutbound_bytes) > 0);
 			socket_outbound_entry& entry = m_outbound_entry_q.front();
-			netp::size_t dlen = entry.data->len();
-			netp::size_t wlen = (dlen);
-			if (m_outbound_limit !=0 && m_outbound_budget<wlen) {
+			u32_t dlen = u32_t(entry.data->len());
+			u32_t wlen = (dlen);
+			if (m_outbound_limit !=0 && (m_outbound_budget<wlen)) {
 				wlen =m_outbound_budget;
 				if (wlen == 0) {
 					NETP_ASSERT(m_chflag& int(channel_flag::F_BDLIMIT_TIMER));
@@ -427,7 +427,6 @@ namespace netp {
 		NETP_ASSERT((m_chflag & int(channel_flag::F_CLOSED)) ==0 );
 
 		m_chflag |= int(channel_flag::F_CLOSED);
-		m_listen_cfg = nullptr;
 		ch_io_end_accept();
 		ch_io_end();
 		NETP_TRACE_SOCKET("[socket][%s]ch_do_close_listener end", ch_info().c_str());
@@ -617,7 +616,7 @@ namespace netp {
 			return;
 		}
 		NETP_ASSERT( m_fn_read != nullptr );
-		m_fn_read(status, ctx);
+		(*m_fn_read)(status, ctx);
 	}
 
 	void socket_channel::io_notify_write(int status, io_ctx* ctx) {
@@ -626,7 +625,7 @@ namespace netp {
 			return;
 		}
 		NETP_ASSERT(m_fn_write != nullptr);
-		m_fn_write(status, ctx);
+		(*m_fn_write)(status, ctx);
 	}
 
 	void socket_channel::__ch_clean() {
@@ -677,10 +676,10 @@ namespace netp {
 			});
 		}
 
-		void socket_channel::ch_io_accept(fn_channel_initializer_t const& fn_accepted_initializer) {
+		void socket_channel::ch_io_accept(fn_io_event_t const& fn ) {
 			if (!L->in_event_loop()) {
-				L->schedule([ch = NRP<channel>(this), fn_accepted_initializer]() {
-					ch->ch_io_accept();
+				L->schedule([ch = NRP<channel>(this), fn]() {
+					ch->ch_io_accept(fn);
 				});
 				return;
 			}
@@ -704,8 +703,9 @@ namespace netp {
 				return;
 			}
 
+			m_chflag &= ~int(channel_flag::F_USE_DEFAULT_WRITE);
 			m_chflag |= int(channel_flag::F_WATCH_READ);
-			m_fn_read = std::bind(&socket_channel::__cb_io_accept_impl, NRP<socket_channel>(this), fn_accepted_initializer, std::placeholders::_1, std::placeholders::_2);
+			m_fn_read = netp::allocator<fn_io_event_t>::make(fn);
 		}
 
 		void socket_channel::ch_io_read(fn_io_event_t const& fn_read) {
@@ -736,7 +736,7 @@ namespace netp {
 			} else {
 				m_chflag &= ~int(channel_flag::F_USE_DEFAULT_READ);
 				m_chflag |= int(channel_flag::F_WATCH_READ);
-				m_fn_read = fn_read;
+				m_fn_read = netp::allocator<fn_io_event_t>::make(fn_read);
 			}
 			NETP_TRACE_IOE("[socket][%s]io_action::READ", ch_info().c_str());
 		}
@@ -752,6 +752,7 @@ namespace netp {
 			if ((m_chflag & int(channel_flag::F_WATCH_READ))) {
 				L->io_do(io_action::END_READ, m_io_ctx);
 				m_chflag &= ~(int(channel_flag::F_USE_DEFAULT_READ) | int(channel_flag::F_WATCH_READ));
+				netp::allocator<fn_io_event_t>::trash(m_fn_read);
 				m_fn_read = nullptr;
 				NETP_TRACE_IOE("[socket][%s]io_action::END_READ", ch_info().c_str());
 			}
@@ -792,7 +793,7 @@ namespace netp {
 			} else {
 				m_chflag &= ~int(channel_flag::F_USE_DEFAULT_WRITE);
 				m_chflag |= int(channel_flag::F_WATCH_WRITE);
-				m_fn_write = fn_write;
+				m_fn_write = netp::allocator<fn_io_event_t>::make(fn_write);
 			}
 			NETP_TRACE_IOE("[socket][%s]io_action::WRITE", ch_info().c_str());
 		}
@@ -808,6 +809,7 @@ namespace netp {
 			if (m_chflag & int(channel_flag::F_WATCH_WRITE)) {
 				L->io_do(io_action::END_WRITE, m_io_ctx);
 				m_chflag &= ~(int(channel_flag::F_USE_DEFAULT_WRITE) | int(channel_flag::F_WATCH_WRITE));
+				netp::allocator<fn_io_event_t>::trash(m_fn_write);
 				m_fn_write = nullptr;
 				NETP_TRACE_IOE("[socket][%s]io_action::END_WRITE", ch_info().c_str());
 			}
