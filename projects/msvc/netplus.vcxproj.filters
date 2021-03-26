@@ -480,6 +480,12 @@
     <ClInclude Include="..\..\include\netp\socket_channel_iocp.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\poller_interruptable_by_fd.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\io_monitor.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">

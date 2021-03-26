@@ -9,6 +9,8 @@
 #include <netp/promise.hpp>
 #include <netp/channel_pipeline.hpp>
 
+#include <netp/io_monitor.hpp>
+
 //CHANNEL STAGE
 //1, dialing and pipeline initialize stage, we'll get a future notifIcation for any failure in this stage
 //2, protocol handshake stage, we'll fire a error to all pipe if we failed 
@@ -49,7 +51,10 @@ namespace netp {
 		F_IO_EVENT_LOOP_BEGIN_DONE = 1<<21,
 		F_IO_EVENT_LOOP_NOTIFY_TERMINATING=1<<22,
 
-		F_TIMER_1 = 1 << 23
+		F_TIMER_1 = 1 << 23,
+
+		F_USE_DEFAULT_READ=1<<24,
+		F_USE_DEFAULT_WRITE = 1<<25,
 	};
 
 	struct channel_buf_cfg {
@@ -76,8 +81,10 @@ namespace netp {
 	//NOTE: block|write_unblock hass been removed 
 	//the writer would get notified by write_promise->set when packet write done
 	//if write order is important , writer should maintain it's own write queue
+	struct io_ctx;
+	typedef std::function<void(int status, io_ctx*)> fn_io_event_t;
 	class channel :
-		public netp::ref_base
+		public netp::io_monitor
 	{
 	public:
 		NRP<io_event_loop> L;
@@ -280,6 +287,10 @@ public: \
 		} \
 		*/
 
+		void io_notify_terminating(int, io_ctx*) {};
+		void io_notify_read(int, io_ctx*) {};
+		void io_notify_write(int, io_ctx*) {};
+
 		virtual channel_id_t ch_id() const = 0; //called by context in event_loop
 		virtual std::string ch_info() const = 0;
 		virtual void ch_set_bdlimit(netp::size_t) {};
@@ -303,7 +314,7 @@ public: \
 		virtual void ch_close_read_impl(NRP<promise<int>> const& chp) = 0;
 		virtual void ch_close_write_impl(NRP<promise<int>> const& chp) = 0;
 		virtual void ch_close_impl(NRP<promise<int>> const& chp) = 0;
-		
+
 		virtual void ch_io_begin(fn_io_event_t const& fn = nullptr) = 0;
 		virtual void ch_io_end() = 0;
 

@@ -90,6 +90,7 @@
     <ClInclude Include="..\..\include\netp\http\message.hpp" />
     <ClInclude Include="..\..\include\netp\http\parser.hpp" />
     <ClInclude Include="..\..\include\netp\icmp.hpp" />
+    <ClInclude Include="..\..\include\netp\poller_interruptable_by_fd.hpp" />
     <ClInclude Include="..\..\include\netp\poller_iocp.hpp" />
     <ClInclude Include="..\..\include\netp\io_event_loop.hpp" />
     <ClInclude Include="..\..\include\netp\ipv4.hpp" />
@@ -128,6 +129,7 @@
     <ClInclude Include="..\..\include\netp\socket_api.hpp" />
     <ClInclude Include="..\..\include\netp\socket_base.hpp" />
     <ClInclude Include="..\..\include\netp\socket_channel_iocp.hpp" />
+    <ClInclude Include="..\..\include\netp\io_monitor.hpp" />
     <ClInclude Include="..\..\include\netp\string.hpp" />
     <ClInclude Include="..\..\include\netp\task\runner.hpp" />
     <ClInclude Include="..\..\include\netp\task\scheduler.hpp" />

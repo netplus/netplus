@@ -76,9 +76,6 @@ namespace netp {
 		std::atomic<long> m_internal_ref_count;
 		event_loop_cfg m_cfg;
 
-#ifdef NETP_DEBUG_TERMINATING
-		bool m_terminated;
-#endif
 	protected:
 		inline long internal_ref_count() { return m_internal_ref_count.load(std::memory_order_acquire); }
 		inline void store_internal_ref_count( long count ) { m_internal_ref_count.store( count, std::memory_order_release); }
@@ -109,16 +106,11 @@ namespace netp {
 		}
 
 		virtual void init() {
-
 			m_channel_rcv_buf = netp::make_ref<netp::packet>(m_cfg.ch_buf_size);
 			m_tid = std::this_thread::get_id();
 			m_tb = netp::make_ref<timer_broker>();
 			
 			m_poller->init();
-
-#ifdef NETP_DEBUG_TERMINATING
-			m_terminated = false;
-#endif
 		}
 
 		virtual void deinit() {
@@ -250,10 +242,10 @@ namespace netp {
 				return netp::E_IO_EVENT_LOOP_TERMINATED;
 			}
 		}
-		inline io_ctx* io_begin(SOCKET fd) {
+		inline io_ctx* io_begin(SOCKET fd, NRP<io_monitor> const& iom) {
 			NETP_ASSERT(in_event_loop());
 			if (m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
-				return m_poller->io_begin(fd);
+				return m_poller->io_begin(fd, iom);
 			}
 			return 0;
 		}
