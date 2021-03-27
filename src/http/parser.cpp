@@ -234,7 +234,7 @@ namespace netp { namespace http {
 
 	void parser::init(http_parse_type type_ = HPT_BOTH) {
 		NETP_ASSERT(_p == nullptr);
-		_p = (http_parser*) ::malloc(sizeof(http_parser));
+		_p = (http_parser*) netp::allocator<http_parser>::malloc(1);
 		NETP_ALLOC_CHECK(_p, sizeof(http_parser));
 
 		if (type_ == HPT_REQ) {
@@ -251,7 +251,7 @@ namespace netp { namespace http {
 		if (_p != nullptr) {
 			//reserve ec first
 			_http_errno = _p->http_errno;
-			::free(_p);
+			netp::allocator<http_parser>::free(_p);
 			_p = nullptr;
 		}
 

@@ -81,10 +81,10 @@ inline static void xxtea_to_uint32_array(netp::u32_t* arr, netp::u32_t const& al
 namespace netp { namespace security {
 
 	struct xxtea_ctx {
-		byte_t* encrypted_data;
 		u32_t encrypted_data_length;
-		byte_t* decrypted_data;
 		u32_t decrypted_data_length;
+		byte_t* encrypted_data;
+		byte_t* decrypted_data;
 	};
 
 	//different endian on both side is supported
@@ -100,33 +100,33 @@ namespace netp { namespace security {
 		xxtea_to_uint32_array(u32k,4,tmp,16);
 
 		netp::u32_t u32len = ((dlen & 3) == 0) ? (dlen >> 2) : ((dlen >> 2) + 1);
-		u32_t* u32data = (u32_t*)::calloc( sizeof(u32_t),(u32len +1)) ;
-		if (u32data == nullptr) {
+		u32_t* u32data = netp::allocator<u32_t>::calloc(u32len +1) ;
+		if (u32data == 0) {
 			ec = netp::E_MEMORY_ALLOC_FAILED;
-			return nullptr;
+			return 0;
 		}
 		*(u32data + u32len) = dlen;
 		xxtea_to_uint32_array(u32data,u32len,data,dlen);
 		wikipedia_btea_encrypt(u32data, u32len+1, u32k);
 
-		xxtea_ctx* ctx = (xxtea_ctx*)::calloc(sizeof(xxtea_ctx), 1);
+		xxtea_ctx* ctx = netp::allocator<xxtea_ctx>::calloc(1);
 		if (ctx == nullptr) {
-			::free(u32data);
+			netp::allocator<u32_t>::free(u32data);
 			ec = netp::E_MEMORY_ALLOC_FAILED;
 			return nullptr;
 		}
 
 		ctx->encrypted_data_length = (u32len + 1) << 2;
-		ctx->encrypted_data = (byte_t*)calloc(sizeof(byte_t), ctx->encrypted_data_length);
+		ctx->encrypted_data = netp::allocator<byte_t>::calloc( ctx->encrypted_data_length);
 		if (ctx->encrypted_data == nullptr) {
-			::free(u32data);
-			::free(ctx);
+			netp::allocator<u32_t>::free(u32data);
+			netp::allocator<xxtea_ctx>::free(ctx);
 			ec = netp::E_MEMORY_ALLOC_FAILED;
 			return nullptr;
 		}
 
 		xxtea_to_bytes_array(ctx->encrypted_data,ctx->encrypted_data_length,u32data,u32len);
-		::free(u32data);
+		netp::allocator<u32_t>::free(u32data);
 		return ctx;
 	}
 
@@ -147,7 +147,7 @@ namespace netp { namespace security {
 		xxtea_to_uint32_array(u32k, 4, tmp, 16);
 
 		u32_t u32len = dlen >> 2;
-		u32_t* u32data = (u32_t*)::calloc(sizeof(u32_t), u32len);
+		u32_t* u32data = (u32_t*)netp::allocator<u32_t>::calloc(u32len);
 		if (u32data == nullptr) {
 			ec = netp::E_MEMORY_ALLOC_FAILED;
 			return nullptr;
@@ -157,41 +157,41 @@ namespace netp { namespace security {
 
 		if (*(u32data + u32len - 1) > dlen) {
 			//invalid data
-			::free(u32data);
+			netp::allocator<u32_t>::free(u32data);
 			ec = netp::E_XXTEA_INVALID_DATA;
 			return nullptr;
 		}
 
-		xxtea_ctx* ctx = (xxtea_ctx*)calloc(sizeof(xxtea_ctx), 1);
+		xxtea_ctx* ctx = (xxtea_ctx*)netp::allocator<xxtea_ctx>::calloc(1);
 		if (ctx == nullptr) {
-			::free(u32data);
+			netp::allocator<u32_t>::free(u32data);
 			ec = netp::E_MEMORY_ALLOC_FAILED;
 			return nullptr;
 		}
 
 		ctx->decrypted_data_length = *(u32data + u32len - 1);
-		ctx->decrypted_data = (byte_t*)calloc(sizeof(byte_t), ctx->decrypted_data_length);
+		ctx->decrypted_data = netp::allocator<byte_t>::calloc(ctx->decrypted_data_length);
 		if (ctx->decrypted_data == nullptr) {
 			ec = netp::E_MEMORY_ALLOC_FAILED;
-			::free(ctx);
-			::free(u32data);
+			netp::allocator<xxtea_ctx>::free(ctx);
+			netp::allocator<u32_t>::free(u32data);
 			return nullptr;
 		}
 
 		xxtea_to_bytes_array(ctx->decrypted_data, ctx->decrypted_data_length, u32data, (u32len-1) );
-		::free(u32data);
+		netp::allocator<u32_t>::free(u32data);
 		return	ctx;
 	}
 
 	inline static void xxtea_free(xxtea_ctx* ctx) {
 		NETP_ASSERT( ctx != nullptr );
 		if (ctx->encrypted_data) {
-			::free(ctx->encrypted_data);
+			netp::allocator<byte_t>::free(ctx->encrypted_data);
 		}
 		if (ctx->decrypted_data) {
-			::free(ctx->decrypted_data);
+			netp::allocator<byte_t>::free(ctx->decrypted_data);
 		}
-		::free(ctx);
+		netp::allocator<xxtea_ctx>::free(ctx);
 	}
 
 //#define NETP_DEBUG_DH_XXTEA_KEY

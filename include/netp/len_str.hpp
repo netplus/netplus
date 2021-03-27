@@ -37,7 +37,7 @@ namespace netp {
 
 			if (len > 0) {
 				NETP_ASSERT(cstr != str);
-				cstr = (char_t*)::malloc(sizeof(char_t) * (len + 1));
+				cstr = netp::allocator<char_t>::malloc( (len + 1));
 				NETP_ALLOC_CHECK(cstr, sizeof(char_t) * (len + 1));
 				netp::strcpy(cstr, str);
 			}
@@ -50,7 +50,7 @@ namespace netp {
 			NETP_ASSERT(netp::strlen(str) >= slen);
 			if (slen > 0) {
 				len = slen;
-				cstr = (char_t*)::malloc(sizeof(char) * (slen + 1)); // str + '\0'
+				cstr = netp::allocator<char_t>::malloc((slen + 1)); // str + '\0'
 				NETP_ALLOC_CHECK(cstr, sizeof(char) * (slen + 1));
 				netp::strncpy(cstr, str, slen);
 			}
@@ -58,9 +58,9 @@ namespace netp {
 
 		~len_cstr_impl() {
 			if (len > 0) {
-				::free(cstr);
+				netp::allocator<char_t>::free(cstr);
 			}
-			cstr = nullptr;
+			cstr = 0;
 			len = 0;
 		}
 
@@ -79,7 +79,7 @@ namespace netp {
 			len(0)
 		{
 			if (other.len > 0) {
-				cstr = (char_t*)::malloc(sizeof(char_t) * (other.len + 1));
+				cstr = netp::allocator<char_t>::malloc( (other.len + 1));
 				NETP_ALLOC_CHECK(cstr, sizeof(char_t) * (other.len + 1));
 
 				len = other.len;
@@ -116,7 +116,7 @@ namespace netp {
 
 		_MyT operator + (len_cstr_impl const& other) const {
 			netp::size_t buffer_length = len + other.len + 1;
-			char_t* _buffer = (char_t*) ::calloc(sizeof(char_t), buffer_length);
+			char_t* _buffer = (char_t*) netp::allocator<char_t>::calloc(buffer_length);
 
 			if (len) {
 				netp::strncpy(_buffer, cstr, len);
@@ -127,7 +127,7 @@ namespace netp {
 			}
 
 			_MyT lcstr(_buffer, len + other.len);
-			::free(_buffer);
+			netp::allocator<char_t>::free(_buffer);
 
 			return lcstr;
 		}

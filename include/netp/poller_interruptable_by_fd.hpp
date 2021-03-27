@@ -18,9 +18,9 @@ namespace netp {
 			ctx(0)
 		{}
 
-		virtual void io_notify_terminating(int status, io_ctx*) override {
+		virtual void io_notify_terminating(int, io_ctx*) override {
 		}
-		virtual void io_notify_read(int status, io_ctx* ctx) override {
+		virtual void io_notify_read(int status, io_ctx*) override {
 			if (status == netp::OK) {
 				byte_t tmp[1];
 				int ec = netp::OK;
@@ -33,7 +33,7 @@ namespace netp {
 				} while (ec == netp::OK);
 			}
 		}
-		virtual void io_notify_write(int status, io_ctx* ctx) override {
+		virtual void io_notify_write(int , io_ctx* ) override {
 		}
 	};
 
