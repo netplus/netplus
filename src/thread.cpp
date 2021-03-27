@@ -221,7 +221,7 @@ namespace netp {
 			NETP_ERR("[thread_run_object_abstract::start_thread] failed: %d", _eno);
 			return _eno;
 		}
-		m_state = TR_START;
+		m_state.store(TR_START, std::memory_order_release);
 		return m_th->start(&thread_run_object_abstract::__run__, this);
 	}
 }

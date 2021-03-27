@@ -325,7 +325,7 @@ namespace netp {
 
 	private:
 		NRP<thread> m_th;
-		volatile thread_run_object_state m_state;
+		std::atomic<u8_t> m_state;
 		void __run__();
 
 		int start_thread();
@@ -341,17 +341,17 @@ namespace netp {
 		}
 
 		void __on_start__() {
-			NETP_ASSERT(m_state == TR_START);
+			NETP_ASSERT(m_state.load(std::memory_order_acquire) == TR_START);
 			on_start();
-			m_state = TR_RUNNING; //if launch failed, we'll not reach here, and it will not in TR_RUNNING ..., so don't worry
+			m_state.store(TR_RUNNING, std::memory_order_release); //if launch failed, we'll not reach here, and it will not in TR_RUNNING ..., so don't worry
 		}
 		void __on_stop__() {
-			NETP_ASSERT(m_state == TR_STOP);
+			NETP_ASSERT(m_state.load(std::memory_order_acquire) == TR_STOP);
 			on_stop();
 		}
 
 		void operator()() {
-			while (m_state == TR_RUNNING) {
+			while (m_state.load(std::memory_order_acquire) == TR_RUNNING) {
 				run();
 			}
 		}
@@ -377,18 +377,18 @@ namespace netp {
 		virtual ~thread_run_object_abstract() { stop(); }
 
 		inline bool is_starting() const {
-			return m_state == TR_START;
+			return m_state.load(std::memory_order_acquire) == TR_START;
 		}
 		inline bool is_running() const {
-			return m_state == TR_RUNNING;
+			return m_state.load(std::memory_order_acquire) == TR_RUNNING;
 		}
 		inline bool is_idle() const {
-			return m_state == TR_IDLE;
+			return m_state.load(std::memory_order_acquire) == TR_IDLE;
 		}
 
 		//@NOTE, all thread_run_object must call stop explicitly if start return netp::OK
 		virtual int start(bool block_start = true) {
-			NETP_ASSERT(m_state == TR_IDLE);
+			NETP_ASSERT(m_state.load(std::memory_order_acquire) == TR_IDLE);
 			int start_rt = start_thread();
 			if (start_rt != netp::OK || block_start == false) {
 				return start_rt;
@@ -400,22 +400,21 @@ namespace netp {
 		}
 
 		virtual void stop() {
-			NETP_ASSERT((m_state == TR_IDLE || m_state == TR_START || m_state == TR_RUNNING));
+			u8_t s = m_state.load(std::memory_order_acquire);
+			NETP_ASSERT((s == TR_IDLE || s == TR_START || s == TR_RUNNING));
 
-			if (m_state == TR_IDLE) {
+			if (s == TR_IDLE) {
 				return;
-			}
-			else if (m_state == TR_START) {
+			} else if (s == TR_START) {
 				int k = 0;
 				while (is_starting()) netp::this_thread::yield(++k);
-			}
-			else if (m_state == TR_RUNNING) {
+			} else if (s == TR_RUNNING) {
 				interrupt_thread();
-				m_state = TR_STOP;
+				s = TR_STOP;
 			}
 
 			join_thread();
-			m_state = TR_IDLE;
+			m_state.store(TR_IDLE, std::memory_order_release);
 		}
 
 		virtual void on_start() = 0;
