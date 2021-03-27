@@ -371,11 +371,11 @@ namespace netp {
 		}
 		
 
-		void io_event_loop_group::execute(fn_io_event_task_t&& f, io_poller_type poller_t) {
-			next(poller_t)->execute(std::forward<fn_io_event_task_t>(f));
+		void io_event_loop_group::execute(fn_task_t&& f, io_poller_type poller_t) {
+			next(poller_t)->execute(std::forward<fn_task_t>(f));
 		}
-		void io_event_loop_group::schedule(fn_io_event_task_t&& f, io_poller_type poller_t) {
-			next(poller_t)->schedule(std::forward<fn_io_event_task_t>(f));
+		void io_event_loop_group::schedule(fn_task_t&& f, io_poller_type poller_t) {
+			next(poller_t)->schedule(std::forward<fn_task_t>(f));
 		}
 		void io_event_loop_group::launch(NRP<netp::timer> const& t, NRP<netp::promise<int>> const& lf, io_poller_type poller_t) {
 			next(poller_t)->launch(t,lf);

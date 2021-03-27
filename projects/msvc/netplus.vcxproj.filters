@@ -34,9 +34,6 @@
     <Filter Include="Source Files\src\os">
       <UniqueIdentifier>{d4f1e5f0-5041-4949-bf83-074534896d9b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\src\task">
-      <UniqueIdentifier>{b68dd952-ad91-4391-b599-c46a39ab01e6}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\src\thread_impl">
       <UniqueIdentifier>{6acd9098-6d91-4353-a02a-44ebb1959640}</UniqueIdentifier>
     </Filter>
@@ -72,9 +69,6 @@
     </Filter>
     <Filter Include="Header Files\netp\security">
       <UniqueIdentifier>{d71763bf-3421-4924-be4d-e390d7d6bcab}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\netp\task">
-      <UniqueIdentifier>{7c84c1cb-cd27-4ba9-8f67-49564d325521}</UniqueIdentifier>
     </Filter>
     <Filter Include="Header Files\netp\thread_impl">
       <UniqueIdentifier>{f758b800-0e63-4783-9108-51bc57433e48}</UniqueIdentifier>
@@ -263,15 +257,6 @@
     </ClInclude>
     <ClInclude Include="..\..\include\netp\thread_impl\spin_mutex.hpp">
       <Filter>Header Files\netp\thread_impl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\netp\task\runner.hpp">
-      <Filter>Header Files\netp\task</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\netp\task\scheduler.hpp">
-      <Filter>Header Files\netp\task</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\netp\task\task.hpp">
-      <Filter>Header Files\netp\task</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\netp\security\cipher_abstract.hpp">
       <Filter>Header Files\netp\security</Filter>
@@ -486,6 +471,9 @@
     <ClInclude Include="..\..\include\netp\io_monitor.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\scheduler.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">
@@ -659,12 +647,6 @@
     <ClCompile Include="..\..\src\thread_impl\mutex.cpp">
       <Filter>Source Files\src\thread_impl</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\task\runner.cpp">
-      <Filter>Source Files\src\task</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\task\scheduler.cpp">
-      <Filter>Source Files\src\task</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\os\api_wrapper_android.cpp">
       <Filter>Source Files\src\os</Filter>
     </ClCompile>
@@ -687,6 +669,9 @@
       <Filter>Source Files\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\socket_func.cpp">
+      <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\scheduler.cpp">
       <Filter>Source Files\src</Filter>
     </ClCompile>
   </ItemGroup>

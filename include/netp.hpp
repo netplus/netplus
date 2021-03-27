@@ -40,7 +40,7 @@
 #include <netp/logger/sys_logger.hpp>
 #include <netp/logger/net_logger.hpp>
 
-#include <netp/task/scheduler.hpp>
+#include <netp/scheduler.hpp>
 
 #include <netp/security/dh.hpp>
 #include <netp/security/xxtea.hpp>

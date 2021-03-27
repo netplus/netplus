@@ -28,8 +28,8 @@
 
 namespace netp {
 
-	typedef std::function<void()> fn_io_event_task_t;
-	typedef std::vector<fn_io_event_task_t, netp::allocator<fn_io_event_task_t>> io_task_q_t;
+	typedef std::function<void()> fn_task_t;
+	typedef std::vector<fn_task_t, netp::allocator<fn_task_t>> io_task_q_t;
 
 	struct event_loop_cfg {
 		u32_t ch_buf_size;
@@ -152,7 +152,7 @@ namespace netp {
 			NETP_ASSERT(m_th == nullptr);
 		}
 
-		inline void schedule(fn_io_event_task_t&& f) {
+		inline void schedule(fn_task_t&& f) {
 			//disable compiler order opt by barrier
 			std::atomic<bool> _interrupt_poller(false);
 			{
@@ -165,7 +165,7 @@ namespace netp {
 			}
 		}
 
-		inline void schedule(fn_io_event_task_t const& f) {
+		inline void schedule(fn_task_t const& f) {
 			std::atomic<bool> _interrupt_poller(false);
 			{
 				lock_guard<spin_mutex> lg(m_tq_mutex);
@@ -177,7 +177,7 @@ namespace netp {
 			}
 		}
 
-		inline void execute(fn_io_event_task_t&& f) {
+		inline void execute(fn_task_t&& f) {
 			if (in_event_loop()) {
 				f();
 				return;
@@ -185,7 +185,7 @@ namespace netp {
 			schedule(std::move(f));
 		}
 
-		inline void execute(fn_io_event_task_t const& f) {
+		inline void execute(fn_task_t const& f) {
 			if (in_event_loop()) {
 				f();
 				return;
@@ -295,8 +295,8 @@ namespace netp {
 		NRP<io_event_loop> next(io_poller_type t = NETP_DEFAULT_POLLER_TYPE);
 		NRP<io_event_loop> internal_next(io_poller_type t = NETP_DEFAULT_POLLER_TYPE);
 
-		void execute(fn_io_event_task_t&& f, io_poller_type = NETP_DEFAULT_POLLER_TYPE);
-		void schedule(fn_io_event_task_t&& f, io_poller_type = NETP_DEFAULT_POLLER_TYPE);
+		void execute(fn_task_t&& f, io_poller_type = NETP_DEFAULT_POLLER_TYPE);
+		void schedule(fn_task_t&& f, io_poller_type = NETP_DEFAULT_POLLER_TYPE);
 		void launch(NRP<netp::timer> const& t, NRP<netp::promise<int>> const& lf = nullptr, io_poller_type = NETP_DEFAULT_POLLER_TYPE);
 	};
 }

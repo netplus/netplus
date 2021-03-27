@@ -89,6 +89,7 @@ namespace netp {
 				mtx(),
 				current_cond_mutex(nullptr),
 				current_cond(nullptr),
+				current_cond_any_mutex(nullptr),
 				current_cond_any(nullptr),
 				interrupted(false)
 #ifdef NETP_ENABLE_DEBUG_STACK_SIZE
