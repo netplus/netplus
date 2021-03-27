@@ -610,7 +610,7 @@ namespace netp {
 
 	void socket_channel::io_notify_read(int status, io_ctx* ctx) {
 		if (m_chflag & int(channel_flag::F_USE_DEFAULT_READ)) {
-			is_udp ? __cb_io_read_from_impl(status, ctx):__cb_io_read_impl(status, ctx);
+			is_udp() ? __cb_io_read_from_impl(status, ctx):__cb_io_read_impl(status, ctx);
 			return;
 		}
 		NETP_ASSERT( m_fn_read != nullptr );
