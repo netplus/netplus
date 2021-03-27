@@ -26,22 +26,16 @@ namespace netp {
 		{
 			NETP_ASSERT( space>0 );
 
-			m_buffer = new _MyItemT[m_space];
+			m_buffer = netp::allocator<_MyItemT>::make_array(m_space);
 			NETP_ALLOC_CHECK( m_buffer, (sizeof(_MyItemT)* m_space) );
 		}
 
 		~ringbuffer() {
-			delete[] m_buffer;
+			netp::allocator<_MyItemT>::trash_array(m_buffer);
 			m_buffer = nullptr;
 		}
 
 		inline void reset() {
-			for( int i=0;i<m_space;++i ) {
-				if( m_buffer[i] != nullptr ) {
-					NETP_DELETE(m_buffer[i]);
-					m_buffer[i] = nullptr;
-				}
-			}
 			m_begin = m_end = 0;
 		}
 

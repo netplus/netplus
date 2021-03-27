@@ -142,11 +142,11 @@ namespace netp {
 		}
 		if (stack_info_ != 0) {
 			if (e->_callstack != 0) {
-				::free(e->_callstack);
+				netp::allocator<char>::free(e->_callstack);
 			}
 
 			netp::size_t info_len = ::strlen(stack_info_);
-			e->_callstack = (char*)::malloc(info_len + 1);
+			e->_callstack = netp::allocator<char>::malloc(info_len + 1);
 			::memcpy(e->_callstack, stack_info_, info_len);
 			*((e->_callstack) + info_len) = '\0';
 		} else {
@@ -169,8 +169,8 @@ namespace netp {
 
 	exception::~exception() {
 		if (_callstack != 0) {
-			::free(_callstack);
-			_callstack = nullptr;
+			netp::allocator<char>::free(_callstack);
+			_callstack = 0;
 		}
 	}
 

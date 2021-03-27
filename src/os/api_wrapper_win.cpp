@@ -40,7 +40,7 @@ namespace netp { namespace os {
 		IP_ADAPTER_ADDRESSES* adapter_address(nullptr);
 		IP_ADAPTER_ADDRESSES* original_address(nullptr);
 
-		adapter_address = (IP_ADAPTER_ADDRESSES*) ::malloc(adapter_address_buffer_size);
+		adapter_address = (IP_ADAPTER_ADDRESSES*) netp::allocator<byte_t>::malloc(adapter_address_buffer_size);
 		NETP_ALLOC_CHECK(adapter_address, adapter_address_buffer_size);
 		original_address = adapter_address; //for free
 
@@ -48,7 +48,7 @@ namespace netp { namespace os {
 		DWORD error = ::GetAdaptersAddresses(AF_INET, flags, nullptr, adapter_address, &adapter_address_buffer_size);
 
 		if (ERROR_SUCCESS != error) {
-			::free(original_address);
+			netp::allocator<byte_t>::free((byte_t*)original_address);
 			original_address = nullptr;
 			NETP_WARN("[api_wrapper_win]get_adapters, call GetAdaptersAddresses() failed, error: %d", error);
 			return netp_last_errno();
@@ -168,7 +168,7 @@ namespace netp { namespace os {
 			adapter_address = adapter_address->Next;
 		}
 
-		::free(original_address);
+		netp::allocator<byte_t>::free((byte_t*)original_address);
 		return netp::OK;
 	}
 }}

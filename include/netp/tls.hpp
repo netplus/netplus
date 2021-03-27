@@ -154,12 +154,12 @@ _VARIADIC_EXPAND_0X(_ALLOCATE_TLS_CREATE, , , , )
 #endif
 
 	template <class T>
-	inline void tls_set(T* const instance) {
+	__NETP_FORCE_INLINE void tls_set(T* const instance) {
 		tls<T>::set(instance);
 	}
 
 	template <class T>
-	inline T* tls_get() {
+	__NETP_FORCE_INLINE T* tls_get() {
 		return tls<T>::get();
 	}
 
@@ -167,15 +167,5 @@ _VARIADIC_EXPAND_0X(_ALLOCATE_TLS_CREATE, , , , )
 	inline void tls_destroy() {
 		tls<T>::destroy();
 	}
-
-	//template <class T>
-	//inline void tls_destroy(T* const instance) {
-	//	tls<T>::destroy(instance);
-	//}
-
-	//template <class T>
-	//inline void tls_schedule_destroy(T* const instance) {
-	//	tls<T>::schedule_destroy(instance);
-	//}
 }
 #endif

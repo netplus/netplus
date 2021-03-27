@@ -113,6 +113,7 @@
     <ClInclude Include="..\..\include\netp\promise.hpp" />
     <ClInclude Include="..\..\include\netp\ringbuffer.hpp" />
     <ClInclude Include="..\..\include\netp\rpc.hpp" />
+    <ClInclude Include="..\..\include\netp\scheduler.hpp" />
     <ClInclude Include="..\..\include\netp\security\cipher_abstract.hpp" />
     <ClInclude Include="..\..\include\netp\security\dh.hpp" />
     <ClInclude Include="..\..\include\netp\security\fletcher.hpp" />
@@ -131,9 +132,6 @@
     <ClInclude Include="..\..\include\netp\socket_channel_iocp.hpp" />
     <ClInclude Include="..\..\include\netp\io_monitor.hpp" />
     <ClInclude Include="..\..\include\netp\string.hpp" />
-    <ClInclude Include="..\..\include\netp\task\runner.hpp" />
-    <ClInclude Include="..\..\include\netp\task\scheduler.hpp" />
-    <ClInclude Include="..\..\include\netp\task\task.hpp" />
     <ClInclude Include="..\..\include\netp\test.hpp" />
     <ClInclude Include="..\..\include\netp\thread.hpp" />
     <ClInclude Include="..\..\include\netp\thread_impl\condition.hpp" />
@@ -203,13 +201,12 @@
     <ClCompile Include="..\..\src\os\api_wrapper_win.cpp" />
     <ClCompile Include="..\..\src\os\winsock_helper.cpp" />
     <ClCompile Include="..\..\src\rpc.cpp" />
+    <ClCompile Include="..\..\src\scheduler.cpp" />
     <ClCompile Include="..\..\src\signal_broker.cpp" />
     <ClCompile Include="..\..\src\socket_channel.cpp" />
     <ClCompile Include="..\..\src\socket_base.cpp" />
     <ClCompile Include="..\..\src\socket_func.cpp" />
     <ClCompile Include="..\..\src\socket_channel_iocp.cpp" />
-    <ClCompile Include="..\..\src\task\runner.cpp" />
-    <ClCompile Include="..\..\src\task\scheduler.cpp" />
     <ClCompile Include="..\..\src\thread.cpp" />
     <ClCompile Include="..\..\src\thread_impl\mutex.cpp" />
     <ClCompile Include="..\..\src\timer.cpp" />

@@ -129,6 +129,9 @@ namespace netp {
 		static inline void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 			return 0;
 		}
+		static inline void* calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+			return 0;
+		}
 		static inline void free(void* p) {
 		}
 		static inline void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
@@ -141,6 +144,10 @@ namespace netp {
 		static inline void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 			(void)alignment;
 			return std::malloc(n);
+		}
+		static inline void* calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+			(void)alignment;
+			return std::calloc(1,n);
 		}
 		static inline void free(void* p) {
 			std::free(p);
@@ -157,9 +164,14 @@ namespace netp {
 			(void)(alignment);
 			return static_cast<void*>(::operator new(n));
 		}
+		static inline void* calloc(size_t , size_t alignment = NETP_DEFAULT_ALIGN) {
+			(void)(alignment);
+			throw std::bad_alloc();
+		}
 		static inline void free(void* p) {
 			::operator delete(p);
 		}
+		
 		static inline void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
 			(void)(alignment);
 			(void)ptr;
@@ -173,6 +185,12 @@ namespace netp {
 		static inline void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 			return netp::aligned_malloc(n, alignment);
 		}
+		static inline void* calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+			char* p = (char*)netp::aligned_malloc(n, alignment);
+			//might it be optimized ? let's see
+			std::memset(p,0,n);
+			return (void*)p;
+		}
 		static inline void free(void* p) {
 			netp::aligned_free(p);
 		}
@@ -185,6 +203,12 @@ namespace netp {
 	struct allocator_wrapper<tag_allocator_tls_pool> {
 		static inline void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 			return tls_get<netp::pool_align_allocator>()->malloc(n, alignment);
+		}
+		static inline void* calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+			char* p = (char*)tls_get<netp::pool_align_allocator>()->malloc(n, alignment);
+			//might it be optimized ? let's see
+			std::memset(p, 0, n);
+			return (void*)p;
 		}
 		static inline void free(void* p) {
 			tls_get<netp::pool_align_allocator>()->free(p);
@@ -210,6 +234,9 @@ namespace netp {
 		//these three api for convenience purpose
 		inline static pointer malloc(size_t n, size_t alignment= NETP_DEFAULT_ALIGN) {
 			return static_cast<pointer>(allocator_wrapper_t::malloc(sizeof(value_type) * n, alignment));
+		}
+		inline static pointer calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+			return static_cast<pointer>(allocator_wrapper_t::calloc(sizeof(value_type) * n, alignment));
 		}
 		inline static void free(pointer p) {
 			allocator_wrapper_t::free(p);

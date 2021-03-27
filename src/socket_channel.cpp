@@ -145,7 +145,7 @@ namespace netp {
 		return socket_base::accept(raddr);
 	}
 
-	void socket_channel::_ch_do_dial_done_impl(fn_channel_initializer_t const& fn_initializer, NRP<promise<int>> const& dialp_, int status, io_ctx* ctx) {
+	void socket_channel::_ch_do_dial_done_impl(fn_channel_initializer_t const& fn_initializer, NRP<promise<int>> const& dialp_, int status, io_ctx*) {
 		NETP_ASSERT(L->in_event_loop());
 		NRP<promise<int>> dialp = dialp_;
 
