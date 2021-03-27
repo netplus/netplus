@@ -25,7 +25,8 @@ namespace netp {
 		}
 		~bytes_ringbuffer() {
 			NETP_ASSERT(m_buffer != nullptr);
-			::free( m_buffer );
+			netp::allocator<byte_t>::free( m_buffer );
+			m_buffer = 0;
 		}
 
 		inline void reset() {
@@ -33,7 +34,7 @@ namespace netp {
 
 			if (m_buffer == nullptr) {
 				NETP_ASSERT((m_capacity - 1) >= MIN_RING_BUFFER_SIZE && (m_capacity - 1) <= MAX_RING_BUFFER_SIZE);
-				m_buffer = (byte_t*)::malloc((m_capacity) * sizeof(byte_t));
+				m_buffer = netp::allocator<byte_t>::malloc(m_capacity* sizeof(byte_t));
 				NETP_ALLOC_CHECK(m_buffer, (m_capacity) * sizeof(byte_t));
 			}
 		}
@@ -127,7 +128,7 @@ namespace netp {
 					//tail buffer is enough
 					//[------e-----b|---copy-bytes--|----]
 
-					::memcpy( target, (m_buffer+m_begin ), copy_c );
+					std::memcpy( target, (m_buffer+m_begin ), copy_c );
 //					m_begin = (m_begin + should_copy_bytes_count) % m_capacity ;
 
 				} else {
@@ -135,10 +136,10 @@ namespace netp {
 					//[|--copy-bytes--|---e-----b|---copy-bytes----|]
 					//copy tail first , then header
 
-					::memcpy( target, m_buffer+m_begin, tail_c );
+					std::memcpy( target, m_buffer+m_begin, tail_c );
 //					m_begin = 0; //reset m_begin position
 					//netp::u32_t head_c = copy_c - tail_c;
-					::memcpy( target + tail_c, m_buffer, copy_c - tail_c);
+					std::memcpy( target + tail_c, m_buffer, copy_c - tail_c);
 				}
 			}
 
@@ -171,7 +172,7 @@ namespace netp {
 			if( m_end <= m_begin ) {
 
 				//[----------e|---write-bytes----|--b------]
-				::memcpy( m_buffer+m_end, bytes, to_write_c );
+				std::memcpy( m_buffer+m_end, bytes, to_write_c );
 				m_end = ( m_end+to_write_c ) % m_capacity ;
 
 			} else if( m_end > m_begin ) {
@@ -185,9 +186,9 @@ namespace netp {
 				} else {
 
 					//[|---writes-bytes---|----b---------e|--write-bytes----|]
-					::memcpy( m_buffer+m_end, bytes, tail_s );
+					std::memcpy( m_buffer+m_end, bytes, tail_s );
 					m_end = to_write_c - tail_s;
-					::memcpy( m_buffer, bytes+tail_s, m_end);
+					std::memcpy( m_buffer, bytes+tail_s, m_end);
 				}
 			}
 			return to_write_c ;
