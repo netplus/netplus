@@ -67,8 +67,8 @@ namespace netp { namespace task {
 		NETP_DECLARE_NONCOPYABLE(runner)
 
 		u8_t m_id;
-		u8_t m_wait_flag;
-		volatile task_runner_state m_state;
+		std::atomic<u8_t> m_wait_flag;
+		std::atomic<u8_t> m_state;
 
 		scheduler* m_scheduler;
 	public:
@@ -86,15 +86,15 @@ namespace netp { namespace task {
 		inline bool is_ending() const { return m_state == TR_S_ENDING ;}
 
 		inline bool test_waiting_step1() {
-			if (m_state == TR_S_WAITING) {
-				m_wait_flag = 1;
+			if (m_state.load(std::memory_order_acquire) == TR_S_WAITING) {
+				m_wait_flag.store(1, std::memory_order_release);
 				return true;
 			}
 			return false;
 		}
 
 		inline bool test_waiting_step2() {
-			return (m_wait_flag == 1) && (m_state == TR_S_WAITING);
+			return (m_wait_flag.load(std::memory_order_acquire) == 1) && (m_state.load(std::memory_order_acquire) == TR_S_WAITING);
 		}
 	};
 

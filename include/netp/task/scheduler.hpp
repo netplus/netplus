@@ -16,7 +16,7 @@ namespace netp { namespace task {
 #ifdef NETP_SCHEDULER_USE_SPIN
 	typedef spin_mutex scheduler_mutext_t;
 #else
-	typedef mutex scheduler_mutext_t;
+	typedef mutex scheduler_mutex_t;
 #endif
 
 	class scheduler:
@@ -26,7 +26,7 @@ namespace netp { namespace task {
 		NETP_DECLARE_NONCOPYABLE(scheduler)
 
 	private:
-		scheduler_mutext_t m_mutex;
+		scheduler_mutex_t m_mutex;
 
 #ifdef NETP_SCHEDULER_USE_SPIN
 		condition_any m_condition;

@@ -7,7 +7,7 @@ namespace netp { namespace task {
 	runner::runner( u8_t id, scheduler* s ) :
 		m_id( id ),
 		m_wait_flag(0),
-		m_state(TR_S_IDLE),
+		m_state(task_runner_state::TR_S_IDLE),
 		m_scheduler(s)
 	{
 		NETP_TRACE_TASK( "[TRunner][-%u-]construct new runner", m_id );
@@ -19,7 +19,7 @@ namespace netp { namespace task {
 	}
 
 	void runner::on_start() {
-		m_state = TR_S_IDLE ;
+		m_state.store(task_runner_state::TR_S_IDLE, std::memory_order_release) ;
 	}
 
 	void runner::on_stop() {
@@ -28,7 +28,7 @@ namespace netp { namespace task {
 
 	void runner::stop() {
 		{
-			while (m_state != TR_S_WAITING) {
+			while (m_state.load(std::memory_order_acquire) != TR_S_WAITING) {
 				netp::this_thread::no_interrupt_yield(1);
 			}
 
@@ -37,7 +37,7 @@ namespace netp { namespace task {
 		}
 
 		{
-			lock_guard<scheduler_mutext_t> lg_schd(m_scheduler->m_mutex);
+			lock_guard<scheduler_mutex_t> lg_schd(m_scheduler->m_mutex);
 			m_scheduler->m_condition.no_interrupt_notify_all();
 		}
 		thread_run_object_abstract::stop();
@@ -50,17 +50,17 @@ namespace netp { namespace task {
 		{
 			NRP<netp::task::task_abstract> task;
 			{
-			unique_lock<scheduler_mutext_t> _ulk(m_scheduler->m_mutex);
+			unique_lock<scheduler_mutex_t> _ulk(m_scheduler->m_mutex);
 			check_begin:
 				{
-					if (m_state == TR_S_ENDING) {
+					if (m_state.load(std::memory_order_acquire) == TR_S_ENDING) {
 						break;
 					}
 				}
 
 				m_scheduler->m_tasks_assigning->front_and_pop(task);
 				if (task == nullptr) {
-					m_state = TR_S_WAITING;
+					m_state.store(TR_S_WAITING, std::memory_order_release);
 					++(m_scheduler->m_tasks_runner_wait_count);
 					m_scheduler->m_condition.no_interrupt_wait(_ulk);
 					--(m_scheduler->m_tasks_runner_wait_count);
@@ -69,8 +69,8 @@ namespace netp { namespace task {
 			}
 			NETP_ASSERT(task != nullptr);
 
-			m_state = TR_S_RUNNING;
-			m_wait_flag = 0;
+			m_state.store(TR_S_RUNNING, std::memory_order_release) ;
+			m_wait_flag.store(0, std::memory_order_release);
 			try {
 				NETP_TRACE_TASK("[TRunner][-%d-]task run begin, TID: %llu", m_id, reinterpret_cast<u64_t>(task.get()));
 				task->run();
