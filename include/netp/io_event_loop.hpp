@@ -157,14 +157,14 @@ namespace netp {
 			//std::atomic<bool> _interrupt_poller(false);
 
 			//NOTE: update 2021/03/28
-			//lock of m_tq_mutex would pose a load/store memory barrier at least
+			//lock_guard of m_tq_mutex would pose a load/store memory barrier at least
 			//these kinds of barrier could make sure that the compiler would not reorder the instruction around the barrier, so interrupt_poller would always have a false value
 			//as  a per thread variable, the reorder brought by CPU should not be a issue for _interrupt_poller
 			bool _interrupt_poller = false;
 			{
 				lock_guard<spin_mutex> lg(m_tq_mutex);
 				m_tq_standby.push_back(std::move(f));
-				_interrupt_poller=( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_acquire), std::memory_order_release);
+				_interrupt_poller=( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_acquire));
 			}
 			if (NETP_UNLIKELY(_interrupt_poller)) {
 				m_poller->interrupt_wait();
@@ -176,7 +176,7 @@ namespace netp {
 			{
 				lock_guard<spin_mutex> lg(m_tq_mutex);
 				m_tq_standby.push_back(f);
-				_interrupt_poller=( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_acquire), std::memory_order_release);
+				_interrupt_poller=( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_acquire));
 			}
 			if (NETP_UNLIKELY(_interrupt_poller)) {
 				m_poller->interrupt_wait();
