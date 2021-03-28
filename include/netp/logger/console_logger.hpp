@@ -11,7 +11,7 @@ namespace netp { namespace logger {
 		console_logger();
 		~console_logger();
 
-		void write( log_mask mask, char const* log, netp::size_t len ) ;
+		void write( log_mask mask, char const* log, netp::u32_t len ) ;
 	};
 }}
 

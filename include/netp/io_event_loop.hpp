@@ -156,9 +156,9 @@ namespace netp {
 			//disable compiler order opt by barrier
 			//std::atomic<bool> _interrupt_poller(false);
 
-			//NOTE: update 2021/03/28
+			//NOTE: update on 2021/03/28
 			//lock_guard of m_tq_mutex would pose a load/store memory barrier at least
-			//these kinds of barrier could make sure that the compiler would not reorder the instruction around the barrier, so interrupt_poller would always have a false value
+			//these kinds of barrier could make sure that the compiler would not reorder the instruction around the barrier, so interrupt_poller would always have a false initial value
 			//as  a per thread variable, the reorder brought by CPU should not be a issue for _interrupt_poller
 			bool _interrupt_poller = false;
 			{

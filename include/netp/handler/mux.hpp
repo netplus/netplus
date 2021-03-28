@@ -215,8 +215,8 @@ namespace netp { namespace handler {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(data != nullptr);
 
-			netp::size_t left = data->len();
-			netp::size_t wlen = 0;
+			netp::u32_t left = data->len();
+			netp::u32_t wlen = 0;
 		
 			while (left>m_frame_data_size_max) {
 				m_outlets_q.push({

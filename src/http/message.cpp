@@ -44,11 +44,11 @@ namespace netp { namespace http {
 		const bool has_body = (body != nullptr && (body->len() > 0));
 
 		if (has_body && !H->have("Content-Length") && !H->have("Transfer-Encoding")) {
-			int rt = snprintf(tmp, 64, "Content-Length: %zu\r\n", body->len());
+			int rt = snprintf(tmp, 64, "Content-Length: %u\r\n", body->len());
 			NETP_ASSERT(rt > 0 && rt < 64);
 			_outp->write((netp::byte_t*)tmp, rt);
 		}
-		H_packet->write((netp::byte_t*)NETP_HTTP_CRLF, netp::strlen(NETP_HTTP_CRLF));
+		H_packet->write((netp::byte_t*)NETP_HTTP_CRLF, u32_t(netp::strlen(NETP_HTTP_CRLF)));
 		_outp->write(H_packet->head(), H_packet->len());
 		if (has_body) {
 			_outp->write((netp::byte_t*)body->head(), body->len());

@@ -269,7 +269,7 @@ namespace netp { namespace http {
 	}
 
 	//return number of parsed bytes
-	netp::size_t parser::parse(char const* const data, netp::size_t len, int& ec) {
+	netp::u32_t parser::parse(char const* const data, netp::u32_t len, int& ec) {
 		NETP_ASSERT(_p != nullptr);
 
 		static http_parser_settings _settings;
@@ -289,7 +289,7 @@ namespace netp { namespace http {
 
 		if (NETP_LIKELY(_p != 0)) { _http_errno = _p->http_errno; };
 		ec = _http_errno;
-		return nparsed;
+		return u32_t(nparsed);
 	}
 
 }}

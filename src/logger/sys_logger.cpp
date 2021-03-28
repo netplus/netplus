@@ -21,7 +21,7 @@ namespace netp { namespace logger {
 		closelog();
 	}
 
-	void sys_logger::write( log_mask mask, char const* log, netp::size_t len  ) {
+	void sys_logger::write( log_mask mask, char const* log, netp::u32_t len  ) {
 		NETP_ASSERT(test_mask(mask));
 
 		char head_buffer[4] = {0};
@@ -67,7 +67,7 @@ namespace netp { namespace logger {
 			}
 		}
 
-	void sys_logger::Syslog(int level, char const* log, netp::size_t len ) {
+	void sys_logger::Syslog(int level, char const* log, netp::u32_t len ) {
 
 //		printf("syslog: %s\n", log.c_str() );
 #if NETP_SPLIT_SYSLOG

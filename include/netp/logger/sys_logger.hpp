@@ -19,10 +19,10 @@
 			/**
 			 *  syslog has a 1024 len limit, so we'll split log into piece if it exceed 1024
 			 */
-			void write( log_mask level, char const* log, netp::size_t len  ) = 0 ;
+			void write( log_mask level, char const* log, netp::u32_t len  ) = 0 ;
 
 		private:
-			static void Syslog( int level, char const* log, netp::size_t len );
+			static void Syslog( int level, char const* log, netp::u32_t len );
 			char m_ident[NETP_IDENT_LENGTH] ;
 		};
 	}}

@@ -57,7 +57,7 @@ namespace netp { namespace http {
 		void deinit();
 		void reset();
 
-		netp::size_t parse(char const* const data, netp::size_t len, int& ec);
+		netp::u32_t parse(char const* const data, netp::u32_t len, int& ec);
 	};
 
 }}

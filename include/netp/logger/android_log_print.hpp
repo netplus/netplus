@@ -12,7 +12,7 @@ namespace netp { namespace logger {
 		android_log_print();
 		~android_log_print();
 
-		void write( log_mask const& mask, char const* log, netp::size_t len ) ;
+		void write( log_mask const& mask, char const* log, netp::u32_t len ) ;
 	};
 }}
 #endif

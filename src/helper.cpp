@@ -9,11 +9,11 @@ namespace netp { namespace file {
 		std::size_t fsize = std::ftell(fp);
 		std::fseek(fp, 0, SEEK_SET);
 
-		NRP<netp::packet> data = netp::make_ref<netp::packet>(fsize);
+		NRP<netp::packet> data = netp::make_ref<netp::packet>(u32_t(fsize));
 		std::size_t rsize = std::fread(data->head(), 1, fsize, fp);
 		std::fclose(fp);
 		NETP_ASSERT(rsize == fsize);
-		data->incre_write_idx(fsize);
+		data->incre_write_idx(u32_t(fsize));
 		return data;
 	}
 }}

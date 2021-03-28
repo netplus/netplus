@@ -38,7 +38,7 @@ namespace netp { namespace handler {
 		NETP_ASSERT(income != nullptr);
 		int ec = netp::OK;
 		while (income->len() && ec == netp::OK && m_ctx != nullptr /*http parser would be reset during parse phase by http evt listener*/) {
-			const netp::size_t nparsed = m_http_parser->parse((char*)income->head(), income->len(), ec);
+			const netp::u32_t nparsed = m_http_parser->parse((char*)income->head(), income->len(), ec);
 			if (NETP_LIKELY(nparsed > 0)) {
 				income->skip(nparsed);
 			}

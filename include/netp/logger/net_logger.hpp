@@ -44,7 +44,7 @@ namespace netp { namespace logger {
 			net_logger( std::string const& server );
 			~net_logger();
 
-			void write(log_mask mask, char const* log, netp::size_t len);
+			void write(log_mask mask, char const* log, netp::u32_t len);
 
 			NRP<promise<int>> dial();
 			NRP<promise<int>> close();

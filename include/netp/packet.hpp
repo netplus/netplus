@@ -26,7 +26,7 @@ namespace netp {
 	 * 4, always read from head, 
 	 */
 
-	template<class _ref_base, size_t LEFT_RESERVE, size_t DEFAULT_CAPACITY>
+	template<class _ref_base, u32_t LEFT_RESERVE, u32_t DEFAULT_CAPACITY>
 	class cap_fix_packet:
 		public _ref_base
 	{
@@ -34,11 +34,11 @@ namespace netp {
 
 	protected:
 		byte_t* m_buffer;
-		netp::size_t	m_read_idx; //read index
-		netp::size_t	m_write_idx; //write index
-		netp::size_t	m_capacity; //the total buffer size
+		u32_t	m_read_idx; //read index
+		u32_t	m_write_idx; //write index
+		u32_t	m_capacity; //the total buffer size
 
-		void _init_buffer(netp::size_t left, netp::size_t right, size_t alignment = NETP_DEFAULT_ALIGN) {
+		void _init_buffer(netp::u32_t left, netp::u32_t right, u32_t alignment = NETP_DEFAULT_ALIGN) {
 			if (right == 0) {
 				right = DEFAULT_CAPACITY - left;
 			}
@@ -50,7 +50,7 @@ namespace netp {
 		}
 
 	public:
-		explicit cap_fix_packet(netp::size_t right_capacity = (DEFAULT_CAPACITY - LEFT_RESERVE), netp::size_t left_capacity = LEFT_RESERVE, size_t alignment = NETP_DEFAULT_ALIGN) :
+		explicit cap_fix_packet(netp::u32_t right_capacity = (DEFAULT_CAPACITY - LEFT_RESERVE), netp::u32_t left_capacity = LEFT_RESERVE, u32_t alignment = NETP_DEFAULT_ALIGN) :
 			m_buffer(nullptr),
 			m_read_idx(0),
 			m_write_idx(0)
@@ -58,7 +58,7 @@ namespace netp {
 			_init_buffer(left_capacity, right_capacity, alignment);
 		}
 
-		explicit cap_fix_packet(void const* const buf, netp::size_t len, size_t alignment = NETP_DEFAULT_ALIGN) :
+		explicit cap_fix_packet(void const* const buf, netp::u32_t len, u32_t alignment = NETP_DEFAULT_ALIGN) :
 			m_buffer(nullptr),
 			m_read_idx(0),
 			m_write_idx(0)
@@ -71,7 +71,7 @@ namespace netp {
 			netp::allocator<byte_t>::free(m_buffer);
 		}
 
-		__NETP_FORCE_INLINE void reset(netp::size_t left_capacity = LEFT_RESERVE) {
+		__NETP_FORCE_INLINE void reset(netp::u32_t left_capacity = LEFT_RESERVE) {
 #ifdef _DEBUG
 			NETP_ASSERT(left_capacity < m_capacity);
 #endif
@@ -86,38 +86,38 @@ namespace netp {
 			return m_buffer + m_write_idx;
 		}
 
-		__NETP_FORCE_INLINE netp::size_t len() const {
+		__NETP_FORCE_INLINE netp::u32_t len() const {
 			return m_write_idx - m_read_idx;
 		}
 
-		__NETP_FORCE_INLINE void incre_write_idx(netp::size_t bytes) {
+		__NETP_FORCE_INLINE void incre_write_idx(netp::u32_t bytes) {
 			NETP_ASSERT((m_capacity - m_write_idx) >= bytes);
 			m_write_idx += bytes;
 		}
 
-		__NETP_FORCE_INLINE void decre_write_idx(netp::size_t bytes) {
+		__NETP_FORCE_INLINE void decre_write_idx(netp::u32_t bytes) {
 			NETP_ASSERT((m_write_idx) >= bytes);
 			m_write_idx -= bytes;
 		}
 
-		__NETP_FORCE_INLINE void incre_read_idx(netp::size_t bytes) {
+		__NETP_FORCE_INLINE void incre_read_idx(netp::u32_t bytes) {
 #ifdef _DEBUG
 			NETP_ASSERT(bytes <= len());
 #endif
 			m_read_idx += bytes;
 		}
 
-		__NETP_FORCE_INLINE void decre_read_idx(netp::size_t bytes) {
+		__NETP_FORCE_INLINE void decre_read_idx(netp::u32_t bytes) {
 #ifdef _DEBUG
 			NETP_ASSERT(m_read_idx >= bytes);
 #endif
 			m_read_idx -= bytes;
 		}
 
-		const inline netp::size_t left_left_capacity() const { return (NETP_UNLIKELY(m_buffer == nullptr)) ? 0 : m_read_idx; }
-		const inline netp::size_t left_right_capacity() const { return (NETP_UNLIKELY(m_buffer == nullptr)) ? 0 : m_capacity - m_write_idx; }
+		const inline netp::u32_t left_left_capacity() const { return (NETP_UNLIKELY(m_buffer == nullptr)) ? 0 : m_read_idx; }
+		const inline netp::u32_t left_right_capacity() const { return (NETP_UNLIKELY(m_buffer == nullptr)) ? 0 : m_capacity - m_write_idx; }
 
-		void write_left(byte_t const* buf, netp::size_t len) {
+		void write_left(byte_t const* buf, netp::u32_t len) {
 			NETP_ASSERT(m_read_idx >= len);
 			m_read_idx -= len;
 			::memcpy(m_buffer + m_read_idx, buf, len);
@@ -128,7 +128,7 @@ namespace netp {
 		inline void write_left(T t) {
 			NETP_ASSERT( m_read_idx >= sizeof(T) );
 			m_read_idx -= sizeof(T);
-			netp::size_t wnbytes = endian::write_impl(t, (m_buffer + m_read_idx));
+			netp::u32_t wnbytes = endian::write_impl(t, (m_buffer + m_read_idx));
 			NETP_ASSERT(wnbytes == sizeof(T));
 			(void)wnbytes;
 		}
@@ -139,19 +139,19 @@ namespace netp {
 			m_write_idx += endian::write_impl(t, (m_buffer + m_write_idx));
 		}
 
-		inline void write(void const* const buf, netp::size_t len) {
+		inline void write(void const* const buf, netp::u32_t len) {
 			NETP_ASSERT(left_right_capacity() >= len);
 			::memcpy(m_buffer + m_write_idx, buf, len);
 			m_write_idx += len;
 		}
 
-		inline void fill(u8_t b, netp::size_t len) {
+		inline void fill(u8_t b, netp::u32_t len) {
 			NETP_ASSERT(left_right_capacity() >= len);
 			::memset(m_buffer + m_write_idx, b, len);
 			m_write_idx += len;
 		}
 
-		__NETP_FORCE_INLINE void write_zero(netp::size_t len) {
+		__NETP_FORCE_INLINE void write_zero(netp::u32_t len) {
 			fill(0, len);
 		}
 
@@ -165,15 +165,15 @@ namespace netp {
 			return t;
 		}
 
-		inline netp::size_t read(byte_t* const dst, netp::size_t cap_) {
+		inline netp::u32_t read(byte_t* const dst, netp::u32_t cap_) {
 			if ((dst == nullptr) || cap_ == 0) { return 0; }
-			netp::size_t c = (len() > cap_ ? cap_ : len());
+			netp::u32_t c = (len() > cap_ ? cap_ : len());
 			::memcpy(dst, m_buffer + m_read_idx, c);
 			m_read_idx += c;
 			return c;
 		}
 
-		__NETP_FORCE_INLINE void skip(netp::size_t len_) {
+		__NETP_FORCE_INLINE void skip(netp::u32_t len_) {
 			incre_read_idx(len_);
 		}
 
@@ -185,10 +185,10 @@ namespace netp {
 			return endian::read_impl(m_buffer + m_read_idx, netp::bytes_helper::type<T>());
 		}
 
-		netp::size_t peek(byte_t* const dst, netp::size_t len_) const {
+		netp::u32_t peek(byte_t* const dst, netp::u32_t len_) const {
 			if ((dst == nullptr) || len_ == 0) { return 0; }
 
-			const netp::size_t can_peek_size = len_ >= len() ? len() : len_;
+			const netp::u32_t can_peek_size = len_ >= len() ? len() : len_;
 			::memcpy(dst, m_buffer + m_read_idx, can_peek_size);
 			return can_peek_size;
 		}
@@ -209,14 +209,14 @@ namespace netp {
 		}
 	};
 
-	template<class _ref_base, size_t LEFT_RESERVE, size_t DEFAULT_CAPACITY= PACK_DEFAULT_CAPACITY>
+	template<class _ref_base, u32_t LEFT_RESERVE, u32_t DEFAULT_CAPACITY= PACK_DEFAULT_CAPACITY>
 	class cap_expandable_packet:
 		public cap_fix_packet<_ref_base, LEFT_RESERVE, DEFAULT_CAPACITY> 
 	{
 		typedef cap_fix_packet<_ref_base, LEFT_RESERVE, DEFAULT_CAPACITY> cap_fix_packet_t;
 		typedef cap_expandable_packet<_ref_base, LEFT_RESERVE, DEFAULT_CAPACITY> expandable_packet_t;
 	private:
-		inline void _extend_leftbuffer_capacity__(netp::size_t increment = PACK_INCREMENT_SIZE) {
+		inline void _extend_leftbuffer_capacity__(netp::u32_t increment = PACK_INCREMENT_SIZE) {
 
 			NETP_ASSERT(cap_fix_packet_t::m_buffer != nullptr);
 			NETP_ASSERT(((cap_fix_packet_t::m_capacity + increment) <= PACK_MAX_CAPACITY));
@@ -225,8 +225,8 @@ namespace netp {
 			NETP_ALLOC_CHECK(_newbuffer, cap_fix_packet_t::m_capacity);
 			cap_fix_packet_t::m_buffer = _newbuffer;
 
-			const netp::size_t new_left = cap_fix_packet_t::m_read_idx + increment;
-			netp::size_t _len = cap_fix_packet_t::len();
+			const netp::u32_t new_left = cap_fix_packet_t::m_read_idx + increment;
+			netp::u32_t _len = cap_fix_packet_t::len();
 			if (_len>0) {
 				::memmove(cap_fix_packet_t::m_buffer + new_left, cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_read_idx, _len);
 			}
@@ -234,7 +234,7 @@ namespace netp {
 			cap_fix_packet_t::m_write_idx = cap_fix_packet_t::m_read_idx+_len;
 		}
 
-		inline void _extend_rightbuffer_capacity__(netp::size_t increment = PACK_INCREMENT_SIZE) {
+		inline void _extend_rightbuffer_capacity__(netp::u32_t increment = PACK_INCREMENT_SIZE) {
 			NETP_ASSERT(cap_fix_packet_t::m_capacity != 0);
 			NETP_ASSERT(cap_fix_packet_t::m_buffer != nullptr);
 			NETP_ASSERT((cap_fix_packet_t::m_capacity + increment) <= PACK_MAX_CAPACITY);
@@ -245,17 +245,17 @@ namespace netp {
 		}
 
 	public:
-		explicit cap_expandable_packet(netp::size_t right_capacity = (DEFAULT_CAPACITY - LEFT_RESERVE), netp::size_t left_capacity = LEFT_RESERVE) :
+		explicit cap_expandable_packet(netp::u32_t right_capacity = (DEFAULT_CAPACITY - LEFT_RESERVE), netp::u32_t left_capacity = LEFT_RESERVE) :
 			cap_fix_packet_t(right_capacity, left_capacity,NETP_DEFAULT_ALIGN)
 		{
 		}
 
-		explicit cap_expandable_packet(void const* const buf, netp::size_t len):
+		explicit cap_expandable_packet(void const* const buf, netp::u32_t len):
 			cap_fix_packet_t(buf,len, NETP_DEFAULT_ALIGN)
 		{
 		}
 
-		void write_left( byte_t const* buf, netp::size_t len ) {
+		void write_left( byte_t const* buf, netp::u32_t len ) {
 			while ( NETP_UNLIKELY(len > (cap_fix_packet_t::left_left_capacity())) ) {
 				_extend_leftbuffer_capacity__( ((len - (cap_fix_packet_t::left_left_capacity() ))<<1));
 			}
@@ -275,7 +275,7 @@ namespace netp {
 			}
 
 			cap_fix_packet_t::m_read_idx -= sizeof(T);
-			netp::size_t wnbytes = endian::write_impl(t, (cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_read_idx) );
+			netp::u32_t wnbytes = endian::write_impl(t, (cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_read_idx) );
 #ifdef _DEBUG
 			NETP_ASSERT( wnbytes == sizeof(T) );
 #endif
@@ -291,7 +291,7 @@ namespace netp {
 			cap_fix_packet_t::m_write_idx += endian::write_impl(t, (cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_write_idx) );
 		}
 
-		inline void write( void const* const buf, netp::size_t len ) {
+		inline void write( void const* const buf, netp::u32_t len ) {
 			while ( NETP_UNLIKELY(len > (cap_fix_packet_t::left_right_capacity())) ) {
 				_extend_rightbuffer_capacity__(((len - (cap_fix_packet_t::left_right_capacity()))<<1));
 			}
@@ -299,7 +299,7 @@ namespace netp {
 			cap_fix_packet_t::m_write_idx += len;
 		}
 
-		inline void fill(u8_t b, netp::size_t len) {
+		inline void fill(u8_t b, netp::u32_t len) {
 			while (NETP_UNLIKELY(len > (cap_fix_packet_t::left_right_capacity()))) {
 				_extend_rightbuffer_capacity__(((len - (cap_fix_packet_t::left_right_capacity())) << 1));
 			}
@@ -307,7 +307,7 @@ namespace netp {
 			cap_fix_packet_t::m_write_idx += len;
 		}
 
-		__NETP_FORCE_INLINE void write_zero(netp::size_t len) {
+		__NETP_FORCE_INLINE void write_zero(netp::u32_t len) {
 			fill(0, len);
 		}
 
