@@ -74,7 +74,7 @@ namespace netp {
 			}
 
 			int nready = ::select((int)(max_fd_v + 1), &m_fds[fds_r], &m_fds[fds_w], &m_fds[fds_e], tv); //only read now
-			__LOOP_EXIT_WAITING__(W);
+			NETP_POLLER_WAIT_EXIT(wait_in_nano,W);
 
 			if (nready == 0) {
 				return;

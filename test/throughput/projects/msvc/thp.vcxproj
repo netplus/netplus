@@ -133,6 +133,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\main.cpp" />
+    <ClCompile Include="read_once.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\thp_handler.hpp" />

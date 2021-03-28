@@ -53,8 +53,8 @@ namespace netp {
 
 			int ec=netp::OK;
 			int rt = kevent(m_kq, NULL, 0, m_kevts, NETP_KEVT_COUNT, tspp);
-			__LOOP_EXIT_WAITING__(W);
-			
+			NETP_POLLER_WAIT_EXIT(wait_in_nano, W);
+
 			if (NETP_LIKELY(rt > 0)) {
 				for (int j = 0; j < rt; ++j) {
 					struct kevent* e = (m_kevts + j);

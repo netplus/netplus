@@ -23,7 +23,14 @@
 
 thp_param g_param;
 
+#define ACCESS_ONCE(x) (*(volatile typeof(x) *)&(x))
+#define READ_ONCE(x) \
+	({typeof(x) ___x=ACCESS_ONCE(x);___x;})
+
+
 int main(int argc, char** argv) {
+	int b =3;
+	int i = READ_ONCE(b);
 
 	parse_param(g_param, argc, argv);
 

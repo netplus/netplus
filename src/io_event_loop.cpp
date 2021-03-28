@@ -92,6 +92,7 @@ namespace netp {
 						m_tq.clear();
 					}
 				}
+				//@_calc_wait_dur_in_nano must happen before poll..
 				m_poller->poll(_calc_wait_dur_in_nano(), m_waiting);
 			}
 		}

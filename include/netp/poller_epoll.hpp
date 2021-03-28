@@ -109,7 +109,7 @@ namespace netp {
 			struct epoll_event epEvents[NETP_EPOLL_PER_HANDLE_SIZE];
 			int wait_in_mill = wait_in_nano != ~0 ? wait_in_nano / 1000000: ~0;
 			int nEvents = epoll_wait(m_epfd, epEvents,NETP_EPOLL_PER_HANDLE_SIZE, wait_in_mill);
-			__LOOP_EXIT_WAITING__(W);
+			NETP_POLLER_WAIT_EXIT(wait_in_nano, W);
 			if ( -1 == nEvents ) {
 				NETP_ERR("[EPOLL][##%u]epoll wait event failed!, errno: %d", m_epfd, netp_socket_get_last_errno() );
 				return ;
