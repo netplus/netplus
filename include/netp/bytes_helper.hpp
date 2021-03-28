@@ -36,7 +36,6 @@ namespace netp {
 		};
 		template<>
 		struct basic_type_width<i32_t> {
-			constexpr static size_t width = 2;
 			typedef type<u32_t> width_type_t;
 		};
 		template<>
@@ -89,7 +88,7 @@ namespace netp {
 #if __NETP_IS_BIG_ENDIAN
 				return *((T*)(start));
 #else
-				return __read_impl<T, ReadIt>(start, basic_type_width<T>::width_type_t() );
+				return __read_impl<T, ReadIt>(start, typename basic_type_width<T>::width_type_t() );
 #endif
 			}
 
@@ -136,7 +135,7 @@ namespace netp {
 				//for (::size_t i = (sizeof(T) - 1); i != ::size_t(~0); --i) {
 				//	*(start_addr + write_idx++) = ((val >> (i * 8)) & 0xff);
 				//}
-				return __write_impl<T, OutIt>(v,start, basic_type_width<T>::width_type_t());
+				return __write_impl<T, OutIt>(v,start, typename basic_type_width<T>::width_type_t());
 #endif
 			}
 
