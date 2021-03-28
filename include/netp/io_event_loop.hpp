@@ -94,13 +94,12 @@ namespace netp {
 				return 0;
 			}
 
-			lock_guard<spin_mutex> lg(m_tq_mutex);
-			if (m_tq_standby.size() != 0) {
-				return 0;
-			}
-			NETP_ASSERT( u64_t(TIMER_TIME_INFINITE) > (NETP_POLLER_WAIT_IGNORE_DUR));
-			if ( (u64_t(ndelayns)>(NETP_POLLER_WAIT_IGNORE_DUR)) ) {
-				m_waiting.store(true, std::memory_order_release);
+			{
+				lock_guard<spin_mutex> lg(m_tq_mutex);
+				if (m_tq_standby.size() != 0) {
+					return 0;
+				}
+				NETP_POLLER_WAIT_ENTER(ndelayns,m_waiting);
 			}
 			return ndelayns;
 		}
@@ -153,26 +152,33 @@ namespace netp {
 		}
 
 		inline void schedule(fn_task_t&& f) {
+			//@NOTE: old impl
 			//disable compiler order opt by barrier
-			std::atomic<bool> _interrupt_poller(false);
+			//std::atomic<bool> _interrupt_poller(false);
+
+			//NOTE: update 2021/03/28
+			//lock of m_tq_mutex would pose a load/store memory barrier at least
+			//these kinds of barrier could make sure that the compiler would not reorder the instruction around the barrier, so interrupt_poller would always have a false value
+			//as  a per thread variable, the reorder brought by CPU should not be a issue for _interrupt_poller
+			bool _interrupt_poller = false;
 			{
 				lock_guard<spin_mutex> lg(m_tq_mutex);
 				m_tq_standby.push_back(std::move(f));
-				_interrupt_poller.store( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_acquire), std::memory_order_release);
+				_interrupt_poller=( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_acquire), std::memory_order_release);
 			}
-			if (NETP_UNLIKELY(_interrupt_poller.load(std::memory_order_acquire))) {
+			if (NETP_UNLIKELY(_interrupt_poller)) {
 				m_poller->interrupt_wait();
 			}
 		}
 
 		inline void schedule(fn_task_t const& f) {
-			std::atomic<bool> _interrupt_poller(false);
+			bool _interrupt_poller = false;
 			{
 				lock_guard<spin_mutex> lg(m_tq_mutex);
 				m_tq_standby.push_back(f);
-				_interrupt_poller.store( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_acquire), std::memory_order_release);
+				_interrupt_poller=( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_acquire), std::memory_order_release);
 			}
-			if (NETP_UNLIKELY(_interrupt_poller.load(std::memory_order_acquire))) {
+			if (NETP_UNLIKELY(_interrupt_poller)) {
 				m_poller->interrupt_wait();
 			}
 		}

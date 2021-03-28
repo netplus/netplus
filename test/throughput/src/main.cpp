@@ -23,8 +23,8 @@
 
 thp_param g_param;
 
-int main(int argc, char** argv) {
 
+int main(int argc, char** argv) {
 	parse_param(g_param, argc, argv);
 
 	for (int i = 0; i < g_param.for_max; ++i) {

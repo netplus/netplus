@@ -235,7 +235,7 @@ namespace netp {
 			ULONG n = 64;
 			int ec = netp::OK;
 			BOOL getOk = ::GetQueuedCompletionStatusEx(m_handle, &entrys[0], n, &n, (DWORD)(wait_in_milli), FALSE);
-			__LOOP_EXIT_WAITING__(W);
+			NETP_POLLER_WAIT_EXIT(wait_in_nano, W);
 			if (NETP_UNLIKELY(getOk) == FALSE) {
 				ec = netp_socket_get_last_errno();
 				if (ec == netp::E_WAIT_TIMEOUT) {
@@ -276,7 +276,7 @@ namespace netp {
 			ULONG_PTR ckey; // it'w our fd here
 			LPOVERLAPPED ol;
 			BOOL getOk = ::GetQueuedCompletionStatus(m_handle, &dwTrans_, &ckey, &ol, (DWORD)wait_in_milli);
-			__LOOP_EXIT_WAITING__(W);
+			NETP_POLLER_WAIT_EXIT(wait_in_nano, W);
 
 			if (NETP_UNLIKELY(getOk == FALSE)) {
 				ec = netp_socket_get_last_errno();
