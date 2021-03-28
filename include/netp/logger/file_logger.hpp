@@ -10,7 +10,7 @@ namespace netp { namespace logger {
 		file_logger(string_t const& log_file );
 		~file_logger();
 
-		void write( log_mask mask, char const* log, netp::size_t len ) ;
+		void write( log_mask mask, char const* log, netp::u32_t len ) ;
 
 	private:
 		FILE* m_fp;

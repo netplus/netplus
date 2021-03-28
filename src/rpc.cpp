@@ -8,7 +8,7 @@ namespace netp {
 	std::atomic<netp::u32_t> rpc_message::__rpc_message_id__{1};
 
 	void rpc_message::encode(NRP<netp::packet>& outp) {
-		size_t outp_len = sizeof(u32_t) * 3 + 1;
+		u32_t outp_len = sizeof(u32_t) * 3 + 1;
 		if (data != nullptr) {
 			outp_len += data->len();
 		}
@@ -32,7 +32,7 @@ namespace netp {
 		netp::u8_t t = inpack->read<netp::u8_t>();
 		netp::u32_t id = inpack->read<netp::u32_t>();
 		int code = inpack->read<netp::i32_t>();
-		size_t plen = 0;
+		u32_t plen = 0;
 		if (inpack->len()) {
 			if (inpack->len() < sizeof(netp::u32_t)) {
 				return netp::E_RPC_MESSAGE_DECODE_FAILED;

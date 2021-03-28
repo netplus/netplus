@@ -79,18 +79,18 @@ namespace netp { namespace logger {
 			m_level_masks = translate_to_mask_from_level(NETP_DEFAULT_LOG_LEVEL);
 		}
 
-		virtual void write( log_mask level, char const* log, netp::size_t len ) = 0 ;
+		virtual void write( log_mask level, char const* log, netp::u32_t len ) = 0 ;
 
-		inline void debug( char const* log, netp::size_t len ) {
+		inline void debug( char const* log, netp::u32_t len ) {
 			write( LOG_MASK_DEBUG, log, len );
 		}
-		inline void info( char const* log, netp::size_t len ) {
+		inline void info( char const* log, netp::u32_t len ) {
 			write( LOG_MASK_INFO, log, len );
 		}
-		inline void warn( char const* log, netp::size_t len ) {
+		inline void warn( char const* log, netp::u32_t len ) {
 			write( LOG_MASK_WARN, log, len );
 		}
-		inline void fatal( char const* log, netp::size_t len ) {
+		inline void fatal( char const* log, netp::u32_t len ) {
 			write( LOG_MASK_ERR, log, len );
 		}
 

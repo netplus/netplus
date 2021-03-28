@@ -122,7 +122,7 @@ namespace netp { namespace logger {
 	net_logger::~net_logger() {
 	}
 
-	void net_logger::write( log_mask mask, char const* log, netp::size_t len ) {
+	void net_logger::write( log_mask mask, char const* log, netp::u32_t len ) {
 		NETP_ASSERT(test_mask(mask));
 		NRP<netp::packet> logp = netp::make_ref<netp::packet>(log, len);
 		m_loop->execute([logger=NRP<net_logger>(this), logp]() {

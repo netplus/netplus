@@ -52,14 +52,16 @@ inline static void xxtea_to_bytes_array(netp::byte_t* arr, netp::u32_t const& al
 	NETP_ASSERT(data != nullptr);
 	NETP_ASSERT((dlen>>2)<=alength);
 
-	if (netp::is_little_endian()) {
-		memcpy(arr, (netp::byte_t*)data, alength);
-		return;
-	}
+#if __NETP_IS_LITTLE_ENDIAN
+//	if (netp::is_little_endian()) {
+		std::memcpy(arr, (netp::byte_t*)data, alength);
+//		return;
+//	}
+#else
 	for (netp::u32_t i = 0; i < alength; ++i) {
 		arr[i] = (netp::byte_t)(data[i >> 2] >> ((i & 3) << 3));
 	}
-
+#endif
 	(void)dlen;
 	(void)alength;
 }
@@ -68,13 +70,15 @@ inline static void xxtea_to_uint32_array(netp::u32_t* arr, netp::u32_t const& al
 	NETP_ASSERT(arr != nullptr);
 	NETP_ASSERT(alength >= dlen >> 2);
 	NETP_ASSERT(data != nullptr);
-	if (netp::is_little_endian()) {
-		::memcpy(arr, data, dlen);
-		return;
-	}
+	//if (netp::is_little_endian()) {
+#if __NETP_IS_LITTLE_ENDIAN
+		std::memcpy(arr, data, dlen);
+	//}
+#else
 	for (netp::u32_t i = 0; i < dlen; ++i) {
 		arr[i >> 2] |= (netp::u32_t)data[i] << ((i & 3) << 3);
 	}
+#endif
 	(void)alength;
 }
 

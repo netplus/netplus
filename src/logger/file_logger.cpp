@@ -23,7 +23,7 @@ namespace netp { namespace logger {
 		}
 	}
 
-	void file_logger::write( log_mask mask, char const* log, netp::size_t len ) {
+	void file_logger::write( log_mask mask, char const* log, netp::u32_t len ) {
 		NETP_ASSERT(test_mask(mask));
 		::size_t nbytes = fprintf(m_fp, "%s\n", log);
 		//::size_t nbytes = fwrite( log,sizeof(char), len, m_fp );

@@ -10,7 +10,7 @@ namespace netp { namespace log {
 	android_log_print::~android_log_print()
 	{}
 	
-	void android_log_print::write( log_mask const& mask, char const* logstr, netp::size_t const& len ) {
+	void android_log_print::write( log_mask const& mask, char const* logstr, netp::u32_t const& len ) {
 		NETP_ASSERT(test_mask(mask));
 		
 		if( mask == LOG_MASK_DEBUG) {
