@@ -9,9 +9,9 @@
 #endif
 
 //in nano
-#define NETP_POLLER_WAIT_IGNORE_DUR (i64_t(27))
-#define NETP_POLLER_WAIT_ENTER(wt_in_nano,W) (((wt_in_nano)>NETP_POLLER_WAIT_IGNORE_DUR) ? (W).store(true,std::memory_order_release): (void)0)
-#define NETP_POLLER_WAIT_EXIT(wt_in_nano,W) (((wt_in_nano)>NETP_POLLER_WAIT_IGNORE_DUR) ? (W).store(false,std::memory_order_release): (void)0)
+#define NETP_POLLER_WAIT_IGNORE_DUR (u64_t(27))
+#define NETP_POLLER_WAIT_ENTER(wt_in_nano,W) ( ((u64_t(wt_in_nano)>NETP_POLLER_WAIT_IGNORE_DUR)) ? (W).store(true,std::memory_order_release): (void)0)
+#define NETP_POLLER_WAIT_EXIT(wt_in_nano,W) ( ((u64_t(wt_in_nano)>NETP_POLLER_WAIT_IGNORE_DUR)) ? (W).store(false,std::memory_order_release): (void)0)
 
 namespace netp {
 

@@ -107,7 +107,7 @@ namespace netp {
 			NETP_ASSERT( m_epfd != NETP_INVALID_SOCKET );
 
 			struct epoll_event epEvents[NETP_EPOLL_PER_HANDLE_SIZE];
-			const int wait_in_mill = wait_in_nano != ~0 ? (wait_in_nano / 1000000): ~0;
+			const int wait_in_mill = wait_in_nano != ~0 ? (wait_in_nano / i64_t(1000000)): ~0;
 			int nEvents = epoll_wait(m_epfd, epEvents,NETP_EPOLL_PER_HANDLE_SIZE, wait_in_mill);
 			NETP_POLLER_WAIT_EXIT(wait_in_nano, W);
 			if ( -1 == nEvents ) {
