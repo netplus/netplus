@@ -224,7 +224,7 @@ namespace netp {
 #endif
 		}
 
-		void poll(long long wait_in_nano, std::atomic<bool>& W) override {
+		void poll(i64_t wait_in_nano, std::atomic<bool>& W) override {
 			NETP_ASSERT(m_handle > 0);
 			const long long wait_in_milli = wait_in_nano != ~0 ? (wait_in_nano / 1000000L) : ~0;
 			//INFINITE == -1

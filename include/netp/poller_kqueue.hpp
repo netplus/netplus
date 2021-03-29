@@ -40,7 +40,7 @@ namespace netp {
 			m_kevt_size = 0;
 		}
 	
-		void poll(long long wait_in_nano, std::atomic<bool>& W) override {
+		void poll(i64_t wait_in_nano, std::atomic<bool>& W) override {
 			struct timespec tsp = {0,0};
 			struct timespec* tspp = 0;
 			if (wait_in_nano != ~0) {
