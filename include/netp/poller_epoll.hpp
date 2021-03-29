@@ -135,14 +135,13 @@ namespace netp {
 						if (getrt == -1) {
 							ec = netp_socket_get_last_errno();
 						} else {
-							NETP_ASSERT(ec != netp::OK);
 							ec = NETP_NEGATIVE(ec);
 						}
-					} else if ((events&EPOLLHUP) != 0) {
-						ec = netp::E_SOCKET_EPOLLHUP;
 					} else {
-						ec = netp::E_UNKNOWN;
+						//if((events & EPOLLHUP) != 0)
+						ec = netp::E_SOCKET_EPOLLHUP;
 					}
+					NETP_ASSERT(ec != netp::OK);
 					events &= ~(EPOLLERR | EPOLLHUP);
 				}
 
