@@ -84,12 +84,12 @@ namespace netp {
 		//0,	NO WAIT
 		//~0,	INFINITE WAIT
 		//>0,	WAIT nanosecond
-		__NETP_FORCE_INLINE long long _calc_wait_dur_in_nano() {
+		__NETP_FORCE_INLINE i64_t _calc_wait_dur_in_nano() {
 
 			NETP_ASSERT( m_waiting.load(std::memory_order_acquire) == false, "_calc_wait_dur_in_nano waiting check failed" );
 			netp::timer_duration_t ndelay;
 			m_tb->expire(ndelay);
-			long long ndelayns = ndelay.count();
+			i64_t ndelayns = i64_t(ndelay.count());
 			if (ndelayns == 0) {
 				return 0;
 			}

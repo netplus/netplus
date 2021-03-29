@@ -9,7 +9,7 @@
 #endif
 
 //in nano
-#define NETP_POLLER_WAIT_IGNORE_DUR (u64_t(27))
+#define NETP_POLLER_WAIT_IGNORE_DUR (i64_t(27))
 #define NETP_POLLER_WAIT_ENTER(wt_in_nano,W) (((wt_in_nano)>NETP_POLLER_WAIT_IGNORE_DUR) ? (W).store(true,std::memory_order_release): (void)0)
 #define NETP_POLLER_WAIT_EXIT(wt_in_nano,W) (((wt_in_nano)>NETP_POLLER_WAIT_IGNORE_DUR) ? (W).store(false,std::memory_order_release): (void)0)
 
@@ -108,7 +108,7 @@ namespace netp {
 		virtual void init() = 0;
 		virtual void deinit() = 0;
 
-		virtual void poll(long long wait_in_nano, std::atomic<bool>& waiting) = 0;
+		virtual void poll(i64_t wait_in_nano, std::atomic<bool>& waiting) = 0;
 
 		virtual void interrupt_wait() = 0;
 		virtual int io_do(io_action, io_ctx*) = 0;

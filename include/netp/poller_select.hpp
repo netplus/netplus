@@ -40,7 +40,7 @@ namespace netp {
     #pragma warning(push)
     #pragma warning(disable:4389)
 #endif
-		void poll(long long wait_in_nano, std::atomic<bool>& W) override {
+		void poll(i64_t wait_in_nano, std::atomic<bool>& W) override {
 			timeval _tv = { 0,0 };
 			timeval* tv = 0;
 			if (wait_in_nano != ~0) {
