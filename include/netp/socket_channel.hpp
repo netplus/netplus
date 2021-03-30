@@ -83,8 +83,6 @@ namespace netp {
 		u16_t proto;
 		u16_t option;
 
-		socket_api* sockapi;
-
 		address laddr;
 		address raddr;
 
@@ -99,7 +97,6 @@ namespace netp {
 			type(NETP_SOCK_STREAM),
 			proto(NETP_PROTOCOL_TCP),
 			option(default_socket_option),
-			sockapi((netp::socket_api*)&netp::default_socket_api),
 			laddr(),
 			raddr(),
 			kvals(default_tcp_keep_alive_vals),
@@ -144,7 +141,6 @@ namespace netp {
 		ccfg->raddr = raddr;
 
 		ccfg->L = L;
-		ccfg->sockapi = cfg->sockapi;
 		ccfg->option = cfg->option;
 		ccfg->kvals = cfg->kvals;
 		ccfg->sock_buf = cfg->sock_buf;
@@ -260,7 +256,7 @@ namespace netp {
 			}
 
 			int optval = onoff ? 1 : 0;
-			int rt = socket_setsockopt_impl(m_fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+			int rt = socket_setsockopt_impl(SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 			NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 			if (onoff) {
 				m_option |= u16_t(socket_option::OPTION_REUSEPORT);
@@ -462,19 +458,18 @@ namespace netp {
 		virtual int socket_listen_impl(int backlog = NETP_DEFAULT_LISTEN_BACKLOG) {
 			return netp::listen(m_fd, backlog);
 		}
-		virtual SOCKET socket_accept_impl(address& raddr, address& laddr) {
-			SOCKET nfd =  netp::accept(m_fd, raddr);
+		virtual SOCKET socket_accept_impl( address& raddr, address& laddr) {
+			SOCKET nfd = netp::accept(m_fd, raddr);
+			NETP_RETURN_V_IF_MATCH(NETP_INVALID_SOCKET, nfd == NETP_INVALID_SOCKET);
 
 			//patch for local addr
-			address laddr;
 			int rt = netp::getsockname(nfd, laddr);
 			if (rt != netp::OK) {
 				NETP_ERR("[socket][%s][accept]load local addr failed: %d", ch_info().c_str(), netp_socket_get_last_errno());
 				NETP_CLOSE_SOCKET(nfd);
 				//quick return for retry
 				netp_set_last_errno(netp::E_EINTR);
-				nfd = NETP_SOCKET_ERROR;
-				return nfd;
+				return (NETP_INVALID_SOCKET);
 			}
 
 			NETP_ASSERT(laddr.family() == (m_family));
@@ -483,10 +478,8 @@ namespace netp {
 				NETP_CLOSE_SOCKET(nfd);
 				//quick return for retry
 				netp_set_last_errno(netp::E_EINTR);
-				nfd = NETP_SOCKET_ERROR;
-				return nfd;
+				return (NETP_INVALID_SOCKET);
 			}
-			laddr = m_laddr;
 			return nfd ;
 		}
 		virtual int socket_connect_impl(address const& addr) {
@@ -573,7 +566,7 @@ namespace netp {
 		int shutdown(int flag);
 		int bind(address const& addr);
 		int listen(int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
-		SOCKET accept(address& raddr, address& laddr);
+		SOCKET accept( address& raddr, address& laddr);
 		int connect(address const& addr);
 
 		//int sendto();

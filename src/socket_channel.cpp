@@ -331,7 +331,7 @@ int socket_base::get_left_snd_queue() const {
 		NETP_ASSERT(m_chflag & int(channel_flag::F_LISTENING));
 		if ( (m_chflag & int(channel_flag::F_LISTENING)) ==0 ) {
 			netp_set_last_errno(netp::E_SOCKET_INVALID_STATE);
-			return (SOCKET)NETP_SOCKET_ERROR;
+			return SOCKET(NETP_SOCKET_ERROR);
 		}
 
 		return socket_accept_impl(raddr, laddr);
@@ -432,8 +432,8 @@ int socket_base::get_left_snd_queue() const {
 		while (status == netp::OK) {
 			address raddr;
 			address laddr;
-			SOCKET nfd = socket_accept_impl(raddr,laddr);
-			if (nfd == NETP_SOCKET_ERROR) {
+			SOCKET nfd = socket_accept_impl( raddr,laddr);
+			if (nfd == NETP_INVALID_SOCKET) {
 				status = netp_socket_get_last_errno();
 				if (status == netp::E_EINTR) {
 					status = netp::OK;
@@ -442,7 +442,7 @@ int socket_base::get_left_snd_queue() const {
 					break;
 				}
 			}
-
+			
 			NRP<io_event_loop> LL = io_event_loop_group::instance()->next(L->poller_type());
 			LL->execute([LL,fn_initializer,nfd, laddr, raddr, cfg]() {
 				std::tuple<int, NRP<socket_channel>> tupc = accepted_create<socket_channel>(LL,nfd, laddr,raddr, cfg);

@@ -19,25 +19,6 @@
 
 namespace netp {
 	
-	inline int __netp_close(SOCKET fd) { return NETP_CLOSE_SOCKET(fd); }
-
-	inline int __set_nonblocking(SOCKET fd, bool onoff) {
-		int rt;
-#if defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID) || defined(_NETP_APPLE)
-		int mode = ::fcntl(fd, F_GETFL, 0);
-		if (onoff) {
-			mode |= O_NONBLOCK;
-		} else {
-			mode &= ~O_NONBLOCK;
-		}
-		rt = ::fcntl(fd, F_SETFL, mode);
-#else
-		ULONG nonBlocking = onoff ? 1 : 0;
-		rt = ::ioctlsocket(fd, FIONBIO, &nonBlocking);
-#endif
-		return rt;
-	}
-
 #ifdef _NETP_WIN
 	inline netp::u32_t __recvonemsg(SOCKET fd, byte_t* const buff_o, netp::u32_t const bsize, address& raddr, ipv4_t& lipv4, int& ec_o, int flag) {
 		const static LPFN_WSARECVMSG __fn_wsa_recvmsg = (LPFN_WSARECVMSG)netp::os::load_api_ex_address(netp::os::winsock_api_ex::API_RECVMSG);
@@ -177,7 +158,7 @@ namespace netp {
 		addr_in.sin_family = u16_t(addr.family());
 		addr_in.sin_port = addr.nport();
 		addr_in.sin_addr.s_addr = addr.nipv4();
-		return fn.bind(fd, (const struct sockaddr*)(&addr_in), sizeof(addr_in));
+		return ::bind(fd, (const struct sockaddr*)(&addr_in), sizeof(addr_in));
 	}
 
 	inline int shutdown(SOCKET fd, int flag) {
@@ -185,7 +166,7 @@ namespace netp {
 	}
 
 	inline int close(SOCKET fd) {
-		return __netp_close(fd);
+		return NETP_CLOSE_SOCKET(fd);
 	}
 
 	inline int listen( SOCKET fd, int backlog) {
@@ -231,12 +212,30 @@ namespace netp {
 		return ::getsockopt(fd, level, option_name, value, option_len);
 #endif
 	}
-	inline int setsockopt(SOCKET fd, int level, int option_name, void const* value, socklen_t const& option_len, socket_api const& fn = default_socket_api) {
+	inline int setsockopt(SOCKET fd, int level, int option_name, void const* value, socklen_t const& option_len) {
 #ifdef _NETP_WIN
 		return ::setsockopt(fd, level, option_name, (char*)value, option_len);
 #else
 		return ::setsockopt(fd, level, option_name, value, option_len);
 #endif
+	}
+
+	inline int set_nonblocking(SOCKET fd, bool onoff) {
+		int rt;
+#if defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID) || defined(_NETP_APPLE)
+		int mode = ::fcntl(fd, F_GETFL, 0);
+		if (onoff) {
+			mode |= O_NONBLOCK;
+		}
+		else {
+			mode &= ~O_NONBLOCK;
+		}
+		rt = ::fcntl(fd, F_SETFL, mode);
+#else
+		ULONG nonBlocking = onoff ? 1 : 0;
+		rt = ::ioctlsocket(fd, FIONBIO, &nonBlocking);
+#endif
+		return rt;
 	}
 
 	inline int set_keepalive(SOCKET fd, bool onoff) {
@@ -268,11 +267,6 @@ namespace netp {
 		int optval = onoff ? 1 : 0;
 		return netp::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval));
 	}
-	inline int set_nonblocking(SOCKET fd, bool onoff) {
-		return netp::set_nonblocking(fd, onoff);
-	}
-
-
 	inline netp::u32_t send( SOCKET fd, byte_t const* const buf, netp::u32_t len, int& ec_o, int flag) {
 		NETP_ASSERT(buf != nullptr);
 		NETP_ASSERT(len > 0);

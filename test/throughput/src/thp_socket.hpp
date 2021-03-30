@@ -64,8 +64,9 @@ void th_listener() {
 	}
 
 	netp::address raddr;
-	int nfd = listener->accept(raddr);
-	if (nfd < 0) {
+	netp::address laddr_;
+	netp::SOCKET nfd = listener->accept( raddr, laddr_);
+	if (nfd == NETP_INVALID_SOCKET ) {
 		NETP_ERR("accept failed: %d", rt);
 		return;
 	}

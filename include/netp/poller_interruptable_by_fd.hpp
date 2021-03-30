@@ -67,13 +67,13 @@ namespace netp {
 			int rt = netp::socketpair(int(NETP_AF_INET), int(NETP_SOCK_STREAM), int(NETP_PROTOCOL_TCP), fds);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
-			rt = netp::turnon_nonblocking(fds[0]);
+			rt = netp::set_nonblocking(fds[0],true);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
-			rt = netp::turnon_nonblocking(fds[1]);
+			rt = netp::set_nonblocking(fds[1],true);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
-			rt = netp::turnon_nodelay(fds[1]);
+			rt = netp::set_nodelay(fds[1],true);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
 			m_fd_monitor_r = netp::make_ref<interrupt_fd_monitor>(fds[0]);
