@@ -25,7 +25,7 @@ namespace netp {
 				byte_t tmp[1];
 				int ec = netp::OK;
 				do {
-					u32_t c = netp::recv(netp::default_socket_api, ctx->fd, tmp, 1, ec, 0);
+					u32_t c = netp::recv(ctx->fd, tmp, 1, ec, 0);
 					if (c == 1) {
 						NETP_ASSERT(ec == netp::OK);
 						NETP_ASSERT(tmp[0] == 'i', "c: %d", tmp[0]);
@@ -67,13 +67,13 @@ namespace netp {
 			int rt = netp::socketpair(int(NETP_AF_INET), int(NETP_SOCK_STREAM), int(NETP_PROTOCOL_TCP), fds);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
-			rt = netp::turnon_nonblocking(netp::default_socket_api, fds[0]);
+			rt = netp::turnon_nonblocking(fds[0]);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
-			rt = netp::turnon_nonblocking(netp::default_socket_api, fds[1]);
+			rt = netp::turnon_nonblocking(fds[1]);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
-			rt = netp::turnon_nodelay(netp::default_socket_api, fds[1]);
+			rt = netp::turnon_nodelay(fds[1]);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
 			m_fd_monitor_r = netp::make_ref<interrupt_fd_monitor>(fds[0]);
@@ -120,7 +120,7 @@ namespace netp {
 			NETP_ASSERT(m_fd_w > 0);
 			int ec;
 			const byte_t interrutp_a[1] = { (byte_t)'i' };
-			u32_t c = netp::send(netp::default_socket_api, m_fd_w, interrutp_a, 1, ec, 0);
+			u32_t c = netp::send(m_fd_w, interrutp_a, 1, ec, 0);
 			if (NETP_UNLIKELY(ec != netp::OK)) {
 				NETP_WARN("[io_event_loop]interrupt send failed: %d", ec);
 			}

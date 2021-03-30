@@ -396,9 +396,6 @@
     <ClInclude Include="..\..\include\netp\socket_api.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\netp\socket_base.hpp">
-      <Filter>Header Files\netp</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\netp\string.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
@@ -516,9 +513,6 @@
       <Filter>Source Files\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\signal_broker.cpp">
-      <Filter>Source Files\src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\socket_base.cpp">
       <Filter>Source Files\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\thread.cpp">

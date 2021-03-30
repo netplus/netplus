@@ -6,7 +6,7 @@ void read_and_write(NRP<netp::socket_channel> const& so, NRP<netp::packet> const
 	do {
 		buf->reset();
 		int ec = netp::OK;
-		netp::u32_t len = so->recv(buf->head(), buf->left_right_capacity(), ec);
+		netp::u32_t len = netp::recv(so->ch_id(), buf->head(), buf->left_right_capacity(), ec, 0);
 		if (len > 0) {
 			if (total_received_to_exit > 0) {
 				total_received += len;
@@ -16,7 +16,7 @@ void read_and_write(NRP<netp::socket_channel> const& so, NRP<netp::packet> const
 				}
 			}
 			buf->incre_write_idx(len);
-			netp::u32_t wlen = so->send(buf->head(), buf->len(), ec);
+			netp::u32_t wlen = netp::send(so->ch_id(), buf->head(), buf->len(), ec,0);
 			NETP_ASSERT(len == wlen);
 		}
 		else if (len == 0) {
@@ -119,7 +119,7 @@ void th_dialer() {
 	NRP<netp::packet> buf = netp::make_ref<netp::packet>(64 * 1024);
 	buf->incre_write_idx(64 * 1024);
 	int ec = netp::OK;
-	netp::u32_t len = dialer->send(buf->head(), buf->len(), ec);
+	netp::u32_t len = netp::send(dialer->ch_id(), buf->head(), buf->len(), ec, 0);
 	NETP_ASSERT(len == buf->len());
 	read_and_write(dialer, buf, 6553500000LL);
 }

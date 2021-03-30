@@ -1,25 +1,240 @@
 #include <netp/core.hpp>
 #include <netp/logger_broker.hpp>
-#include <netp/socket.hpp>
+#include <netp/socket_channel.hpp>
 
 namespace netp {
+
+	int socket_channel::open() {
+		if ( (m_chflag & int(channel_flag::F_CLOSED)) == 0) {
+			return netp::E_SOCKET_INVALID_STATE;
+		}
+		NETP_ASSERT(m_fd == NETP_INVALID_SOCKET);
+		int rt = socket_open_impl();
+		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+		return netp::OK;
+	}
+
+	int socket_channel::close() {
+		if (m_chflag & int(channel_flag::F_CLOSED)) {
+			return netp::E_SOCKET_INVALID_STATE;
+		}
+		int rt = socket_close_impl();
+		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+		return netp::OK;
+	}
+	int socket_channel::shutdown(int flag) {
+		if (m_chflag & int(channel_flag::F_CLOSED)) {
+			return netp::E_SOCKET_INVALID_STATE;
+		}
+		int rt = socket_shutdown_impl(flag);
+		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+		return netp::OK;
+	}
+
+	int socket_channel::bind(address const& addr) {
+		if (m_chflag&int(channel_flag::F_CLOSED)) {
+			return netp::E_SOCKET_INVALID_STATE;
+		}
+		NETP_ASSERT(m_laddr.is_null());
+		NETP_ASSERT((m_family) == addr.family());
+		int rt = socket_bind_impl(addr);
+		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+		m_laddr = addr;
+		return netp::OK;
+	}
+
+	int socket_channel::bind_any() {
+		address _any_;
+		NETP_ASSERT(m_family != NETP_AF_UNSPEC);
+		_any_.setfamily(m_family);
+		int rt = bind(_any_);
+		if (rt != netp::OK) {
+			return rt;
+		}
+		rt = load_sockname();
+		NETP_TRACE_SOCKET("[socket][%s]socket bind rt: %d", ch_info().c_str(), rt);
+		return rt;
+	}
 
 	int socket_channel::connect(address const& addr) {
 		if (m_chflag & (int(channel_flag::F_CONNECTING) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_LISTENING) | int(channel_flag::F_CLOSED)) ) {
 			return netp::E_SOCKET_INVALID_STATE;
 		}
 		NETP_ASSERT((m_chflag & int(channel_flag::F_ACTIVE)) == 0);
+		m_raddr = addr;
 		channel::ch_set_active();
-		int rt= socket_base::connect(addr);
+		int rt= socket_connect_impl(addr);
 		if (rt == netp::OK) {
 			m_chflag |= int(channel_flag::F_CONNECTED);
 			return netp::OK;
-		} else if (IS_ERRNO_EQUAL_CONNECTING(rt)) {
+		}
+
+		rt = netp_socket_get_last_errno();
+		if (netp::E_EINPROGRESS==(rt)) {
 			m_chflag |= int(channel_flag::F_CONNECTING);
 		} else {
 			ch_errno() = rt;
 		}
 		return rt;
+	}
+
+	int socket_channel::listen(int backlog) {
+		NETP_ASSERT(L->in_event_loop());
+		if (m_chflag & int(channel_flag::F_ACTIVE)) {
+			return netp::E_SOCKET_INVALID_STATE;
+		}
+		if (is_udp()) { return netp::OK; }
+		NETP_ASSERT((m_fd > 0) && (m_chflag & int(channel_flag::F_LISTENING)) == 0);
+		m_chflag |= int(channel_flag::F_LISTENING);
+		int rt = socket_listen_impl(backlog);
+		NETP_TRACE_SOCKET("[socket][%s]socket listen rt: %d", ch_info().c_str(), rt);
+		return rt;
+	}
+
+	int socket_channel::set_snd_buffer_size(u32_t size) {
+		NETP_ASSERT(m_fd > 0);
+
+		if (size == 0) {
+			return netp::OK;
+		} else if (size < u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE)) {
+			size = u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE);
+		} else if (size > u32_t(channel_buf_range::CH_BUF_SND_MAX_SIZE)) {
+			size = u32_t(channel_buf_range::CH_BUF_SND_MAX_SIZE);
+		}
+
+		int rt;
+#ifdef _DEBUG
+		rt = get_snd_buffer_size();
+		NETP_TRACE_SOCKET("[socket_base][#%d]snd buffer size: %u, try to set: %u", m_fd, rt, size);
+#endif
+
+		rt = socket_setsockopt_impl(SOL_SOCKET, SO_SNDBUF, (char*)&(size), sizeof(size));
+		if (rt == NETP_SOCKET_ERROR) {
+			return netp_socket_get_last_errno();
+		}
+		return netp::OK;
+	}
+
+	int socket_channel::get_snd_buffer_size() const {
+		NETP_ASSERT(m_fd > 0);
+		int size;
+		socklen_t opt_length = sizeof(u32_t);
+		int rt = socket_getsockopt_impl(SOL_SOCKET, SO_SNDBUF, (char*)&size, &opt_length);
+		if (rt == NETP_SOCKET_ERROR) {
+			return netp_socket_get_last_errno();
+		}
+		return size;
+	}
+
+	/*
+int socket_base::get_left_snd_queue() const {
+#ifdef _NETP_GNU_LINUX
+		if (m_fd ==NETP_INVALID_SOCKET ) {
+			return netp::E_INVALID_OPERATION;
+		}
+
+		int size;
+		int rt = ::ioctl(m_fd, TIOCOUTQ, &size);
+
+		NETP_RETURN_V_IF_MATCH(socket_get_last_errno(), rt == NETP_SOCKET_ERROR );
+		return size;
+#else
+		NETP_THROW("this operation does not supported on windows");
+#endif
+	}
+	*/
+
+	int socket_channel::set_rcv_buffer_size(u32_t size) {
+		NETP_ASSERT(m_fd != NETP_INVALID_SOCKET);
+
+		if (size == 0) {
+			return netp::OK;
+		} else if (size < u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE)) {
+			size = u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE);
+		} else if (size > u32_t(channel_buf_range::CH_BUF_RCV_MAX_SIZE)) {
+			size = u32_t(channel_buf_range::CH_BUF_RCV_MAX_SIZE);
+		}
+
+		int rt;
+#ifdef _DEBUG
+		rt = get_rcv_buffer_size();
+		NETP_TRACE_SOCKET("[socket_base][#%d]rcv buffer size: %u, try to set: %u", m_fd, rt, size);
+#endif
+
+		rt = socket_setsockopt_impl(SOL_SOCKET, SO_RCVBUF, (char*)&(size), sizeof(size));
+		if (rt == NETP_SOCKET_ERROR) {
+			return netp_socket_get_last_errno();
+		}
+		return netp::OK;
+	}
+
+	int socket_channel::get_rcv_buffer_size() const {
+		NETP_ASSERT(m_fd > 0);
+		int size;
+		socklen_t opt_length = sizeof(size);
+		int rt = socket_getsockopt_impl(SOL_SOCKET, SO_RCVBUF, (char*)&size, &opt_length);
+		if (rt == NETP_SOCKET_ERROR) {
+			return netp_socket_get_last_errno();
+		}
+		return size;
+	}
+
+	/*
+	int socket_base::get_left_rcv_queue() const {
+		if (m_fd == NETP_INVALID_SOCKET ) {
+			return netp::E_INVALID_OPERATION;
+		}
+		int size=0;
+#ifdef _NETP_GNU_LINUX
+		int rt = ioctl(m_fd, FIONREAD, size);
+		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+#else
+		u_long ulsize;
+		int rt = ::ioctlsocket(m_fd, FIONREAD, &ulsize);
+		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+		size = ulsize & 0xFFFFFFFF;
+#endif
+		return size;
+	}
+	*/
+	int socket_channel::get_linger(bool& on_off, int& linger_t) const {
+		NETP_ASSERT(m_fd > 0);
+		struct linger soLinger;
+		socklen_t opt_length = sizeof(soLinger);
+		int rt = socket_getsockopt_impl(SOL_SOCKET, SO_LINGER, (char*)&soLinger, &opt_length);
+		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+
+		on_off = (soLinger.l_onoff != 0);
+		linger_t = soLinger.l_linger;
+		return netp::OK;
+	}
+
+	int socket_channel::set_linger(bool on_off, int linger_t /* in seconds */) {
+		struct linger soLinger;
+		NETP_ASSERT(m_fd > 0);
+		soLinger.l_onoff = on_off;
+		soLinger.l_linger = (linger_t & 0xFFFF);
+		int rt = socket_setsockopt_impl(SOL_SOCKET, SO_LINGER, (char*)&soLinger, sizeof(soLinger));
+		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+		return netp::OK;
+	}
+
+	int socket_channel::get_tos(u8_t& tos) const {
+		u8_t _tos;
+		socklen_t length;
+
+		int rt = socket_getsockopt_impl(IPPROTO_IP, IP_TOS, (char*)&_tos, &length);
+		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+		tos = IPTOS_TOS(_tos);
+		return netp::OK;
+	}
+
+	int socket_channel::set_tos(u8_t tos) {
+		NETP_ASSERT(m_fd > 0);
+		u8_t _tos = IPTOS_TOS(tos) | 0xe0;
+		int rt = socket_setsockopt_impl(IPPROTO_IP, IP_TOS, (char*)&_tos, sizeof(_tos));
+		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+		return netp::OK;
 	}
 
 	void socket_channel::_tmcb_BDL(NRP<timer> const& t) {
@@ -45,32 +260,9 @@ namespace netp {
 			NETP_ASSERT( !(m_chflag & (int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE))));
 			m_chflag &= ~int(channel_flag::F_BDLIMIT);
 			m_chflag |= int(channel_flag::F_WRITE_BARRIER);
-			__cb_io_write_impl(netp::OK, m_io_ctx);
+			__do_io_write(netp::OK, m_io_ctx);
 			m_chflag &= ~int(channel_flag::F_WRITE_BARRIER);
 		}
-	}
-
-
-	int socket_channel::bind(netp::address const& addr) {
-		if (m_chflag & int(channel_flag::F_CLOSED)) {
-			return netp::E_SOCKET_INVALID_STATE;
-		}
-		int rt = socket_base::bind(addr);
-		NETP_TRACE_SOCKET("[socket][%s]socket bind rt: %d", ch_info().c_str(), rt );
-		return rt;
-	}
-
-	int socket_channel::listen( int backlog ) {
-		NETP_ASSERT(L->in_event_loop());
-		if (m_chflag & int(channel_flag::F_ACTIVE)) {
-			return netp::E_SOCKET_INVALID_STATE;
-		}
-
-		NETP_ASSERT((m_fd > 0)&&(m_chflag & int(channel_flag::F_LISTENING)) == 0);
-		m_chflag |= int(channel_flag::F_LISTENING);
-		int rt = socket_base::listen( backlog);
-		NETP_TRACE_SOCKET("[socket][%s]socket listen rt: %d", ch_info().c_str(), rt);
-		return rt;
 	}
 
 	void socket_channel::do_listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted_initializer, NRP<promise<int>> const& chp, NRP<socket_cfg> const& ccfg, int backlog ) {
@@ -106,7 +298,7 @@ namespace netp {
 		ch_io_begin([fn_accepted_initializer,chp, ccfg, so = NRP<socket_channel>(this)]( int status, io_ctx*){
 			chp->set(status);
 			if(status == netp::OK) {
-				auto fn_accept = std::bind(&socket_channel::__cb_io_accept_impl, so, ccfg, fn_accepted_initializer, std::placeholders::_1, std::placeholders::_2);
+				auto fn_accept = std::bind(&socket_channel::__do_io_accept, so, ccfg, fn_accepted_initializer, std::placeholders::_1, std::placeholders::_2);
 				so->ch_io_accept(fn_accept);
 			}
 		});
@@ -123,10 +315,10 @@ namespace netp {
 			int rt = so->connect(addr);
 			if (rt == netp::OK) {
 				NETP_TRACE_SOCKET("[socket][%s]socket connected directly", so->ch_info().c_str());
-				so->_ch_do_dial_done_impl(fn_initializer, dialp, netp::OK, so->m_io_ctx);
+				so->__do_io_dial_done(fn_initializer, dialp, netp::OK, so->m_io_ctx);
 				return;
-			} else if (IS_ERRNO_EQUAL_CONNECTING(rt)) {
-				auto fn_connect_done = std::bind(&socket_channel::_ch_do_dial_done_impl, so, fn_initializer, dialp, std::placeholders::_1, std::placeholders::_2);
+			} else if (netp::E_EINPROGRESS==(rt)) {
+				auto fn_connect_done = std::bind(&socket_channel::__do_io_dial_done, so, fn_initializer, dialp, std::placeholders::_1, std::placeholders::_2);
 				so->ch_io_connect(fn_connect_done);
 				return;
 			}
@@ -134,7 +326,7 @@ namespace netp {
 		});
 	}
 
-	SOCKET socket_channel::accept( address& raddr ) {
+	SOCKET socket_channel::accept( address& raddr, address& laddr ) {
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(m_chflag & int(channel_flag::F_LISTENING));
 		if ( (m_chflag & int(channel_flag::F_LISTENING)) ==0 ) {
@@ -142,10 +334,10 @@ namespace netp {
 			return (SOCKET)NETP_SOCKET_ERROR;
 		}
 
-		return socket_base::accept(raddr);
+		return socket_accept_impl(raddr, laddr);
 	}
 
-	void socket_channel::_ch_do_dial_done_impl(fn_channel_initializer_t const& fn_initializer, NRP<promise<int>> const& dialp_, int status, io_ctx*) {
+	void socket_channel::__do_io_dial_done(fn_channel_initializer_t const& fn_initializer, NRP<promise<int>> const& dialp_, int status, io_ctx*) {
 		NETP_ASSERT(L->in_event_loop());
 		NRP<promise<int>> dialp = dialp_;
 
@@ -178,8 +370,9 @@ namespace netp {
 		}
 #endif
 		netp::address raddr;
-		status = netp::getpeername(*m_api, m_fd, raddr);
+		status = socket_getpeername_impl(raddr);
 		if (status != netp::OK ) {
+			status = netp_socket_get_last_errno();
 			goto _set_fail_and_return;
 		}
 		if (raddr != m_raddr) {
@@ -229,7 +422,7 @@ namespace netp {
 		ch_io_read();
 	}
 
-	void socket_channel::__cb_io_accept_impl(NRP<socket_cfg> const& cfg, fn_channel_initializer_t const& fn_initializer, int status, io_ctx* ) {
+	void socket_channel::__do_io_accept(NRP<socket_cfg> const& cfg, fn_channel_initializer_t const& fn_initializer, int status, io_ctx* ) {
 
 		NETP_ASSERT(L->in_event_loop());
 		/*ignore the left fds, cuz we're closed*/
@@ -238,7 +431,8 @@ namespace netp {
 		NETP_ASSERT(fn_initializer != nullptr);
 		while (status == netp::OK) {
 			address raddr;
-			SOCKET nfd = socket_base::accept(raddr);
+			address laddr;
+			SOCKET nfd = socket_accept_impl(raddr,laddr);
 			if (nfd == NETP_SOCKET_ERROR) {
 				status = netp_socket_get_last_errno();
 				if (status == netp::E_EINTR) {
@@ -247,22 +441,6 @@ namespace netp {
 				} else {
 					break;
 				}
-			}
-
-			//patch for local addr
-			address laddr;
-			status = netp::getsockname(*m_api, nfd, laddr);
-			if (status != netp::OK) {
-				NETP_ERR("[socket][%s][accept]load local addr failed: %d", ch_info().c_str(), netp_socket_get_last_errno());
-				NETP_CLOSE_SOCKET(nfd);
-				continue;
-			}
-
-			NETP_ASSERT(laddr.family() == (m_family));
-			if (laddr == raddr) {
-				NETP_ERR("[socket][%s][accept]laddr == raddr, force close", ch_info().c_str());
-				NETP_CLOSE_SOCKET(nfd);
-				continue;
 			}
 
 			NRP<io_event_loop> LL = io_event_loop_group::instance()->next(L->poller_type());
@@ -294,20 +472,20 @@ namespace netp {
 		ch_close_impl(nullptr);
 	}
 
-	void socket_channel::__cb_io_read_from_impl(int status, io_ctx* ) {
+	void socket_channel::__do_io_read_from(int status, io_ctx* ) {
 		NETP_ASSERT(m_protocol == u8_t(NETP_PROTOCOL_UDP));
 		while (status == netp::OK) {
 			NETP_ASSERT((m_chflag & (int(channel_flag::F_READ_SHUTDOWNING))) == 0);
 			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN) | int(channel_flag::F_CLOSE_PENDING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
-			netp::u32_t nbytes = socket_base::recvfrom(m_rcv_buf_ptr, m_rcv_buf_size, m_raddr, status);
+			netp::u32_t nbytes = socket_recvfrom_impl(m_rcv_buf_ptr, m_rcv_buf_size, m_raddr, status);
 			if (NETP_LIKELY(nbytes > 0)) {
 				channel::ch_fire_readfrom(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes), m_raddr) ;
 			}
 		}
-		___io_read_impl_done(status);
+		___do_io_read_done(status);
 	}
 
-	void socket_channel::__cb_io_read_impl(int status, io_ctx*) {
+	void socket_channel::__do_io_read(int status, io_ctx*) {
 		//NETP_INFO("READ IN");
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(!ch_is_listener());
@@ -316,41 +494,41 @@ namespace netp {
 		while (status == netp::OK) {
 			NETP_ASSERT( (m_chflag&(int(channel_flag::F_READ_SHUTDOWNING))) == 0);
 			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN)|int(channel_flag::F_READ_ERROR) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
-			netp::u32_t nbytes = socket_base::recv(m_rcv_buf_ptr, m_rcv_buf_size, status);
+			netp::u32_t nbytes = socket_recv_impl(m_rcv_buf_ptr, m_rcv_buf_size, status);
 			if (NETP_LIKELY(nbytes > 0)) {
 				channel::ch_fire_read(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes));
 			}
 		}
-		___io_read_impl_done(status);
+		___do_io_read_done(status);
 	}
 
-	void socket_channel::__cb_io_write_impl( int status, io_ctx*) {
+	void socket_channel::__do_io_write( int status, io_ctx*) {
 		NETP_ASSERT( (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWNING)|int(channel_flag::F_BDLIMIT)|int(channel_flag::F_CLOSING) )) == 0 );
-		//NETP_TRACE_SOCKET("[socket][%s]__cb_io_write_impl, write begin: %d, flag: %u", ch_info().c_str(), status , m_chflag );
+		//NETP_TRACE_SOCKET("[socket][%s]__do_io_write, write begin: %d, flag: %u", ch_info().c_str(), status , m_chflag );
 		if (status == netp::OK) {
 			if (m_chflag&int(channel_flag::F_WRITE_ERROR)) {
 				NETP_ASSERT(m_outbound_entry_q.size() != 0);
 				NETP_ASSERT(ch_errno() != netp::OK);
-				NETP_WARN("[socket][%s]__cb_io_write_impl(), but socket error already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
+				NETP_WARN("[socket][%s]__do_io_write(), but socket error already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
 				return ;
 			} else if (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWN))) {
 				NETP_ASSERT( m_outbound_entry_q.size() == 0);
-				NETP_WARN("[socket][%s]__cb_io_write_impl(), but socket write closed already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
+				NETP_WARN("[socket][%s]__do_io_write(), but socket write closed already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
 				return;
 			} else {
 				m_chflag |= int(channel_flag::F_WRITING);
-				status = (is_udp() ? socket_channel::_do_ch_write_to_impl() : socket_channel::_do_ch_write_impl());
+				status = (is_udp() ? socket_channel::___do_io_write_to() : socket_channel::___do_io_write());
 				m_chflag &= ~int(channel_flag::F_WRITING);
 			}
 		}
-		__handle_io_write_impl_done(status);
+		__do_io_write_done(status);
 	}
 
 	//write until error
 	//<0, is_error == (errno != E_CHANNEL_WRITING)
 	//==0, write done
 	//this api would be called right after a check of writeable of the current socket
-	int socket_channel::_do_ch_write_impl() {
+	int socket_channel::___do_io_write() {
 
 		NETP_ASSERT(m_outbound_entry_q.size() != 0, "%s, flag: %u", ch_info().c_str(), m_chflag);
 		NETP_ASSERT( m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)) );
@@ -372,7 +550,7 @@ namespace netp {
 			}
 
 			NETP_ASSERT((wlen > 0) && (wlen <= m_noutbound_bytes));
-			netp::u32_t nbytes = socket_base::send(entry.data->head(), u32_t(wlen), _errno);
+			netp::u32_t nbytes = socket_send_impl( entry.data->head(), u32_t(wlen), _errno);
 			if (NETP_LIKELY(nbytes > 0)) {
 				m_noutbound_bytes -= nbytes;
 				if (m_outbound_limit != 0 ) {
@@ -397,7 +575,7 @@ namespace netp {
 		return _errno;
 	}
 
-	int socket_channel::_do_ch_write_to_impl() {
+	int socket_channel::___do_io_write_to() {
 
 		NETP_ASSERT(m_outbound_entry_q.size() != 0, "%s, flag: %u", ch_info().c_str(), m_chflag);
 		NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)));
@@ -409,7 +587,7 @@ namespace netp {
 
 			socket_outbound_entry& entry = m_outbound_entry_q.front();
 			NETP_ASSERT((entry.data->len() > 0) && (entry.data->len() <= m_noutbound_bytes));
-			netp::u32_t nbytes = socket_base::sendto(entry.data->head(), (u32_t)entry.data->len(), entry.to, _errno);
+			netp::u32_t nbytes = socket_sendto_impl(entry.data->head(), (u32_t)entry.data->len(), entry.to, _errno);
 			//hold a copy before we do pop it from queue
 			nbytes == entry.data->len() ? NETP_ASSERT(_errno == netp::OK):NETP_ASSERT(_errno != netp::OK);
 			m_noutbound_bytes -= u32_t(entry.data->len());
@@ -565,7 +743,7 @@ namespace netp {
 #ifdef NETP_ENABLE_FAST_WRITE
 		//fast write
 		m_chflag |= int(channel_flag::F_WRITE_BARRIER);
-		__cb_io_write_impl(netp::OK, m_io_ctx);
+		__do_io_write(netp::OK, m_io_ctx);
 		m_chflag &= ~int(channel_flag::F_WRITE_BARRIER);
 #else
 		ch_io_write();
@@ -590,7 +768,7 @@ namespace netp {
 #ifdef NETP_ENABLE_FAST_WRITE
 		//fast write
 		m_chflag |= int(channel_flag::F_WRITE_BARRIER);
-		__cb_io_write_impl(netp::OK,m_io_ctx);
+		__do_io_write(netp::OK,m_io_ctx);
 		m_chflag &= ~int(channel_flag::F_WRITE_BARRIER);
 #else
 		ch_io_write();
@@ -610,7 +788,7 @@ namespace netp {
 
 	void socket_channel::io_notify_read(int status, io_ctx* ctx) {
 		if (m_chflag & int(channel_flag::F_USE_DEFAULT_READ)) {
-			is_udp() ? __cb_io_read_from_impl(status, ctx):__cb_io_read_impl(status, ctx);
+			is_udp() ? __do_io_read_from(status, ctx):__do_io_read(status, ctx);
 			return;
 		}
 		NETP_ASSERT( m_fn_read != nullptr );
@@ -619,7 +797,7 @@ namespace netp {
 
 	void socket_channel::io_notify_write(int status, io_ctx* ctx) {
 		if (m_chflag & int(channel_flag::F_USE_DEFAULT_WRITE)) {
-			__cb_io_write_impl(status, ctx);
+			__do_io_write(status, ctx);
 			return;
 		}
 		NETP_ASSERT(m_fn_write != nullptr);

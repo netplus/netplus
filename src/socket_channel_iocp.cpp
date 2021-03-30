@@ -98,6 +98,12 @@ namespace netp {
 	int socket_channel_iocp::__iocp_do_ConnectEx(void* ol_) {
 		NETP_ASSERT(L->in_event_loop());
 
+		int rt = netp::OK;
+		if (m_laddr.is_null()) {
+			rt = bind_any();
+			NETP_RETURN_V_IF_NOT_MATCH( rt, rt == netp::OK );
+		}
+
 		WSAOVERLAPPED* ol = (WSAOVERLAPPED*)ol_;
 		NETP_ASSERT(!m_raddr.is_null());
 
@@ -183,7 +189,7 @@ namespace netp {
 		NETP_ASSERT((m_chflag & int(channel_flag::F_WATCH_WRITE)) != 0);
 
 		if (status < 0) {
-			__handle_io_write_impl_done(status);
+			__do_io_write_done(status);
 			return;
 		}
 		iocp_ctx* ctx = (iocp_ctx*)ctx_;
@@ -204,7 +210,7 @@ namespace netp {
 				return;
 			}
 		}
-		__handle_io_write_impl_done(status);
+		__do_io_write_done(status);
 	}
 
 	//one shot one packet

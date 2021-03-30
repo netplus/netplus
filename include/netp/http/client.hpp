@@ -7,7 +7,6 @@
 #include <netp/promise.hpp>
 
 #include <netp/address.hpp>
-#include <netp/socket_base.hpp>
 #include <netp/socket.hpp>
 
 #include <netp/channel_handler.hpp>
