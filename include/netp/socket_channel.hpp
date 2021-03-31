@@ -316,7 +316,6 @@ namespace netp {
 #else
 #error
 #endif
-			//m_kvals = vals;
 			return netp::OK;
 		}
 
@@ -555,6 +554,10 @@ namespace netp {
 		int ch_init(u16_t opt, keep_alive_vals const& kvals, channel_buf_cfg const& cbc) {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(m_chflag&int(channel_flag::F_CLOSED));
+			channel::ch_init();
+			//@note: F_CLOSED SHOULD ALWAYS BE CLEARED ONCE channel::ch_init done
+			//cuz we use this flag to check rdwr check ,rdwr -> ch_io_end -> ch_deinit()
+			m_chflag &= ~int(channel_flag::F_CLOSED);
 
 			int rt = netp::OK;
 			if (m_fd == NETP_INVALID_SOCKET) {
@@ -562,17 +565,19 @@ namespace netp {
 				NETP_RETURN_V_IF_MATCH(rt, rt != netp::OK);
 			}
 
-			channel::ch_init();
 			rt = _cfg_option(opt, kvals);
-			NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
+			if (rt != netp::OK) {
+				ch_errno() = rt;
+				m_chflag |= int(channel_flag::F_READ_ERROR);
+				return rt;
+			}
 			rt = _cfg_buffer(cbc);
 			if (rt != netp::OK) {
 				ch_errno() = rt;
 				m_chflag |= int(channel_flag::F_READ_ERROR);
 				return rt;
 			}
-			m_chflag &= ~int(channel_flag::F_CLOSED);
-			return rt;
+			return netp::OK;
 		}
 
 		//url example: tcp://0.0.0.0:80, udp://127.0.0.1:80

@@ -14,10 +14,10 @@ public:
 		ctx->fire_read(income);
 	}
 
-	void write(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& outlet, NRP<netp::promise<int>> const& ch_promise)  override
+	void write(NRP<netp::promise<int>> const& ch_promise,NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& outlet )  override
 	{
 		NETP_INFO(">>>: %u bytes", outlet->len() );
-		ctx->write(outlet,ch_promise);
+		ctx->write(ch_promise,outlet);
 	}
 	
 	void connected(NRP<netp::channel_handler_context> const& ctx)  override  {

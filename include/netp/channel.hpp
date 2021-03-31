@@ -145,10 +145,6 @@ namespace netp {
 				NETP_ASSERT((m_chflag&int(channel_flag::F_CLOSED)));
 				NETP_ASSERT(m_ch_close_p == nullptr);
 				m_ch_close_p = netp::make_ref<promise<int>>();
-				//m_ch_close_p->if_done([ch=NRP<channel>(this)](int const&) {
-				//	ch->ch_deinit();
-				//});
-
 				m_pipeline = netp::make_ref<channel_pipeline>(NRP<channel>(this));
 				m_pipeline->init();
 			}

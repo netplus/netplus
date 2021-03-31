@@ -147,7 +147,7 @@ namespace services {
 			NRP<netp::packet> packet = netp::make_ref<netp::packet>(256);
 			std::string hello_string("hello server");
 			packet->write<netp::u32_t>(services::C_ECHO_HELLO);
-			packet->write<netp::u32_t>(hello_string.length());
+			packet->write<netp::u32_t>(netp::u32_t(hello_string.length()));
 			packet->write((netp::byte_t const* const)hello_string.c_str(), hello_string.length());
 
 			packet->write_left<netp::u8_t>(services::S_ECHO);

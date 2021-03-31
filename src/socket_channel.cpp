@@ -5,38 +5,24 @@
 namespace netp {
 
 	int socket_channel::open() {
-		//if ( (m_chflag & int(channel_flag::F_CLOSED)) == 0) {
-		//	return netp::E_SOCKET_INVALID_STATE;
-		//}
 		NETP_ASSERT(m_fd == NETP_INVALID_SOCKET);
 		int rt = socket_open_impl();
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
-		m_chflag &= int(channel_flag::F_CLOSED);
 		return netp::OK;
 	}
 
 	int socket_channel::close() {
-		//if (m_chflag & int(channel_flag::F_CLOSED)) {
-		//	return netp::E_SOCKET_INVALID_STATE;
-		//}
-		
 		int rt = socket_close_impl();
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		return netp::OK;
 	}
 	int socket_channel::shutdown(int flag) {
-		//if (m_chflag & int(channel_flag::F_CLOSED)) {
-		//	return netp::E_SOCKET_INVALID_STATE;
-		//}
 		int rt = socket_shutdown_impl(flag);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		return netp::OK;
 	}
 
 	int socket_channel::bind(address const& addr) {
-		//if (m_chflag&int(channel_flag::F_CLOSED)) {
-		//	return netp::E_SOCKET_INVALID_STATE;
-		//}
 		NETP_ASSERT(m_laddr.is_null());
 		NETP_ASSERT((m_family) == addr.family());
 		int rt = socket_bind_impl(addr);
