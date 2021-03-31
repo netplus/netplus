@@ -45,11 +45,11 @@ namespace netp { namespace http {
 		rctx->reqp->set(std::make_tuple(code, r ));
 	}
 
-	void client::do_request(NRP<netp::http::message> const& m, NRP<netp::http::request_promise> const& reqp, std::chrono::seconds timeout) {
+	void client::do_request(NRP<netp::http::request_promise> const& reqp, NRP<netp::http::message> const& m, std::chrono::seconds timeout) {
 
 		if (!m_loop->in_event_loop()) {
-			m_loop->execute([C = NRP<client>(this), m, reqp, timeout]() {
-				C->do_request(m, reqp, timeout);
+			m_loop->execute([C = NRP<client>(this),reqp,  m, timeout]() {
+				C->do_request( reqp, m,timeout);
 			});
 			return;
 		}
@@ -88,9 +88,9 @@ namespace netp { namespace http {
 
 		NRP<http_request_ctx> ctx = netp::make_ref<http_request_ctx>();
 		ctx->state = http_request_state::S_REQUESTING;
-		ctx->reqm = m;
 		ctx->reqp = reqp;
 		ctx->writep = netp::make_ref<netp::promise<int>>();
+		ctx->reqm = m;
 		m_reqs.push_back(ctx);
 
 		ctx->writep->if_done([L = m_loop, reqp, C = NRP<client>(this)](int const& rt) {
@@ -100,7 +100,7 @@ namespace netp { namespace http {
 			}
 		});
 
-		m_ctx->write(outp, ctx->writep);
+		m_ctx->write(ctx->writep,outp);
 		NRP<netp::timer> tm_REQ = netp::make_ref<netp::timer>(timeout, [C = NRP<client>(this), ctx](NRP<netp::timer> const& tm) {
 			if (ctx->state == http_request_state::S_REQUESTING) {
 				NETP_WARN("[client]http req timeout, url: %s", ctx->reqm->url.c_str());
@@ -200,7 +200,7 @@ namespace netp { namespace http {
 		(void)ctx_;
 	}
 
-	void do_dial(const char* host, size_t len, NRP<client_dial_promise> const& dp, dial_cfg const& dcfg) {
+	void do_dial( NRP<client_dial_promise> const& dp, const char* host, size_t len,dial_cfg const& dcfg) {
 		if(host == 0 || len == 0) {
 			dp->set(std::make_tuple(netp::E_HTTP_INVALID_HOST, nullptr));
 			return ;
@@ -282,15 +282,15 @@ namespace netp { namespace http {
 			ch->pipeline()->add_last(httph);
 		};
 
-		netp::do_dial(dial_url.c_str(), dial_url.length(), fn_initializer, ch_dp, dcfg.cfg);
+		netp::do_dial(ch_dp, dial_url.c_str(), dial_url.length(), fn_initializer, dcfg.cfg);
 	}
 	void do_dial(std::string const& host, NRP<client_dial_promise> const& dp, dial_cfg const& dcfg) {
-		do_dial(host.c_str(), host.length(), dp, dcfg);
+		do_dial( dp, host.c_str(), host.length(),dcfg);
 	}
 
 	NRP<client_dial_promise> dial(const char* host, size_t len, dial_cfg const& dcfg) {
 		NRP<client_dial_promise> dp = netp::make_ref<client_dial_promise>();
-		do_dial(host,len, dp, dcfg );
+		do_dial(dp, host,len,dcfg );
 		return dp;
 	}
 
@@ -298,7 +298,7 @@ namespace netp { namespace http {
 		return dial(host.c_str(), host.length(), dcfg);
 	}
 
-	void do_get(std::string const& url, NRP<netp::http::request_promise> const& reqp, std::chrono::seconds timeout) {
+	void do_get(NRP<netp::http::request_promise> const& reqp, std::string const& url, std::chrono::seconds timeout) {
 		NRP<client_dial_promise> dp = netp::http::dial(url, { true,true,{},netp::make_ref<netp::socket_cfg>() });
 		dp->if_done([url,reqp,timeout]( std::tuple<int, NRP<client>> const& tupc ) {
 			int dialrt = std::get<0>(tupc);
@@ -306,13 +306,13 @@ namespace netp { namespace http {
 				reqp->set(std::make_tuple(dialrt,nullptr));
 				return;
 			}
-			std::get<1>(tupc)->do_get(url, reqp, timeout);
+			std::get<1>(tupc)->do_get(reqp,url,  timeout);
 		});
 	}
 
 	NRP<netp::http::request_promise> get(std::string const& url, std::chrono::seconds timeout) {
 		NRP<request_promise> rp = netp::make_ref<request_promise>();
-		do_get(url, rp, timeout);
+		do_get( rp, url,timeout);
 		return rp;
 	}
 

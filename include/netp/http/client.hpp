@@ -56,9 +56,9 @@ namespace netp { namespace http {
 		netp::ref_base
 	{
 		http_request_state state;
-		NRP<netp::http::message> reqm;
 		NRP<netp::http::request_promise> reqp;
 		NRP<netp::promise<int>> writep;
+		NRP<netp::http::message> reqm;
 	};
 
 	typedef std::vector<NRP<http_request_ctx>,netp::allocator<NRP<http_request_ctx>>> request_ctx_vector_t;
@@ -130,75 +130,75 @@ namespace netp { namespace http {
 		void http_cb_message_body(NRP<netp::channel_handler_context> const& ctx_, const char* data, u32_t len);
 		void http_cb_message_end(NRP<netp::channel_handler_context> const& ctx_);
 
-		void do_request(NRP<netp::http::message> const& r, NRP<netp::http::request_promise> const& promise, std::chrono::seconds timeout );
+		void do_request(NRP<netp::http::request_promise> const& promise, NRP<netp::http::message> const& r, std::chrono::seconds timeout );
 
-		void do_get(const char* uri, size_t len, NRP<header> const& H, NRP<request_promise> const& reqp, std::chrono::seconds const& timeout) {
+		void do_get(NRP<request_promise> const& reqp, const char* uri, size_t len, NRP<header> const& H, std::chrono::seconds const& timeout) {
 			NRP<message> reqm = netp::make_ref<message>();
 			reqm->url = string_t(uri, len);
 			reqm->opt = O_GET;
 			H != nullptr ? reqm->H = H : 0;
-			do_request(reqm, reqp, timeout);
+			do_request(reqp, reqm, timeout);
 		}
-		void do_get(std::string const& uri, NRP<header> const& H, NRP<request_promise> const& reqp, std::chrono::seconds const& timeout ) {
-			do_get(uri.c_str(), uri.length(), H, reqp, timeout);
+		void do_get( NRP<request_promise> const& reqp, std::string const& uri, NRP<header> const& H,std::chrono::seconds const& timeout ) {
+			do_get( reqp, uri.c_str(), uri.length(), H,timeout);
 		}
 
-		inline void do_get(std::string const& uri, NRP<request_promise> const& reqp, std::chrono::seconds const& timeout) {
-			do_get(uri, nullptr, reqp, timeout);
+		inline void do_get(NRP<request_promise> const& reqp, std::string const& uri, std::chrono::seconds const& timeout) {
+			do_get( reqp, uri, nullptr,timeout);
 		}
 
 		inline NRP<request_promise> get(std::string const& uri, NRP<header> const& H, std::chrono::seconds const& timeout) {
 			NRP<request_promise> rf = netp::make_ref<request_promise>();
-			do_get(uri, H, rf, timeout);
+			do_get( rf, uri, H,timeout);
 			return rf;
 		}
 
 		inline NRP<request_promise> get(std::string const& uri, std::chrono::seconds const& timeout ) {
 			NRP<request_promise> rf = netp::make_ref<request_promise>();
-			do_get(uri, rf, timeout);
+			do_get(rf, uri, timeout);
 			return rf;
 		}
 
 		inline NRP<request_promise> get(std::string const& uri) {
 			NRP<request_promise> rf = netp::make_ref<request_promise>();
-			do_get(uri, rf, std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT));
+			do_get(rf, uri, std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT));
 			return rf;
 		}
 
-		void do_post(const char* uri, size_t len, NRP<header> const& H, NRP<netp::packet> const& body, NRP<request_promise> const& reqp, std::chrono::seconds const& timeout) {
+		void do_post(NRP<request_promise> const& reqp, const char* uri, size_t len, NRP<header> const& H, NRP<netp::packet> const& body, std::chrono::seconds const& timeout) {
 			NRP<message> reqm = netp::make_ref<message>();
 			reqm->url = string_t(uri, len);
 			reqm->opt = O_POST;
 			H != nullptr ? reqm->H = H : 0;
 			body != nullptr ? reqm->body = body : 0;
-			do_request(reqm, reqp, timeout);
+			do_request( reqp, reqm,timeout);
 		}
 
-		void do_post(std::string const& uri, NRP<header> const& H , NRP<netp::packet> const& body, NRP<request_promise> const& reqp, std::chrono::seconds const& timeout ) {
-			do_post(uri.c_str(), uri.length(), H, body, reqp, timeout);
+		void do_post( NRP<request_promise> const& reqp, std::string const& uri, NRP<header> const& H , NRP<netp::packet> const& body,std::chrono::seconds const& timeout ) {
+			do_post( reqp, uri.c_str(), uri.length(), H, body,timeout);
 		}
 
 		inline NRP<netp::http::request_promise> post(std::string const& uri, NRP<header> const& H, NRP<netp::packet> const& body, std::chrono::seconds const& timeout ) {
 			NRP<request_promise> rf = netp::make_ref<request_promise>();
-			do_post(uri, H, body, rf, timeout);
+			do_post( rf, uri, H, body,timeout);
 			return rf;
 		}
 
 		inline NRP<netp::http::request_promise> post(std::string const& uri, NRP<header> const& H, NRP<netp::packet> const& body) {
 			NRP<request_promise> rf = netp::make_ref<request_promise>();
-			do_post(uri, H, body, rf, std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT) );
+			do_post( rf, uri, H, body,std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT) );
 			return rf;
 		}
 
 		NRP<netp::promise<int>> close();
 	};
 
-	extern void do_dial(const char* host, size_t len, NRP<client_dial_promise> const& dp, dial_cfg const& cfg = { true,true,{}, netp::make_ref<netp::socket_cfg>() });
+	extern void do_dial(NRP<client_dial_promise> const& dp, const char* host, size_t len, dial_cfg const& cfg = { true,true,{}, netp::make_ref<netp::socket_cfg>() });
 
 	extern NRP<client_dial_promise> dial(const char* host, size_t len, dial_cfg const& cfg = { true,true,{},netp::make_ref<netp::socket_cfg>() });
 	extern NRP<client_dial_promise> dial(std::string const& host, dial_cfg const& cfg = { true,true,{},netp::make_ref<netp::socket_cfg>() });
 
-	extern void do_get(std::string const& url, NRP<netp::http::request_promise> const& reqp, std::chrono::seconds timeout = std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT));
+	extern void do_get(NRP<netp::http::request_promise> const& reqp, std::string const& url, std::chrono::seconds timeout = std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT));
 	extern NRP<netp::http::request_promise> get(std::string const& url , std::chrono::seconds timeout = std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT) );
 
 }}

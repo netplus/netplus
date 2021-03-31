@@ -59,7 +59,7 @@ namespace netp {
 	}
 
 	//we must make sure that the creation of the socket happens on its thead(L)
-	void do_async_create_socket(NRP<netp::socket_cfg> const& cfg, NRP <netp::promise<std::tuple<int, NRP<socket_channel>>>> const& p) {
+	void do_async_create_socket(NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> const& p,NRP<netp::socket_cfg> const& cfg) {
 		NETP_ASSERT(cfg->L != nullptr);
 		cfg->L->execute([cfg, p]() {
 #ifdef NETP_HAS_POLLER_IOCP
@@ -77,18 +77,18 @@ namespace netp {
 		if (cfg->L == nullptr) {
 			cfg->L = netp::io_event_loop_group::instance()->next(NETP_DEFAULT_POLLER_TYPE);
 		}
-		do_async_create_socket(cfg, p);
+		do_async_create_socket(p, cfg);
 		return p;
 	}
 
-	void do_dial(address const& addr, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_cfg> const& cfg) {
+	void do_dial(NRP<channel_dial_promise> const& ch_dialf, address const& addr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
 		if (cfg->L == nullptr) {
 			NETP_ASSERT(cfg->type != NETP_AF_USER);
 			cfg->L = io_event_loop_group::instance()->next();
 		}
 		if (!cfg->L->in_event_loop()) {
 			cfg->L->schedule([addr, initializer, ch_dialf, cfg]() {
-				do_dial(addr, initializer, ch_dialf, cfg);
+				do_dial(ch_dialf, addr, initializer, cfg);
 			});
 			return;
 		}
@@ -113,10 +113,10 @@ namespace netp {
 			}
 		});
 
-		so->do_dial(addr, initializer, so_dialf);
+		so->do_dial(so_dialf, addr, initializer);
 	}
 
-	void do_dial(netp::size_t idx, std::vector<address> const& addrs, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_cfg> const& cfg) {
+	void do_dial(NRP<channel_dial_promise> const& ch_dialf, netp::size_t idx, std::vector<address> const& addrs, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
 		if (idx >= addrs.size()) {
 			NETP_WARN("[socket]dail failed after try count: %u", idx);
 			ch_dialf->set(std::make_tuple(netp::E_SOCKET_NO_AVAILABLE_ADDR, nullptr));
@@ -131,13 +131,13 @@ namespace netp {
 				return;
 			}
 
-			do_dial(nidx, addrs, initializer, ch_dialf, cfg);
+			do_dial( ch_dialf, nidx, addrs, initializer,cfg);
 		});
 
-		do_dial(addrs[idx], initializer, _dp, cfg);
+		do_dial(_dp, addrs[idx], initializer, cfg);
 	}
 
-	void do_dial(const char* dialurl, size_t len, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_cfg> const& cfg) {
+	void do_dial(NRP<channel_dial_promise> const& ch_dialf, const char* dialurl, size_t len, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
 		socket_url_parse_info info;
 		int rt = parse_socket_url(dialurl, len, info);
 		if (rt != netp::OK) {
@@ -152,7 +152,7 @@ namespace netp {
 		}
 
 		if (netp::is_dotipv4_decimal_notation(info.host.c_str())) {
-			do_dial(address(info.host.c_str(), info.port, cfg->family), initializer, ch_dialf, cfg);
+			do_dial(ch_dialf, address(info.host.c_str(), info.port, cfg->family), initializer, cfg);
 			return;
 		}
 
@@ -174,7 +174,7 @@ namespace netp {
 				dialaddrs.push_back(__a);
 			}
 
-			do_dial(0, dialaddrs, initializer, ch_dialf, cfg);
+			do_dial(ch_dialf, 0, dialaddrs, initializer, cfg);
 		});
 	}
 
@@ -205,7 +205,7 @@ namespace netp {
 				so->ch_close_impl(nullptr);
 			}
 			});
-		so->do_listen_on(laddr, initializer, listen_f, cfg, backlog);
+		so->do_listen_on(listen_f, laddr, initializer, cfg, backlog);
 	}
 
 	NRP<channel_listen_promise> listen_on(const char* listenurl, size_t len, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg, int backlog ) {

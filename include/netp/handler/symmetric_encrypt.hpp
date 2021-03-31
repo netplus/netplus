@@ -37,7 +37,7 @@ namespace netp { namespace handler {
 			ctx->fire_read(decrypted);
 		}
 
-		void write(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<promise<int>> const& chp) {
+		void write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) {
 			NETP_ASSERT(outlet != nullptr);
 			NETP_ASSERT(m_cipher != nullptr);
 
@@ -45,7 +45,7 @@ namespace netp { namespace handler {
 			int rt = m_cipher->encrypt(outlet, encrypted);
 			NETP_ASSERT(rt == netp::OK);
 
-			ctx->write(encrypted, chp);
+			ctx->write(intp, encrypted);
 		}
 	};
 }}

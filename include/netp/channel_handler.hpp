@@ -59,15 +59,15 @@ namespace netp {
 		virtual void readfrom(NRP<channel_handler_context> const& ctx, NRP<packet> const& income, address const& from);
 
 		//for outbound
-		virtual void write(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<promise<int>> const& chp);
+		virtual void write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet);
 		virtual void flush(NRP<channel_handler_context> const& ctx);
 
-		virtual void close(NRP<channel_handler_context> const& ctx, NRP<promise<int>> const& chp);
-		virtual void close_read(NRP<channel_handler_context> const& ctx, NRP<promise<int>> const& chp);
-		virtual void close_write(NRP<channel_handler_context> const& ctx, NRP<promise<int>> const& chp);
+		virtual void close(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx);
+		virtual void close_read(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx);
+		virtual void close_write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx);
 
 		//for outbound_to
-		virtual void write_to(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, address const& to, NRP<promise<int>> const& chp);
+		virtual void write_to(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, address const& to);
 	};
 
 	class channel_handler_head :
@@ -78,12 +78,12 @@ namespace netp {
 			channel_handler_abstract(CH_OUTBOUND)
 		{}
 	protected:
-		void write(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<promise<int>> const& chp) ;
-		void close(NRP<channel_handler_context> const& ctx, NRP<promise<int>> const& chp);
-		void close_read(NRP<channel_handler_context> const& ctx, NRP<promise<int>> const& chp);
-		void close_write(NRP<channel_handler_context> const& ctx, NRP<promise<int>> const& chp);
+		void write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) ;
+		void close(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx );
+		void close_read(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx );
+		void close_write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx);
 
-		void write_to(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, address const& to, NRP<promise<int>> const& chp);
+		void write_to(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, address const& to );
 	};
 
 	class channel_handler_tail:

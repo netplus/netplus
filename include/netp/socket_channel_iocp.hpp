@@ -125,7 +125,7 @@ namespace netp {
 		}
 	*/
 	public:
-		void ch_io_accept(fn_channel_initializer_t const& fn_accepted_initializer) override {
+		void ch_io_accept(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& cfg, fn_io_event_t const& fn = nullptr) override {
 			NETP_ASSERT(L->in_event_loop());
 			if (m_chflag & int(channel_flag::F_WATCH_READ)) {
 				NETP_TRACE_SOCKET("[socket][%s][_do_io_accept]F_WATCH_READ state already", ch_info().c_str());
@@ -152,7 +152,7 @@ namespace netp {
 			NETP_ASSERT(rt == netp::OK);
 			ctx->ol_r->action = iocp_ol_action::ACCEPTEX;
 			ctx->ol_r->action_status |= AS_WAIT_IOCP;
-			ctx->ol_r->fn_ol_done = std::bind(&socket_channel_iocp::__iocp_do_AcceptEx_done, NRP<socket_channel_iocp>(this), fn_accepted_initializer, std::placeholders::_1, std::placeholders::_2);
+			ctx->ol_r->fn_ol_done = std::bind(&socket_channel_iocp::__iocp_do_AcceptEx_done, NRP<socket_channel_iocp>(this), fn_accepted_initializer, cfg, std::placeholders::_1, std::placeholders::_2);
 		}
 
 		void ch_io_end_accept() override {

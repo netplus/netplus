@@ -83,6 +83,10 @@ namespace netp {
 	//if write order is important , writer should maintain it's own write queue
 	struct io_ctx;
 	typedef std::function<void(int status, io_ctx*)> fn_io_event_t;
+
+	class socket_cfg;
+	typedef std::function<void(NRP<socket_cfg> const&, fn_channel_initializer_t const&, int, io_ctx*)> fn_io_accept_event_t;
+
 	class channel :
 		public netp::io_monitor
 	{
@@ -210,13 +214,13 @@ private: \
 		} \
 public: \
 		inline NRP<promise<int>> ch_##NAME() {\
-			const NRP<promise<int>> chf = netp::make_ref<promise<int>>(); \
-			channel::ch_##NAME(chf); \
-			return chf;\
+			const NRP<promise<int>> intp = netp::make_ref<promise<int>>(); \
+			channel::ch_##NAME(intp); \
+			return intp;\
 		} \
-		inline void ch_##NAME(NRP<promise<int>> const& chp) { \
-			L->execute([_ch=NRP<channel>(this), chp]() { \
-				_ch->__ch_##NAME(chp); \
+		inline void ch_##NAME(NRP<promise<int>> const& intp) { \
+			L->execute([_ch=NRP<channel>(this), intp]() { \
+				_ch->__ch_##NAME(intp); \
 			}); \
 		} \
 
@@ -226,22 +230,22 @@ public: \
 
 #define CH_FUTURE_ACTION_IMPL_PACKET(NAME) \
 private: \
-		inline void __ch_##NAME(NRP<packet> const& outlet, NRP<promise<int>> const& chp) {\
+		inline void __ch_##NAME(NRP<promise<int>> const& intp, NRP<packet> const& outlet) {\
 			if (m_pipeline == nullptr) { \
-					chp->set(netp::E_CHANNEL_CLOSED); \
+				intp->set(netp::E_CHANNEL_CLOSED); \
 				return; \
 			} \
-			m_pipeline->NAME(outlet,chp); \
+			m_pipeline->NAME(intp,outlet); \
 		} \
 public: \
 		inline NRP<promise<int>> ch_##NAME(NRP<packet> const& outlet) {\
-			const NRP<promise<int>> chf = netp::make_ref<promise<int>>(); \
-			ch_##NAME(outlet,chf); \
-			return chf; \
+			const NRP<promise<int>> intp = netp::make_ref<promise<int>>(); \
+			ch_##NAME(intp,outlet); \
+			return intp; \
 		} \
-		inline void ch_##NAME(NRP<packet> const& outlet, NRP<promise<int>> const& chp) {\
-			L->execute([_ch=NRP<channel>(this), outlet, chp]() { \
-				_ch->__ch_##NAME(outlet, chp); \
+		inline void ch_##NAME(NRP<promise<int>> const& intp, NRP<packet> const& outlet) {\
+			L->execute([_ch=NRP<channel>(this), intp, outlet]() { \
+				_ch->__ch_##NAME(intp, outlet); \
 			}); \
 		} \
 
@@ -249,22 +253,22 @@ public: \
 
 #define CH_FUTURE_ACTION_IMPL_PACKET_ADDR(NAME) \
 private: \
-		inline void __ch_##NAME(NRP<packet> const& outlet, address const& to, NRP<promise<int>> const& chp) {\
+		inline void __ch_##NAME(NRP<promise<int>> const& intp, NRP<packet> const& outlet, address const& to) {\
 			if (m_pipeline == nullptr) { \
-					chp->set(netp::E_CHANNEL_CLOSED); \
+				intp->set(netp::E_CHANNEL_CLOSED); \
 				return; \
 			} \
-			m_pipeline->NAME(outlet,to,chp); \
+			m_pipeline->NAME(intp,outlet,to); \
 		} \
 public: \
 		inline NRP<promise<int>> ch_##NAME(NRP<packet> const& outlet, address const& to) {\
-			const NRP<promise<int>> chf = netp::make_ref<promise<int>>(); \
-			ch_##NAME(outlet,to,chf); \
-			return chf; \
+			const NRP<promise<int>> intp = netp::make_ref<promise<int>>(); \
+			ch_##NAME(intp,outlet,to); \
+			return intp; \
 		} \
-		inline void ch_##NAME(NRP<packet> const& outlet, address const& to, NRP<promise<int>> const& chp) {\
-			L->execute([_ch=NRP<channel>(this), outlet, to,chp]() { \
-				_ch->__ch_##NAME(outlet,to, chp); \
+		inline void ch_##NAME(NRP<promise<int>> const& intp, NRP<packet> const& outlet, address const& to) {\
+			L->execute([_ch=NRP<channel>(this),intp, outlet, to]() { \
+				_ch->__ch_##NAME(intp,outlet,to); \
 			}); \
 		} \
 
@@ -302,12 +306,12 @@ public: \
 		virtual NRP<promise<int>> ch_get_write_buffer_size() = 0;
 		virtual NRP<promise<int>> ch_set_nodelay() = 0;
 
-		virtual void ch_write_impl(NRP<packet> const& outlet, NRP<promise<int>> const& chp) = 0;
-		virtual void ch_write_to_impl(NRP<packet> const& outlet, netp::address const& to, NRP<promise<int>> const& chp) { 
+		virtual void ch_write_impl(NRP<promise<int>> const& intp,NRP<packet> const& outlet) = 0;
+		virtual void ch_write_to_impl(NRP<promise<int>> const& intp, NRP<packet> const& outlet, netp::address const& to) {
 			NETP_ASSERT("to_impl"); 
 			(void)outlet;
 			(void)to;
-			(void)chp;
+			(void)intp;
 		};
 
 		virtual void ch_close_read_impl(NRP<promise<int>> const& chp) = 0;
@@ -317,7 +321,7 @@ public: \
 		virtual void ch_io_begin(fn_io_event_t const& fn = nullptr) = 0;
 		virtual void ch_io_end() = 0;
 
-		virtual void ch_io_accept(fn_io_event_t const& fn=nullptr) = 0;
+		virtual void ch_io_accept(fn_channel_initializer_t const&, NRP<socket_cfg> const&, fn_io_event_t const& fn=nullptr) = 0;
 		virtual void ch_io_end_accept() = 0;
 
 		virtual void ch_io_read( fn_io_event_t const& fn = nullptr) = 0;

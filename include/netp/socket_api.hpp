@@ -226,8 +226,7 @@ namespace netp {
 		int mode = ::fcntl(fd, F_GETFL, 0);
 		if (onoff) {
 			mode |= O_NONBLOCK;
-		}
-		else {
+		} else {
 			mode &= ~O_NONBLOCK;
 		}
 		rt = ::fcntl(fd, F_SETFL, mode);

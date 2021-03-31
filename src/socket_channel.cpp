@@ -265,10 +265,10 @@ int socket_base::get_left_snd_queue() const {
 		}
 	}
 
-	void socket_channel::do_listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted_initializer, NRP<promise<int>> const& chp, NRP<socket_cfg> const& ccfg, int backlog ) {
+	void socket_channel::do_listen_on(NRP<promise<int>> const& intp, address const& addr, fn_channel_initializer_t const& fn_accepted_initializer, NRP<socket_cfg> const& ccfg, int backlog ) {
 		if (!L->in_event_loop()) {
 			L->schedule([_this=NRP<socket_channel>(this), addr, fn_accepted_initializer, chp,ccfg, backlog]() ->void {
-				_this->do_listen_on(addr, fn_accepted_initializer, chp, ccfg, backlog);
+				_this->do_listen_on(intp, addr, fn_accepted_initializer, ccfg, backlog);
 			});
 			return;
 		}
@@ -295,18 +295,17 @@ int socket_base::get_left_snd_queue() const {
 		ccfg->type = m_type;
 		ccfg->proto = m_protocol;
 
-		ch_io_begin([fn_accepted_initializer,chp, ccfg, so = NRP<socket_channel>(this)]( int status, io_ctx*){
-			chp->set(status);
+		ch_io_begin([intp, fn_accepted_initializer,ccfg, ch = NRP<socket_channel>(this)]( int status, io_ctx*){
+			intp->set(status);
 			if(status == netp::OK) {
-				auto fn_accept = std::bind(&socket_channel::__do_io_accept, so, ccfg, fn_accepted_initializer, std::placeholders::_1, std::placeholders::_2);
-				so->ch_io_accept(fn_accept);
+				ch->ch_io_accept(fn_accepted_initializer, ccfg);
 			}
 		});
 	}
 
-	void socket_channel::do_dial(address const& addr, fn_channel_initializer_t const& fn_initializer, NRP<promise<int>> const& dialp) {
+	void socket_channel::do_dial(NRP<promise<int>> const& dialp, address const& addr, fn_channel_initializer_t const& fn_initializer ) {
 		NETP_ASSERT(L->in_event_loop());
-		ch_io_begin([so=NRP<socket_channel>(this),addr, fn_initializer, dialp](int status, io_ctx*) {
+		ch_io_begin([dialp, so=NRP<socket_channel>(this),addr, fn_initializer](int status, io_ctx*) {
 			NETP_ASSERT(so->L->in_event_loop());
 			if (status != netp::OK) {
 				dialp->set(status);
@@ -422,7 +421,7 @@ int socket_base::get_left_snd_queue() const {
 		ch_io_read();
 	}
 
-	void socket_channel::__do_io_accept(NRP<socket_cfg> const& cfg, fn_channel_initializer_t const& fn_initializer, int status, io_ctx* ) {
+	void socket_channel::__do_io_accept_impl(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& cfg, int status, io_ctx* ) {
 
 		NETP_ASSERT(L->in_event_loop());
 		/*ignore the left fds, cuz we're closed*/
@@ -445,7 +444,20 @@ int socket_base::get_left_snd_queue() const {
 			
 			NRP<io_event_loop> LL = io_event_loop_group::instance()->next(L->poller_type());
 			LL->execute([LL,fn_initializer,nfd, laddr, raddr, cfg]() {
-				std::tuple<int, NRP<socket_channel>> tupc = accepted_create<socket_channel>(LL,nfd, laddr,raddr, cfg);
+				NRP<socket_cfg> cfg_ = netp::make_ref<socket_cfg>();
+				cfg_->fd = nfd;
+				cfg_->family = cfg->family;
+				cfg_->type = cfg->type;
+				cfg_->proto = cfg->proto;
+				cfg_->laddr = laddr;
+				cfg_->raddr = raddr;
+
+				cfg_->L = LL;
+				cfg_->option = cfg->option;
+				cfg_->kvals = cfg->kvals;
+				cfg_->sock_buf = cfg->sock_buf;
+				cfg_->bdlimit = cfg->bdlimit;
+				std::tuple<int, NRP<socket_channel>> tupc = create<socket_channel>(cfg_);
 				int rt = std::get<0>(tupc);
 				if (rt != netp::OK) {
 					NETP_CLOSE_SOCKET(nfd);
@@ -726,13 +738,13 @@ int socket_base::get_left_snd_queue() const {
 			return; \
 		} \
 
-	void socket_channel::ch_write_impl(NRP<packet> const& outlet, NRP<promise<int>> const& chp)
+	void socket_channel::ch_write_impl(NRP<promise<int>> const& intp, NRP<packet> const& outlet)
 	{
 		NETP_ASSERT(L->in_event_loop());
-		__CH_WRITEABLE_CHECK__(outlet, chp)
+		__CH_WRITEABLE_CHECK__(outlet, intp)
 		m_outbound_entry_q.push_back({
 			netp::make_ref<netp::packet>(outlet->head(), outlet_len),
-			chp
+			intp
 		});
 		m_noutbound_bytes += outlet_len;
 
@@ -750,13 +762,13 @@ int socket_base::get_left_snd_queue() const {
 #endif
 	}
 
-	void socket_channel::ch_write_to_impl(NRP<packet> const& outlet, netp::address const& to, NRP<promise<int>> const& chp) {
+	void socket_channel::ch_write_to_impl( NRP<promise<int>> const& intp, NRP<packet> const& outlet, netp::address const& to) {
 		NETP_ASSERT(L->in_event_loop());
 
-		__CH_WRITEABLE_CHECK__(outlet, chp)
+		__CH_WRITEABLE_CHECK__(outlet, intp)
 		m_outbound_entry_q.push_back({
 			netp::make_ref<netp::packet>(outlet->head(), outlet_len),
-			chp,
+			intp,
 			to,
 		});
 		m_noutbound_bytes += outlet_len;
@@ -852,36 +864,15 @@ int socket_base::get_left_snd_queue() const {
 			});
 		}
 
-		void socket_channel::ch_io_accept(fn_io_event_t const& fn ) {
-			if (!L->in_event_loop()) {
-				L->schedule([ch = NRP<channel>(this), fn]() {
-					ch->ch_io_accept(fn);
-				});
+		void socket_channel::ch_io_accept(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& cfg, fn_io_event_t const& fn) {
+			if (fn != nullptr) {
+				ch_io_read(fn);
+				(void)fn_initializer;
+				(void)cfg;
 				return;
 			}
-			NETP_ASSERT(L->in_event_loop());
-
-			if (m_chflag & int(channel_flag::F_WATCH_READ)) {
-				NETP_TRACE_SOCKET("[socket][%s][_do_io_accept]F_WATCH_READ state already", ch_info().c_str());
-				return;
-			}
-
-			if (m_chflag & int(channel_flag::F_READ_SHUTDOWN)) {
-				NETP_TRACE_SOCKET("[socket][%s][_do_io_accept]cancel for rd closed already", ch_info().c_str());
-				return;
-			}
-			NETP_TRACE_SOCKET("[socket][%s][_do_io_accept]watch IO_READ", ch_info().c_str());
-
-			//@TODO: provide custome accept feature
-			//const fn_io_event_t _fn = cb_accepted == nullptr ? std::bind(&socket::__cb_async_accept_impl, NRP<socket>(this), std::placeholders::_1) : cb_accepted;
-			int rt = L->io_do(io_action::READ, m_io_ctx);
-			if (NETP_UNLIKELY(rt != netp::OK)) {
-				return;
-			}
-
-			m_chflag &= ~int(channel_flag::F_USE_DEFAULT_WRITE);
-			m_chflag |= int(channel_flag::F_WATCH_READ);
-			m_fn_read = netp::allocator<fn_io_event_t>::make(fn);
+			//posix impl
+			ch_io_read(std::bind(&socket_channel::__do_io_accept_impl, NRP<socket_channel>(this), fn_initializer, cfg, std::placeholders::_1, std::placeholders::_2));
 		}
 
 		void socket_channel::ch_io_read(fn_io_event_t const& fn_read) {

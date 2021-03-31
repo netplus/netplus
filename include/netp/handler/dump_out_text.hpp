@@ -17,10 +17,10 @@ public:
 		channel_handler_abstract(CH_OUTBOUND_WRITE)
 	{}
 
-	void write(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& outlet,NRP<promise<int>> const& chp)
+	void write(NRP<promise<int>> const& intp, NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& outlet)
 	{
 		NETP_INFO(">>> %s\n%s", ctx->ch->ch_info().c_str(), std::string( (char*)outlet->head(), outlet->len() ).c_str() );
-		ctx->write(outlet,chp);
+		ctx->write(intp, outlet);
 	}
 };
 

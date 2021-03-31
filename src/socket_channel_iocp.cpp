@@ -38,7 +38,7 @@ namespace netp {
 		return ec;
 	}
 
-	void socket_channel_iocp::__iocp_do_AcceptEx_done(fn_channel_initializer_t const& fn_initializer, int status, io_ctx* ctx_) {
+	void socket_channel_iocp::__iocp_do_AcceptEx_done(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& cfg,  int status, io_ctx* ctx_) {
 		NETP_ASSERT(L->in_event_loop());
 		iocp_ctx* ctx = (iocp_ctx*)ctx_;
 		NETP_ASSERT( (ctx->ol_r->action_status & AS_DONE) == 0);
@@ -71,8 +71,21 @@ namespace netp {
 			NETP_ASSERT(raddr_in->sin_family == m_family);
 
 			NRP<io_event_loop> LL = io_event_loop_group::instance()->next(L->poller_type());
-			LL->execute([LL, fn_initializer, nfd, laddr, raddr, cfg = m_listen_cfg]() {
-				std::tuple<int, NRP<socket_channel_iocp>> tupc = accepted_create<socket_channel_iocp>(LL, nfd, laddr, raddr, cfg);
+			LL->execute([LL, fn_initializer, nfd, laddr, raddr, cfg]() {
+				NRP<socket_cfg> cfg_ = netp::make_ref<socket_cfg>();
+				cfg_->fd = nfd;
+				cfg_->family = cfg->family;
+				cfg_->type = cfg->type;
+				cfg_->proto = cfg->proto;
+				cfg_->laddr = laddr;
+				cfg_->raddr = raddr;
+
+				cfg_->L = LL;
+				cfg_->option = cfg->option;
+				cfg_->kvals = cfg->kvals;
+				cfg_->sock_buf = cfg->sock_buf;
+				cfg_->bdlimit = cfg->bdlimit;
+				std::tuple<int, NRP<socket_channel_iocp>> tupc = accepted_create<socket_channel_iocp>(cfg_);
 				int rt = std::get<0>(tupc);
 				if (rt != netp::OK) {
 					NETP_CLOSE_SOCKET(nfd);

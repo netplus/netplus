@@ -31,12 +31,12 @@
 	}
 
 #define VOID_HANDLER_DEFAULT_IMPL_PROMISE(NAME,FLAG, HANDLER_NAME) \
-	void HANDLER_NAME::NAME(NRP<channel_handler_context> const& ctx, NRP<promise<int>> const& chp) { \
+	void HANDLER_NAME::NAME(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx) { \
 		/*ctx->NAME(chp); */\
 		NETP_ASSERT(CH_H_FLAG & FLAG); \
 		NETP_THROW(#FLAG"MUST IMPL ITS OWN "#NAME); \
+		(void)intp; \
 		(void)ctx; \
-		(void)chp; \
 	}
 
 namespace netp {
@@ -66,12 +66,12 @@ namespace netp {
 		(void)from;
 	}
 	
-	void channel_handler_abstract::write(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<promise<int>> const& chp) {
+	void channel_handler_abstract::write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) {
 		NETP_ASSERT(CH_H_FLAG & CH_OUTBOUND_WRITE);
 		NETP_THROW("CH_OUTBOUND_WRITE MUST IMPL ITS OWN write");
+		(void)intp;
 		(void)ctx;
 		(void)outlet;
-		(void)chp;
 	}
 
 	VOID_HANDLER_DEFAULT_IMPL_0(flush, CH_OUTBOUND_FLUSH, channel_handler_abstract)
@@ -80,33 +80,33 @@ namespace netp {
 	VOID_HANDLER_DEFAULT_IMPL_PROMISE(close_write, CH_OUTBOUND_CLOSE_WRITE, channel_handler_abstract)
 
 
-	void channel_handler_abstract::write_to(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, address const& to, NRP<promise<int>> const& chp) {
+	void channel_handler_abstract::write_to(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, address const& to) {
 		NETP_ASSERT(CH_H_FLAG & CH_OUTBOUND_WRITE_TO);
 		NETP_THROW("CH_OUTBOUND_WRITE_TO MUST IMPL ITS OWN write_to");
+		(void)intp;
 		(void)ctx;
 		(void)outlet;
 		(void)to;
-		(void)chp;
 	}
 
-	void channel_handler_head::write(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<promise<int>> const& chp) {
-		ctx->ch->ch_write_impl(outlet,chp);
+	void channel_handler_head::write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet ) {
+		ctx->ch->ch_write_impl(intp,outlet);
 	}
 
-	void channel_handler_head::close(NRP<channel_handler_context> const& ctx, NRP<promise<int>> const& chp) {
+	void channel_handler_head::close(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx) {
 		ctx->ch->ch_close_impl(chp);
 	}
 
-	void channel_handler_head::close_read(NRP<channel_handler_context> const& ctx, NRP<promise<int>> const& chp) {
+	void channel_handler_head::close_read(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx ) {
 		ctx->ch->ch_close_read_impl(chp);
 	}
 
-	void channel_handler_head::close_write(NRP<channel_handler_context> const& ctx, NRP<promise<int>> const& chp) {
+	void channel_handler_head::close_write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx ) {
 		ctx->ch->ch_close_write_impl(chp);
 	}
 
-	void channel_handler_head::write_to(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, address const& to, NRP<promise<int>> const& chp) {
-		ctx->ch->ch_write_to_impl(outlet, to, chp);
+	void channel_handler_head::write_to(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, address const& to) {
+		ctx->ch->ch_write_to_impl(intp, outlet, to);
 	}
 
 	void channel_handler_tail::connected(NRP<channel_handler_context> const& ctx) {

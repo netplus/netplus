@@ -88,14 +88,14 @@ namespace netp { namespace traffic {
 			}
 
 			if (m_outlets.size()) {
-				NRP<netp::promise<int>> wf = netp::make_ref<netp::promise<int>>();
-				wf->if_done([L = m_loop, r = NRP<_self_t>(this)](int const& rt) {
+				NRP<netp::promise<int>> wp = netp::make_ref<netp::promise<int>>();
+				wp->if_done([L = m_loop, r = NRP<_self_t>(this)](int const& rt) {
 					L->execute([r, rt]() {
 						r->_flush_done(rt);
 					});
 				});
 				m_state = repeater_state::S_WRITING;
-				m_writer->write(m_outlets.front(), wf);
+				m_writer->write(wp,m_outlets.front());
 			}
 		}
 
