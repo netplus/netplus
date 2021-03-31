@@ -5,36 +5,38 @@
 namespace netp {
 
 	int socket_channel::open() {
-		if ( (m_chflag & int(channel_flag::F_CLOSED)) == 0) {
-			return netp::E_SOCKET_INVALID_STATE;
-		}
+		//if ( (m_chflag & int(channel_flag::F_CLOSED)) == 0) {
+		//	return netp::E_SOCKET_INVALID_STATE;
+		//}
 		NETP_ASSERT(m_fd == NETP_INVALID_SOCKET);
 		int rt = socket_open_impl();
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+		m_chflag &= int(channel_flag::F_CLOSED);
 		return netp::OK;
 	}
 
 	int socket_channel::close() {
-		if (m_chflag & int(channel_flag::F_CLOSED)) {
-			return netp::E_SOCKET_INVALID_STATE;
-		}
+		//if (m_chflag & int(channel_flag::F_CLOSED)) {
+		//	return netp::E_SOCKET_INVALID_STATE;
+		//}
+		
 		int rt = socket_close_impl();
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		return netp::OK;
 	}
 	int socket_channel::shutdown(int flag) {
-		if (m_chflag & int(channel_flag::F_CLOSED)) {
-			return netp::E_SOCKET_INVALID_STATE;
-		}
+		//if (m_chflag & int(channel_flag::F_CLOSED)) {
+		//	return netp::E_SOCKET_INVALID_STATE;
+		//}
 		int rt = socket_shutdown_impl(flag);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		return netp::OK;
 	}
 
 	int socket_channel::bind(address const& addr) {
-		if (m_chflag&int(channel_flag::F_CLOSED)) {
-			return netp::E_SOCKET_INVALID_STATE;
-		}
+		//if (m_chflag&int(channel_flag::F_CLOSED)) {
+		//	return netp::E_SOCKET_INVALID_STATE;
+		//}
 		NETP_ASSERT(m_laddr.is_null());
 		NETP_ASSERT((m_family) == addr.family());
 		int rt = socket_bind_impl(addr);
@@ -267,7 +269,7 @@ int socket_base::get_left_snd_queue() const {
 
 	void socket_channel::do_listen_on(NRP<promise<int>> const& intp, address const& addr, fn_channel_initializer_t const& fn_accepted_initializer, NRP<socket_cfg> const& ccfg, int backlog ) {
 		if (!L->in_event_loop()) {
-			L->schedule([_this=NRP<socket_channel>(this), addr, fn_accepted_initializer, chp,ccfg, backlog]() ->void {
+			L->schedule([_this=NRP<socket_channel>(this), addr, fn_accepted_initializer, intp,ccfg, backlog]() ->void {
 				_this->do_listen_on(intp, addr, fn_accepted_initializer, ccfg, backlog);
 			});
 			return;
@@ -278,7 +280,7 @@ int socket_base::get_left_snd_queue() const {
 		if (rt != netp::OK) {
 			m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
 			NETP_WARN("[socket]socket::bind(): %d, addr: %s", rt, addr.to_string().c_str() );
-			chp->set(rt);
+			intp->set(rt);
 			return;
 		}
 
@@ -286,7 +288,7 @@ int socket_base::get_left_snd_queue() const {
 		if (rt != netp::OK) {
 			m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
 			NETP_WARN("[socket]socket::listen(%u): %d, addr: %s",backlog, rt, addr.to_string().c_str());
-			chp->set(rt);
+			intp->set(rt);
 			return;
 		}
 
@@ -329,7 +331,7 @@ int socket_base::get_left_snd_queue() const {
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(m_chflag & int(channel_flag::F_LISTENING));
 		if ( (m_chflag & int(channel_flag::F_LISTENING)) ==0 ) {
-			netp_set_last_errno(netp::E_SOCKET_INVALID_STATE);
+			netp_socket_set_last_errno(netp::E_SOCKET_INVALID_STATE);
 			return SOCKET(NETP_SOCKET_ERROR);
 		}
 
@@ -434,6 +436,7 @@ int socket_base::get_left_snd_queue() const {
 			SOCKET nfd = socket_accept_impl( raddr,laddr);
 			if (nfd == NETP_INVALID_SOCKET) {
 				status = netp_socket_get_last_errno();
+				_NETP_REFIX_EWOULDBLOCK(status);
 				if (status == netp::E_EINTR) {
 					status = netp::OK;
 					continue;
@@ -457,17 +460,19 @@ int socket_base::get_left_snd_queue() const {
 				cfg_->kvals = cfg->kvals;
 				cfg_->sock_buf = cfg->sock_buf;
 				cfg_->bdlimit = cfg->bdlimit;
-				std::tuple<int, NRP<socket_channel>> tupc = create<socket_channel>(cfg_);
-				int rt = std::get<0>(tupc);
+				int rt;
+				NRP<socket_channel> so;
+				std::tie(rt,  so) = create_socket_channel(cfg_);
 				if (rt != netp::OK) {
 					NETP_CLOSE_SOCKET(nfd);
+					return;
 				}
-				NRP<socket_channel> const& ch = std::get<1>(tupc);
-				ch->__do_accept_fire(fn_initializer);
+				NETP_ASSERT(so != nullptr);
+				so->__do_accept_fire(fn_initializer);
 			});
 		}
 
-		if (IS_ERRNO_EQUAL_WOULDBLOCK(status)) {
+		if (netp::E_EWOULDBLOCK==(status)) {
 			//TODO: check the following errno
 			//ENETDOWN, EPROTO,ENOPROTOOPT, EHOSTDOWN, ENONET, EHOSTUNREACH, EOPNOTSUPP
 			return;

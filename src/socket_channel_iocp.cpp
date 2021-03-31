@@ -95,7 +95,7 @@ namespace netp {
 				});
 		}
 
-		if (IS_ERRNO_EQUAL_WOULDBLOCK(status) || status == netp::OK) {
+		if (netp::E_EWOULDBLOCK==(status) || status == netp::OK) {
 			status = __iocp_do_AcceptEx(ctx->ol_r);
 			if (status == netp::OK) {
 				ctx->ol_r->action_status |= AS_WAIT_IOCP;

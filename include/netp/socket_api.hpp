@@ -10,12 +10,17 @@
 	#define WINAPI __stdcall 
 #endif
 
-#ifdef _NETP_GNU_LINUX
-	#define IS_ERRNO_EQUAL_WOULDBLOCK(_errno) ((_errno==netp::E_EAGAIN)||(_errno==netp::E_EWOULDBLOCK))
-#else
-	#define IS_ERRNO_EQUAL_WOULDBLOCK(_errno) (_errno==netp::E_EWOULDBLOCK)
-#endif
+//#if defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID)
+//	#define IS_ERRNO_EQUAL_WOULDBLOCK(_errno) ((_errno==netp::E_EAGAIN)||(_errno==netp::E_EWOULDBLOCK))
+//#else
+//	#define IS_ERRNO_EQUAL_WOULDBLOCK(_errno) (_errno==netp::E_EWOULDBLOCK)
+//#endif
 
+#if defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID)
+	#define _NETP_REFIX_EWOULDBLOCK(ec) if(ec == netp::E_EAGAIN) {ec=netp::E_EWOULDBLOCK;}
+#else
+	#define _NETP_REFIX_EWOULDBLOCK(ec) 
+#endif
 
 namespace netp {
 	
@@ -55,9 +60,7 @@ namespace netp {
 		NETP_ASSERT(rt == NETP_SOCKET_ERROR);
 		const int ec = netp_socket_get_last_errno();
 		NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvmsg, ERROR: %d", fd, ec);
-		if (IS_ERRNO_EQUAL_WOULDBLOCK(ec)) {
-			ec_o = netp::E_SOCKET_READ_BLOCK;
-		} else if (ec == netp::E_EINTR) {
+		if (ec == netp::E_EINTR) {
 			goto _recvmsg;
 		} else {
 			ec_o = ec;
@@ -123,15 +126,12 @@ namespace netp {
 		}
 
 		NETP_ASSERT(nbytes == NETP_SOCKET_ERROR);
-		const int ec = netp_socket_get_last_errno();
+		int ec = netp_socket_get_last_errno();
 		NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvmsg, ERROR: %d", fd, ec);
-		if (IS_ERRNO_EQUAL_WOULDBLOCK(ec)) {
-			ec_o = netp::E_SOCKET_READ_BLOCK;
-		}
-		else if (ec == netp::E_EINTR) {
+		_NETP_REFIX_EWOULDBLOCK(ec);
+		if (ec == netp::E_EINTR) {
 			goto _recvmsg;
-		}
-		else {
+		} else {
 			ec_o = ec;
 		}
 		(void)flag;
@@ -285,14 +285,10 @@ namespace netp {
 			else {
 				NETP_ASSERT(r == -1);
 				int ec = netp_socket_get_last_errno();
-				if (NETP_LIKELY(IS_ERRNO_EQUAL_WOULDBLOCK(ec))) {
-					ec_o = netp::E_SOCKET_WRITE_BLOCK;
-					break;
-				}
-				else if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
+				_NETP_REFIX_EWOULDBLOCK(ec);
+				if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
 					continue;
-				}
-				else {
+				} else {
 					NETP_TRACE_SOCKET_API("[netp::send][#%d]send failed: %d", fd, ec);
 					ec_o = ec;
 					break;
@@ -315,24 +311,17 @@ namespace netp {
 				R += r;
 				ec_o = netp::OK;
 				break;
-			}
-			else if (r == 0) {
+			} else if (r == 0) {
 				NETP_TRACE_SOCKET_API("[netp::recv][#%d]socket closed by remote side gracefully[detected by recv]", fd);
 				ec_o = netp::E_SOCKET_GRACE_CLOSE;
 				break;
-			}
-			else {
+			} else {
 				NETP_ASSERT(r == -1);
-				const int ec = netp_socket_get_last_errno();
-
-				if (NETP_LIKELY(IS_ERRNO_EQUAL_WOULDBLOCK(ec))) {
-					ec_o = netp::E_SOCKET_READ_BLOCK;
-					break;
-				}
-				else if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
+				int ec = netp_socket_get_last_errno();
+				_NETP_REFIX_EWOULDBLOCK(ec);
+				if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
 					continue;
-				}
-				else {
+				} else {
 					NETP_ASSERT(ec != netp::OK);
 					ec_o = ec;
 					NETP_TRACE_SOCKET_API("[netp::recv][#%d]recv: %d", fd, ec);
@@ -368,11 +357,10 @@ sendto:
 		}
 
 		NETP_ASSERT(nbytes == -1);
-		const int ec = netp_socket_get_last_errno();
+		int ec = netp_socket_get_last_errno();
+		_NETP_REFIX_EWOULDBLOCK(ec);
 		NETP_TRACE_SOCKET_API("[netp::sendto][#%d]send failed, error code: %d", fd, ec);
-		if (IS_ERRNO_EQUAL_WOULDBLOCK(ec)) {
-			ec_o = netp::E_SOCKET_WRITE_BLOCK;
-		} else if (ec == netp::E_EINTR) {
+		if (ec == netp::E_EINTR) {
 			goto sendto;
 		} else {
 			ec_o = ec;
@@ -395,11 +383,10 @@ recvfrom:
 		}
 
 		NETP_ASSERT(nbytes == -1);
-		const int ec = netp_socket_get_last_errno();
+		int ec = netp_socket_get_last_errno();
+		_NETP_REFIX_EWOULDBLOCK(ec);
 		NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom, ERROR: %d", fd, ec);
-		if (IS_ERRNO_EQUAL_WOULDBLOCK(ec)) {
-			ec_o = netp::E_SOCKET_READ_BLOCK;
-		} else if (ec == netp::E_EINTR) {
+		if (ec == netp::E_EINTR) {
 			goto recvfrom;
 		} else {
 			ec_o = ec;
@@ -414,7 +401,7 @@ recvfrom:
 
 		if (type == int(NETP_SOCK_DGRAM)) {
 			if (protocol != (NETP_PROTOCOL_UDP)) {
-				netp_set_last_errno(netp::E_INVAL);
+				netp_socket_set_last_errno(netp::E_INVAL);
 				return NETP_SOCKET_ERROR;
 			}
 		}

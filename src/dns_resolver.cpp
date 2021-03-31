@@ -78,8 +78,8 @@ namespace netp {
 		cfg->L = m_loop;
 
 		int rt;
-		std::tie(rt, m_so) = netp::create_socket(cfg);
-		if (rt != netp::OK) {
+		std::tie(rt,m_so) = netp::create_socket_channel(cfg);
+		if ( rt  != netp::OK ) {
 			p->set(rt);
 			return;
 		}

@@ -94,15 +94,15 @@ namespace netp {
 	}
 
 	void channel_handler_head::close(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx) {
-		ctx->ch->ch_close_impl(chp);
+		ctx->ch->ch_close_impl(intp);
 	}
 
 	void channel_handler_head::close_read(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx ) {
-		ctx->ch->ch_close_read_impl(chp);
+		ctx->ch->ch_close_read_impl(intp);
 	}
 
 	void channel_handler_head::close_write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx ) {
-		ctx->ch->ch_close_write_impl(chp);
+		ctx->ch->ch_close_write_impl(intp);
 	}
 
 	void channel_handler_head::write_to(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, address const& to) {

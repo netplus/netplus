@@ -184,7 +184,7 @@ namespace netp {
 				cfg->type = NETP_SOCK_RAW;
 				cfg->proto = NETP_PROTOCOL_ICMP;
 				cfg->L = io_event_loop_group::instance()->next();
-				std::tie(creatert, m_so) = netp::create_socket(cfg);
+				std::tie(creatert, m_so) = netp::create_socket_channel(cfg);
 				return creatert;
 			}
 

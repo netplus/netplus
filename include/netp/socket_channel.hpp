@@ -69,9 +69,8 @@ namespace netp {
 		}
 	};
 
-
 	class socket_cfg;
-	typedef std::function<NRP<channel>(NRP<socket_cfg> const& cfg)> fn_channel_creator_t;
+	typedef std::function<NRP<socket_channel>(NRP<socket_cfg> const& cfg)> fn_socket_channel_maker_t;
 	class socket_cfg final :
 		public ref_base
 	{
@@ -90,6 +89,8 @@ namespace netp {
 		channel_buf_cfg sock_buf;
 		u32_t bdlimit; //in bit (1kb == 1024b), 0 means no limit
 		u32_t wsabuf_size;
+
+		fn_socket_channel_maker_t ch_maker;
 		socket_cfg(NRP<io_event_loop> const& L = nullptr) :
 			L(L),
 			fd(SOCKET(NETP_INVALID_SOCKET)),
@@ -102,32 +103,10 @@ namespace netp {
 			kvals(default_tcp_keep_alive_vals),
 			sock_buf({ 0 }),
 			bdlimit(0),
-			wsabuf_size(64*1024)
+			wsabuf_size(64*1024),
+			ch_maker(nullptr)
 		{}
 	};
-
-	template <class socket_channel_t, class... _Args>
-	std::tuple<int, NRP<socket_channel_t>> create(NRP<socket_cfg> const&cfg, _Args&&... args) {
-		NETP_ASSERT(cfg->L != nullptr);
-		NETP_ASSERT(cfg->L->in_event_loop());
-		NETP_ASSERT(cfg->proto == NETP_PROTOCOL_USER ? cfg->L->poller_type() != NETP_DEFAULT_POLLER_TYPE : true);
-		NRP<socket_channel_t> so = netp::make_ref<socket_channel_t>(cfg, std::forward<_Args>(args)...);
-		int rt;
-		if (cfg->fd == NETP_INVALID_SOCKET) {
-			rt = so->open();
-			if (rt != netp::OK) {
-				NETP_WARN("[socket][%s]open failed: %d", so->ch_info().c_str(), rt);
-				return std::make_tuple(rt,nullptr);
-			}
-		}
-		rt = so->ch_init(cfg->option, cfg->kvals, cfg->sock_buf);
-		if (rt != netp::OK) {
-			so->close();
-			NETP_WARN("[socket][%s]init failed: %d", so->ch_info().c_str(), rt);
-			return std::make_tuple(rt, nullptr);
-		}
-		return std::make_tuple(rt, so);
-	}
 
 	struct socket_outbound_entry final {
 		NRP<packet> data;
@@ -142,12 +121,8 @@ namespace netp {
 		friend void do_listen_on(NRP<channel_listen_promise> const& listenp, address const& laddr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg, int backlog);
 		typedef std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>> socket_outbound_entry_t;
 
-		template <class socket_channel_t, class... _Args>
-		friend std::tuple<int, NRP<socket_channel_t>> create(NRP<socket_cfg> const& cfg, _Args&&... args);
-
 		template <class _Ref_ty, typename... _Args>
 		friend ref_ptr<_Ref_ty> make_ref(_Args&&... args);
-
 	protected:
 		SOCKET m_fd;
 		u8_t m_family;
@@ -248,7 +223,6 @@ namespace netp {
 
 		int _cfg_nonblocking(bool onoff) {
 			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_fd == NETP_INVALID_SOCKET);
-			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_protocol == u16_t(NETP_PROTOCOL_USER));
 
 			bool setornot = ((m_option & int(socket_option::OPTION_NON_BLOCKING)) && (!onoff)) ||
 				(((m_option & int(socket_option::OPTION_NON_BLOCKING)) == 0) && (onoff));
@@ -445,7 +419,7 @@ namespace netp {
 				NETP_ERR("[socket][%s][accept]load local addr failed: %d", ch_info().c_str(), netp_socket_get_last_errno());
 				NETP_CLOSE_SOCKET(nfd);
 				//quick return for retry
-				netp_set_last_errno(netp::E_EINTR);
+				netp_socket_set_last_errno(netp::E_EINTR);
 				return (NETP_INVALID_SOCKET);
 			}
 
@@ -454,7 +428,7 @@ namespace netp {
 				NETP_ERR("[socket][%s][accept]laddr == raddr, force close", ch_info().c_str());
 				NETP_CLOSE_SOCKET(nfd);
 				//quick return for retry
-				netp_set_last_errno(netp::E_EINTR);
+				netp_socket_set_last_errno(netp::E_EINTR);
 				return (NETP_INVALID_SOCKET);
 			}
 			return nfd ;
@@ -581,8 +555,15 @@ namespace netp {
 		int ch_init(u16_t opt, keep_alive_vals const& kvals, channel_buf_cfg const& cbc) {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(m_chflag&int(channel_flag::F_CLOSED));
+
+			int rt = netp::OK;
+			if (m_fd == NETP_INVALID_SOCKET) {
+				rt = open();
+				NETP_RETURN_V_IF_MATCH(rt, rt != netp::OK);
+			}
+
 			channel::ch_init();
-			int rt = _cfg_option(opt, kvals);
+			rt = _cfg_option(opt, kvals);
 			NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
 			rt = _cfg_buffer(cbc);
 			if (rt != netp::OK) {
@@ -697,7 +678,7 @@ namespace netp {
 		__NETP_FORCE_INLINE void ___do_io_read_done(int status) {
 			switch (status) {
 			case netp::OK:
-			case netp::E_SOCKET_READ_BLOCK:
+			case netp::E_EWOULDBLOCK:
 			{}
 			break;
 			case netp::E_SOCKET_GRACE_CLOSE:
@@ -715,7 +696,7 @@ namespace netp {
 				m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
 				ch_errno() = (status);
 				ch_close_impl(nullptr);
-				NETP_WARN("[socket][%s]___io_read_impl_done, _ch_do_close_read_write, read error: %d, close, flag: %u", ch_info().c_str(), status, m_chflag);
+				NETP_WARN("[socket][%s]___do_io_read_done, _ch_do_close_read_write, read error: %d, close, flag: %u", ch_info().c_str(), status, m_chflag);
 			}
 			}
 		}
@@ -743,7 +724,7 @@ namespace netp {
 				}
 			}
 			break;
-			case netp::E_SOCKET_WRITE_BLOCK:
+			case netp::E_EWOULDBLOCK:
 			{
 				NETP_ASSERT(m_outbound_entry_q.size() > 0);
 #ifdef NETP_ENABLE_FAST_WRITE
@@ -896,5 +877,37 @@ namespace netp {
 				});
 			};
 	};
+
+	inline NRP<socket_channel> default_socket_channel_maker(NRP<netp::socket_cfg> const& cfg) {
+#ifdef NETP_HAS_POLLER_IOCP
+		return netp::make_ref<socket_channel_iocp>(cfg);
+#endif
+		return netp::make_ref<socket_channel>(cfg);
+	}
+
+	inline std::tuple<int,NRP<socket_channel>> create_socket_channel(NRP<netp::socket_cfg> const& cfg) {
+		NETP_ASSERT(cfg->L != nullptr);
+		NETP_ASSERT(cfg->L->in_event_loop());
+
+		NRP<socket_channel> so;
+		if (cfg->proto == NETP_PROTOCOL_USER) {
+			if (cfg->ch_maker == nullptr) {
+				return std::make_tuple(netp::E_CHANNEL_MISSING_MAKER, nullptr );
+			}
+			so = cfg->ch_maker(cfg);
+		}
+		else {
+			NETP_ASSERT(cfg->ch_maker == nullptr);
+			so = default_socket_channel_maker(cfg);
+		}
+
+		NETP_ASSERT(so != nullptr);
+		int rt = so->ch_init(cfg->option, cfg->kvals, cfg->sock_buf);
+		if (rt != netp::OK) {
+			so->ch_close();
+			return std::make_tuple(rt, nullptr);
+		}
+		return std::make_tuple(netp::OK, so);
+	}
 }
 #endif
