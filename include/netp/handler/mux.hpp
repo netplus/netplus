@@ -420,7 +420,7 @@ namespace netp { namespace handler {
 			});
 		};
 
-		void ch_io_accept(fn_io_event_t const& ) override {}
+		void ch_io_accept(fn_channel_initializer_t const&, NRP<socket_cfg> const& ,fn_io_event_t const& ) override {}
 		void ch_io_end_accept() override {}
 
 		//for channel compatible
@@ -431,7 +431,7 @@ namespace netp { namespace handler {
 		void ch_io_connect(fn_io_event_t const& ) override {  }
 		void ch_io_end_connect() override {}
 
-		void ch_write_impl(NRP<packet> const& outlet, NRP<promise<int>> const& write_p) override {
+		void ch_write_impl(NRP<promise<int>> const& write_p, NRP<packet> const& outlet) override {
 			NETP_ASSERT(L->in_event_loop());
 			NETP_ASSERT(outlet != nullptr);
 			NETP_ASSERT(write_p != nullptr);

@@ -120,7 +120,7 @@ namespace netp {
 			netp::address addr( ip, 0 , NETP_AF_INET);
 
 			int ec = netp::OK;
-			u32_t snd_c = m_so->sendto(icmp_pack->head(), (u32_t)icmp_pack->len(), addr, ec);
+			u32_t snd_c = netp::sendto(m_so->ch_id(), icmp_pack->head(), (u32_t)icmp_pack->len(), addr, ec,0);
 			NETP_RETURN_V_IF_NOT_MATCH(ec, ec == netp::OK);
 
 			(void)snd_c;
@@ -128,7 +128,7 @@ namespace netp {
 			netp::address recv_addr;
 			byte_t recv_buffer[256] = { 0 };
 
-			u32_t recv_c = m_so->recvfrom(recv_buffer, 256, recv_addr, ec);
+			u32_t recv_c = netp::recvfrom(m_so->ch_id(), recv_buffer, 256, recv_addr, ec,0);
 			netp::u64_t now = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()).time_since_epoch().count();
 			NETP_RETURN_V_IF_NOT_MATCH(ec, ec == netp::OK);
 			NETP_ASSERT(recv_c > 0);
@@ -184,7 +184,7 @@ namespace netp {
 				cfg->type = NETP_SOCK_RAW;
 				cfg->proto = NETP_PROTOCOL_ICMP;
 				cfg->L = io_event_loop_group::instance()->next();
-				std::tie(creatert, m_so) = netp::create_socket(cfg);
+				std::tie(creatert, m_so) = netp::create_socket_channel(cfg);
 				return creatert;
 			}
 

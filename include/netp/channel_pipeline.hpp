@@ -29,35 +29,35 @@
 	}\
 
 #define PIPELINE_ACTION_PACKET(NAME) \
-	__NETP_FORCE_INLINE void NAME(NRP<packet> const& packet_, NRP<promise<int>> const& chp) const {\
-		m_tail->NAME(packet_,chp); \
+	__NETP_FORCE_INLINE void NAME(NRP<promise<int>> const& intp,NRP<packet> const& packet_) const {\
+		m_tail->NAME(intp,packet_); \
 	}\
 	NRP<promise<int>> NAME(NRP<packet> const& packet_) {\
-		NRP<promise<int>> chp = netp::make_ref<promise<int>>(); \
-		m_tail->NAME(packet_,chp); \
-		return chp; \
+		NRP<promise<int>> intp = netp::make_ref<promise<int>>(); \
+		m_tail->NAME(intp,packet_); \
+		return intp; \
 	}\
 
 #define PIPELINE_ACTION_PACKET_ADDR(NAME) \
-	__NETP_FORCE_INLINE void NAME(NRP<packet> const& packet_, address const& to, NRP<promise<int>> const& chp) {\
-		m_tail->NAME(packet_,to,chp); \
+	__NETP_FORCE_INLINE void NAME( NRP<promise<int>> const& intp, NRP<packet> const& packet_, address const& to) {\
+		m_tail->NAME(intp, packet_,to); \
 	}\
 	NRP<promise<int>> NAME(NRP<packet> const& packet_, address const& to) {\
-		NRP<promise<int>> chp = netp::make_ref<promise<int>>(); \
-		m_tail->NAME(packet_,to,chp); \
-		return chp; \
+		NRP<promise<int>> intp = netp::make_ref<promise<int>>(); \
+		m_tail->NAME(intp, packet_,to); \
+		return intp; \
 	}\
 
 #define PIPELINE_CH_FUTURE_ACTION_VOID(NAME) \
 	NRP<promise<int>> NAME() {\
-		NRP<promise<int>> chp = netp::make_ref<promise<int>>(); \
-		m_tail->NAME(chp); \
-		return chp; \
+		NRP<promise<int>> intp = netp::make_ref<promise<int>>(); \
+		m_tail->NAME(intp); \
+		return intp; \
 	}\
 
 #define PIPELINE_VOID_ACTION_CH_PROMISE_1(NAME) \
-	__NETP_FORCE_INLINE void NAME( NRP<promise<int>> const& chp) {\
-		m_tail->NAME(chp); \
+	__NETP_FORCE_INLINE void NAME( NRP<promise<int>> const& intp) {\
+		m_tail->NAME(intp); \
 	}\
 
 namespace netp {

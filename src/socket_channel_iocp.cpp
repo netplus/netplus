@@ -38,7 +38,7 @@ namespace netp {
 		return ec;
 	}
 
-	void socket_channel_iocp::__iocp_do_AcceptEx_done(fn_channel_initializer_t const& fn_initializer, int status, io_ctx* ctx_) {
+	void socket_channel_iocp::__iocp_do_AcceptEx_done(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& cfg,  int status, io_ctx* ctx_) {
 		NETP_ASSERT(L->in_event_loop());
 		iocp_ctx* ctx = (iocp_ctx*)ctx_;
 		NETP_ASSERT( (ctx->ol_r->action_status & AS_DONE) == 0);
@@ -71,8 +71,21 @@ namespace netp {
 			NETP_ASSERT(raddr_in->sin_family == m_family);
 
 			NRP<io_event_loop> LL = io_event_loop_group::instance()->next(L->poller_type());
-			LL->execute([LL, fn_initializer, nfd, laddr, raddr, cfg = m_listen_cfg]() {
-				std::tuple<int, NRP<socket_channel_iocp>> tupc = accepted_create<socket_channel_iocp>(LL, nfd, laddr, raddr, cfg);
+			LL->execute([LL, fn_initializer, nfd, laddr, raddr, cfg]() {
+				NRP<socket_cfg> cfg_ = netp::make_ref<socket_cfg>();
+				cfg_->fd = nfd;
+				cfg_->family = cfg->family;
+				cfg_->type = cfg->type;
+				cfg_->proto = cfg->proto;
+				cfg_->laddr = laddr;
+				cfg_->raddr = raddr;
+
+				cfg_->L = LL;
+				cfg_->option = cfg->option;
+				cfg_->kvals = cfg->kvals;
+				cfg_->sock_buf = cfg->sock_buf;
+				cfg_->bdlimit = cfg->bdlimit;
+				std::tuple<int, NRP<socket_channel_iocp>> tupc = accepted_create<socket_channel_iocp>(cfg_);
 				int rt = std::get<0>(tupc);
 				if (rt != netp::OK) {
 					NETP_CLOSE_SOCKET(nfd);
@@ -82,7 +95,7 @@ namespace netp {
 				});
 		}
 
-		if (IS_ERRNO_EQUAL_WOULDBLOCK(status) || status == netp::OK) {
+		if (netp::E_EWOULDBLOCK==(status) || status == netp::OK) {
 			status = __iocp_do_AcceptEx(ctx->ol_r);
 			if (status == netp::OK) {
 				ctx->ol_r->action_status |= AS_WAIT_IOCP;
@@ -97,6 +110,12 @@ namespace netp {
 
 	int socket_channel_iocp::__iocp_do_ConnectEx(void* ol_) {
 		NETP_ASSERT(L->in_event_loop());
+
+		int rt = netp::OK;
+		if (m_laddr.is_null()) {
+			rt = bind_any();
+			NETP_RETURN_V_IF_NOT_MATCH( rt, rt == netp::OK );
+		}
 
 		WSAOVERLAPPED* ol = (WSAOVERLAPPED*)ol_;
 		NETP_ASSERT(!m_raddr.is_null());
@@ -183,7 +202,7 @@ namespace netp {
 		NETP_ASSERT((m_chflag & int(channel_flag::F_WATCH_WRITE)) != 0);
 
 		if (status < 0) {
-			__handle_io_write_impl_done(status);
+			__do_io_write_done(status);
 			return;
 		}
 		iocp_ctx* ctx = (iocp_ctx*)ctx_;
@@ -204,7 +223,7 @@ namespace netp {
 				return;
 			}
 		}
-		__handle_io_write_impl_done(status);
+		__do_io_write_done(status);
 	}
 
 	//one shot one packet

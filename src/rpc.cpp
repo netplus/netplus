@@ -139,7 +139,7 @@ namespace netp {
 				R->_do_reply_done(rt);
 			});
 
-			m_ctx->write(outp, wp);
+			m_ctx->write(wp, outp);
 			return;
 		}
 
@@ -162,7 +162,7 @@ namespace netp {
 			wp->if_done([R = NRP<netp::rpc>(this)](int const& rt) {
 				R->_do_write_req_done(rt);
 			});
-			m_ctx->write(outp, wp);
+			m_ctx->write(wp,outp);
 			return;
 		}
 	}
@@ -519,7 +519,7 @@ namespace netp {
 			rdf->set(std::make_tuple(err, nullptr));
 		};
 
-		netp::do_dial(host, len, __decorate_initializer(fn_notify_connected, fn_notify_err, fn_ch_initializer), ch_df, cfg);
+		netp::do_dial(ch_df, host, len, __decorate_initializer(fn_notify_connected, fn_notify_err, fn_ch_initializer), cfg);
 		return rdf;
 	}
 

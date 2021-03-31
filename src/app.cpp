@@ -14,7 +14,6 @@
 
 #ifdef _DEBUG
 	#include <netp/channel.hpp>
-	#include <netp/socket_base.hpp>
 #endif
 
 #ifdef _NETP_WIN
@@ -275,7 +274,6 @@ namespace netp {
 
 		NETP_INFO("sizeof(address): %u", sizeof(netp::address));
 
-		NETP_INFO("sizeof(netp::socket_base): %u", sizeof(netp::socket_base));
 		NETP_INFO("sizeof(netp::channel): %u", sizeof(netp::channel));
 		NETP_INFO("sizeof(netp::io_ctx): %u", sizeof(netp::io_ctx));
 		NETP_INFO("sizeof(netp::fn_io_event_t): %u", sizeof(netp::fn_io_event_t));

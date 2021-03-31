@@ -128,7 +128,6 @@
     <ClInclude Include="..\..\include\netp\socket.hpp" />
     <ClInclude Include="..\..\include\netp\socket_channel.hpp" />
     <ClInclude Include="..\..\include\netp\socket_api.hpp" />
-    <ClInclude Include="..\..\include\netp\socket_base.hpp" />
     <ClInclude Include="..\..\include\netp\socket_channel_iocp.hpp" />
     <ClInclude Include="..\..\include\netp\io_monitor.hpp" />
     <ClInclude Include="..\..\include\netp\string.hpp" />
@@ -204,7 +203,6 @@
     <ClCompile Include="..\..\src\scheduler.cpp" />
     <ClCompile Include="..\..\src\signal_broker.cpp" />
     <ClCompile Include="..\..\src\socket_channel.cpp" />
-    <ClCompile Include="..\..\src\socket_base.cpp" />
     <ClCompile Include="..\..\src\socket_func.cpp" />
     <ClCompile Include="..\..\src\socket_channel_iocp.cpp" />
     <ClCompile Include="..\..\src\thread.cpp" />

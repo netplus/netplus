@@ -433,11 +433,11 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_ECONNABORTED = E_WSAECONNABORTED;
 	const int E_EINTR = E_WSAEINTR;
 	const int E_EWOULDBLOCK = E_WSAEWOULDBLOCK;
+	const int E_EAGAIN = E_EWOULDBLOCK;
 	const int E_EINPROGRESS = E_WSAEWOULDBLOCK; //pls refer tohttps://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-connect
 
 	const int E_EMFILE = E_WSAEMFILE;
-
-
+	const int E_EACCESS = E_WSAEACCES;
 	const int E_EBADF = E_WSAEBADF;
 	const int E_EALREADY = E_WSAEALREADY;
 	const int E_ECONNRESET = E_WSAECONNRESET;
@@ -445,6 +445,8 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_EADDRINUSE = E_WSAEADDRINUSE;
 	const int E_EINVAL = E_WSAEINVAL;
 	const int E_ENOTCONN = E_WSAENOTCONN;
+
+
 #endif
 	//internal error
 	const int E_NETP_APP_EXIT								= -20000;
@@ -485,9 +487,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 
 	//30000 - 30999 //system level socket error
 	const int E_SOCKET_EPOLLHUP			= -30001;
-	const int E_SOCKET_WRITE_BLOCK		= -30002;
-	const int E_SOCKET_READ_BLOCK		= -30003;
-	const int E_SOCKET_GRACE_CLOSE	= -30004;
+	const int E_SOCKET_GRACE_CLOSE	= -30002;
 
 	//31000 - 31999 //user custom socket error
 	const int E_SOCKET_INVALID_FAMILY		= -31001;
@@ -520,7 +520,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_CHANNEL_CONTEXT_REMOVED		= -34016;
 
 	const int E_CHANNEL_OVERLAPPED_OP_TRY = -34017;
-
+	const int E_CHANNEL_MISSING_MAKER = -34018;//custom socket channel must have its own maker
 	const int E_FORWARDER_DOMAIN_LEN_EXCEED	= -35001;
 	const int E_FORWARDER_INVALID_IPV4					= -35002;
 	const int E_FORWARDER_DIAL_DST_FAILED			= -35003;

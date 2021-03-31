@@ -30,7 +30,7 @@ namespace netp { namespace handler {
 		virtual ~hlen() {}
 
 		void read( NRP<channel_handler_context> const& ctx, NRP<packet> const& income ) override;
-		void write(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet,NRP<promise<int>> const& chp) override;
+		void write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) override;
 	};
 }}
 #endif

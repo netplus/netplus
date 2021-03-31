@@ -413,12 +413,12 @@ namespace netp { namespace handler {
 			}
 		}
 
-		void dh_symmetric_encrypt::write(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<promise<int>> const& chp) {
+		void dh_symmetric_encrypt::write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) {
 			NETP_ASSERT(m_dhstate == DH_DATA_TRANSFER);
 			NETP_ASSERT(m_cipher != nullptr);
 			NRP<packet> encrypted;
 			int encrt = m_cipher->encrypt(outlet, encrypted);
 			NETP_ASSERT(encrt == netp::OK);
-			ctx->write(encrypted, chp);
+			ctx->write(intp, encrypted);
 		}
 }}

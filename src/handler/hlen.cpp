@@ -52,9 +52,9 @@ namespace netp { namespace handler {
 		} while (!bExit);
 	}
 
-	void hlen::write(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<promise<int>> const& chp) {
+	void hlen::write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) {
 		NRP<netp::packet> lenoutlet = netp::make_ref<netp::packet>(outlet->head(), outlet->len());
 		lenoutlet->write_left<u32_t>(outlet->len() & 0xFFFFFFFF);
-		ctx->write(lenoutlet, chp);
+		ctx->write(intp, lenoutlet);
 	}
 }}

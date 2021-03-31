@@ -16,37 +16,36 @@ namespace netp {
 
 	extern int parse_socket_url(const char* url, size_t len, socket_url_parse_info& info);
 	extern std::tuple<int, u8_t, u8_t, u16_t> inspect_address_info_from_dial_str(const char* dialstr);
-	extern std::tuple<int, NRP<socket_channel>> create_socket(NRP<netp::socket_cfg> const& cfg);
 
 	//we must make sure that the creation of the socket happens on its thead(L)
-	extern void do_async_create_socket(NRP<netp::socket_cfg> const& cfg, NRP <netp::promise<std::tuple<int, NRP<socket_channel>>>> const& p);
-	extern NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> async_create_socket(NRP<netp::socket_cfg> const& cfg);
+	extern void do_async_create_socket_channel(NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> const& p,NRP<netp::socket_cfg> const& cfg );
+	extern NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> async_create_socket_channel(NRP<netp::socket_cfg> const& cfg);
 
-	extern void do_dial(address const& addr, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_cfg> const& cfg);
+	extern void do_dial(NRP<channel_dial_promise> const& dialp, address const& addr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg);
 
-	extern void do_dial(netp::size_t idx, std::vector<address> const& addrs, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_cfg> const& cfg);
-	extern void do_dial(const char* dialurl, size_t len, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_cfg> const& cfg);
+	extern void do_dial(NRP<channel_dial_promise> const& dialp, netp::size_t idx, std::vector<address> const& addrs, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg);
+	extern void do_dial(NRP<channel_dial_promise> const& dialp, const char* dialurl, size_t len, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg);
 
-	inline static void do_dial(std::string const& dialurl, fn_channel_initializer_t const& initializer, NRP<channel_dial_promise> const& ch_dialf, NRP<socket_cfg> const& ccfg) {
-		do_dial(dialurl.c_str(), dialurl.length(), initializer, ch_dialf, ccfg);
+	inline static void do_dial(NRP<channel_dial_promise> const& dialp, std::string const& dialurl, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& ccfg) {
+		do_dial(dialp,dialurl.c_str(), dialurl.length(), initializer, ccfg);
 	}
 
 	inline static NRP<channel_dial_promise> dial(const char* dialurl, size_t len, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& ccfg) {
-		NRP<channel_dial_promise> f = netp::make_ref<channel_dial_promise>();
-		do_dial(dialurl, len, initializer, f, ccfg);
-		return f;
+		NRP<channel_dial_promise> dialp = netp::make_ref<channel_dial_promise>();
+		do_dial(dialp,dialurl, len, initializer, ccfg);
+		return dialp;
 	}
 
 	inline static NRP<channel_dial_promise> dial(std::string const& dialurl, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& ccfg) {
-		NRP<channel_dial_promise> f = netp::make_ref<channel_dial_promise>();
-		do_dial(dialurl.c_str(), dialurl.length(), initializer, f, ccfg);
-		return f;
+		NRP<channel_dial_promise> dialp = netp::make_ref<channel_dial_promise>();
+		do_dial( dialp, dialurl.c_str(), dialurl.length(), initializer,ccfg);
+		return dialp;
 	}
 
 	inline static NRP<channel_dial_promise> dial(std::string const& dialurl, fn_channel_initializer_t const& initializer) {
-		NRP<channel_dial_promise> f = netp::make_ref<channel_dial_promise>();
-		do_dial(dialurl.c_str(), dialurl.length(), initializer, f, netp::make_ref<socket_cfg>());
-		return f;
+		NRP<channel_dial_promise> dialp = netp::make_ref<channel_dial_promise>();
+		do_dial( dialp, dialurl.c_str(), dialurl.length(), initializer,netp::make_ref<socket_cfg>());
+		return dialp;
 	}
 
 	/*

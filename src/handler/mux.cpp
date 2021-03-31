@@ -364,7 +364,7 @@ namespace netp { namespace handler {
 		wp_->if_done([mux = NRP<mux>(this), L = m_transport_ctx->L](int const& rt) {
 			mux->__do_mux_flush_done(rt);
 		});
-		m_transport_ctx->write(m_entries_lastit->data, std::move(wp_));
+		m_transport_ctx->write(std::move(wp_), m_entries_lastit->data);
 	}
 
 	void mux::__do_mux_write(NRP<netp::packet> const& outlet, NRP<netp::promise<int>> const& wp) {

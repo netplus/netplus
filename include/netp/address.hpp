@@ -62,7 +62,7 @@ namespace netp {
 
 		~address();
 
-		inline bool is_null() const {return 0 == m_ipv4 && 0 == m_port ;}
+		inline bool is_null() const {return 0 == m_ipv4 && 0 == m_port && m_family == NETP_AF_UNSPEC ;}
 		inline u64_t hash() const {
 			return (u64_t(m_ipv4) << 24 | u64_t(m_port) << 8 | u64_t(m_family));
 		}
