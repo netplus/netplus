@@ -855,6 +855,7 @@ int socket_base::get_left_snd_queue() const {
 			});
 		}
 
+		//we can override this function to enable custom accept way
 		void socket_channel::ch_io_accept(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& cfg, fn_io_event_t const& fn) {
 			if (fn != nullptr) {
 				ch_io_read(fn);
