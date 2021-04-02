@@ -24,7 +24,7 @@
 	}\
 
 #define PIPELINE_VOID_FIRE_PACKET_ADDR(NAME) \
-	__NETP_FORCE_INLINE void fire_##NAME(NRP<packet> const& packet_, address const& from) const {\
+	__NETP_FORCE_INLINE void fire_##NAME(NRP<packet> const& packet_, NRP<address> const& from) const {\
 		m_head->fire_##NAME(packet_,from); \
 	}\
 
@@ -39,10 +39,10 @@
 	}\
 
 #define PIPELINE_ACTION_PACKET_ADDR(NAME) \
-	__NETP_FORCE_INLINE void NAME( NRP<promise<int>> const& intp, NRP<packet> const& packet_, address const& to) {\
+	__NETP_FORCE_INLINE void NAME( NRP<promise<int>> const& intp, NRP<packet> const& packet_, NRP<address> const& to) {\
 		m_tail->NAME(intp, packet_,to); \
 	}\
-	NRP<promise<int>> NAME(NRP<packet> const& packet_, address const& to) {\
+	NRP<promise<int>> NAME(NRP<packet> const& packet_, NRP<address> const& to) {\
 		NRP<promise<int>> intp = netp::make_ref<promise<int>>(); \
 		m_tail->NAME(intp, packet_,to); \
 		return intp; \

@@ -117,7 +117,7 @@ namespace netp {
 			icmp_pack->write<u16_t>(echo.seq);
 			icmp_pack->write<u64_t>(echo.ts);
 
-			netp::address addr( ip, 0 , NETP_AF_INET);
+			NRP<netp::address> addr = netp::make_ref<address>( ip, u16_t(0), NETP_AF_INET);
 
 			int ec = netp::OK;
 			u32_t snd_c = netp::sendto(m_so->ch_id(), icmp_pack->head(), (u32_t)icmp_pack->len(), addr, ec,0);
@@ -125,7 +125,7 @@ namespace netp {
 
 			(void)snd_c;
 
-			netp::address recv_addr;
+			NRP<netp::address> recv_addr;
 			byte_t recv_buffer[256] = { 0 };
 
 			u32_t recv_c = netp::recvfrom(m_so->ch_id(), recv_buffer, 256, recv_addr, ec,0);

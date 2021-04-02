@@ -76,7 +76,7 @@ namespace netp { namespace handler {
 		__http_parse(ctx, income);
 	}
 	
-	void http::readfrom(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& income, address const& from) {
+	void http::readfrom(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& income, NRP<address> const& from) {
 		//NETP_INFO("[http][recvfrom]from: %s: httpu: \n%s", from.to_string().c_str(), std::string((char*)income->head(), income->len()).c_str() );
 		/*
 		char test_header[] = 
@@ -96,7 +96,7 @@ namespace netp { namespace handler {
 		income->write((netp::byte_t*)test_header, netp::strlen(test_header) );
 		*/
 
-		m_from_tmp = from;
+		m_from_tmp = from->clone();
 		m_ctx = ctx;
 		__setup_parser(true); 
 		__http_parse(ctx, income);

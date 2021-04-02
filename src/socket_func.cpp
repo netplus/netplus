@@ -71,7 +71,7 @@ namespace netp {
 		return p;
 	}
 
-	void do_dial(NRP<channel_dial_promise> const& ch_dialf, address const& addr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
+	void do_dial(NRP<channel_dial_promise> const& ch_dialf, NRP<address> const& addr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
 		if (cfg->L == nullptr) {
 			NETP_ASSERT(cfg->type != NETP_AF_USER);
 			cfg->L = io_event_loop_group::instance()->next();
@@ -106,7 +106,7 @@ namespace netp {
 		so->do_dial(so_dialf, addr, initializer);
 	}
 
-	void do_dial(NRP<channel_dial_promise> const& ch_dialf, netp::size_t idx, std::vector<address> const& addrs, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
+	void do_dial(NRP<channel_dial_promise> const& ch_dialf, netp::size_t idx, std::vector< NRP<address>> const& addrs, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
 		if (idx >= addrs.size()) {
 			NETP_WARN("[socket]dail failed after try count: %u", idx);
 			ch_dialf->set(std::make_tuple(netp::E_SOCKET_NO_AVAILABLE_ADDR, nullptr));
@@ -142,7 +142,7 @@ namespace netp {
 		}
 
 		if (netp::is_dotipv4_decimal_notation(info.host.c_str())) {
-			do_dial(ch_dialf, address(info.host.c_str(), info.port, cfg->family), initializer, cfg);
+			do_dial(ch_dialf, netp::make_ref<address>(info.host.c_str(), info.port, cfg->family), initializer, cfg);
 			return;
 		}
 
@@ -155,12 +155,12 @@ namespace netp {
 
 			std::vector<ipv4_t, netp::allocator<ipv4_t>> const& ipv4s = std::get<1>(tupdns);
 			NETP_ASSERT(ipv4s.size());
-			std::vector<address> dialaddrs;
+			std::vector<NRP<address>> dialaddrs;
 			for (netp::size_t i = 0; i < ipv4s.size(); ++i) {
-				address __a;
-				__a.setipv4(ipv4s[i]);
-				__a.setport(port);
-				__a.setfamily(cfg->family);
+				NRP<address > __a = netp::make_ref<address>();
+				__a->setipv4(ipv4s[i]);
+				__a->setport(port);
+				__a->setfamily(cfg->family);
 				dialaddrs.push_back(__a);
 			}
 
@@ -168,7 +168,7 @@ namespace netp {
 		});
 	}
 
-	void do_listen_on(NRP<channel_listen_promise> const& listenp, address const& laddr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg, int backlog) {
+	void do_listen_on(NRP<channel_listen_promise> const& listenp, NRP<address> const& laddr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg, int backlog) {
 		NETP_ASSERT(cfg->L != nullptr);
 		NETP_ASSERT(cfg->L->in_event_loop());
 
@@ -178,7 +178,7 @@ namespace netp {
 		std::tuple<int, NRP<socket_channel>> tupc = create_socket_channel(cfg);
 		int rt = std::get<0>(tupc);
 		if (rt != netp::OK) {
-			NETP_WARN("[socket]do_listen_on failed: %d, listen addr: %s", rt, laddr.to_string().c_str());
+			NETP_WARN("[socket]do_listen_on failed: %d, listen addr: %s", rt, laddr->to_string().c_str());
 			listenp->set(std::make_tuple(rt, nullptr));
 			return;
 		}
@@ -188,8 +188,7 @@ namespace netp {
 		listen_f->if_done([listenp, so](int const& rt) {
 			if (rt == netp::OK) {
 				listenp->set(std::make_tuple(netp::OK, so));
-			}
-			else {
+			} else {
 				listenp->set(std::make_tuple(rt, nullptr));
 				so->ch_errno() = rt;
 				so->ch_close_impl(nullptr);
@@ -219,7 +218,7 @@ namespace netp {
 			return listenp;
 		}
 
-		address laddr(info.host.c_str(), info.port, cfg->family);
+		NRP<address> laddr=netp::make_ref<address>(info.host.c_str(), info.port, cfg->family);
 		if (cfg->L == nullptr) {
 			cfg->L = io_event_loop_group::instance()->next(NETP_DEFAULT_POLLER_TYPE);
 		}

@@ -109,7 +109,7 @@ namespace netp {
 			CH_FIRE_ACTION_IMPL_PACKET_1(read, income)
 
 	#define CH_FIRE_ACTION_IMPL_PACKET_ADDR(_NAME,_IN,_ADDR) \
-			__NETP_FORCE_INLINE void ch_fire_##_NAME(NRP<packet> const& _IN, address const& _ADDR) const { \
+			__NETP_FORCE_INLINE void ch_fire_##_NAME(NRP<packet> const& _IN, NRP<address> const& _ADDR) const { \
 				m_pipeline->fire_##_NAME(_IN, _ADDR); \
 			} \
 
@@ -249,7 +249,7 @@ public: \
 
 #define CH_FUTURE_ACTION_IMPL_PACKET_ADDR(NAME) \
 private: \
-		inline void __ch_##NAME(NRP<promise<int>> const& intp, NRP<packet> const& outlet, address const& to) {\
+		inline void __ch_##NAME(NRP<promise<int>> const& intp, NRP<packet> const& outlet, NRP<address> const& to) {\
 			if (m_pipeline == nullptr) { \
 				intp->set(netp::E_CHANNEL_CLOSED); \
 				return; \
@@ -257,12 +257,12 @@ private: \
 			m_pipeline->NAME(intp,outlet,to); \
 		} \
 public: \
-		inline NRP<promise<int>> ch_##NAME(NRP<packet> const& outlet, address const& to) {\
+		inline NRP<promise<int>> ch_##NAME(NRP<packet> const& outlet, NRP<address> const& to) {\
 			const NRP<promise<int>> intp = netp::make_ref<promise<int>>(); \
 			ch_##NAME(intp,outlet,to); \
 			return intp; \
 		} \
-		inline void ch_##NAME(NRP<promise<int>> const& intp, NRP<packet> const& outlet, address const& to) {\
+		inline void ch_##NAME(NRP<promise<int>> const& intp, NRP<packet> const& outlet, NRP<address> const& to) {\
 			L->execute([_ch=NRP<channel>(this),intp, outlet, to]() { \
 				_ch->__ch_##NAME(intp,outlet,to); \
 			}); \
@@ -303,7 +303,7 @@ public: \
 		virtual NRP<promise<int>> ch_set_nodelay() = 0;
 
 		virtual void ch_write_impl(NRP<promise<int>> const& intp,NRP<packet> const& outlet) = 0;
-		virtual void ch_write_to_impl(NRP<promise<int>> const& intp, NRP<packet> const& outlet, netp::address const& to) {
+		virtual void ch_write_to_impl(NRP<promise<int>> const& intp, NRP<packet> const& outlet, NRP<netp::address> const& to) {
 			NETP_ASSERT("to_impl"); 
 			(void)outlet;
 			(void)to;

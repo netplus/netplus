@@ -93,7 +93,7 @@ namespace netp {
 
 		for( ptr=result;ptr!=nullptr; ptr = ptr->ai_next ) {
 
-			address addr;
+			NRP<address> addr;
 			int f;
 			switch( ptr->ai_family ) {
 			case AF_UNSPEC:
@@ -112,8 +112,8 @@ namespace netp {
 					//char* addrv4_cstr = inet_ntoa( addrv4->sin_addr );
 
 					if(addr_in_cstr != nullptr ) {
-						addr = address(addrv4_cstr,0, f);
-						ips.push_back( addr.dotip() );
+						addr = netp::make_ref<address>(addrv4_cstr,u16_t(0), f);
+						ips.push_back( addr->dotip() );
 					}
 				}
 				break;

@@ -50,7 +50,7 @@ void th_listener() {
 
 	NRP<netp::socket_channel> listener = std::get<1>(tupc);
 
-	netp::address laddr = netp::address("0.0.0.0", 32002, NETP_AF_INET);
+	NRP<netp::address> laddr = netp::make_ref<netp::address>("0.0.0.0", 32002, NETP_AF_INET);
 	rt = listener->bind(laddr);
 	if (rt != netp::OK) {
 		NETP_ERR("bind failed: %d", rt);
@@ -63,8 +63,8 @@ void th_listener() {
 		return;
 	}
 
-	netp::address raddr;
-	netp::address laddr_;
+	NRP<netp::address> raddr;
+	NRP<netp::address> laddr_;
 	netp::SOCKET nfd = listener->accept( raddr, laddr_);
 	if (nfd == NETP_INVALID_SOCKET ) {
 		NETP_ERR("accept failed: %d", rt);
@@ -110,7 +110,7 @@ void th_dialer() {
 
 	NRP<netp::socket_channel> dialer = std::get<1>(tupc);
 
-	netp::address raddr = netp::address("127.0.0.1", 32002, NETP_AF_INET);
+	NRP<netp::address> raddr = netp::make_ref<netp::address>("127.0.0.1", 32002, NETP_AF_INET);
 	rt = dialer->connect(raddr);
 	if (rt != netp::OK) {
 		NETP_ERR("bind failed: %d", rt);

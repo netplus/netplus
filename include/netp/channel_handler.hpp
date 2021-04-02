@@ -56,7 +56,7 @@ namespace netp {
 		//for inbound
 		virtual void read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income);
 
-		virtual void readfrom(NRP<channel_handler_context> const& ctx, NRP<packet> const& income, address const& from);
+		virtual void readfrom(NRP<channel_handler_context> const& ctx, NRP<packet> const& income, NRP<address> const& from);
 
 		//for outbound
 		virtual void write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet);
@@ -67,7 +67,7 @@ namespace netp {
 		virtual void close_write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx);
 
 		//for outbound_to
-		virtual void write_to(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, address const& to);
+		virtual void write_to(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<address> const& to);
 	};
 
 	class channel_handler_head :
@@ -83,7 +83,7 @@ namespace netp {
 		void close_read(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx );
 		void close_write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx);
 
-		void write_to(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, address const& to );
+		void write_to(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<address> const& to );
 	};
 
 	class channel_handler_tail:
@@ -101,7 +101,7 @@ namespace netp {
 		void write_closed(NRP<channel_handler_context> const& ctx);
 
 		void read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income) ;
-		void readfrom(NRP<channel_handler_context> const& ctx, NRP<packet> const& income, address const& from);
+		void readfrom(NRP<channel_handler_context> const& ctx, NRP<packet> const& income, NRP<address> const& from);
 	};
 }
 #endif

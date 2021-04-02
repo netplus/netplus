@@ -21,9 +21,9 @@ namespace netp {
 	extern void do_async_create_socket_channel(NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> const& p,NRP<netp::socket_cfg> const& cfg );
 	extern NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> async_create_socket_channel(NRP<netp::socket_cfg> const& cfg);
 
-	extern void do_dial(NRP<channel_dial_promise> const& dialp, address const& addr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg);
+	extern void do_dial(NRP<channel_dial_promise> const& dialp, NRP<address> const& addr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg);
 
-	extern void do_dial(NRP<channel_dial_promise> const& dialp, netp::size_t idx, std::vector<address> const& addrs, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg);
+	extern void do_dial(NRP<channel_dial_promise> const& dialp, netp::size_t idx, std::vector<NRP<address>> const& addrs, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg);
 	extern void do_dial(NRP<channel_dial_promise> const& dialp, const char* dialurl, size_t len, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg);
 
 	inline static void do_dial(NRP<channel_dial_promise> const& dialp, std::string const& dialurl, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& ccfg) {

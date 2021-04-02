@@ -8,6 +8,8 @@
 #include <netp/ipv6.hpp>
 #include <netp/string.hpp>
 
+#include <netp/smart_ptr.hpp>
+
 #define NETP_PF_INET 		PF_INET
 #define NETP_AF_INET		AF_INET
 #define NETP_AF_INET6		AF_INET6
@@ -51,7 +53,9 @@ namespace netp {
 
 	const ipv4_t IP_LOOPBACK = 2130706433U;
 
-	struct address final {
+	struct address final:
+		public netp::ref_base
+	{
 		ipv4_t m_ipv4;
 		port_t m_port;
 		u8_t m_family;
@@ -62,10 +66,19 @@ namespace netp {
 
 		~address();
 
+		NRP<address> clone() const {
+			NRP<address> addr = netp::make_ref<address>();
+			addr->setfamily(m_family);
+			addr->setipv4(m_ipv4);
+			addr->setport(m_port);
+			return addr;
+		}
+
 		inline bool is_null() const {return 0 == m_ipv4 && 0 == m_port && m_family == NETP_AF_UNSPEC ;}
 		inline u64_t hash() const {
 			return (u64_t(m_ipv4) << 24 | u64_t(m_port) << 8 | u64_t(m_family));
 		}
+		
 		inline bool operator == ( address const& addr ) const {
 			return hash() == addr.hash();
 		}
@@ -119,16 +132,16 @@ namespace netp {
 	};
 
 	struct address_hash {
-		inline u64_t operator()(address const& addr) const
+		inline u64_t operator()(	NRP<address> const& addr) const
 		{
-			return addr.hash();
+			return addr->hash();
 		}
 	};
 
 	struct address_equal {
-		inline bool operator()(address const& lhs, address const& rhs) const
+		inline bool operator()(NRP<address> const& lhs, NRP<address> const& rhs) const
 		{
-			return lhs == rhs;
+			return lhs->hash() == rhs->hash();
 		}
 	};
 
