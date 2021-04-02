@@ -34,6 +34,7 @@ namespace netp {
 	int socket_channel::bind_any() {
 		NRP<address >_any_ = netp::make_ref<address>();
 		NETP_ASSERT(m_family != NETP_AF_UNSPEC);
+		std::memset((void*)_any_->sockaddr_v4(), 0, sizeof(sockaddr_in));
 		_any_->setfamily(m_family);
 		int rt = bind(_any_);
 		if (rt != netp::OK) {

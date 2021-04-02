@@ -200,9 +200,9 @@ namespace netp {
 		return netp::strcmp(_tmp, cstr) == 0;
 	}
 
-	string_t ipv4todotip(ipv4_t const& ip) {
+	string_t nipv4todotip(ipv4_t const& nip) { 
 		in_addr ia;
-		ia.s_addr = htonl(ip);
+		ia.s_addr = nip;
 		char addr[16] = { 0 };
 		const char* addr_cstr = ::inet_ntop(AF_INET, &ia, addr, 16);
 		if (NETP_LIKELY(addr_cstr != nullptr)) {
@@ -211,35 +211,40 @@ namespace netp {
 		return string_t();
 	}
 
-	address::address():
-		m_ipv4(0),
-		m_port(0),
-		m_family(u8_t(NETP_AF_UNSPEC))
+
+	address::address()
 	{
+		std::memset((void*)&m_in,0,sizeof(sockaddr_in));
+		std::memset((void*)&m_in6,0,sizeof(sockaddr_in6));
+		m_in.sin_family = u16_t(NETP_AF_UNSPEC);
+		m_in6.sin6_family = u16_t(NETP_AF_UNSPEC);
 	}
 
-	address::address( char const* ip, unsigned short port , int f):
-		m_ipv4(0),
-		m_port(port),
-		m_family(u8_t(f))
+	address::address( char const* ip, unsigned short port , int f)
 	{
 		NETP_ASSERT(f < 255);
 		NETP_ASSERT( ip != nullptr && netp::strlen(ip) );
-		m_ipv4  = dotiptoip(ip);
+		m_in.sin_port = htons(port);
+		m_in.sin_family = u8_t(f);
+		m_in.sin_addr.s_addr = dotiptonip(ip);
 	}
 
-	address::address( sockaddr_in const& sockaddr_in_ ):
-		m_ipv4(ntohl(sockaddr_in_.sin_addr.s_addr)),
-		m_port(ntohs(sockaddr_in_.sin_port)),
-		m_family(u8_t(sockaddr_in_.sin_family))
+	address::address( const struct sockaddr_in* sockaddr_in_, size_t slen )
 	{
+		NETP_ASSERT(slen == sizeof(sockaddr_in));
+		std::memcpy(&m_in, sockaddr_in_, slen);
 	}
 
-	address::~address() {
+	address::address(const struct sockaddr_in6* sockaddr_in6_, size_t slen)
+	{
+		NETP_ASSERT(slen == sizeof(sockaddr_in6));
+		std::memcpy(&m_in6, sockaddr_in6_, slen);
 	}
+
+	address::~address() {}
 
 	const string_t address::dotip() const {
-		return ipv4todotip(m_ipv4);
+		return nipv4todotip(m_in.sin_addr.s_addr);
 	}
 
 	string_t address::to_string() const {
@@ -249,5 +254,4 @@ namespace netp {
 		(void)rtval;
 		return string_t(info, netp::strlen(info));
 	}
-
 }

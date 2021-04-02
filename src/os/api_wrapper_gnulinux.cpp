@@ -52,9 +52,9 @@ namespace netp { namespace os {
 				if (filter& adp_f_skip_af_inet) {
 					continue;
 				}
-				netp::address addr( *((struct sockaddr_in*)(ifa->ifa_addr)) );
-				netp::address mask( *((struct sockaddr_in*)(ifa->ifa_netmask)) );
-				adapter_.unicast.push_back({addr.ipv4(), mask.ipv4()});
+				//netp::address addr( *((struct sockaddr_in*)(ifa->ifa_addr)) );
+				//netp::address mask( *((struct sockaddr_in*)(ifa->ifa_netmask)) );
+				adapter_.unicast.push_back({ ntohl( ((struct sockaddr_in*)(ifa->ifa_addr))->sin_addr.s_addr), ntohl( ((struct sockaddr_in*)(ifa->ifa_addr))->sin_addr.s_addr) });
 			}
 			else if (ifa->ifa_addr->sa_family == AF_INET6) {
 				if (filter& adp_f_skip_af_inet6) {

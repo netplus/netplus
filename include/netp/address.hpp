@@ -52,99 +52,11 @@ namespace netp {
 	};
 
 	const ipv4_t IP_LOOPBACK = 2130706433U;
-
-	struct address final:
-		public netp::ref_base
-	{
-		ipv4_t m_ipv4;
-		port_t m_port;
-		u8_t m_family;
-
-		address();
-		address(const char* ip, unsigned short port, int f = NETP_AF_UNSPEC);
-		address( sockaddr_in const& sockaddr_in_ ) ;
-
-		~address();
-
-		NRP<address> clone() const {
-			NRP<address> addr = netp::make_ref<address>();
-			addr->setfamily(m_family);
-			addr->setipv4(m_ipv4);
-			addr->setport(m_port);
-			return addr;
-		}
-
-		inline bool is_null() const {return 0 == m_ipv4 && 0 == m_port && m_family == NETP_AF_UNSPEC ;}
-		inline u64_t hash() const {
-			return (u64_t(m_ipv4) << 24 | u64_t(m_port) << 8 | u64_t(m_family));
-		}
-		
-		inline bool operator == ( address const& addr ) const {
-			return hash() == addr.hash();
-		}
-
-		inline bool operator != ( address const& addr ) const {
-			return !((*this) == addr);
-		}
-
-		inline bool operator < (address const& addr) const {
-			return hash() < addr.hash();
-		}
-		inline bool operator > (address const& addr) const {
-			return !((*this) < addr);
-		}
-
-		inline u16_t family() const {
-			return u16_t(m_family);
-		}
-
-		const string_t dotip() const ;
-
-		inline ipv4_t ipv4() const {
-			return m_ipv4;
-		}
-		inline ipv4_t hipv4() const {
-			return ipv4();
-		}
-		inline ipv4_t nipv4() const {
-			return htonl(m_ipv4);
-		}
-		inline port_t port() const {
-			return m_port;
-		}
-		inline port_t hport() const {
-			return port();
-		}
-		inline port_t nport() const {
-			return htons(m_port);
-		}
-		inline void setipv4(ipv4_t ip) {
-			m_ipv4 = ip;
-		}
-		inline void setport(port_t port) {
-			m_port = port;
-		}
-		inline void setfamily(u16_t f) {
-			NETP_ASSERT(f < 255);
-			m_family = u8_t(f);
-		}
-		string_t to_string() const;
+	enum class address_type {
+		t_empty,
+		t_ipv4,
+		t_ipv6
 	};
-
-	struct address_hash {
-		inline u64_t operator()(	NRP<address> const& addr) const
-		{
-			return addr->hash();
-		}
-	};
-
-	struct address_equal {
-		inline bool operator()(NRP<address> const& lhs, NRP<address> const& rhs) const
-		{
-			return lhs->hash() == rhs->hash();
-		}
-	};
-
 	extern int get_iplist_by_host(char const* const hostname, char const* const servicename, std::vector<string_t>& ips, int const& filter = int(addrinfo_filter::AIF_F_INET));
 	extern int get_ip_by_host(const char* hostname, string_t& ip, int const& filter = int(addrinfo_filter::AIF_F_INET));
 
@@ -157,8 +69,9 @@ namespace netp {
 	inline ipv4_t ipv4tonipv4(ipv4_t const& ip) { return htonl(ip); }
 	inline ipv4_t nipv4toipv4(ipv4_t const& ip) { return ntohl(ip); }
 
-	extern string_t ipv4todotip(ipv4_t const& ip);
-	inline string_t nipv4todotip(ipv4_t const& ip) { return ipv4todotip(nipv4toipv4(ip)); }
+	extern string_t nipv4todotip(ipv4_t const& ip);
+	inline string_t ipv4todotip(ipv4_t const& ip) { return nipv4todotip(htonl(ip)); }
+
 	__NETP_FORCE_INLINE netp::u32_t ipv4_t4h(ipv4_t lip, port_t lport, ipv4_t rip, port_t rport) {
 		return ((netp::u32_t)(lip) * 59) ^
 			((netp::u32_t)(rip)) ^
@@ -166,5 +79,111 @@ namespace netp {
 			((netp::u32_t)(rport))
 			;
 	}
+
+	struct address final :
+		public netp::ref_base
+	{
+		sockaddr_in m_in;
+		sockaddr_in6 m_in6;
+
+		address();
+		address(const char* ip, unsigned short port, int f );
+		address(const struct sockaddr_in* sockaddr_in_, size_t slen);
+		address(const struct sockaddr_in6* sockaddr_in6_, size_t slen);
+
+		~address();
+
+		struct sockaddr* sockaddr_v4() {
+			return (struct sockaddr*)(&m_in);
+		}
+
+		struct sockaddr* sockaddr_v6() {
+			return (struct sockaddr*)(&m_in6);
+		}
+
+		NRP<address> clone() const {
+			NRP<address> a = netp::make_ref<address>();
+			std::memcpy(&(a->m_in), &m_in, sizeof(sockaddr_in));
+			std::memcpy(&(a->m_in6), &m_in6, sizeof(sockaddr_in6));
+			return a;
+		}
+
+
+		//@deprecated
+		inline bool is_null() const { return is_empty(); }
+
+		inline bool is_empty() const {
+			return m_in.sin_family== NETP_AF_UNSPEC && m_in6.sin6_family == NETP_AF_UNSPEC;
+		}
+
+		inline u64_t hash() const {
+			return (u64_t(m_in.sin_addr.s_addr) << 24 | u64_t(m_in.sin_port) << 8 | u64_t(m_in.sin_family));
+		}
+
+		inline bool operator == (address const& addr) const {
+			return hash() == addr.hash();
+		}
+
+		inline bool operator != (address const& addr) const {
+			return !((*this) == addr);
+		}
+
+		inline bool operator < (address const& addr) const {
+			return hash() < addr.hash();
+		}
+		inline bool operator > (address const& addr) const {
+			return !((*this) < addr);
+		}
+
+		inline u16_t family() const {
+			return u16_t(m_in.sin_family);
+		}
+
+		const string_t dotip() const;
+
+		inline ipv4_t ipv4() const {
+			return ntohl(m_in.sin_addr.s_addr);
+		}
+		inline ipv4_t hipv4() const {
+			return ipv4();
+		}
+		inline ipv4_t nipv4() const {
+			return (m_in.sin_addr.s_addr);
+		}
+		inline port_t port() const {
+			return ntohs(m_in.sin_port);
+		}
+		inline port_t hport() const {
+			return port();
+		}
+		inline port_t nport() const {
+			return (m_in.sin_port);
+		}
+		inline void setipv4(ipv4_t ip) {
+			m_in.sin_addr.s_addr = htonl(ip);
+		}
+		inline void setport(port_t port) {
+			m_in.sin_port = htons(port);
+		}
+		inline void setfamily(u16_t f) {
+			NETP_ASSERT(f < 255);
+			m_in.sin_family = u8_t(f);
+		}
+		string_t to_string() const;
+	};
+
+	struct address_hash {
+		__NETP_FORCE_INLINE u64_t operator()(NRP<address> const& addr) const
+		{
+			return addr->hash();
+		}
+	};
+
+	struct address_equal {
+		__NETP_FORCE_INLINE bool operator()(NRP<address> const& lhs, NRP<address> const& rhs) const
+		{
+			return lhs->hash() == rhs->hash();
+		}
+	};
 }
 #endif //_ADDRESS_H
