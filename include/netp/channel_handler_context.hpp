@@ -76,12 +76,12 @@ __ctx_iterate_begin: \
 	_ctx->H->NAME(_ctx,p,addr); \
 
 #define VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_PACKET_ADDR(NAME,HANDLER_FLAG) \
-	inline void fire_##NAME( NRP<packet> const& p, address const& addr ) const { \
+	inline void fire_##NAME( NRP<packet> const& p, NRP<address> const& addr ) const { \
 		NETP_ASSERT(L->in_event_loop()); \
 		NRP<channel_handler_context>_ctx = N; \
 		VOID_INVOKE_NEXT_PACKET_ADDR(NAME,HANDLER_FLAG); \
 	} \
-	inline void invoke_##NAME( NRP<packet> const& p, address const& addr ) { \
+	inline void invoke_##NAME( NRP<packet> const& p, NRP<address> const& addr ) { \
 		NETP_ASSERT(L->in_event_loop()); \
 		NRP<channel_handler_context>_ctx = NRP<channel_handler_context>(this); \
 		VOID_INVOKE_NEXT_PACKET_ADDR(NAME,HANDLER_FLAG); \
@@ -121,7 +121,7 @@ public:\
 
 #define CH_PROMISE_ACTION_HANDLER_CONTEXT_IMPL_T_TO_H_PACKET_ADDR_CH_PROMISE(NAME,HANDLER_FLAG) \
 private:\
-	inline void __##NAME(NRP<promise<int>> const& intp, NRP<packet> const& p, address const& to) { \
+	inline void __##NAME(NRP<promise<int>> const& intp, NRP<packet> const& p, NRP<address> const& to) { \
 		if( NETP_UNLIKELY(H_FLAG&CH_CTX_REMOVED) ) {\
 			intp->set(netp::E_CHANNEL_CONTEXT_REMOVED); \
 			return; \
@@ -129,12 +129,12 @@ private:\
 		CH_PROMISE_INVOKE_PREV_PACKET_ADDR_CH_PROMISE(NAME,HANDLER_FLAG) \
 	} \
 public:\
-	inline void NAME(NRP<promise<int>> const& intp, NRP<packet> const& p, address const& to) { \
+	inline void NAME(NRP<promise<int>> const& intp, NRP<packet> const& p, NRP<address> const& to) { \
 		L->execute([ctx=NRP<channel_handler_context>(this), p, to,intp]() { \
 			ctx->__##NAME(intp,p,to); \
 		}); \
 	} \
-	inline NRP<promise<int>> NAME(NRP<packet> const& p, address const& to) { \
+	inline NRP<promise<int>> NAME(NRP<packet> const& p, NRP<address> const& to) { \
 		NRP<promise<int>> intp = netp::make_ref<promise<int>>();\
 		NAME(intp,p,to); \
 		return intp;\

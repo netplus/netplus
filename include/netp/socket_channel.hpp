@@ -52,15 +52,15 @@ namespace netp {
 		u8_t t;
 		u16_t p;
 
-		address laddr;
-		address raddr;
+		NRP<address> laddr;
+		NRP<address> raddr;
 
 		std::string to_string() const {
 			char _buf[1024] = { 0 };
 #ifdef _NETP_MSVC
-			int nbytes = snprintf(_buf, 1024, "#%zu:%s:L:%s-R:%s", fd, DEF_protocol_str[int(p)], laddr.to_string().c_str(), raddr.to_string().c_str());
+			int nbytes = snprintf(_buf, 1024, "#%zu:%s:L:%s-R:%s", fd, DEF_protocol_str[int(p)], laddr ? laddr->to_string().c_str():"", raddr ?raddr->to_string().c_str():"");
 #elif defined(_NETP_GCC)
-			int nbytes = snprintf(_buf, 1024, "#%d:%s:L:%s-R:%s", fd, DEF_protocol_str[int(p)], laddr.to_string().c_str(), raddr.to_string().c_str());
+			int nbytes = snprintf(_buf, 1024, "#%d:%s:L:%s-R:%s", fd, DEF_protocol_str[int(p)], laddr ? laddr->to_string().c_str() : "", raddr ? raddr->to_string().c_str() : "");
 #else
 #error "unknown compiler"
 #endif
@@ -82,8 +82,8 @@ namespace netp {
 		u16_t proto;
 		u16_t option;
 
-		address laddr;
-		address raddr;
+		NRP<address> laddr;
+		NRP<address> raddr;
 
 		keep_alive_vals kvals;
 		channel_buf_cfg sock_buf;
@@ -111,14 +111,14 @@ namespace netp {
 	struct socket_outbound_entry final {
 		NRP<packet> data;
 		NRP<promise<int>> write_promise;
-		address to;
+		NRP<address> to;
 	};
 
 	class socket_channel:
 		public channel
 	{
-		friend void do_dial(NRP<channel_dial_promise> const& ch_dialf, address const& addr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg);
-		friend void do_listen_on(NRP<channel_listen_promise> const& listenp, address const& laddr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg, int backlog);
+		friend void do_dial(NRP<channel_dial_promise> const& ch_dialf, NRP<address> const& addr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg);
+		friend void do_listen_on(NRP<channel_listen_promise> const& listenp, NRP<address> const& laddr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg, int backlog);
 		typedef std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>> socket_outbound_entry_t;
 
 		template <class _Ref_ty, typename... _Args>
@@ -130,8 +130,8 @@ namespace netp {
 		u16_t m_protocol;
 		u16_t m_option;
 
-		address m_laddr;
-		address m_raddr;
+		NRP<address> m_laddr;
+		NRP<address> m_raddr;
 
 		io_ctx* m_io_ctx;
 		byte_t* m_rcv_buf_ptr;
@@ -402,13 +402,13 @@ namespace netp {
 		virtual int socket_shutdown_impl (int flag) {
 			return netp::shutdown(m_fd, flag);
 		}
-		virtual int socket_bind_impl(address const& addr) {
+		virtual int socket_bind_impl(NRP<address> const& addr) {
 			return netp::bind(m_fd, addr);
 		}
 		virtual int socket_listen_impl(int backlog = NETP_DEFAULT_LISTEN_BACKLOG) {
 			return netp::listen(m_fd, backlog);
 		}
-		virtual SOCKET socket_accept_impl( address& raddr, address& laddr) {
+		virtual SOCKET socket_accept_impl( NRP<address>& raddr, NRP<address>& laddr) {
 			SOCKET nfd = netp::accept(m_fd, raddr);
 			NETP_RETURN_V_IF_MATCH(NETP_INVALID_SOCKET, nfd == NETP_INVALID_SOCKET);
 
@@ -422,8 +422,8 @@ namespace netp {
 				return (NETP_INVALID_SOCKET);
 			}
 
-			NETP_ASSERT(laddr.family() == (m_family));
-			if (m_laddr == raddr) {
+			NETP_ASSERT(laddr->family() == (m_family));
+			if ( *m_laddr == *raddr) {
 				NETP_ERR("[socket][%s][accept]laddr == raddr, force close", ch_info().c_str());
 				NETP_CLOSE_SOCKET(nfd);
 				//quick return for retry
@@ -432,7 +432,7 @@ namespace netp {
 			}
 			return nfd ;
 		}
-		virtual int socket_connect_impl(address const& addr) {
+		virtual int socket_connect_impl(NRP<address> const& addr) {
 			return netp::connect(m_fd, addr);
 		}
 
@@ -440,11 +440,11 @@ namespace netp {
 			return netp::set_nonblocking(m_fd, onoff);
 		}
 
-		virtual int socket_getpeername_impl(address& raddr) {
+		virtual int socket_getpeername_impl(NRP<address>& raddr) {
 			return netp::getpeername(m_fd, raddr);
 		}
 
-		virtual int socket_getsockname_impl(address& laddr) {
+		virtual int socket_getsockname_impl(NRP<address>& laddr) {
 			return netp::getsockname(m_fd, laddr);
 		}
 
@@ -459,14 +459,14 @@ namespace netp {
 		virtual int socket_send_impl(const byte_t* data, u32_t len, int& status, int flag = 0) {
 			return netp::send(m_fd, data, len, status, flag);
 		}
-		virtual int socket_sendto_impl(const byte_t* data, u32_t len, address const& to, int& status, int flag = 0) {
+		virtual int socket_sendto_impl(const byte_t* data, u32_t len, NRP<address> const& to, int& status, int flag = 0) {
 			return netp::sendto(m_fd, data, len, to, status, flag);
 		}
 
 		virtual int socket_recv_impl(byte_t* const buf, u32_t size, int& status, int flag = 0) {
 			return netp::recv(m_fd, buf, size, status, flag);
 		}
-		virtual int socket_recvfrom_impl(byte_t* const  buf, u32_t size, address& from, int& status, int flag = 0) {
+		virtual int socket_recvfrom_impl(byte_t* const  buf, u32_t size, NRP<address>& from, int& status, int flag = 0) {
 			return netp::recvfrom(m_fd, buf, size, from, status, flag);
 		}
 
@@ -480,8 +480,8 @@ namespace netp {
 		__NETP_FORCE_INLINE bool is_icmp() const { return m_protocol == u8_t(NETP_PROTOCOL_ICMP); }
 
 		__NETP_FORCE_INLINE SOCKET fd() const { return m_fd; }
-		__NETP_FORCE_INLINE address const& remote_addr() const { return m_raddr; }
-		__NETP_FORCE_INLINE address const& local_addr() const { return m_laddr; }
+		__NETP_FORCE_INLINE NRP<address> const& remote_addr() const { return m_raddr; }
+		__NETP_FORCE_INLINE NRP<address> const& local_addr() const { return m_laddr; }
 		__NETP_FORCE_INLINE bool is_nonblocking() const { return ((m_option & u8_t(socket_option::OPTION_NON_BLOCKING)) != 0); }
 
 		__NETP_FORCE_INLINE int cfg_nodelay(bool onoff) { return _cfg_nodelay(onoff); }
@@ -492,8 +492,8 @@ namespace netp {
 		int load_sockname() {
 			int rt = socket_getsockname_impl(m_laddr);
 			if (rt == netp::OK) {
-				NETP_ASSERT(m_laddr.family() == NETP_AF_INET);
-				NETP_ASSERT(!m_laddr.is_null());
+				NETP_ASSERT(m_laddr->family() == NETP_AF_INET);
+				NETP_ASSERT(!m_laddr->is_null());
 				return netp::OK;
 			}
 			return netp_socket_get_last_errno();
@@ -503,8 +503,8 @@ namespace netp {
 		int load_peername() {
 			int rt = socket_getpeername_impl(m_raddr);
 			if (rt == netp::OK) {
-				NETP_ASSERT(m_raddr.family() == NETP_AF_INET);
-				NETP_ASSERT(!m_laddr.is_null());
+				NETP_ASSERT(m_raddr->family() == NETP_AF_INET);
+				NETP_ASSERT(!m_laddr->is_null());
 				return netp::OK;
 			}
 			return netp_socket_get_last_errno();
@@ -514,10 +514,10 @@ namespace netp {
 		int open();
 		int close();
 		int shutdown(int flag);
-		int bind(address const& addr);
+		int bind(NRP<address> const& addr);
 		int listen(int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
-		SOCKET accept( address& raddr, address& laddr);
-		int connect(address const& addr);
+		SOCKET accept( NRP<address>& raddr, NRP<address>& laddr);
+		int connect(NRP<address> const& addr);
 
 		//int sendto();
 		//int recvfrom();
@@ -583,10 +583,10 @@ namespace netp {
 		//url example: tcp://0.0.0.0:80, udp://127.0.0.1:80
 		//@todo
 		//tcp6://ipv6address
-		void do_listen_on(NRP<promise<int>> const& intp, address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<socket_cfg> const& ccfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
+		void do_listen_on(NRP<promise<int>> const& intp, NRP<address> const& addr, fn_channel_initializer_t const& fn_accepted, NRP<socket_cfg> const& ccfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
 		//NRP<promise<int>> listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<socket_cfg> const& cfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
 
-		void do_dial(NRP<promise<int>> const& dialp, address const& addr, fn_channel_initializer_t const& fn_initializer);
+		void do_dial(NRP<promise<int>> const& dialp, NRP<address> const& addr, fn_channel_initializer_t const& fn_initializer);
 		//NRP<promise<int>> dial(address const& addr, fn_channel_initializer_t const& initializer);
 
 		void _ch_do_close_read() {
@@ -778,7 +778,7 @@ namespace netp {
 		}
 
 		void ch_write_impl(NRP<promise<int>> const& intp, NRP<packet> const& outlet) override;
-		void ch_write_to_impl(NRP<promise<int>> const& intp, NRP<packet> const& outlet, netp::address const& to) override;
+		void ch_write_to_impl(NRP<promise<int>> const& intp, NRP<packet> const& outlet, NRP<netp::address> const& to) override;
 
 		void ch_close_read_impl(NRP<promise<int>> const& closep) override
 		{

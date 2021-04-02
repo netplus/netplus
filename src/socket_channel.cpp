@@ -22,9 +22,9 @@ namespace netp {
 		return netp::OK;
 	}
 
-	int socket_channel::bind(address const& addr) {
-		NETP_ASSERT(m_laddr.is_null());
-		NETP_ASSERT((m_family) == addr.family());
+	int socket_channel::bind(NRP<address> const& addr) {
+		NETP_ASSERT(!m_laddr||m_laddr->is_null());
+		NETP_ASSERT((m_family) == addr->family());
 		int rt = socket_bind_impl(addr);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		m_laddr = addr;
@@ -32,9 +32,10 @@ namespace netp {
 	}
 
 	int socket_channel::bind_any() {
-		address _any_;
+		NRP<address >_any_ = netp::make_ref<address>();
 		NETP_ASSERT(m_family != NETP_AF_UNSPEC);
-		_any_.setfamily(m_family);
+		std::memset((void*)_any_->sockaddr_v4(), 0, sizeof(sockaddr_in));
+		_any_->setfamily(m_family);
 		int rt = bind(_any_);
 		if (rt != netp::OK) {
 			return rt;
@@ -44,7 +45,7 @@ namespace netp {
 		return rt;
 	}
 
-	int socket_channel::connect(address const& addr) {
+	int socket_channel::connect(NRP<address> const& addr) {
 		if (m_chflag & (int(channel_flag::F_CONNECTING) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_LISTENING) | int(channel_flag::F_CLOSED)) ) {
 			return netp::E_SOCKET_INVALID_STATE;
 		}
@@ -253,7 +254,7 @@ int socket_base::get_left_snd_queue() const {
 		}
 	}
 
-	void socket_channel::do_listen_on(NRP<promise<int>> const& intp, address const& addr, fn_channel_initializer_t const& fn_accepted_initializer, NRP<socket_cfg> const& ccfg, int backlog ) {
+	void socket_channel::do_listen_on(NRP<promise<int>> const& intp, NRP<address> const& addr, fn_channel_initializer_t const& fn_accepted_initializer, NRP<socket_cfg> const& ccfg, int backlog ) {
 		if (!L->in_event_loop()) {
 			L->schedule([_this=NRP<socket_channel>(this), addr, fn_accepted_initializer, intp,ccfg, backlog]() ->void {
 				_this->do_listen_on(intp, addr, fn_accepted_initializer, ccfg, backlog);
@@ -265,7 +266,7 @@ int socket_base::get_left_snd_queue() const {
 		int rt = socket_channel::bind(addr);
 		if (rt != netp::OK) {
 			m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
-			NETP_WARN("[socket]socket::bind(): %d, addr: %s", rt, addr.to_string().c_str() );
+			NETP_WARN("[socket]socket::bind(): %d, addr: %s", rt, addr->to_string().c_str() );
 			intp->set(rt);
 			return;
 		}
@@ -273,7 +274,7 @@ int socket_base::get_left_snd_queue() const {
 		rt = socket_channel::listen(backlog);
 		if (rt != netp::OK) {
 			m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
-			NETP_WARN("[socket]socket::listen(%u): %d, addr: %s",backlog, rt, addr.to_string().c_str());
+			NETP_WARN("[socket]socket::listen(%u): %d, addr: %s",backlog, rt, addr->to_string().c_str());
 			intp->set(rt);
 			return;
 		}
@@ -291,7 +292,7 @@ int socket_base::get_left_snd_queue() const {
 		});
 	}
 
-	void socket_channel::do_dial(NRP<promise<int>> const& dialp, address const& addr, fn_channel_initializer_t const& fn_initializer ) {
+	void socket_channel::do_dial(NRP<promise<int>> const& dialp, NRP<address> const& addr, fn_channel_initializer_t const& fn_initializer ) {
 		NETP_ASSERT(L->in_event_loop());
 		ch_io_begin([dialp, so=NRP<socket_channel>(this),addr, fn_initializer](int status, io_ctx*) {
 			NETP_ASSERT(so->L->in_event_loop());
@@ -313,7 +314,7 @@ int socket_base::get_left_snd_queue() const {
 		});
 	}
 
-	SOCKET socket_channel::accept( address& raddr, address& laddr ) {
+	SOCKET socket_channel::accept( NRP<address>& raddr, NRP<address>& laddr ) {
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(m_chflag & int(channel_flag::F_LISTENING));
 		if ( (m_chflag & int(channel_flag::F_LISTENING)) ==0 ) {
@@ -351,23 +352,23 @@ int socket_base::get_left_snd_queue() const {
 
 #ifdef _NETP_WIN
 		//not sure linux os behaviour, to test
-		if (0 == local_addr().ipv4() && m_type != u8_t(NETP_SOCK_USERPACKET/*FOR BFR*/) ) {
+		if (0 == local_addr()->ipv4() && m_type != u8_t(NETP_SOCK_USERPACKET/*FOR BFR*/) ) {
 			status = netp::E_WSAENOTCONN;
 			goto _set_fail_and_return;
 		}
 #endif
-		netp::address raddr;
+		NRP<netp::address> raddr;
 		status = socket_getpeername_impl(raddr);
 		if (status != netp::OK ) {
 			status = netp_socket_get_last_errno();
 			goto _set_fail_and_return;
 		}
-		if (raddr != m_raddr) {
+		if ( *raddr != *m_raddr) {
 			status = netp::E_UNKNOWN;
 			goto _set_fail_and_return;
 		}
 
-		if (local_addr() == remote_addr()) {
+		if ( *(local_addr()) == *(remote_addr()) ) {
 			status = netp::E_SOCKET_SELF_CONNCTED;
 			NETP_WARN("[socket][%s]socket selfconnected", ch_info().c_str());
 			goto _set_fail_and_return;
@@ -417,8 +418,8 @@ int socket_base::get_left_snd_queue() const {
 
 		NETP_ASSERT(fn_initializer != nullptr);
 		while (status == netp::OK) {
-			address raddr;
-			address laddr;
+			NRP<address> raddr;
+			NRP<address> laddr;
 			SOCKET nfd = socket_accept_impl( raddr,laddr);
 			if (nfd == NETP_INVALID_SOCKET) {
 				status = netp_socket_get_last_errno();
@@ -753,7 +754,7 @@ int socket_base::get_left_snd_queue() const {
 #endif
 	}
 
-	void socket_channel::ch_write_to_impl( NRP<promise<int>> const& intp, NRP<packet> const& outlet, netp::address const& to) {
+	void socket_channel::ch_write_to_impl( NRP<promise<int>> const& intp, NRP<packet> const& outlet,NRP<netp::address >const& to) {
 		NETP_ASSERT(L->in_event_loop());
 
 		__CH_WRITEABLE_CHECK__(outlet, intp)

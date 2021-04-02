@@ -80,12 +80,16 @@ namespace netp {
 		int rt;
 		std::tie(rt,m_so) = netp::create_socket_channel(cfg);
 		if ( rt  != netp::OK ) {
+			m_so->ch_close();
+			m_so = nullptr;
 			p->set(rt);
 			return;
 		}
 
 		rt = m_so->bind_any();
 		if (rt != netp::OK) {
+			m_so->ch_close();
+			m_so = nullptr;
 			p->set(rt);
 			return;
 		}

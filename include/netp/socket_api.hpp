@@ -25,18 +25,18 @@
 namespace netp {
 	
 #ifdef _NETP_WIN
-	inline netp::u32_t __recvonemsg(SOCKET fd, byte_t* const buff_o, netp::u32_t const bsize, address& raddr, ipv4_t& lipv4, int& ec_o, int flag) {
+	inline netp::u32_t __recvonemsg(SOCKET fd, byte_t* const buff_o, netp::u32_t const bsize, NRP<address>& raddr, ipv4_t& lipv4, int& ec_o, int flag) {
 		const static LPFN_WSARECVMSG __fn_wsa_recvmsg = (LPFN_WSARECVMSG)netp::os::load_api_ex_address(netp::os::winsock_api_ex::API_RECVMSG);
 		NETP_ASSERT(__fn_wsa_recvmsg != nullptr);
 
 	_recvmsg:
 		char ctl_buffer[1024] = { 0 };
 		DWORD _nbytes = 0;
-		sockaddr_in sockaddr_remote;
+		raddr = netp::make_ref<address>();
 		WSABUF wsa_buf_data = { bsize, (char*)buff_o };
 		WSAMSG _msg = {
-			(sockaddr*)& sockaddr_remote,
-			sizeof(sockaddr_remote),
+			raddr->sockaddr_v4(),
+			sizeof(struct sockaddr_in),
 			&wsa_buf_data,
 			1,
 			{sizeof(ctl_buffer),ctl_buffer},
@@ -53,7 +53,6 @@ namespace netp {
 					lipv4 = netp::nipv4toipv4(pPktInfo->ipi_addr.s_addr);
 				}
 			}
-			raddr = netp::address(sockaddr_remote);
 			return _nbytes;
 		}
 
@@ -88,16 +87,15 @@ namespace netp {
 		u_char	data[DSTADDR_DATASIZE];
 	};
 
-	inline netp::u32_t __recvonemsg(SOCKET fd, byte_t* const buff_o, const netp::u32_t bsize, address& raddr, ipv4_t& lipv4, int& ec_o, int flag) {
+	inline netp::u32_t __recvonemsg(SOCKET fd, byte_t* const buff_o, const netp::u32_t bsize, NRP<address>& raddr, ipv4_t& lipv4, int& ec_o, int flag) {
 		NETP_ASSERT(fd != NETP_INVALID_SOCKET);
 	_recvmsg:
 		struct iovec iov[1] = { {buff_o,bsize} };
-		struct sockaddr_in sockaddr_remote;
 		union control_data cmsg;
-
+		raddr = netp::make_ref<netp::address>();
 		struct msghdr msg = {
-			&sockaddr_remote,
-			sizeof(sockaddr_remote),
+			raddr->sockaddr_v4(),
+			sizeof(sockaddr_in),
 			iov,
 			msg.msg_iovlen = 1,
 			&cmsg,
@@ -107,7 +105,6 @@ namespace netp {
 
 		::ssize_t nbytes = recvmsg(fd, &msg, 0);
 		if (NETP_LIKELY(nbytes >= 0)) {
-			raddr = netp::address(sockaddr_remote);
 			for (struct cmsghdr* cmsgptr = CMSG_FIRSTHDR(&msg); cmsgptr != nullptr; cmsgptr = CMSG_NXTHDR(&msg, cmsgptr)) {
 				if (cmsgptr->cmsg_level == IPPROTO_IP && cmsgptr->cmsg_type == DSTADDR_SOCKOPT) {
 					struct in_addr* _dstaddr = (struct in_addr*)dstaddr((cmsgptr));
@@ -115,7 +112,7 @@ namespace netp {
 				}
 			}
 
-			if (!raddr.is_null() && lipv4 != 0) {
+			if ( raddr && !raddr->is_null() && lipv4 != 0) {
 				ec_o = netp::OK;
 				return nbytes;
 			}
@@ -143,22 +140,12 @@ namespace netp {
 		return ::socket(family, type, OS_DEF_protocol[protocol]);
 	}
 
-	inline int connect(SOCKET fd, address const& addr) {
-		struct sockaddr_in addr_in;
-		::memset(&addr_in, 0, sizeof(addr_in));
-		addr_in.sin_family = u16_t(addr.family());
-		addr_in.sin_port = addr.nport();
-		addr_in.sin_addr.s_addr = addr.nipv4();
-		return ::connect(fd, (const struct sockaddr*)(&addr_in), sizeof(addr_in));
+	inline int connect(SOCKET fd, NRP<address> const& addr) {
+		return ::connect(fd, (const struct sockaddr*)(addr->sockaddr_v4()), sizeof(struct sockaddr_in));
 	}
 
-	inline int bind(SOCKET fd, address const& addr) {
-		struct sockaddr_in addr_in;
-		::memset(&addr_in, 0, sizeof(addr_in));
-		addr_in.sin_family = u16_t(addr.family());
-		addr_in.sin_port = addr.nport();
-		addr_in.sin_addr.s_addr = addr.nipv4();
-		return ::bind(fd, (const struct sockaddr*)(&addr_in), sizeof(addr_in));
+	inline int bind(SOCKET fd, NRP<address> const& addr) {
+		return ::bind(fd, (const struct sockaddr*)(addr->sockaddr_v4()), sizeof(struct sockaddr_in));
 	}
 
 	inline int shutdown(SOCKET fd, int flag) {
@@ -173,35 +160,30 @@ namespace netp {
 		return ::listen(fd, backlog);
 	}
 
-	inline SOCKET accept(SOCKET fd, address& addr) {
-		struct sockaddr_in addr_in;
-		::memset(&addr_in, 0, sizeof(addr_in));
-		socklen_t len = sizeof(addr_in);
-
-		SOCKET accepted_fd = ::accept(fd, (struct sockaddr*)(&addr_in), &len);
+	inline SOCKET accept(SOCKET fd, NRP<address>& from) {
+		socklen_t len = sizeof(struct sockaddr_in);
+		from = netp::make_ref<address>();
+		::memset((void*)from->sockaddr_v4(), 0, sizeof(struct sockaddr_in));
+		SOCKET accepted_fd = ::accept(fd, from->sockaddr_v4(), &len);
 		NETP_RETURN_V_IF_MATCH((SOCKET)NETP_SOCKET_ERROR, (accepted_fd == (SOCKET)NETP_INVALID_SOCKET));
-		addr = address(addr_in);
 		return accepted_fd;
 	}
 
-	inline int getsockname(SOCKET fd, address& addr) {
-		struct sockaddr_in addr_in;
-		::memset(&addr_in, 0, sizeof(addr_in));
-
-		socklen_t len = sizeof(addr_in);
-		int rt = ::getsockname(fd, (struct sockaddr*)(&addr_in), &len);
+	inline int getsockname(SOCKET fd, NRP<address>& addr) {
+		socklen_t len = sizeof(struct sockaddr_in);
+		addr = netp::make_ref<address>();
+		::memset((void*)addr->sockaddr_v4(), 0, sizeof(struct sockaddr_in));
+		int rt = ::getsockname(fd, addr->sockaddr_v4(), &len);
 		NETP_RETURN_V_IF_MATCH(rt, rt == NETP_SOCKET_ERROR);
-		addr = address(addr_in);
 		return netp::OK;
 	}
 
-	inline int getpeername(SOCKET fd, address& addr) {
-		struct sockaddr_in addr_peer;
-		::memset(&addr_peer, 0, sizeof(addr_peer));
-		socklen_t len = sizeof(addr_peer);
-		int rt = ::getpeername(fd, (struct sockaddr*)(&addr_peer), &len);
+	inline int getpeername(SOCKET fd, NRP<address>& addr) {
+		socklen_t len = sizeof(struct sockaddr_in);
+		addr = netp::make_ref<address>();
+		::memset((void*)addr->sockaddr_v4(), 0, sizeof(struct sockaddr_in));
+		int rt = ::getpeername(fd, (struct sockaddr*)(addr->sockaddr_v4()), &len);
 		NETP_RETURN_V_IF_MATCH(rt, rt == NETP_SOCKET_ERROR);
-		addr = address(addr_peer);
 		return netp::OK;
 	}
 
@@ -335,17 +317,17 @@ namespace netp {
 		return R;
 	}
 
-	inline netp::u32_t sendto(SOCKET fd, netp::byte_t const* const buf, netp::u32_t len, address const& addr, int& ec_o, int const& flag) {
+	inline netp::u32_t sendto(SOCKET fd, netp::byte_t const* const buf, netp::u32_t len, NRP<address> const& addr, int& ec_o, int const& flag) {
 
 		NETP_ASSERT(buf != nullptr);
 		NETP_ASSERT(len > 0);
-		NETP_ASSERT(!addr.is_null());
+		NETP_ASSERT(addr && !addr->is_null());
 
 		struct sockaddr_in addr_in;
 		::memset(&addr_in, 0, sizeof(addr_in));
-		addr_in.sin_family = u16_t(addr.family());
-		addr_in.sin_port = addr.nport();
-		addr_in.sin_addr.s_addr = addr.nipv4();
+		addr_in.sin_family = u16_t(addr->family());
+		addr_in.sin_port = addr->nport();
+		addr_in.sin_addr.s_addr = addr->nipv4();
 sendto:
 		const int nbytes = ::sendto(fd, reinterpret_cast<const char*>(buf), (int)len, flag, reinterpret_cast<struct sockaddr*>(&addr_in), sizeof(addr_in));
 
@@ -368,15 +350,14 @@ sendto:
 		return 0;
 	}
 
-	inline netp::u32_t recvfrom( SOCKET fd, byte_t* const buff_o, netp::u32_t size, address& addr_o, int& ec_o, int const& flag) {
+	inline netp::u32_t recvfrom( SOCKET fd, byte_t* const buff_o, netp::u32_t size, NRP<address>& addr_o, int& ec_o, int const& flag) {
 recvfrom:
-		struct sockaddr_in addr_in;
-		::memset(&addr_in, 0, sizeof(addr_in));
-		socklen_t socklen = sizeof(addr_in);
-		const int nbytes = ::recvfrom(fd, reinterpret_cast<char*>(buff_o), (int)size, flag, reinterpret_cast<struct sockaddr*>(&addr_in), &socklen);
+		addr_o = netp::make_ref<address>();
+		::memset((void*)addr_o->sockaddr_v4(), 0, sizeof(struct sockaddr_in));
+		socklen_t socklen = sizeof(struct sockaddr_in);
+		const int nbytes = ::recvfrom(fd, reinterpret_cast<char*>(buff_o), (int)size, flag, addr_o->sockaddr_v4(), &socklen);
 
 		if (NETP_LIKELY(nbytes > 0)) {
-			addr_o = address(addr_in);
 			ec_o = netp::OK;
 			NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom() == %d", fd, nbytes);
 			return nbytes;

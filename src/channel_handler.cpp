@@ -58,7 +58,7 @@ namespace netp {
 		(void)income;
 	}
 
-	void channel_handler_abstract::readfrom(NRP<channel_handler_context> const& ctx, NRP<packet> const& income, address const& from) {
+	void channel_handler_abstract::readfrom(NRP<channel_handler_context> const& ctx, NRP<packet> const& income, NRP<address> const& from) {
 		NETP_ASSERT(CH_H_FLAG & CH_INBOUND_READ_FROM);
 		NETP_THROW("CH_INBOUND_READ_FROM MUST IMPL ITS OWN readfrom");
 		(void)ctx;
@@ -80,7 +80,7 @@ namespace netp {
 	VOID_HANDLER_DEFAULT_IMPL_PROMISE(close_write, CH_OUTBOUND_CLOSE_WRITE, channel_handler_abstract)
 
 
-	void channel_handler_abstract::write_to(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, address const& to) {
+	void channel_handler_abstract::write_to(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<address> const& to) {
 		NETP_ASSERT(CH_H_FLAG & CH_OUTBOUND_WRITE_TO);
 		NETP_THROW("CH_OUTBOUND_WRITE_TO MUST IMPL ITS OWN write_to");
 		(void)intp;
@@ -105,7 +105,7 @@ namespace netp {
 		ctx->ch->ch_close_write_impl(intp);
 	}
 
-	void channel_handler_head::write_to(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, address const& to) {
+	void channel_handler_head::write_to(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<address> const& to) {
 		ctx->ch->ch_write_to_impl(intp, outlet, to);
 	}
 
@@ -144,9 +144,9 @@ namespace netp {
 		(void)income;
 	}
 
-	void channel_handler_tail::readfrom(NRP<channel_handler_context> const& ctx, NRP<packet> const& income, address const& from) {
+	void channel_handler_tail::readfrom(NRP<channel_handler_context> const& ctx, NRP<packet> const& income, NRP<address> const& from) {
 		//NETP_ASSERT(ctx->ch != nullptr);
-		NETP_ERR("[#%d][tail]channel readfrom, we reach the end of the pipeline , please check your pipeline configure, no action, from: %s", ctx->ch->ch_id(), from.to_string().c_str() );
+		NETP_ERR("[#%d][tail]channel readfrom, we reach the end of the pipeline , please check your pipeline configure, no action, from: %s", ctx->ch->ch_id(), from->to_string().c_str() );
 		(void)ctx;
 		(void)income;
 	}

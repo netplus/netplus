@@ -46,9 +46,9 @@ namespace netp { namespace handler {
 		typedef std::function<void(NRP<netp::channel_handler_context> const& ctx, const char* data, u32_t len )> fn_http_message_body_t;
 		typedef std::function<void(NRP<netp::channel_handler_context> const& ctx)> fn_http_message_end_t;
 
-		typedef std::function<void(NRP<netp::channel_handler_context> const& ctx, NRP<netp::http::message> const& m, address const& from)> fn_http_message_header_from_t;
-		typedef std::function<void(NRP<netp::channel_handler_context> const& ctx, const char* data, u32_t len, address const& from)> fn_http_message_body_from_t;
-		typedef std::function<void(NRP<netp::channel_handler_context> const& ctx, address const& from)> fn_http_message_end_from_t;
+		typedef std::function<void(NRP<netp::channel_handler_context> const& ctx, NRP<netp::http::message> const& m, NRP<address> const& from)> fn_http_message_header_from_t;
+		typedef std::function<void(NRP<netp::channel_handler_context> const& ctx, const char* data, u32_t len, NRP<address> const& from)> fn_http_message_body_from_t;
+		typedef std::function<void(NRP<netp::channel_handler_context> const& ctx, NRP<address> const& from)> fn_http_message_end_from_t;
 
 	private:
 		NRP<netp::http::parser> m_http_parser;
@@ -56,7 +56,7 @@ namespace netp { namespace handler {
 
 		//for httpu
 		NRP<netp::http::message> m_message_tmp;
-		address m_from_tmp;
+		NRP<address> m_from_tmp;
 
 		void __setup_parser( bool is_httpu = false );
 		void __unsetup_parser();
@@ -75,7 +75,7 @@ namespace netp { namespace handler {
 		void read(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& income) override;
 		
 		//for httpu
-		void readfrom(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& income, address const& from) override;
+		void readfrom(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& income, NRP<address> const& from) override;
 
 		int http_on_headers_complete(NRP<netp::http::parser> const& p, NRP<netp::http::message> const& message);
 		int http_on_body(NRP<netp::http::parser> const& p, const char* data, netp::u32_t len);

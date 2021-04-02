@@ -23,9 +23,9 @@ public:
 		ctx->fire_read(income);
 	}
 
-	void readfrom(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& income, address const& from)
+	void readfrom(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& income, NRP<address> const& from)
 	{
-		NETP_INFO("<<< %s, from: %s\n%s", ctx->ch->ch_info().c_str(), from.to_string().c_str(), std::string((char*)income->head(), income->len()).c_str());
+		NETP_INFO("<<< %s, from: %s\n%s", ctx->ch->ch_info().c_str(), from->to_string().c_str(), std::string((char*)income->head(), income->len()).c_str());
 		ctx->fire_readfrom(income,from);
 	}
 
