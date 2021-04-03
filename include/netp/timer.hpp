@@ -14,8 +14,6 @@
 #include <netp/thread.hpp>
 #include <netp/promise.hpp>
 
-#include <netp/logger_broker.hpp>
-
 #ifdef NETP_ENABLE_TRACE_TIMER
 	#define NETP_TRACE_TIMER NETP_INFO
 #else
