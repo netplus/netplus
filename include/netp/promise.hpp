@@ -146,7 +146,7 @@ namespace netp {
 		bool cancel() {
 			lock_guard<spin_mutex> lg(m_mutex);
 			u8_t s = u8_t(promise_state::S_IDLE);
-			if ( !m_state.compare_exchange_strong(s, u8_t(promise_state::S_CANCELLED), std::memory_order_acq_rel)) {
+			if ( !m_state.compare_exchange_strong(s, u8_t(promise_state::S_CANCELLED), std::memory_order_acq_rel, std::memory_order_acquire)) {
 				return false;
 			}
 

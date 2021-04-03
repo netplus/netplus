@@ -492,8 +492,8 @@ namespace netp {
 		int load_sockname() {
 			int rt = socket_getsockname_impl(m_laddr);
 			if (rt == netp::OK) {
+				NETP_ASSERT(m_laddr&&!m_laddr->is_null());
 				NETP_ASSERT(m_laddr->family() == m_family);
-				NETP_ASSERT(!m_laddr->is_null());
 				return netp::OK;
 			}
 			return netp_socket_get_last_errno();
