@@ -215,8 +215,8 @@ namespace netp {
 	address::address()
 	{
 		std::memset((void*)&m_in,0,sizeof(sockaddr_in));
-		std::memset((void*)&m_in6,0,sizeof(sockaddr_in6));
 		m_in.sin_family = u16_t(NETP_AF_UNSPEC);
+		std::memset((void*)&m_in6, 0, sizeof(sockaddr_in6));
 		m_in6.sin6_family = u16_t(NETP_AF_UNSPEC);
 	}
 

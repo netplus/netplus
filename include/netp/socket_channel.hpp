@@ -883,12 +883,7 @@ namespace netp {
 			};
 	};
 
-	inline NRP<socket_channel> default_socket_channel_maker(NRP<netp::socket_cfg> const& cfg) {
-#ifdef NETP_HAS_POLLER_IOCP
-		return netp::make_ref<socket_channel_iocp>(cfg);
-#endif
-		return netp::make_ref<socket_channel>(cfg);
-	}
+	extern NRP<socket_channel> default_socket_channel_maker(NRP<netp::socket_cfg> const& cfg);
 
 	inline std::tuple<int,NRP<socket_channel>> create_socket_channel(NRP<netp::socket_cfg> const& cfg) {
 		NETP_ASSERT(cfg->L != nullptr);

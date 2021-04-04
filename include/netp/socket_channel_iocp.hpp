@@ -38,18 +38,30 @@ namespace netp {
 		{
 		}
 
+		int socket_connect_impl(NRP<netp::address> const& addr) override {
+			int rt = netp::OK;
+			if (!m_laddr || m_laddr->is_empty()) {
+				rt = bind_any();
+				NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
+			}
+			netp_socket_set_last_errno(netp::E_EINPROGRESS);
+			return NETP_SOCKET_ERROR;
+//			return netp::connect(m_fd, addr);
+		}
 	
 		int __iocp_do_AcceptEx(ol_ctx* olctx);
-		void __iocp_do_AcceptEx_done(fn_channel_initializer_t const& fn_initializer, int status, io_ctx* ctx);
+		void __iocp_do_AcceptEx_done(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& cfg, int status, io_ctx* ctx);
 		int __iocp_do_ConnectEx(void* ol_);
-		void __iocp_do_WSARecvfrom_done(int status, io_ctx* ctx);
-		void __iocp_do_WSARecv_done(int status, io_ctx* ctx);
-		void __iocp_do_WSASend_done(int status, io_ctx* ctx);
 
+		void __iocp_do_WSARecvfrom_done(int status, io_ctx* ctx);
+		int __iocp_do_WSARecvfrom(ol_ctx* olctx, SOCKADDR* from, int* fromlen);
+
+		void __iocp_do_WSARecv_done(int status, io_ctx* ctx);
+		int __iocp_do_WSARecv(ol_ctx* olctx);
+
+		void __iocp_do_WSASend_done(int status, io_ctx* ctx);
 		//one shot one packet
 		int __iocp_do_WSASend(ol_ctx* olctx);
-		int __iocp_do_WSARecv(ol_ctx* olctx);
-		int __iocp_do_WSARecvfrom(ol_ctx* olctx, SOCKADDR* from, int* fromlen);
 
 		void __io_begin_done(io_ctx* ctx_) override {
 			socket_channel::__io_begin_done(ctx_);
@@ -152,7 +164,7 @@ namespace netp {
 			NETP_ASSERT(rt == netp::OK);
 			ctx->ol_r->action = iocp_ol_action::ACCEPTEX;
 			ctx->ol_r->action_status |= AS_WAIT_IOCP;
-			ctx->ol_r->fn_ol_done = std::bind(&socket_channel_iocp::__iocp_do_AcceptEx_done, NRP<socket_channel_iocp>(this), fn_accepted_initializer, cfg, std::placeholders::_1, std::placeholders::_2);
+			ctx->ol_r->fn_ol_done = std::bind(&socket_channel_iocp::__iocp_do_AcceptEx_done, NRP<socket_channel_iocp>(this), fn_initializer, cfg, std::placeholders::_1, std::placeholders::_2);
 		}
 
 		void ch_io_end_accept() override {
