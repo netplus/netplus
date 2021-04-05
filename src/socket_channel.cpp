@@ -27,15 +27,16 @@ namespace netp {
 		NETP_ASSERT((m_family) == addr->family());
 		int rt = socket_bind_impl(addr);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
-		m_laddr = addr;
+		m_laddr = addr->clone();
 		return netp::OK;
 	}
 
 	int socket_channel::bind_any() {
 		NRP<address >_any_ = netp::make_ref<address>();
 		NETP_ASSERT(m_family != NETP_AF_UNSPEC);
-		std::memset((void*)_any_->sockaddr_v4(), 0, sizeof(sockaddr_in));
 		_any_->setfamily(m_family);
+		_any_->setipv4(dotiptoip("0.0.0.0"));
+
 		int rt = bind(_any_);
 		if (rt != netp::OK) {
 			return rt;
@@ -50,7 +51,7 @@ namespace netp {
 			return netp::E_SOCKET_INVALID_STATE;
 		}
 		NETP_ASSERT((m_chflag & int(channel_flag::F_ACTIVE)) == 0);
-		m_raddr = addr;
+		m_raddr = addr->clone();
 		channel::ch_set_active();
 		int rt= socket_connect_impl(addr);
 		if (rt == netp::OK) {

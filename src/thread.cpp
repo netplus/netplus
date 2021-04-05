@@ -21,7 +21,9 @@ namespace netp {
 		tls_set<impl::thread_data>(m_th_data);
 
 #ifdef NETP_MEMORY_USE_TLS_POOL
+		netp::global_pool_align_allocator::instance()->incre_thread_count();
 		tls_create<netp::pool_align_allocator_t>();
+
 #endif
 
 #if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
@@ -69,6 +71,7 @@ namespace netp {
 		NETP_TRACE_THREAD("[thread]__POST_RUN_PROXY__");
 #ifdef NETP_MEMORY_USE_TLS_POOL
 		tls_destroy<netp::pool_align_allocator_t>();
+		netp::global_pool_align_allocator::instance()->decre_thread_count();
 #endif
 	}
 

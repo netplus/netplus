@@ -162,7 +162,7 @@ namespace netp {
 				NETP_ASSERT(olctx->fn_ol_done != nullptr);
 
 				if (ec == netp::OK) {
-					ec = netp::default_socket_api.setsockopt(olctx->accept_fd, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&olctx->fd, sizeof(olctx->fd));
+					ec = netp::setsockopt(olctx->accept_fd, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&olctx->fd, sizeof(olctx->fd));
 				}
 
 				if (NETP_LIKELY(ec == 0)) {

@@ -167,6 +167,7 @@ namespace netp {
 		netp::tls_create< netp::impl::thread_data>();
 
 #ifdef NETP_MEMORY_USE_TLS_POOL
+		netp::global_pool_align_allocator::instance();
 		netp::tls_create<netp::pool_align_allocator_t>();
 #endif
 
@@ -187,6 +188,7 @@ namespace netp {
 
 #ifdef NETP_MEMORY_USE_TLS_POOL
 		netp::tls_destroy< netp::pool_align_allocator_t>();
+		netp::global_pool_align_allocator::instance()->destroy_instance();
 #endif
 	}
 

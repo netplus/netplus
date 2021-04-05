@@ -492,8 +492,8 @@ namespace netp {
 		int load_sockname() {
 			int rt = socket_getsockname_impl(m_laddr);
 			if (rt == netp::OK) {
-				NETP_ASSERT(m_laddr->family() == NETP_AF_INET);
-				NETP_ASSERT(!m_laddr->is_null());
+				NETP_ASSERT(m_laddr&&!m_laddr->is_null());
+				NETP_ASSERT(m_laddr->family() == m_family);
 				return netp::OK;
 			}
 			return netp_socket_get_last_errno();
@@ -883,12 +883,7 @@ namespace netp {
 			};
 	};
 
-	inline NRP<socket_channel> default_socket_channel_maker(NRP<netp::socket_cfg> const& cfg) {
-#ifdef NETP_HAS_POLLER_IOCP
-		return netp::make_ref<socket_channel_iocp>(cfg);
-#endif
-		return netp::make_ref<socket_channel>(cfg);
-	}
+	extern NRP<socket_channel> default_socket_channel_maker(NRP<netp::socket_cfg> const& cfg);
 
 	inline std::tuple<int,NRP<socket_channel>> create_socket_channel(NRP<netp::socket_cfg> const& cfg) {
 		NETP_ASSERT(cfg->L != nullptr);

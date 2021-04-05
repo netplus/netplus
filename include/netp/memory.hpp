@@ -13,6 +13,9 @@
 #include <netp/core/macros.hpp>
 #include <netp/tls.hpp>
 
+#include <netp/thread_impl/spin_mutex.hpp>
+#include <netp/singleton.hpp>
+
 #define NETP_MEMORY_USE_TLS_POOL 1
 //#define NETP_MEMORY_USE_ALIGN_MALLOC 1
 //#define NETP_MEMORY_USE_STD_MALLOC
@@ -67,6 +70,7 @@ namespace netp {
 		return aligned;
 	}
 
+#define SLOT_MAX (16)
 	enum TABLE {
 		T0 = 0,
 		T1,
@@ -82,38 +86,62 @@ namespace netp {
 		T11,
 		T12,
 		T13,
-		T14,
-		T15,
 		T_COUNT
 	};
 
+	struct table_slot_t {
+		size_t max;
+		size_t count;
+		//pointer to sizeof(u8_t*) * slot_max;
+		u8_t** ptr; //
+
+		//if count == slot_max, we move half of count into global
+		//if count ==0, we borrow half of slot_max from global 
+	};
+
+#define TABLE_SLOT_COUNT(tst) (tst->count)
+#define TABLE_SLOT_POP(tst) ( tst->ptr + sizeof(u8_t*) * (--tst->count)))
+#define TABLE_SLOT_PUSH(tst,ptr) (tst->ptr + sizeof(u8_t*) * (tst->count++)))
+
+	typedef table_slot_t* table_t;
 
 	//NOTE: if want to share address with different alignment in the same pool, we need to check alignment and do a re-align if necessary
 	class pool_align_allocator {
 
-		std::vector<void*>* m_tables[TABLE::T_COUNT];
-		size_t m_entries_limit[TABLE::T_COUNT];
+	protected:
+		//pointer to the first table slot
+		//not all the table has seem size
+		table_slot_t* m_tables[TABLE::T_COUNT][SLOT_MAX];
 
-		void set_slot_entries_limit(size_t tidx, size_t capacity) {
-			m_entries_limit[tidx] = capacity;
-		}
+		void preallocate_table_slot_item(table_slot_t* tst, u8_t t, u8_t slot, size_t item_count);
+		void deallocate_table_slot_item(table_slot_t* tst);
+		void allocate_table_slot(table_slot_t* tst, size_t max);
+		void deallocate_table_slot(table_slot_t* tst);
 
-		void init_table_slot(u8_t t, u8_t slot, std::vector<void*>& slotv, size_t capacity);
-		void init_table(u8_t t, std::vector<void*>* table);
-
-		void free_table_slot(std::vector<void*>& slot);
-		void free_table(u8_t t, std::vector<void*>* table);
-
-		void init();
+		void init(bool preallocate);
 		void deinit();
 
 		public:
-			pool_align_allocator();
-			~pool_align_allocator();
+			pool_align_allocator( bool preallocate = true );
+			virtual ~pool_align_allocator();
 
 			void* malloc(size_t size, size_t alignment = NETP_DEFAULT_ALIGN);
 			void free(void* ptr);
 			void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN);
+	};
+
+	class global_pool_align_allocator final :
+		public pool_align_allocator,
+		public singleton<global_pool_align_allocator>
+	{
+		spin_mutex m_table_slots_mtx[TABLE::T_COUNT][SLOT_MAX];
+	public:
+		global_pool_align_allocator();
+		virtual ~global_pool_align_allocator();
+		void incre_thread_count();
+		void decre_thread_count();
+		size_t commit(u8_t t, u8_t slot, table_slot_t* tst);
+		size_t borrow(u8_t t, u8_t slot, table_slot_t* tst);
 	};
 
 	using pool_align_allocator_t = pool_align_allocator;

@@ -153,9 +153,9 @@ namespace netp {
 		}
 
 		inline void schedule(fn_task_t&& f) {
-			//@NOTE: old impl
-			//disable compiler order opt by barrier
-			//std::atomic<bool> _interrupt_poller(false);
+
+			//NOTE: upate on 2021/04/03
+			//lock_guard of m_tq_mutex also works as a memory barrier for memory accesses across loops in between task caller and task callee
 
 			//NOTE: update on 2021/03/28
 			//lock_guard of m_tq_mutex would pose a load/store memory barrier at least
