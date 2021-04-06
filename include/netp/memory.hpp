@@ -70,7 +70,7 @@ namespace netp {
 		return aligned;
 	}
 
-#define SLOT_MAX (16)
+#define SLOT_MAX (8)
 	enum TABLE {
 		T0 = 0,
 		T1,
