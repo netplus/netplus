@@ -2,7 +2,6 @@
 
 NRP<netp::promise<std::tuple<int, NRP<netp::packet>>>> set_p_on_L(NRP<netp::io_event_loop> L2) {
 	NRP<netp::promise<std::tuple<int, NRP<netp::packet>>>> p = netp::make_ref<netp::promise<std::tuple<int, NRP<netp::packet>>>>();
-	NRP<netp::promise<std::tuple<int, NRP<netp::packet>>>> pp = p;
 		
 	NETP_ASSERT(!L2->in_event_loop());
 	L2->execute([p]() {
