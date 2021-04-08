@@ -182,11 +182,11 @@ namespace netp {
 			u8_t s = u8_t(promise_state::S_IDLE);
 			if (promise_t::m_state.compare_exchange_strong(s, u8_t(promise_state::S_DONE), std::memory_order_acq_rel, std::memory_order_acquire)) {
 				//caution: 
-				//(1) if callee is executed in another thread we need call std::atomic_thread_fence(std::memory_order_release) to sure cache [data ack queue -> cache line]
+				//(1) if callee is executed on another thread, we need call std::atomic_thread_fence(std::memory_order_acquire) before reading v
 				//(2) ofc, we could just call is_done() instead
 
-				//luckly, you do not need to do any synchronization mentioned above,, if you schedule/execute callee by io_event_loop
-				//refer to void io_event_loop::__run() for detail
+				//(3) luckly, you do not need to do any synchronization mentioned above, if you schedule/execute callee by io_event_loop
+				//refer to void io_event_loop::schedule()/__run() for detail
 
 				//alternative impl:
 					//we can pass a object such as promise itself, then do get() on callee thread to sure memory synchronization
@@ -197,6 +197,8 @@ namespace netp {
 				// refer to :why_memory_barrier.2010.06.07c.pdf
 
 				promise_t::m_v = v;
+				//the spin_lock below sure the assign of v happens before invoke && a std::atomic_thread_fence would be forced by unload of the spin_lock
+				//if the other thread do std::atomic_thread_fence(std::memory_order_acquire) before reading v , it's safe to get the latest v
 				NETP_DEBUG_STACK_SIZE();
 				lock_guard<spin_mutex> lg(promise_t::m_mutex);
 				event_broker_promise_t::invoke(m_v);

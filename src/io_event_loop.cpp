@@ -69,11 +69,12 @@ namespace netp {
 		const bool rt = m_state.compare_exchange_strong(_SL, u8_t(loop_state::S_RUNNING), std::memory_order_acq_rel, std::memory_order_acquire);
 		NETP_ASSERT(rt == true);
 		try {
-			//this load also act as a memory synchronization fence to sure all release operation happen before this line is synchronized
-			//if we make_ref a atomic_ref object, then we call L->schedule([o=atomic_ref_instance](){});
+			//this load also act as a memory synchronization fence to sure all release operation happen before this line
+			//if we make_ref a atomic_ref object, then we call L->schedule([o=atomic_ref_instance](){});, the assign of a atomic_ref_instance would trigger memory_order_acq_rel, this operation guard all object member initialization and member valud update before the assign
 			//all member value of that object must be synchronized after this line, cuz we have netp::atomic_incre inside ref object
 			while (NETP_UNLIKELY(u8_t(loop_state::S_EXIT) != m_state.load(std::memory_order_acquire))) {
 				{
+					//again the spin_mutex acts as a memory synchronization fence
 					lock_guard<spin_mutex> lg(m_tq_mutex);
 					if (!m_tq_standby.empty()) {
 						std::swap(m_tq, m_tq_standby);
