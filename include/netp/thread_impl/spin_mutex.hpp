@@ -15,15 +15,11 @@ namespace netp { namespace impl {
 
 		class atomic_spin_mutex final {
 			NETP_DECLARE_NONCOPYABLE(atomic_spin_mutex)
-#ifdef USE_BOOL_FLAG
-				std::atomic_bool m_flag; //ATOMIC_VAR_INIT(false);
-#else
 	#if defined(_NETP_GNU_LINUX) || (_MSC_VER>=1900) ||defined(_NETP_APPLE)
 					std::atomic_flag m_flag = ATOMIC_FLAG_INIT; //force for sure
 	#else
 					std::atomic_flag m_flag;
 	#endif
-#endif
 		public:
 			atomic_spin_mutex();
 			~atomic_spin_mutex();

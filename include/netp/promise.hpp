@@ -45,6 +45,7 @@ namespace netp {
 	};
 	enum class promise_state {
 		S_IDLE, //wait to operation
+		S_UPDATING,
 		S_CANCELLED, //operation cancelled
 		S_DONE //operation done
 	};
@@ -163,7 +164,7 @@ namespace netp {
 			lock_guard<spin_mutex> lg(m_mutex);
 			event_broker_promise_t::bind(std::bind(std::forward<_callable>(callee), std::placeholders::_1));
 			if (is_done()) {
-				event_broker_promise_t::invoke(m_v);
+				event_broker_promise_t::invoke(promise_t::m_v);
 			}
 		}
 
@@ -173,50 +174,57 @@ namespace netp {
 			lock_guard<spin_mutex> lg(m_mutex);
 			event_broker_promise_t::bind(std::bind(std::forward<_callable>(callee), std::placeholders::_1));
 			if (is_done()) {
-				event_broker_promise_t::invoke(m_v);
+				event_broker_promise_t::invoke(promise_t::m_v);
 			}
 		}
 
 		//if future was destructed during set by accident, we would get a ~mutex(){} assert failed on DEBUG version
 		void set(V const& v) {
+			
+			//only one thread, one try succeed
 			u8_t s = u8_t(promise_state::S_IDLE);
-			if (promise_t::m_state.compare_exchange_strong(s, u8_t(promise_state::S_DONE), std::memory_order_acq_rel, std::memory_order_acquire)) {
-				//caution: 
-				//(1) if callee is executed in another thread we need call std::atomic_thread_fence(std::memory_order_release) to sure cache [data ack queue -> cache line]
-				//(2) ofc, we could just call is_done() instead
-
-				//luckly, you do not need to do any synchronization mentioned above,, if you schedule/execute callee by io_event_loop
-				//refer to void io_event_loop::__run() for detail
-
-				//alternative impl:
-					//we can pass a object such as promise itself, then do get() on callee thread to sure memory synchronization
-					//but if we do it like this, we would have an additional memory synchronization if the invoker and callee happen in the same thread
-
-				//In regards to cache coherency issue, for store queue, load queue
-				// there is absolution no room to make any further optimization
-				// refer to :why_memory_barrier.2010.06.07c.pdf
-
-				promise_t::m_v = v;
-				NETP_DEBUG_STACK_SIZE();
-				lock_guard<spin_mutex> lg(promise_t::m_mutex);
-				event_broker_promise_t::invoke(m_v);
-				promise_t::m_waiter >0 ?m_cond->notify_all():(void)0;
-				return;
+			if (NETP_UNLIKELY(!promise_t::m_state.compare_exchange_strong(s, u8_t(promise_state::S_UPDATING), std::memory_order_acq_rel, std::memory_order_acquire)) ) {
+				NETP_THROW("set failed: DO NOT set twice on a same promise");
 			}
-			NETP_THROW("set failed: DO NOT set twice on a same promise");
+
+			//caution: 
+			//(1) if callee is executed on another thread, we need call std::atomic_thread_fence(std::memory_order_acquire) before reading v
+			//(2) ofc, we could just call is_done() instead
+
+			//(3) luckly, you do not need to do any synchronization mentioned above, if you schedule/execute callee by io_event_loop
+			//refer to void io_event_loop::schedule()/__run() for detail
+
+			//alternative impl:
+				//we can pass a object such as promise itself, then do get() on callee thread to sure memory synchronization
+				//but if we do it like this, we would have an additional memory synchronization if the invoker and callee happen in the same thread
+
+			//In regards to cache coherency issue, for store queue, load queue
+			// there is absolution no room to make any further optimization
+			// refer to :why_memory_barrier.2010.06.07c.pdf
+
+			//the spin_lock below sure the assign of v happens before invoke && a std::atomic_thread_fence would be forced by unload of the spin_lock
+			//if the other thread do std::atomic_thread_fence(std::memory_order_acquire) before reading v , it's safe to get the latest v
+			promise_t::m_v = v;
+			promise_t::m_state.store(u8_t(promise_state::S_DONE), std::memory_order_release);
+
+			NETP_DEBUG_STACK_SIZE();
+			lock_guard<spin_mutex> lg(promise_t::m_mutex);
+			event_broker_promise_t::invoke(m_v);
+			promise_t::m_waiter >0 ?m_cond->notify_all():(void)0;
 		}
 
 		void set(V&& v) {
 			u8_t s = u8_t(promise_state::S_IDLE);
-			if (promise_t::m_state.compare_exchange_strong(s, u8_t(promise_state::S_DONE), std::memory_order_acq_rel, std::memory_order_acquire)) {
-				promise_t::m_v = std::forward<V>(v);
-				NETP_DEBUG_STACK_SIZE();
-				lock_guard<spin_mutex> lg(promise_t::m_mutex);
-				event_broker_promise_t::invoke(m_v);
-				promise_t::m_waiter > 0 ? m_cond->notify_all() : (void)0;
-				return;
+			if (NETP_UNLIKELY(!promise_t::m_state.compare_exchange_strong(s, u8_t(promise_state::S_UPDATING), std::memory_order_acq_rel, std::memory_order_acquire))) {
+				NETP_THROW("set failed: DO NOT set twice on a same promise");
 			}
-			NETP_THROW("set failed: DO NOT set twice on a same promise");
+			promise_t::m_v = v;
+			promise_t::m_state.store(u8_t(promise_state::S_DONE), std::memory_order_release);
+
+			NETP_DEBUG_STACK_SIZE();
+			lock_guard<spin_mutex> lg(promise_t::m_mutex);
+			event_broker_promise_t::invoke(m_v);
+			promise_t::m_waiter > 0 ? m_cond->notify_all() : (void)0;
 		}
 	};
 }
