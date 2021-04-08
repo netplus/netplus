@@ -205,7 +205,8 @@ namespace netp {
 			//the spin_lock below sure the assign of v happens before invoke && a std::atomic_thread_fence would be forced by unload of the spin_lock
 			//if the other thread do std::atomic_thread_fence(std::memory_order_acquire) before reading v , it's safe to get the latest v
 			promise_t::m_v = v;
-			promise_t::m_state.store(u8_t(promise_state::S_DONE), std::memory_order_release);
+			//we could just do it with std::memory_order_relaxed here, cuz we have spin_lock below
+			promise_t::m_state.store(u8_t(promise_state::S_DONE), std::memory_order_relaxed);
 
 			NETP_DEBUG_STACK_SIZE();
 			lock_guard<spin_mutex> lg(promise_t::m_mutex);
