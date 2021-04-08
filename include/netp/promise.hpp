@@ -220,7 +220,7 @@ namespace netp {
 				NETP_THROW("set failed: DO NOT set twice on a same promise");
 			}
 			promise_t::m_v = v;
-			promise_t::m_state.store(u8_t(promise_state::S_DONE), std::memory_order_release);
+			promise_t::m_state.store(u8_t(promise_state::S_DONE), std::memory_order_relaxed);
 
 			NETP_DEBUG_STACK_SIZE();
 			lock_guard<spin_mutex> lg(promise_t::m_mutex);
