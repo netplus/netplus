@@ -173,7 +173,7 @@ namespace netp {
 		void if_done(_callable const& callee) {
 			lock_guard<spin_mutex> lg(m_mutex);
 			event_broker_promise_t::bind(std::bind(std::forward<_callable>(callee), std::placeholders::_1));
-			if (is_done()) {
+			if (is_done()) {//do not move this line outside of the spin_lock, we need to sure the callee's sequence
 				event_broker_promise_t::invoke(promise_t::m_v);
 			}
 		}

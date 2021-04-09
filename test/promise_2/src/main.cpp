@@ -17,6 +17,7 @@ NRP<netp::promise<std::tuple<int, NRP<netp::packet>>>> set_p_on_L(NRP<netp::io_e
 	return p;
 }
 
+//#define ACCESS_ONCE(x) (*(volatile typeof(x) *)&(x))
 
 int main(int argc, char** argv) {
 
