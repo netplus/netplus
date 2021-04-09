@@ -2,7 +2,7 @@
 #define _NETP_CORE_COMPILER_MSVC_X64_HPP
 
 #define NETP_ENABLE_SSE2
-#define NETP_DEFAULT_ALIGN (16)
+#define NETP_DEFAULT_ALIGN (8)
 
 
 #endif

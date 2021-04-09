@@ -26,11 +26,11 @@ namespace netp {
 	 * 4, always read from head, 
 	 */
 
-	template<class _ref_base, u32_t LEFT_RESERVE, u32_t DEFAULT_CAPACITY>
+	template<class _ref_base, u32_t LEFT_RESERVE, u32_t DEFAULT_CAPACITY, u32_t AGN>
 	class cap_fix_packet:
 		public _ref_base
 	{
-		typedef cap_fix_packet<_ref_base, LEFT_RESERVE, DEFAULT_CAPACITY> fix_packet_t;
+		typedef cap_fix_packet<_ref_base, LEFT_RESERVE, DEFAULT_CAPACITY,AGN> fix_packet_t;
 
 	protected:
 		byte_t* m_buffer;
@@ -38,32 +38,32 @@ namespace netp {
 		u32_t	m_write_idx; //write index
 		u32_t	m_capacity; //the total buffer size
 
-		void _init_buffer(netp::u32_t left, netp::u32_t right, u32_t alignment = NETP_DEFAULT_ALIGN) {
+		void _init_buffer(netp::u32_t left, netp::u32_t right) {
 			if (right == 0) {
 				right = DEFAULT_CAPACITY - left;
 			}
 			NETP_ASSERT((left + right) <= PACK_MAX_CAPACITY);
 			m_capacity = (left + right);
 			reset(left);
-			m_buffer = netp::allocator<byte_t>::malloc(sizeof(byte_t) * m_capacity, alignment );
+			m_buffer = netp::allocator<byte_t>::malloc(sizeof(byte_t) * m_capacity, AGN);
 			NETP_ALLOC_CHECK(m_buffer, sizeof(byte_t) * m_capacity);
 		}
 
 	public:
-		explicit cap_fix_packet(netp::u32_t right_capacity = (DEFAULT_CAPACITY - LEFT_RESERVE), netp::u32_t left_capacity = LEFT_RESERVE, u32_t alignment = NETP_DEFAULT_ALIGN) :
+		explicit cap_fix_packet(netp::u32_t right_capacity = (DEFAULT_CAPACITY - LEFT_RESERVE), netp::u32_t left_capacity = LEFT_RESERVE) :
 			m_buffer(nullptr),
 			m_read_idx(0),
 			m_write_idx(0)
 		{
-			_init_buffer(left_capacity, right_capacity, alignment);
+			_init_buffer(left_capacity, right_capacity);
 		}
 
-		explicit cap_fix_packet(void const* const buf, netp::u32_t len, u32_t alignment = NETP_DEFAULT_ALIGN) :
+		explicit cap_fix_packet(void const* const buf, netp::u32_t len) :
 			m_buffer(nullptr),
 			m_read_idx(0),
 			m_write_idx(0)
 		{
-			_init_buffer(LEFT_RESERVE, len, alignment);
+			_init_buffer(LEFT_RESERVE, len);
 			write(buf, len);
 		}
 
@@ -209,19 +209,19 @@ namespace netp {
 		}
 	};
 
-	template<class _ref_base, u32_t LEFT_RESERVE, u32_t DEFAULT_CAPACITY= PACK_DEFAULT_CAPACITY>
+	template<class _ref_base, u32_t LEFT_RESERVE, u32_t DEFAULT_CAPACITY, u32_t AGN>
 	class cap_expandable_packet:
-		public cap_fix_packet<_ref_base, LEFT_RESERVE, DEFAULT_CAPACITY> 
+		public cap_fix_packet<_ref_base, LEFT_RESERVE, DEFAULT_CAPACITY,AGN> 
 	{
-		typedef cap_fix_packet<_ref_base, LEFT_RESERVE, DEFAULT_CAPACITY> cap_fix_packet_t;
-		typedef cap_expandable_packet<_ref_base, LEFT_RESERVE, DEFAULT_CAPACITY> expandable_packet_t;
+		typedef cap_fix_packet<_ref_base, LEFT_RESERVE, DEFAULT_CAPACITY, AGN> cap_fix_packet_t;
+		typedef cap_expandable_packet<_ref_base, LEFT_RESERVE, DEFAULT_CAPACITY, AGN> expandable_packet_t;
 	private:
 		inline void _extend_leftbuffer_capacity__(netp::u32_t increment = PACK_INCREMENT_SIZE) {
 
 			NETP_ASSERT(cap_fix_packet_t::m_buffer != nullptr);
 			NETP_ASSERT(((cap_fix_packet_t::m_capacity + increment) <= PACK_MAX_CAPACITY));
 			cap_fix_packet_t::m_capacity += increment;
-			byte_t* _newbuffer = netp::allocator<byte_t>::realloc(cap_fix_packet_t::m_buffer, cap_fix_packet_t::m_capacity);
+			byte_t* _newbuffer = netp::allocator<byte_t>::realloc(cap_fix_packet_t::m_buffer, cap_fix_packet_t::m_capacity, AGN);
 			NETP_ALLOC_CHECK(_newbuffer, cap_fix_packet_t::m_capacity);
 			cap_fix_packet_t::m_buffer = _newbuffer;
 
@@ -239,19 +239,19 @@ namespace netp {
 			NETP_ASSERT(cap_fix_packet_t::m_buffer != nullptr);
 			NETP_ASSERT((cap_fix_packet_t::m_capacity + increment) <= PACK_MAX_CAPACITY);
 			cap_fix_packet_t::m_capacity += increment;
-			byte_t* _newbuffer = netp::allocator<byte_t>::realloc(cap_fix_packet_t::m_buffer, cap_fix_packet_t::m_capacity, NETP_DEFAULT_ALIGN);
+			byte_t* _newbuffer = netp::allocator<byte_t>::realloc(cap_fix_packet_t::m_buffer, cap_fix_packet_t::m_capacity, AGN);
 			NETP_ALLOC_CHECK(_newbuffer, cap_fix_packet_t::m_capacity);
 			cap_fix_packet_t::m_buffer = _newbuffer;
 		}
 
 	public:
 		explicit cap_expandable_packet(netp::u32_t right_capacity = (DEFAULT_CAPACITY - LEFT_RESERVE), netp::u32_t left_capacity = LEFT_RESERVE) :
-			cap_fix_packet_t(right_capacity, left_capacity,NETP_DEFAULT_ALIGN)
+			cap_fix_packet_t(right_capacity, left_capacity)
 		{
 		}
 
 		explicit cap_expandable_packet(void const* const buf, netp::u32_t len):
-			cap_fix_packet_t(buf,len, NETP_DEFAULT_ALIGN)
+			cap_fix_packet_t(buf,len)
 		{
 		}
 
@@ -327,6 +327,6 @@ namespace netp {
 		}
 	};
 
-	using packet = cap_expandable_packet<netp::ref_base, PACK_MIN_LEFT_CAPACITY, PACK_DEFAULT_CAPACITY>;
+	using packet = cap_expandable_packet<netp::ref_base, PACK_MIN_LEFT_CAPACITY, PACK_DEFAULT_CAPACITY,NETP_DEFAULT_ALIGN>;
 }
 #endif
