@@ -107,7 +107,7 @@ namespace netp {
 		T10,
 		T11,
 		T12,
-//		T13,
+		T13,
 		T_COUNT
 	};
 

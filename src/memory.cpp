@@ -64,7 +64,7 @@ const static size_t TABLE_4[T3] = {
 		(__NETP_MEMORY_POOL_INIT_FACTOR) * 4,//256k-128
 		(__NETP_MEMORY_POOL_INIT_FACTOR) * 4,//512k-128
 		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2,//1024k-128
-//		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2 //2M-128
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2 //2M-128
 	};
 
 	 __NETP_TLS const static u32_t TABLE_BOUND[TABLE::T_COUNT+1] = {
@@ -82,7 +82,7 @@ const static size_t TABLE_4[T3] = {
 		128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072,//
 		128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072 + 262144,//
 		128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072 + 262144 + 524288,//
-//		128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072 + 262144 + 524288 + 1048576//
+		128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072 + 262144 + 524288 + 1048576//
 	};
 
 	#define calc_SIZE_by_TABLE_SLOT(t, s) (TABLE_BOUND[t] + ((1ULL<<(t + 4))) * ((s + 1)))
@@ -186,7 +186,7 @@ const static size_t TABLE_4[T3] = {
 				m_tables[t][s]->count = 0;
 				m_tables[t][s]->ptr = (u8_t**)(__ptr + (sizeof(table_slot_t)));
 
-				if (preallocate && (t<T5 /*32k*/) ) {
+				if (preallocate && (t<T_COUNT /*32k*/) ) {
 					preallocate_table_slot_item(m_tables[t][s], t, s, (TABLE_SLOT_ENTRIES_INIT_LIMIT[t]>>1) );
 				}
 			}
