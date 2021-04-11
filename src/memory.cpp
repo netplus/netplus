@@ -123,20 +123,81 @@ const static size_t TABLE_5[T13] = {
 		128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072 + 262144 + 524288 + 1048576,//
 	};
 
-	#define calc_SIZE_by_TABLE_SLOT(table, slot) (TABLE_BOUND[table] + ((1ULL<<(table + 4))) * ((slot + 1)))
+	#define calc_SIZE_by_TABLE_SLOT(t, s) (TABLE_BOUND[t] + ((1ULL<<(t + 4))) * ((s + 1)))
 
-	#define calc_TABLE_SLOT(size, table, slot) do { \
+	#define calc_TABLE_SLOT_(size, t, s) do { \
 		for (u8_t ti = 1; ti < (TABLE::T_COUNT+1); ++ti) { \
 			if (size <= TABLE_BOUND[ti]) { \
-				table = (--ti); \
+				t = (--ti); \
 				size -= TABLE_BOUND[table]; \
-				slot = u8_t(size >> (table + 4)); \
-				(size % ((1ULL << (table + 4)))) == 0 ? --slot : 0; \
-				size = calc_SIZE_by_TABLE_SLOT(table,slot); \
+				s = u8_t(size >> (t + 4)); \
+				(size % ((1ULL << (t + 4)))) == 0 ? --s : 0; \
+				size = calc_SIZE_by_TABLE_SLOT(t,s); \
 				break; \
 			} \
 		} \
 	}while(false);\
+
+#define calc_TABLE(size,t) do { \
+	size_t div128 = (size>>7); \
+	switch (div128) { \
+	case 0: \
+	{ \
+		t = T0; \
+	} \
+	break; \
+	case 1: \
+	{ \
+		t = T1; \
+		(size % 128) == 0 ? --t : 0; \
+	} \
+	break; \
+	case 2: \
+	{ \
+		t = T1; \
+	} \
+	break; \
+	case 3: \
+	{ \
+		t = T2; \
+		(size % 128) == 0 ? --t : 0; \
+	} \
+	break; \
+	case 4:case 5:case 6: \
+	{ \
+		t = T2; \
+	} \
+	break; \
+	case 7: \
+	{ \
+		t = T3; \
+		(size % 128) == 0 ? --t : 0; \
+	} \
+	break; \
+	case 8:case 9:case 10: 	case 11:case 12:case 13: case 14: \
+	{ \
+		t = T3; \
+	} \
+	break; \
+	case 15: \
+	{ \
+		/*1920*/ \
+		t = T4; \
+		(size % 128) == 0 ? --t : 0; \
+	} \
+	break; \
+	default: \
+	{ \
+		for (u8_t ti = T5; ti < (TABLE::T_COUNT + 1); ++ti) { \
+			if (size <= TABLE_BOUND[ti]) { \
+				t = (--ti); \
+				break; \
+			} \
+		} \
+	} \
+	break;\
+	} \
+}while(false);\
 
 	//void pool_align_allocator::allocate_table_slot(table_slot_t* tst, size_t item_max) {
 	//	tst->max = item_max;
@@ -208,65 +269,16 @@ const static size_t TABLE_5[T13] = {
 		u8_t* uptr;
 		u8_t t = T_COUNT;
 		u8_t s = u8_t(-1);
-		calc_TABLE_SLOT(size, t, s );
+		calc_TABLE(size,t);
 
-		/*
-		u8_t tn_div = size / 128;
-		u8_t tn_mod = size % 128;
-
-		if (tn_div == 0) {
-			t = T0;
-		} else if (tn_div >= 1 && tn_div < 3) {
-			t = T1;
-		} else if (tn_div >= 3 && tn_div < (3+4)) {
-			t = T2;
-		}
-		else if (tn_div >= (3 + 4) && tn_div < (3 + 4+8)) {
-			t = T3;
-		}
-		else if (tn_div >= (3 + 4 + 8) && tn_div < (3 + 4+8+16)) {
-			t = T4;
-		}
-		else if (tn_div >= (3 + 4 + 8 + 16) && tn_div < (3 + 4+8+16+32)) {
-			t = T5;
-		}
-		else if (tn_div >= (3 + 4 + 8 + 16 + 32) && tn_div < 127) {
-			t = T6;
-		}
-		else if (tn_div >= 127 && tn_div < (127+128)) {
-			t = T7;
-		}
-		else if (tn_div >= (127 + 128) && tn_div < (127 + 128+256)) {
-			t = T8;
-		}
-		else if (tn_div >= (127 + 128 + 256) && tn_div < (127 + 128+256+512)) {
-			t = T9;
-		}
-		else if (tn_div >= (127 + 128 + 256 + 512) && tn_div < (127 + 128+256+512+1024)) {
-			t = T10;
-		}
-		else if (tn_div >= (127 + 128 + 256 + 512 + 1024) && tn_div < (127 + 128+ 256 + 512 + 1024+2048)) {
-			t = T11;
-		}
-		else if (tn_div >= (127 + 128 + 256 + 512 + 1024 + 2048) && tn_div < (127 + 128+ 256 + 512 + 1024+2048+4096)) {
-			t = T12;
-		}
-		else if (tn_div >= (127 + 128 + 256 + 512 + 1024 + 2048 + 4096) && tn_div < (127 + 128+ 256 + 512 + 1024+2048+4096+8192)) {
-			t = T13;
-		}
-
-		*/
-		//tn_mod == 0 ? --t : 0;
-		//size -= TABLE_BOUND[t]; 
-		//s = u8_t(size >> (t + 4)); 
-		//(size % ((1ULL << (t + 4)))) == 0 ? --s : 0; 
-		//size = calc_SIZE_by_TABLE_SLOT(t, s); 
-		
-
-		NETP_ASSERT(t <= T_COUNT);
 		if (NETP_LIKELY(t != T_COUNT)) {
-			NETP_ASSERT(s != size_t(-1));
-			NETP_ASSERT(SLOT_MAX > s);
+			size -= TABLE_BOUND[t]; 
+			s = u8_t(size >> (t + 4)); 
+			(size % ((1ULL << (t + 4)))) == 0 ? --s : 0; 
+
+			size = calc_SIZE_by_TABLE_SLOT(t, s);
+
+			NETP_ASSERT(s < SLOT_MAX);
 			table_slot_t*& tst = (m_tables[t][s]);
 
 			//fast path
@@ -282,7 +294,7 @@ __fast_path:
 			}
 		}
 
-		//aligned_malloc has a 4 bytes h
+		//aligned_malloc has a 8 bytes h
 		uptr = (u8_t*)netp::aligned_malloc((size), align_size);
 		if (NETP_LIKELY(uptr != 0)) {
 			*(uptr - 2) = ((t << 4) | (s & 0xf));
@@ -303,7 +315,7 @@ __fast_path:
 		}
 
 		NETP_ASSERT(t < TABLE::T_COUNT);
-		NETP_ASSERT(SLOT_MAX > s);
+		NETP_ASSERT(s < SLOT_MAX);
 		table_slot_t*& tst = (m_tables[t][s]);
 
 		if (( tst->count < tst->max)) {
@@ -329,15 +341,19 @@ __fast_path:
 
 		u8_t* uptr=0;
 		u8_t t = T_COUNT;
-		u8_t slot = u8_t(-1);
-		calc_TABLE_SLOT(size, t, slot);
-		NETP_ASSERT(t <= T_COUNT);
+		u8_t s = u8_t(-1);
+		calc_TABLE(size, t);
 
 		if (NETP_LIKELY(t != T_COUNT)) {
 			//we would never get old ptr, cuz old ptr have not yet been returned
-			NETP_ASSERT(slot != size_t(-1));
-			NETP_ASSERT(SLOT_MAX > slot);
-			table_slot_t* tst= (m_tables[t][slot]);
+			size -= TABLE_BOUND[t];
+
+			s = u8_t(size >> (t + 4));
+			(size % ((1ULL << (t + 4)))) == 0 ? --s : 0;
+			size = calc_SIZE_by_TABLE_SLOT(t, s);
+
+			NETP_ASSERT(s < SLOT_MAX);
+			table_slot_t*& tst= (m_tables[t][s]);
 			if (tst->count) {
 				uptr = tst->ptr[--tst->count];
 			}
