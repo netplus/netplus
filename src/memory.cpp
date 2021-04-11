@@ -186,7 +186,7 @@ const static size_t TABLE_4[T3] = {
 				m_tables[t][s]->count = 0;
 				m_tables[t][s]->ptr = (u8_t**)(__ptr + (sizeof(table_slot_t)));
 
-				if (preallocate && (t<T_COUNT /*32k*/) ) {
+				if (preallocate && (t<T5 /*32k*/) ) {
 					preallocate_table_slot_item(m_tables[t][s], t, s, (TABLE_SLOT_ENTRIES_INIT_LIMIT[t]>>1) );
 				}
 			}
