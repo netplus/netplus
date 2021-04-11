@@ -26,23 +26,33 @@ namespace netp {
 //SSE16
 //@todo
 
-	//ALIGN_SIZE SHOUDL BE LESS THAN 256
+	//ALIGN_SIZE SHOUDL BE LESS THAN 256bit
 	//STORE OFFSET IN PREVIOUS BYTES
-#define __NETP_ALIGNED_HEAD (4)
+
+	//1<<48 should be ok
+	struct _pseudo_aligned_alloc_hdr {
+		u64_t aligned_size_L : 32;
+		u64_t aligned_size_H : 16;
+	};
+	//data bit sequence
+	//[size:48][might be empty, it depends][reserver:8][offset:8][returned ptr]
+
+	#define __NETP_ALIGNED_HEAD (sizeof(u64_t))
 
 	inline void* aligned_malloc(std::size_t size, std::size_t alignment)
 	{
-#ifdef _DEBUG
-		NETP_ASSERT(alignment <= 32);
-#endif
-		//4 for header
+		NETP_ASSERT( (alignment <= 32) && (size<(1ULL<<48)) );
+
+		//
 		void *original = std::malloc(size + alignment+ __NETP_ALIGNED_HEAD);
 		if (original == 0) return 0;
 		void *aligned = reinterpret_cast<void*>(((reinterpret_cast<std::size_t>(original) + __NETP_ALIGNED_HEAD) & ~(std::size_t(alignment - 1))) + alignment);
 
-		//NETP_ASSERT( (size_t(aligned) - size_t(original)) >sizeof(void*) );
-		//NETP_ASSERT( (size_t(aligned) - size_t(original)) < 0xff);
 		*(reinterpret_cast<char*>(aligned) - 1) = u8_t(size_t(aligned) - size_t(original));
+
+		//the value would only be used by realloc
+		*(reinterpret_cast<u32_t*>(original)) = (size & 0xffffffff);// L:32
+		*(reinterpret_cast<u16_t*>(((u8_t*)original) + 4)) = ((size >> 32) & 0xffff); //H:16
 		return aligned;
 	}
 
@@ -55,19 +65,31 @@ namespace netp {
 	inline void* aligned_realloc(void* ptr, std::size_t size, std::size_t alignment)
 	{
 		if (ptr == 0) { return aligned_malloc(size, alignment); }
-		const u8_t previous_offset = *(reinterpret_cast<u8_t*>(ptr) - 1);
-		void* original = (u8_t*)ptr - previous_offset;
-		original = std::realloc(original, size + alignment+__NETP_ALIGNED_HEAD);
-		if (original == 0) {return 0;}
-		void *aligned = reinterpret_cast<void*>(((reinterpret_cast<std::size_t>(original)+ __NETP_ALIGNED_HEAD) & ~(std::size_t(alignment - 1))) + alignment);
-		void *previous_aligned = static_cast<u8_t *>(original) + previous_offset;
-		if (aligned != previous_aligned) {
-			//align data
-			std::memmove(aligned, previous_aligned, size);
+
+		//void *previous_aligned = static_cast<u8_t *>(original) + previous_offset;
+		//align data
+		void* original = (u8_t*)ptr - *(reinterpret_cast<u8_t*>(ptr) - 1);
+		size_t old_size = *(reinterpret_cast<u32_t*>(original));
+		size_t old_size_H = *(reinterpret_cast<u16_t*>(((u8_t*)original) + 4));
+		if (old_size_H > 0) {
+			old_size |= (old_size_H << 32);
 		}
-		//update offset
-		*(reinterpret_cast<char*>(aligned) - 1) = u8_t(size_t(aligned) - size_t(original));
-		return aligned;
+			
+		//refer to: https://en.cppreference.com/w/cpp/memory/c/realloc
+		//The contents of the area remain unchanged up to the lesser of the new and old sizes.
+		if (old_size == size) {
+			return ptr;
+		}
+
+		void* new_ptr = aligned_malloc(size, alignment);
+		if (new_ptr == 0) { 
+			aligned_free(ptr);
+			return 0; 
+		}
+
+		std::memcpy(new_ptr, ptr, NETP_MIN(old_size, size) );
+		aligned_free(ptr);
+		return new_ptr;
 	}
 
 #define SLOT_MAX (8)
@@ -85,7 +107,7 @@ namespace netp {
 		T10,
 		T11,
 		T12,
-		T13,
+//		T13,
 		T_COUNT
 	};
 
@@ -116,9 +138,6 @@ namespace netp {
 		void preallocate_table_slot_item(table_slot_t* tst, u8_t t, u8_t slot, size_t item_count);
 		void deallocate_table_slot_item(table_slot_t* tst);
 		
-		//void allocate_table_slot(table_slot_t* tst, size_t max);
-		//void deallocate_table_slot(table_slot_t* tst);
-
 		void init(bool preallocate);
 		void deinit();
 
@@ -126,9 +145,9 @@ namespace netp {
 			pool_align_allocator( bool preallocate = true );
 			virtual ~pool_align_allocator();
 
-			void* malloc(size_t size, size_t alignment = NETP_DEFAULT_ALIGN);
+			void* malloc(size_t size, size_t alignment );
 			void free(void* ptr);
-			void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN);
+			void* realloc(void* ptr, size_t size, size_t alignment);
 	};
 
 	class global_pool_align_allocator final :

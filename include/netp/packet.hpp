@@ -221,17 +221,20 @@ namespace netp {
 			NETP_ASSERT(cap_fix_packet_t::m_buffer != nullptr);
 			NETP_ASSERT(((cap_fix_packet_t::m_capacity + increment) <= PACK_MAX_CAPACITY));
 			cap_fix_packet_t::m_capacity += increment;
-			byte_t* _newbuffer = netp::allocator<byte_t>::realloc(cap_fix_packet_t::m_buffer, cap_fix_packet_t::m_capacity, AGN);
+			byte_t* _newbuffer = netp::allocator<byte_t>::malloc(cap_fix_packet_t::m_capacity, AGN);
 			NETP_ALLOC_CHECK(_newbuffer, cap_fix_packet_t::m_capacity);
-			cap_fix_packet_t::m_buffer = _newbuffer;
 
 			const netp::u32_t new_left = cap_fix_packet_t::m_read_idx + increment;
 			netp::u32_t _len = cap_fix_packet_t::len();
 			if (_len>0) {
-				::memmove(cap_fix_packet_t::m_buffer + new_left, cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_read_idx, _len);
+				std::memcpy(_newbuffer + new_left, cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_read_idx, _len);
 			}
 			cap_fix_packet_t::m_read_idx = new_left;
 			cap_fix_packet_t::m_write_idx = cap_fix_packet_t::m_read_idx+_len;
+//			std::swap(_newbuffer, cap_fix_packet_t::m_buffer);
+			
+			netp::allocator<byte_t>::free(cap_fix_packet_t::m_buffer);
+			cap_fix_packet_t::m_buffer = _newbuffer;
 		}
 
 		inline void _extend_rightbuffer_capacity__(netp::u32_t increment = PACK_INCREMENT_SIZE) {
