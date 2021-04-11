@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="netplus" />
+		<Option execution_dir="../../linux" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="debug">
+				<Option output="bin/debug/netplus" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="" />
+				<Option object_output="obj/Debug/" />
+				<Option type="2" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Compiler>
+					<Add option="-Wall" />
+					<Add option="-g" />
+				</Compiler>
+				<MakeCommands>
+					<Build command="$make -f $makefile build=$target" />
+					<CompileFile command="$make -f $makefile $file" />
+					<Clean command="$make -f $makefile build=$target clean" />
+					<DistClean command="$make -f $makefile distclean$target" />
+					<AskRebuildNeeded command="$make -q -f $makefile $target" />
+					<SilentBuild command="$make -f $makefile build=$target &gt; $(CMD_NULL)" />
+				</MakeCommands>
+			</Target>
+			<Target title="release">
+				<Option output="bin/release/netplus" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="" />
+				<Option object_output="obj/Release/" />
+				<Option type="2" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Compiler>
+					<Add option="-Wall" />
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-std=c11" />
+			<Add option="-fPIC" />
+			<Add option="-m64" />
+			<Add option="-D__BFR__" />
+			<Add directory="../../../include" />
+		</Compiler>
+		<Linker>
+			<Add option="-m64" />
+		</Linker>
+		<Unit filename="../../../3rd/getopt/getopt.h" />
+		<Unit filename="../../../3rd/http_parser/http_parser.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/http_parser/http_parser.h" />
+		<Unit filename="../../../3rd/nlohmann/include/nlohmann/json.hpp" />
+		<Unit filename="../../../3rd/stack_walker/StackWalker.h" />
+		<Unit filename="../../../3rd/udns/0.4/config.h" />
+		<Unit filename="../../../3rd/udns/0.4/udns.h" />
+		<Unit filename="../../../3rd/udns/0.4/udns_XtoX.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_bl.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_codes.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_dn.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_dntosp.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_init.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_jran.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_misc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_parse.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_resolver.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_rr_a.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_rr_mx.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_rr_naptr.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_rr_ptr.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_rr_srv.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../3rd/udns/0.4/udns_rr_txt.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../include/netp.hpp" />
+		<Unit filename="../../../include/netp/CPUID.hpp" />
+		<Unit filename="../../../include/netp/adapter.hpp" />
+		<Unit filename="../../../include/netp/address.hpp" />
+		<Unit filename="../../../include/netp/any.hpp" />
+		<Unit filename="../../../include/netp/app.hpp" />
+		<Unit filename="../../../include/netp/benchmark.hpp" />
+		<Unit filename="../../../include/netp/bytes_helper.hpp" />
+		<Unit filename="../../../include/netp/bytes_ringbuffer.hpp" />
+		<Unit filename="../../../include/netp/channel.hpp" />
+		<Unit filename="../../../include/netp/channel_handler.hpp" />
+		<Unit filename="../../../include/netp/channel_handler_context.hpp" />
+		<Unit filename="../../../include/netp/channel_pipeline.hpp" />
+		<Unit filename="../../../include/netp/condition.hpp" />
+		<Unit filename="../../../include/netp/constants.hpp" />
+		<Unit filename="../../../include/netp/core.hpp" />
+		<Unit filename="../../../include/netp/core/compiler.hpp" />
+		<Unit filename="../../../include/netp/core/compiler/gcc_.hpp" />
+		<Unit filename="../../../include/netp/core/compiler/gcc_armv7a_.hpp" />
+		<Unit filename="../../../include/netp/core/compiler/gcc_x64_.hpp" />
+		<Unit filename="../../../include/netp/core/compiler/gcc_x86_.hpp" />
+		<Unit filename="../../../include/netp/core/compiler/msvc_.hpp" />
+		<Unit filename="../../../include/netp/core/compiler/msvc_x64_.hpp" />
+		<Unit filename="../../../include/netp/core/compiler/msvc_x86_.hpp" />
+		<Unit filename="../../../include/netp/core/config.hpp" />
+		<Unit filename="../../../include/netp/core/macros.hpp" />
+		<Unit filename="../../../include/netp/core/platform.hpp" />
+		<Unit filename="../../../include/netp/core/platform/android_.hpp" />
+		<Unit filename="../../../include/netp/core/platform/android_armv7a_.hpp" />
+		<Unit filename="../../../include/netp/core/platform/gnu_linux_.hpp" />
+		<Unit filename="../../../include/netp/core/platform/gnu_linux_armv7a_.hpp" />
+		<Unit filename="../../../include/netp/core/platform/gnu_linux_x64_.hpp" />
+		<Unit filename="../../../include/netp/core/platform/gnu_linux_x86_.hpp" />
+		<Unit filename="../../../include/netp/core/platform/osx_.hpp" />
+		<Unit filename="../../../include/netp/core/platform/osx_x64_.hpp" />
+		<Unit filename="../../../include/netp/core/platform/osx_x86_.hpp" />
+		<Unit filename="../../../include/netp/core/platform/win_.hpp" />
+		<Unit filename="../../../include/netp/core/platform/win_x64_.hpp" />
+		<Unit filename="../../../include/netp/core/platform/win_x86_.hpp" />
+		<Unit filename="../../../include/netp/dns_resolver.hpp" />
+		<Unit filename="../../../include/netp/event_broker.hpp" />
+		<Unit filename="../../../include/netp/exception.hpp" />
+		<Unit filename="../../../include/netp/funcs.hpp" />
+		<Unit filename="../../../include/netp/handler/dh_symmetric_encrypt.hpp" />
+		<Unit filename="../../../include/netp/handler/dump_in_len.hpp" />
+		<Unit filename="../../../include/netp/handler/dump_in_text.hpp" />
+		<Unit filename="../../../include/netp/handler/dump_out_len.hpp" />
+		<Unit filename="../../../include/netp/handler/dump_out_text.hpp" />
+		<Unit filename="../../../include/netp/handler/echo.hpp" />
+		<Unit filename="../../../include/netp/handler/fragment.hpp" />
+		<Unit filename="../../../include/netp/handler/hlen.hpp" />
+		<Unit filename="../../../include/netp/handler/http.hpp" />
+		<Unit filename="../../../include/netp/handler/mux.hpp" />
+		<Unit filename="../../../include/netp/handler/symmetric_encrypt.hpp" />
+		<Unit filename="../../../include/netp/handler/tls.hpp" />
+		<Unit filename="../../../include/netp/handler/tls_credentials.hpp" />
+		<Unit filename="../../../include/netp/handler/websocket.hpp" />
+		<Unit filename="../../../include/netp/heap.hpp" />
+		<Unit filename="../../../include/netp/helper.hpp" />
+		<Unit filename="../../../include/netp/http/client.hpp" />
+		<Unit filename="../../../include/netp/http/message.hpp" />
+		<Unit filename="../../../include/netp/http/parser.hpp" />
+		<Unit filename="../../../include/netp/icmp.hpp" />
+		<Unit filename="../../../include/netp/io_event_loop.hpp" />
+		<Unit filename="../../../include/netp/io_monitor.hpp" />
+		<Unit filename="../../../include/netp/ipv4.hpp" />
+		<Unit filename="../../../include/netp/ipv6.hpp" />
+		<Unit filename="../../../include/netp/l2/m6.hpp" />
+		<Unit filename="../../../include/netp/len_str.hpp" />
+		<Unit filename="../../../include/netp/list.hpp" />
+		<Unit filename="../../../include/netp/logger/android_log_print.hpp" />
+		<Unit filename="../../../include/netp/logger/console_logger.hpp" />
+		<Unit filename="../../../include/netp/logger/file_logger.hpp" />
+		<Unit filename="../../../include/netp/logger/logger_abstract.hpp" />
+		<Unit filename="../../../include/netp/logger/net_logger.hpp" />
+		<Unit filename="../../../include/netp/logger/sys_logger.hpp" />
+		<Unit filename="../../../include/netp/logger_broker.hpp" />
+		<Unit filename="../../../include/netp/memory.hpp" />
+		<Unit filename="../../../include/netp/mutex.hpp" />
+		<Unit filename="../../../include/netp/os/api_wrapper.hpp" />
+		<Unit filename="../../../include/netp/os/winsock_helper.hpp" />
+		<Unit filename="../../../include/netp/packet.hpp" />
+		<Unit filename="../../../include/netp/poller_abstract.hpp" />
+		<Unit filename="../../../include/netp/poller_epoll.hpp" />
+		<Unit filename="../../../include/netp/poller_interruptable_by_fd.hpp" />
+		<Unit filename="../../../include/netp/poller_iocp.hpp" />
+		<Unit filename="../../../include/netp/poller_kqueue.hpp" />
+		<Unit filename="../../../include/netp/poller_select.hpp" />
+		<Unit filename="../../../include/netp/promise.hpp" />
+		<Unit filename="../../../include/netp/ringbuffer.hpp" />
+		<Unit filename="../../../include/netp/rpc.hpp" />
+		<Unit filename="../../../include/netp/scheduler.hpp" />
+		<Unit filename="../../../include/netp/security/cipher_abstract.hpp" />
+		<Unit filename="../../../include/netp/security/dh.hpp" />
+		<Unit filename="../../../include/netp/security/fletcher.hpp" />
+		<Unit filename="../../../include/netp/security/formula.hpp" />
+		<Unit filename="../../../include/netp/security/murmurhash.hpp" />
+		<Unit filename="../../../include/netp/security/obfuscate.hpp" />
+		<Unit filename="../../../include/netp/security/xxtea.hpp" />
+		<Unit filename="../../../include/netp/signal_broker.hpp" />
+		<Unit filename="../../../include/netp/singleton.hpp" />
+		<Unit filename="../../../include/netp/smart_ptr.hpp" />
+		<Unit filename="../../../include/netp/socket.hpp" />
+		<Unit filename="../../../include/netp/socket_api.hpp" />
+		<Unit filename="../../../include/netp/socket_channel.hpp" />
+		<Unit filename="../../../include/netp/socket_channel_iocp.hpp" />
+		<Unit filename="../../../include/netp/string.hpp" />
+		<Unit filename="../../../include/netp/test.hpp" />
+		<Unit filename="../../../include/netp/thread.hpp" />
+		<Unit filename="../../../include/netp/thread_impl/condition.hpp" />
+		<Unit filename="../../../include/netp/thread_impl/mutex.hpp" />
+		<Unit filename="../../../include/netp/thread_impl/mutex_basic.hpp" />
+		<Unit filename="../../../include/netp/thread_impl/shared_mutex.hpp" />
+		<Unit filename="../../../include/netp/thread_impl/spin_mutex.hpp" />
+		<Unit filename="../../../include/netp/timer.hpp" />
+		<Unit filename="../../../include/netp/tls.hpp" />
+		<Unit filename="../../../include/netp/traffic/forwarder_detector.hpp" />
+		<Unit filename="../../../include/netp/traffic/forwarder_iptcp.hpp" />
+		<Unit filename="../../../include/netp/traffic/forwarder_iptcp_payload.hpp" />
+		<Unit filename="../../../include/netp/traffic/forwarder_ipudp.hpp" />
+		<Unit filename="../../../include/netp/traffic/forwarder_ipudp_payload.hpp" />
+		<Unit filename="../../../include/netp/traffic/forwarder_l2.hpp" />
+		<Unit filename="../../../include/netp/traffic/repeater.hpp" />
+		<Unit filename="../../../src/CPUID.cpp" />
+		<Unit filename="../../../src/adapter.cpp" />
+		<Unit filename="../../../src/address.cpp" />
+		<Unit filename="../../../src/app.cpp" />
+		<Unit filename="../../../src/channel_handler.cpp" />
+		<Unit filename="../../../src/channel_handler_context.cpp" />
+		<Unit filename="../../../src/channel_pipeline.cpp" />
+		<Unit filename="../../../src/dns_resolver.cpp" />
+		<Unit filename="../../../src/exception.cpp" />
+		<Unit filename="../../../src/funcs.cpp" />
+		<Unit filename="../../../src/handler/dh_symmetric_encrypt.cpp" />
+		<Unit filename="../../../src/handler/hlen.cpp" />
+		<Unit filename="../../../src/handler/http.cpp" />
+		<Unit filename="../../../src/handler/mux.cpp" />
+		<Unit filename="../../../src/handler/tls.cpp" />
+		<Unit filename="../../../src/handler/websocket.cpp" />
+		<Unit filename="../../../src/helper.cpp" />
+		<Unit filename="../../../src/http/client.cpp" />
+		<Unit filename="../../../src/http/message.cpp" />
+		<Unit filename="../../../src/http/parser.cpp" />
+		<Unit filename="../../../src/io_event_loop.cpp" />
+		<Unit filename="../../../src/logger/android_log_print.cpp" />
+		<Unit filename="../../../src/logger/console_logger.cpp" />
+		<Unit filename="../../../src/logger/file_logger.cpp" />
+		<Unit filename="../../../src/logger/net_logger.cpp" />
+		<Unit filename="../../../src/logger/sys_logger.cpp" />
+		<Unit filename="../../../src/logger_broker.cpp" />
+		<Unit filename="../../../src/memory.cpp" />
+		<Unit filename="../../../src/os/api_wrapper_android.cpp" />
+		<Unit filename="../../../src/os/api_wrapper_gnulinux.cpp" />
+		<Unit filename="../../../src/os/api_wrapper_win.cpp" />
+		<Unit filename="../../../src/os/winsock_helper.cpp" />
+		<Unit filename="../../../src/rpc.cpp" />
+		<Unit filename="../../../src/scheduler.cpp" />
+		<Unit filename="../../../src/signal_broker.cpp" />
+		<Unit filename="../../../src/socket_channel.cpp" />
+		<Unit filename="../../../src/socket_channel_iocp.cpp" />
+		<Unit filename="../../../src/socket_func.cpp" />
+		<Unit filename="../../../src/thread.cpp" />
+		<Unit filename="../../../src/thread_impl/mutex.cpp" />
+		<Unit filename="../../../src/timer.cpp" />
+		<Unit filename="../../../src/traffic/forwarder_detector.cpp" />
+		<Unit filename="../../../src/traffic/forwarder_iptcp.cpp" />
+		<Unit filename="../../../src/traffic/forwarder_iptcp_payload.cpp" />
+		<Unit filename="../../../src/traffic/forwarder_ipudp.cpp" />
+		<Unit filename="../../../src/traffic/forwarder_ipudp_payload.cpp" />
+		<Unit filename="../../../src/traffic/forwarder_l2.cpp" />
+		<Extensions />
+	</Project>
+</CodeBlocks_project_file>
