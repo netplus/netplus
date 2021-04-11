@@ -90,8 +90,8 @@ namespace netp {
 	};
 
 	struct table_slot_t {
-		size_t max;
-		size_t count;
+		u32_t max;
+		u32_t count;
 		//pointer to sizeof(u8_t*) * slot_max;
 		u8_t** ptr; //
 
@@ -115,8 +115,9 @@ namespace netp {
 
 		void preallocate_table_slot_item(table_slot_t* tst, u8_t t, u8_t slot, size_t item_count);
 		void deallocate_table_slot_item(table_slot_t* tst);
-		void allocate_table_slot(table_slot_t* tst, size_t max);
-		void deallocate_table_slot(table_slot_t* tst);
+		
+		//void allocate_table_slot(table_slot_t* tst, size_t max);
+		//void deallocate_table_slot(table_slot_t* tst);
 
 		void init(bool preallocate);
 		void deinit();
@@ -140,8 +141,8 @@ namespace netp {
 		virtual ~global_pool_align_allocator();
 		void incre_thread_count();
 		void decre_thread_count();
-		size_t commit(u8_t t, u8_t slot, table_slot_t* tst);
-		size_t borrow(u8_t t, u8_t slot, table_slot_t* tst);
+		u32_t commit(u8_t t, u8_t slot, table_slot_t* tst);
+		u32_t borrow(u8_t t, u8_t slot, table_slot_t* tst);
 	};
 
 	using pool_align_allocator_t = pool_align_allocator;

@@ -123,41 +123,36 @@ const static size_t TABLE_5[T13] = {
 		128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072 + 262144 + 524288 + 1048576,//
 	};
 
-	__NETP_FORCE_INLINE void calc_SIZE_by_TABLE_SLOT(size_t& size, u8_t table, u8_t slot) {
-		size = TABLE_BOUND[table] + (size_t(1)<<(size_t(table) + 4)) * ((size_t(slot) + 1));
-	}
+	#define calc_SIZE_by_TABLE_SLOT(table, slot) (TABLE_BOUND[table] + ((1ULL<<(table + 4))) * ((slot + 1)))
 
-	__NETP_FORCE_INLINE void calc_TABLE_SLOT(size_t& size, u8_t& table, u8_t& slot) {
-		for (u8_t t = 1; t < (TABLE::T_COUNT+1); ++t) {
-			if (size <= TABLE_BOUND[t]) {
-				table = (t);
-				--table;
+	#define calc_TABLE_SLOT(size, table, slot) do { \
+		for (u8_t ti = 1; ti < (TABLE::T_COUNT+1); ++ti) { \
+			if (size <= TABLE_BOUND[ti]) { \
+				table = (--ti); \
+				size -= TABLE_BOUND[table]; \
+				slot = u8_t(size >> (table + 4)); \
+				(size % ((1ULL << (table + 4)))) == 0 ? --slot : 0; \
+				size = calc_SIZE_by_TABLE_SLOT(table,slot); \
+				break; \
+			} \
+		} \
+	}while(false);\
 
-				size -= TABLE_BOUND[table];
-				slot = u8_t(size >> (table + 4));
-				(size % (size_t(1) << (size_t(table) + 4))) == 0 ? --slot : 0;
-				size = TABLE_BOUND[table] + (size_t(1) << ((size_t(table) + 4))) * ((size_t(slot) + 1));
-				break;
-			}
-		}
-	}
-
-	void pool_align_allocator::allocate_table_slot(table_slot_t* tst, size_t item_max) {
-		tst->max = item_max;
-		tst->count = 0;
-		tst->ptr = (u8_t**)netp::aligned_malloc(sizeof(u8_t*) * (item_max), NETP_DEFAULT_ALIGN);
-	}
-	void pool_align_allocator::deallocate_table_slot(table_slot_t* tst) {
-		tst->max = 0;
-		tst->count = 0;
-		netp::aligned_free((u8_t**)tst->ptr);
-	}
+	//void pool_align_allocator::allocate_table_slot(table_slot_t* tst, size_t item_max) {
+	//	tst->max = item_max;
+	//	tst->count = 0;
+	//	tst->ptr = (u8_t**)netp::aligned_malloc(sizeof(u8_t*) * (item_max), NETP_DEFAULT_ALIGN);
+	//}
+	//void pool_align_allocator::deallocate_table_slot(table_slot_t* tst) {
+	//	tst->max = 0;
+	//	tst->count = 0;
+	//	netp::aligned_free((u8_t**)tst->ptr);
+	//}
 
 	void pool_align_allocator::preallocate_table_slot_item(table_slot_t* tst, u8_t t, u8_t slot, size_t item_count) {
 		u8_t** ptr = (u8_t**)netp::aligned_malloc(sizeof(u8_t*) * (item_count), NETP_DEFAULT_ALIGN);
+		size_t size = calc_SIZE_by_TABLE_SLOT(t, slot);
 		size_t i;
-		size_t size = 0;
-		calc_SIZE_by_TABLE_SLOT(size, t, slot);
 		for (i = 0; i < (item_count); ++i) {
 			ptr[i] = (u8_t*) pool_align_allocator::malloc(size, NETP_DEFAULT_ALIGN);
 		}
@@ -174,10 +169,15 @@ const static size_t TABLE_5[T13] = {
 	}
 
 	void pool_align_allocator::init( bool preallocate ) {
+		static_assert((sizeof(table_slot_t) % NETP_DEFAULT_ALIGN) == 0, "check table slot size");
 		for (u8_t t = 0; t < TABLE::T_COUNT; ++t) {
 			for (u8_t s = 0; s < SLOT_MAX; ++s) {
-				m_tables[t][s] = (table_slot_t*)netp::aligned_malloc(sizeof(table_slot_t), NETP_DEFAULT_ALIGN);
-				allocate_table_slot( m_tables[t][s], TABLE_SLOT_ENTRIES_INIT_LIMIT[t]);
+				u8_t* __ptr = (u8_t*) netp::aligned_malloc(sizeof(table_slot_t) + (sizeof(u8_t*) * TABLE_SLOT_ENTRIES_INIT_LIMIT[t]), NETP_DEFAULT_ALIGN);
+				m_tables[t][s] = (table_slot_t*)__ptr;
+				m_tables[t][s]->max = TABLE_SLOT_ENTRIES_INIT_LIMIT[t];
+				m_tables[t][s]->count = 0;
+				m_tables[t][s]->ptr = (u8_t**)(__ptr + (sizeof(table_slot_t)));
+				//allocate_table_slot( m_tables[t][s], TABLE_SLOT_ENTRIES_INIT_LIMIT[t]);
 
 				if (preallocate && (t<T5 /*32k*/) ) {
 					preallocate_table_slot_item(m_tables[t][s], t, s, (TABLE_SLOT_ENTRIES_INIT_LIMIT[t]>>1) );
@@ -190,7 +190,7 @@ const static size_t TABLE_5[T13] = {
 		for (u8_t t = 0; t < TABLE::T_COUNT; ++t) {
 			for (u8_t s = 0; s < SLOT_MAX; ++s) {
 				deallocate_table_slot_item(m_tables[t][s]);
-				deallocate_table_slot(m_tables[t][s]);
+				//deallocate_table_slot(m_tables[t][s]);
 				netp::aligned_free(m_tables[t][s]);
 			}
 		}
@@ -209,11 +209,65 @@ const static size_t TABLE_5[T13] = {
 		u8_t t = T_COUNT;
 		u8_t s = u8_t(-1);
 		calc_TABLE_SLOT(size, t, s );
+
+		/*
+		u8_t tn_div = size / 128;
+		u8_t tn_mod = size % 128;
+
+		if (tn_div == 0) {
+			t = T0;
+		} else if (tn_div >= 1 && tn_div < 3) {
+			t = T1;
+		} else if (tn_div >= 3 && tn_div < (3+4)) {
+			t = T2;
+		}
+		else if (tn_div >= (3 + 4) && tn_div < (3 + 4+8)) {
+			t = T3;
+		}
+		else if (tn_div >= (3 + 4 + 8) && tn_div < (3 + 4+8+16)) {
+			t = T4;
+		}
+		else if (tn_div >= (3 + 4 + 8 + 16) && tn_div < (3 + 4+8+16+32)) {
+			t = T5;
+		}
+		else if (tn_div >= (3 + 4 + 8 + 16 + 32) && tn_div < 127) {
+			t = T6;
+		}
+		else if (tn_div >= 127 && tn_div < (127+128)) {
+			t = T7;
+		}
+		else if (tn_div >= (127 + 128) && tn_div < (127 + 128+256)) {
+			t = T8;
+		}
+		else if (tn_div >= (127 + 128 + 256) && tn_div < (127 + 128+256+512)) {
+			t = T9;
+		}
+		else if (tn_div >= (127 + 128 + 256 + 512) && tn_div < (127 + 128+256+512+1024)) {
+			t = T10;
+		}
+		else if (tn_div >= (127 + 128 + 256 + 512 + 1024) && tn_div < (127 + 128+ 256 + 512 + 1024+2048)) {
+			t = T11;
+		}
+		else if (tn_div >= (127 + 128 + 256 + 512 + 1024 + 2048) && tn_div < (127 + 128+ 256 + 512 + 1024+2048+4096)) {
+			t = T12;
+		}
+		else if (tn_div >= (127 + 128 + 256 + 512 + 1024 + 2048 + 4096) && tn_div < (127 + 128+ 256 + 512 + 1024+2048+4096+8192)) {
+			t = T13;
+		}
+
+		*/
+		//tn_mod == 0 ? --t : 0;
+		//size -= TABLE_BOUND[t]; 
+		//s = u8_t(size >> (t + 4)); 
+		//(size % ((1ULL << (t + 4)))) == 0 ? --s : 0; 
+		//size = calc_SIZE_by_TABLE_SLOT(t, s); 
+		
+
 		NETP_ASSERT(t <= T_COUNT);
 		if (NETP_LIKELY(t != T_COUNT)) {
 			NETP_ASSERT(s != size_t(-1));
 			NETP_ASSERT(SLOT_MAX > s);
-			table_slot_t* tst = (m_tables[t][s]);
+			table_slot_t*& tst = (m_tables[t][s]);
 
 			//fast path
 __fast_path:
@@ -239,9 +293,9 @@ __fast_path:
 	void pool_align_allocator::free(void* ptr) {
 		if (NETP_UNLIKELY(ptr == nullptr)) { return; }
 
-		u8_t& slot_ = *((u8_t*)ptr - 2);
-		u8_t t = (slot_ >> 4);
-		u8_t s = (slot_ & 0xf);
+		u8_t t = *((u8_t*)ptr - 2);
+		u8_t s = (t & 0xf);
+		t = (t>>4);
 
 		//u8_t slot = (slot_ & 0xf);
 		if (NETP_UNLIKELY(t == T_COUNT)) {
@@ -250,7 +304,7 @@ __fast_path:
 
 		NETP_ASSERT(t < TABLE::T_COUNT);
 		NETP_ASSERT(SLOT_MAX > s);
-		table_slot_t* tst = (m_tables[t][s]);
+		table_slot_t*& tst = (m_tables[t][s]);
 
 		if (( tst->count < tst->max)) {
 			tst->ptr[tst->count++] = (u8_t*)ptr;
@@ -298,11 +352,10 @@ __fast_path:
 			}
 		}
 
-		u8_t& old_t_slot = *((u8_t*)ptr - 2);
-		u8_t old_t = (old_t_slot >> 4);
-		u8_t old_slot = (old_t_slot & 0xf);
-		size_t old_size=0;
-		calc_SIZE_by_TABLE_SLOT(old_size,old_t, old_slot);
+		u8_t old_t = *((u8_t*)ptr - 2);
+		u8_t old_s = (old_t & 0xf);
+		old_t = (old_t >>4);
+		size_t old_size = calc_SIZE_by_TABLE_SLOT(old_t, old_s);
 		NETP_ASSERT(old_size > 0);
 		//do copy
 		std::memcpy(uptr, ptr, old_size);
@@ -321,7 +374,7 @@ __fast_path:
 		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
 			for (size_t s = 0; s < SLOT_MAX; ++s) {
 				lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
-				size_t& _gcount = m_tables[t][s]->count;
+				u32_t& _gcount = m_tables[t][s]->count;
 				while ( _gcount>0) {
 					netp::aligned_free(m_tables[t][s]->ptr[ --_gcount ]);
 				}
@@ -334,8 +387,15 @@ __fast_path:
 		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
 			for (size_t s = 0; s < SLOT_MAX; ++s) {
 				lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s] );
-				m_tables[t][s]->max += TABLE_SLOT_ENTRIES_INIT_LIMIT[t];
-				m_tables[t][s]->ptr = (u8_t**) (netp::aligned_realloc( m_tables[t][s]->ptr, sizeof(u8_t*) * m_tables[t][s]->max, NETP_DEFAULT_ALIGN));
+				//u32_t max = m_tables[t][s]->max;
+				//u32_t count = m_tables[t][s]->count;
+				u32_t max_n = m_tables[t][s]->max + TABLE_SLOT_ENTRIES_INIT_LIMIT[t];
+				u8_t* __ptr = (u8_t*)(netp::aligned_realloc(m_tables[t][s], sizeof(table_slot_t) + sizeof(u8_t*) * max_n, NETP_DEFAULT_ALIGN));
+				m_tables[t][s] = (table_slot_t*)__ptr;
+				m_tables[t][s]->max = max_n;
+				m_tables[t][s]->ptr = (u8_t**) (__ptr + sizeof(table_slot_t));
+				//m_tables[t][s]->max += TABLE_SLOT_ENTRIES_INIT_LIMIT[t];
+				//m_tables[t][s]->ptr = (u8_t**) (netp::aligned_realloc( m_tables[t][s]->ptr, sizeof(u8_t*) * m_tables[t][s]->max, NETP_DEFAULT_ALIGN));
 			}
 		}
 	}
@@ -350,11 +410,11 @@ __fast_path:
 		}
 	}
 
-	size_t global_pool_align_allocator::commit(u8_t t, u8_t s, table_slot_t* tst) {
+	u32_t global_pool_align_allocator::commit(u8_t t, u8_t s, table_slot_t* tst) {
 		lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
-		size_t& _gcount = m_tables[t][s]->count;
-		size_t& _tcount = tst->count;
-		size_t tt = 0;
+		u32_t& _gcount = m_tables[t][s]->count;
+		u32_t& _tcount = tst->count;
+		u32_t tt = 0;
 		if ( (_gcount < (m_tables[t][s]->max - 1)) && ( _tcount > ( (tst->max)>>1) ) ) {
 			m_tables[t][s]->ptr[_gcount++] = tst->ptr[--_tcount];
 			++tt;
@@ -362,12 +422,12 @@ __fast_path:
 		return tt;
 	}
 
-	size_t global_pool_align_allocator::borrow(u8_t t, u8_t s, table_slot_t* tst) {
+	u32_t global_pool_align_allocator::borrow(u8_t t, u8_t s, table_slot_t* tst) {
 		NETP_ASSERT( tst->count ==0 );
 		NETP_ASSERT(tst->max > 0);
 		lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
-		size_t& _gcount = m_tables[t][s]->count;
-		size_t& _tcount = tst->count;
+		u32_t& _gcount = m_tables[t][s]->count;
+		u32_t& _tcount = tst->count;
 		while ((_gcount > 0) && (_tcount < ((tst->max) >> 1))) {
 			tst->ptr[_tcount++] = m_tables[t][s]->ptr[--_gcount];
 		}
