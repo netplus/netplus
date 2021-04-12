@@ -9,9 +9,11 @@ namespace netp {
 
 	__NETP_TLS std::mt19937_64 __netp_rndg_64;
 	__NETP_TLS std::mt19937 __netp_rndg_32;
-	__NETP_TLS std::uniform_int_distribution<u64_t> __netp_distr64;
-	__NETP_TLS std::uniform_int_distribution<u32_t> __netp_distr32;
-	__NETP_TLS std::uniform_int_distribution<u16_t> __netp_distr16;
+
+	//note: gcc do not has const distri construction for random generator
+	std::uniform_int_distribution<u64_t> __netp_distr64;
+	std::uniform_int_distribution<u32_t> __netp_distr32;
+	std::uniform_int_distribution<u16_t> __netp_distr16;
 	std::uniform_int_distribution<u16_t> __netp_distr8(0, 0xff);
 
 	void random64_reset_seed(u64_t seed) {
