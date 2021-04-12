@@ -67,7 +67,7 @@ const static size_t TABLE_4[T3] = {
 		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2 //2M-128
 	};
 
-	 __NETP_TLS const static u32_t TABLE_BOUND[TABLE::T_COUNT+1] = {
+	 const static u32_t TABLE_BOUND[TABLE::T_COUNT+1] = {
 		0,
 		128, //
 		128 + 256, //
