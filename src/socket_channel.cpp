@@ -889,6 +889,9 @@ int socket_base::get_left_snd_queue() const {
 			}
 			int rt = L->io_do(io_action::READ, m_io_ctx);
 			if (NETP_UNLIKELY(rt != netp::OK)) {
+				ch_errno() = rt;
+				m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
+				ch_close(nullptr);
 				if(fn_read != nullptr) fn_read(rt, nullptr);
 				return;
 			}
@@ -946,6 +949,9 @@ int socket_base::get_left_snd_queue() const {
 
 			int rt = L->io_do(io_action::WRITE, m_io_ctx);
 			if (NETP_UNLIKELY(rt != netp::OK)) {
+				ch_errno() = rt;
+				m_chflag |= int(channel_flag::F_WRITE_ERROR);//for assert check
+				ch_close(nullptr);
 				if (fn_write != nullptr) fn_write(rt, nullptr);
 				return;
 			}

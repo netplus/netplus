@@ -243,8 +243,7 @@ namespace netp {
 		inline int io_do(io_action act, io_ctx* ctx) {
 			NETP_ASSERT(in_event_loop());
 			if (((u8_t(act) & u8_t(io_action::READ_WRITE)) == 0) || m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
-				m_poller->io_do(act, ctx);
-				return netp::OK;
+				return m_poller->io_do(act, ctx);
 			} else {
 				return netp::E_IO_EVENT_LOOP_TERMINATED;
 			}
