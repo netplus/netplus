@@ -20,7 +20,7 @@ namespace netp {
 		}
 	};
 
-	template <typename V, int INTERNAL_SLOTS=4>
+	template <typename V, int INTERNAL_SLOTS=2>
 	struct event_broker_promise 
 	{
 		typedef std::function<void(V const&)> fn_promise_callee_t;
@@ -98,16 +98,17 @@ namespace netp {
 		S_DONE //operation done
 	};
 
+	#define __NETP_PROMISE_EBP_INTERNAL_SLOTS (2)
 	template <typename V>
 	class promise :
 		public ref_base,
-		protected event_broker_promise<V>
+		protected event_broker_promise<V, __NETP_PROMISE_EBP_INTERNAL_SLOTS>
 	{
 
 	private:
 		typedef promise<V> promise_t;
-		typedef event_broker_promise<V> event_broker_promise_t;
-		typedef typename event_broker_promise<V>::fn_promise_callee_t fn_promise_callee_t;
+		typedef event_broker_promise<V, __NETP_PROMISE_EBP_INTERNAL_SLOTS> event_broker_promise_t;
+		typedef typename event_broker_promise_t::fn_promise_callee_t fn_promise_callee_t;
 
 		std::atomic<u8_t> m_state;//memory order constraint var
 		V m_v;
@@ -143,10 +144,6 @@ namespace netp {
 			return m_v;
 		}
 
-		inline void memory_sync() {
-			std::atomic_thread_fence(std::memory_order_acquire);
-		}
-
 		template <class _Rep, class _Period>
 		inline const V& get(std::chrono::duration<_Rep, _Period>&& dur) {
 			wait_for<_Rep,_Period>(std::forward<std::chrono::duration<_Rep, _Period>>(dur));
@@ -154,9 +151,9 @@ namespace netp {
 		}
 
 		void wait() {
-			while (m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE)) {
+			while (m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_IDLE)) {
 				lock_guard<spin_mutex> lg(m_mutex);
-				if (m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE) ) {
+				if (m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_IDLE) ) {
 					++promise_t::m_waiter;
 					__cond_allocate_check();
 					m_cond->wait(m_mutex);
@@ -167,10 +164,10 @@ namespace netp {
 
 		template <class _Rep, class _Period>
 		void wait_for(std::chrono::duration<_Rep, _Period>&& dur) {
-			if (m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE)) {
+			if (m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_IDLE)) {
 				lock_guard<spin_mutex> lg(m_mutex);
 				const std::chrono::time_point< std::chrono::steady_clock> tp_expire = std::chrono::steady_clock::now() + dur;
-				while (m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE )) {
+				while (m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_IDLE )) {
 					const std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
 					if (now >= tp_expire) {
 						break;
@@ -183,13 +180,13 @@ namespace netp {
 			}
 		}
 		const inline bool is_idle() const {
-			return m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE);
+			return m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_IDLE);
 		}
 		const inline bool is_done() const {
-			return m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_DONE);
+			return m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_DONE);
 		}
 		const inline bool is_cancelled() const {
-			return m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_CANCELLED);
+			return m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_CANCELLED);
 		}
 
 		bool cancel() {
@@ -199,7 +196,7 @@ namespace netp {
 				return false;
 			}
 
-			NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_CANCELLED));
+			NETP_ASSERT(m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_CANCELLED));
 			promise_t::m_waiter >0 ? m_cond->notify_all():(void)0;
 			event_broker_promise_t::invoke(V());
 			return true;
