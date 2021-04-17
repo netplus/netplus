@@ -138,14 +138,14 @@ namespace netp {
 
 	namespace this_thread {
 		inline void __interrupt_check_point() {
-			netp::impl::thread_data* const th_data = netp::tls_get<netp::impl::thread_data>();
+			netp::impl::thread_data*& th_data = netp::tls_get<netp::impl::thread_data>();
 			NETP_ASSERT(th_data != nullptr);
 			th_data->check_interrupt();
 		}
 
 		template <class _Duration>
 		void sleep_for(_Duration const& dur) {
-			netp::impl::thread_data* const th_data = netp::tls_get<netp::impl::thread_data>();
+			netp::impl::thread_data*& th_data = netp::tls_get<netp::impl::thread_data>();
 			NETP_ASSERT(th_data != nullptr);
 			th_data->sleep_for(dur);
 		}
@@ -319,7 +319,7 @@ _VARIADIC_EXPAND_0X(_THREAD_CONS, , , , )
 
 			NETP_ASSERT(th->joinable());
 			th->join();
-			NETP_DELETE(th);
+			::delete th;
 
 			impl::thread_data* th_data = m_th_data.load( std::memory_order_relaxed );
 			m_th_data.store(nullptr, std::memory_order_relaxed);

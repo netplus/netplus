@@ -20,29 +20,77 @@ namespace netp {
 		}
 	};
 
-	template <typename V>
+	template <typename V, int INTERNAL_SLOTS=4>
 	struct event_broker_promise 
 	{
 		typedef std::function<void(V const&)> fn_promise_callee_t;
-		typedef std::vector<fn_promise_callee_t,netp::allocator<fn_promise_callee_t>> fn_promise_callee_vector_t;
-		fn_promise_callee_vector_t __callees;
-		event_broker_promise() :__callees() {}
+		fn_promise_callee_t* __callees[INTERNAL_SLOTS];
+		fn_promise_callee_t** __callees_dy;
+		u32_t __callees_idx:16;
+		u32_t __callees_dy_max:16;
 
-		inline void bind(fn_promise_callee_t&& callee) {
-			__callees.emplace_back(std::forward<fn_promise_callee_t>(callee));
+		event_broker_promise() :
+			__callees_dy(0),
+			__callees_idx(0),
+			__callees_dy_max(0)
+		{
 		}
 
-		inline void bind(fn_promise_callee_t const& callee) {
-			__callees.emplace_back(callee);
+		~event_broker_promise() {
+			for (::size_t s = 0; s < __callees_idx; ++s) {
+				//free all related mem if there is a callee left here
+				//if the promise object missed the set call, we get here 
+				if (NETP_LIKELY(s < INTERNAL_SLOTS)) {
+					netp::allocator<fn_promise_callee_t>::trash(__callees[s]);
+				} else {
+					netp::allocator<fn_promise_callee_t>::trash(__callees_dy[s-INTERNAL_SLOTS]);
+				}
+			}
+			netp::allocator<fn_promise_callee_t>::free((fn_promise_callee_t*)(__callees_dy));
+			//__callees = 0;
+			//__callees_slot_max = 0;
+			//__callees_slot_idx = 0;
+		}
+
+		__NETP_FORCE_INLINE void __check_dy() {
+			if (__callees_idx == (INTERNAL_SLOTS + __callees_dy_max)) {
+				__callees_dy_max = NETP_MAX((INTERNAL_SLOTS + __callees_dy_max), INTERNAL_SLOTS);
+				__callees_dy = (fn_promise_callee_t**)netp::allocator<fn_promise_callee_t>::realloc((fn_promise_callee_t*)__callees_dy, __callees_dy_max*sizeof(fn_promise_callee_t*));
+				NETP_ALLOC_CHECK(__callees_dy, sizeof(fn_promise_callee_t*)*__callees_dy_max);
+			}
+		}
+		__NETP_FORCE_INLINE void bind(fn_promise_callee_t&& callee) {
+			if (NETP_LIKELY(__callees_idx < INTERNAL_SLOTS)) {
+				__callees[__callees_idx++] = netp::allocator<fn_promise_callee_t>::make(std::forward<fn_promise_callee_t>(callee));
+			} else {
+				__check_dy();
+				__callees_dy[(__callees_idx++) - INTERNAL_SLOTS] = netp::allocator<fn_promise_callee_t>::make(std::forward<fn_promise_callee_t>(callee));
+			}
+		}
+
+		__NETP_FORCE_INLINE void bind(fn_promise_callee_t const& callee) {
+			if (NETP_LIKELY(__callees_idx < INTERNAL_SLOTS)) {
+				__callees[__callees_idx++] = netp::allocator<fn_promise_callee_t>::make(callee);
+			} else {
+				__check_dy();
+				__callees_dy[(__callees_idx++) - INTERNAL_SLOTS] = netp::allocator<fn_promise_callee_t>::make(callee);
+			}
 		}
 		
-		inline void invoke( V const& v) {
-			for (::size_t i = 0, s=__callees.size() ; i <s; ++i) {
-				__callees[i](v);
+		__NETP_FORCE_INLINE void invoke( V const& v) {
+			for (::size_t s = 0; s< __callees_idx; ++s) {
+				if ( NETP_LIKELY(s < INTERNAL_SLOTS)) {
+					(*__callees[s])(v);
+					netp::allocator<fn_promise_callee_t>::trash(__callees[s]);
+				} else {
+					(*__callees_dy[s - INTERNAL_SLOTS])(v);
+					netp::allocator<fn_promise_callee_t>::trash(__callees_dy[s-INTERNAL_SLOTS]);
+				}
 			}
-			__callees.clear();
+			__callees_idx = 0;
 		}
 	};
+
 	enum class promise_state {
 		S_IDLE, //wait to operation
 		S_UPDATING,
@@ -161,20 +209,38 @@ namespace netp {
 		template<class _callable
 			, class = typename std::enable_if<std::is_convertible<_callable, fn_promise_callee_t>::value>::type>
 		void if_done(_callable&& callee) {
-			lock_guard<spin_mutex> lg(m_mutex);
-			event_broker_promise_t::bind(std::bind(std::forward<_callable>(callee), std::placeholders::_1));
 			if (is_done()) {
-				event_broker_promise_t::invoke(promise_t::m_v);
+				//callee's sequence does not make sense here, so we could have a fast path
+				//fast path
+				callee(promise_t::m_v);
+			} else {
+				lock_guard<spin_mutex> lg(m_mutex);
+				//slow path: double check
+				if (is_done()) {
+					callee(promise_t::m_v);
+				} else {
+					//if we missed a if_done in this place, we must not missed it in promise::set
+					event_broker_promise_t::bind(std::bind(std::forward<_callable>(callee), std::placeholders::_1));
+				}
 			}
 		}
 
 		template<class _callable
 			, class = typename std::enable_if<std::is_convertible<_callable, fn_promise_callee_t>::value>::type>
 		void if_done(_callable const& callee) {
-			lock_guard<spin_mutex> lg(m_mutex);
-			event_broker_promise_t::bind(std::bind(std::forward<_callable>(callee), std::placeholders::_1));
-			if (is_done()) {//do not move this line outside of the spin_lock, we need to sure the callee's sequence
-				event_broker_promise_t::invoke(promise_t::m_v);
+			if (is_done()) {
+				//callee's sequence does not make sense here, so we could have a fast path
+				//fast path
+				callee(promise_t::m_v);
+			} else {
+				lock_guard<spin_mutex> lg(m_mutex);
+				//slow path: double check
+				if (is_done()) {
+					callee(promise_t::m_v);
+				} else {
+					//if we miss a if_done in this place, we must not miss it in promise::set, cuz store must happen before lock of m_mutex
+					event_broker_promise_t::bind(std::bind(std::forward<_callable>(callee), std::placeholders::_1));
+				}
 			}
 		}
 
@@ -211,7 +277,7 @@ namespace netp {
 			NETP_DEBUG_STACK_SIZE();
 			lock_guard<spin_mutex> lg(promise_t::m_mutex);
 			event_broker_promise_t::invoke(m_v);
-			promise_t::m_waiter >0 ?m_cond->notify_all():(void)0;
+			promise_t::m_waiter>0 ?m_cond->notify_all():(void)0;
 		}
 
 		void set(V&& v) {
