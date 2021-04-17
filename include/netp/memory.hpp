@@ -22,9 +22,9 @@
 
 namespace netp {
 
-//AVX 32
-//SSE16
-//@todo
+	//AVX 32
+	//SSE16
+	//@todo
 
 	//ALIGN_SIZE SHOUDL BE LESS THAN 256bit
 	//STORE OFFSET IN PREVIOUS BYTES
@@ -34,6 +34,7 @@ namespace netp {
 		u64_t aligned_size_L : 32;
 		u64_t aligned_size_H : 16;
 	};
+
 	//data bit sequence
 	//[size:48][might be empty, it depends][reserver:8][offset:8][returned ptr]
 
@@ -43,7 +44,6 @@ namespace netp {
 	{
 		NETP_ASSERT( (alignment <= 32) && (size<(1ULL<<48)) );
 
-		//
 		void *original = std::malloc(size + alignment+ __NETP_ALIGNED_HEAD);
 		if (original == 0) return 0;
 		void *aligned = reinterpret_cast<void*>(((reinterpret_cast<std::size_t>(original) + __NETP_ALIGNED_HEAD) & ~(std::size_t(alignment - 1))) + alignment);
@@ -52,7 +52,11 @@ namespace netp {
 
 		//the value would only be used by realloc
 		*(reinterpret_cast<u32_t*>(original)) = (size & 0xffffffff);// L:32
+
+#ifdef _NETP_AM64
 		*(reinterpret_cast<u16_t*>(((u8_t*)original) + 4)) = ((size >> 32) & 0xffff); //H:16
+#endif
+
 		return aligned;
 	}
 
@@ -70,11 +74,12 @@ namespace netp {
 		//align data
 		void* original = (u8_t*)ptr - *(reinterpret_cast<u8_t*>(ptr) - 1);
 		size_t old_size = *(reinterpret_cast<u32_t*>(original));
+#ifdef _NETP_AM64
 		size_t old_size_H = *(reinterpret_cast<u16_t*>(((u8_t*)original) + 4));
 		if (old_size_H > 0) {
 			old_size |= (old_size_H << 32);
 		}
-			
+#endif
 		//refer to: https://en.cppreference.com/w/cpp/memory/c/realloc
 		//The contents of the area remain unchanged up to the lesser of the new and old sizes.
 		if (old_size == size) {
