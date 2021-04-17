@@ -119,7 +119,7 @@ _VARIADIC_EXPAND_0X(_ALLOCATE_CREATE_TLS_INSTANCE, , , , )
 			}
 		}
 
-		__NETP_FORCE_INLINE static T* get() {
+		__NETP_FORCE_INLINE static T*& get() {
 			return instance;
 		}
 
@@ -159,7 +159,7 @@ _VARIADIC_EXPAND_0X(_ALLOCATE_TLS_CREATE, , , , )
 	}
 
 	template <class T>
-	__NETP_FORCE_INLINE T* tls_get() {
+	__NETP_FORCE_INLINE T*& tls_get() {
 		return tls<T>::get();
 	}
 

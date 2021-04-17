@@ -276,7 +276,8 @@ __fast_path:
 	//alloc, then copy
 	void* pool_align_allocator::realloc(void* ptr, size_t size, size_t align_size) {
 		//align_alloc first
-		NETP_ASSERT(ptr != 0);
+		if (ptr == 0) { return malloc(size, align_size); }
+
 		u8_t old_t = *((u8_t*)ptr - 2);
 		u8_t old_s = (old_t & 0xf);
 		old_t = (old_t >> 4);
