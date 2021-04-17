@@ -21,6 +21,7 @@
 #include <netp/thread_impl/spin_mutex.hpp>
 #include <netp/thread_impl/mutex.hpp>
 #include <netp/thread_impl/condition.hpp>
+#include <netp/tls.hpp>
 
 
 //#define NETP_ENABLE_TRACE_THREAD
@@ -34,31 +35,27 @@
 
 namespace netp {
 
-	class thread;
-	namespace impl
-	{
-		struct _Impl_base;
-		typedef netp::shared_ptr<_Impl_base> __shared_base_type;
-
-		struct _Impl_base {
-			virtual ~_Impl_base() {};
+	namespace impl {
+		struct _th_run_base :
+			netp::non_atomic_ref_base
+		{
 			virtual void _W_run() = 0;
 		};
 
 		template <typename _callable>
-		struct _Impl final: 
-			public _Impl_base
+		struct _th_run final: 
+			public _th_run_base
 		{
 			_callable _W_func;
-			_Impl(_callable&& __f) :_W_func(std::forward<_callable>(__f))
+			_th_run(_callable&& __f) :_W_func(std::forward<_callable>(__f))
 			{}
-			inline void _W_run() { _W_func(); }
+			void _W_run() { _W_func(); }
 		};
 
 		template <typename _callable>
-		inline netp::shared_ptr<_Impl<_callable>> _M_make_routine(_callable&& __f)
+		inline netp::ref_ptr<_th_run<_callable>> _M_make_routine(_callable&& __f)
 		{
-			return netp::make_shared<_Impl<_callable>>(std::forward<_callable>(__f));
+			return netp::make_ref<_th_run<_callable>>(std::forward<_callable>(__f));
 		}
 
 		struct interrupt_exception : public netp::exception {
@@ -137,128 +134,20 @@ namespace netp {
 			void record_stack_address(void* const address) ;
 #endif
 		};
-	}
+	}//end of impl
 
-#ifdef NETP_ENABLE_DEBUG_STACK_SIZE
-	#define NETP_DEBUG_STACK_SIZE() \
-	do { \
-		netp::impl::thread_data* ____tls_thdata =  netp::tls_get<netp::impl::thread_data>(); \
-		if(NETP_LIKELY(____tls_thdata != nullptr)) { \
-			____tls_thdata->record_stack_address(&____tls_thdata) ; \
-		} \
-	} while(false); 
-#else
-	#define NETP_DEBUG_STACK_SIZE()
-#endif
-
-	class thread final :
-		public netp::ref_base
-	{
-		NETP_DECLARE_NONCOPYABLE(thread)
-
-		std::thread* m_handler;
-		impl::thread_data* m_th_data;
-		impl::__shared_base_type m_run_base_type;
-
-		void __PRE_RUN_PROXY__();
-		void __RUN_PROXY__();
-		void __POST_RUN_PROXY__();
-
-	public:
-		thread();
-		~thread();
-
-#ifdef _NETP_NO_CXX11_TEMPLATE_VARIADIC_ARGS
-#define _THREAD_CONS( \
-	TEMPLATE_LIST, PADDING_LIST, LIST, COMMA, X1, X2, X3, X4) \
-	template<class _Fn COMMA LIST(_CLASS_TYPE)> \
-		int start(_Fn _Fx COMMA LIST(_TYPE_REFREF_ARG)) \
-		{ \
-			NETP_ASSERT(m_handler == nullptr); \
-			NETP_ASSERT(m_th_data == nullptr); \
-			m_thread_data = new impl::thread_data(this); \
-			NETP_ASSERT(m_th_data != nullptr); \
-			try { \
-				m_run_base_type = impl::_M_make_routine(std::bind(std::forward<_Fn>(_Fx) COMMA LIST(_FORWARD_ARG))); \
-				m_handler = new std::thread(&thread::__RUN_PROXY__, this); \
-			} catch (...) { \
-				NETP_DELETE(m_th_data); \
-				NETP_DELETE(m_handler); \
-				int _eno = netp_last_errno(); \
-				NETP_ERR("[thread]new std::thread(&thread::__RUN_PROXY__, _THH_) failed: %d", _eno); \
-				return NETP_NEGATIVE(_eno); \
-			} \
-			return netp::OK; \
-		}
-
-_VARIADIC_EXPAND_0X(_THREAD_CONS, , , , )
-#else
-		template <typename _Fun_t, typename... _Args>
-		int start(_Fun_t&& __fun, _Args&&... __args) {
-
-			NETP_ASSERT(m_th_data == nullptr);
-			NETP_ASSERT(m_handler == nullptr);
-			m_th_data = netp::allocator<impl::thread_data>::make();
-			NETP_ASSERT(m_th_data != nullptr);
-
-			try {
-				m_run_base_type = impl::_M_make_routine(std::bind(std::forward<typename std::remove_reference<_Fun_t>::type>(__fun), std::forward<_Args>(__args)...));
-
-				//@NOTE: A thread object is joinable if it represents a thread of execution.
-				//A thread object is not joinable in any of these cases :
-				//if it was default - constructed.
-				//	if it has been moved from(either constructing another thread object, or assigning to it).
-				//		if either of its members join or detach has been called.
-				m_handler = ::new std::thread(&thread::__RUN_PROXY__, this);
-			} catch (...) {
-				netp::allocator<impl::thread_data>::trash(m_th_data);
-				NETP_DELETE(m_handler);
-
-				int _eno = netp_last_errno();
-				NETP_ERR("[thread]new std::thread(&thread::__RUN_PROXY__, _THH_) failed: %d", _eno);
-				return (_eno);
-			}
-			return netp::OK;
-		}
-#endif
-
-		void join() {
-			if (m_handler == nullptr) {
-				return;
-			}
-
-			NETP_ASSERT(m_handler->joinable());
-			m_handler->join();
-			NETP_DELETE(m_handler);
-
-			netp::allocator<impl::thread_data>::trash(m_th_data);
-		}
-
-		void interrupt() {
-			if (m_th_data != nullptr) {
-				m_th_data->interrupt();
-			}
-		}
-	};
-}
-
-#include <netp/tls.hpp>
-namespace netp {
 	namespace this_thread {
-
 		inline void __interrupt_check_point() {
-			netp::impl::thread_data* const tdp = netp::tls_get<netp::impl::thread_data>();
-			if (NETP_LIKELY(tdp)) tdp->check_interrupt();
+			netp::impl::thread_data* const th_data = netp::tls_get<netp::impl::thread_data>();
+			NETP_ASSERT(th_data != nullptr);
+			th_data->check_interrupt();
 		}
 
 		template <class _Duration>
 		void sleep_for(_Duration const& dur) {
-			netp::impl::thread_data* const tdp = netp::tls_get<netp::impl::thread_data>();
-			if (NETP_LIKELY(tdp)) {
-				tdp->sleep_for(dur);
-			} else {
-				std::this_thread::sleep_for(dur);
-			}
+			netp::impl::thread_data* const th_data = netp::tls_get<netp::impl::thread_data>();
+			NETP_ASSERT(th_data != nullptr);
+			th_data->sleep_for(dur);
 		}
 
 		inline void sleep(netp::u64_t milliseconds) {
@@ -288,17 +177,21 @@ namespace netp {
 		}
 		inline void yield(u64_t k) {
 			if (k < 4) {
-			} else if (k < 28) {
+			}
+			else if (k < 28) {
 				netp::this_thread::yield();
-			} else {
+			}
+			else {
 				netp::this_thread::sleep_for<std::chrono::nanoseconds>(std::chrono::nanoseconds(k));
 			}
 		}
 		inline void no_interrupt_yield(u64_t k) {
 			if (k < 4) {
-			} else if (k < 28) {
+			}
+			else if (k < 28) {
 				std::this_thread::yield();
-			} else {
+			}
+			else {
 				std::this_thread::sleep_for(std::chrono::nanoseconds(k));
 			}
 		}
@@ -311,7 +204,135 @@ namespace netp {
 			return static_cast<netp::u64_t>(hasher(std::this_thread::get_id()));
 #endif
 		}
-	}
+	}//end of this_thread
+
+#ifdef NETP_ENABLE_DEBUG_STACK_SIZE
+	#define NETP_DEBUG_STACK_SIZE() \
+	do { \
+		netp::impl::thread_data* ____tls_thdata =  netp::tls_get<netp::impl::thread_data>(); \
+		if(NETP_LIKELY(____tls_thdata != nullptr)) { \
+			____tls_thdata->record_stack_address(&____tls_thdata) ; \
+		} \
+	} while(false); 
+#else
+	#define NETP_DEBUG_STACK_SIZE()
+#endif
+
+	class thread final :
+		public netp::ref_base
+	{
+		//use atomic type to sure that the address tearing of load/store operation not happen, cuz we have to access these two variable in other threads
+		std::atomic<std::thread*> m_th;
+		std::atomic<impl::thread_data*> m_th_data;
+
+		NRP<impl::_th_run_base> m_th_run;
+
+		void __PRE_RUN_PROXY__();
+		void __RUN_PROXY__();
+		void __POST_RUN_PROXY__();
+	public:
+		thread();
+		~thread();
+
+#ifdef _NETP_NO_CXX11_TEMPLATE_VARIADIC_ARGS
+#define _THREAD_CONS( \
+	TEMPLATE_LIST, PADDING_LIST, LIST, COMMA, X1, X2, X3, X4) \
+	template<class _Fn COMMA LIST(_CLASS_TYPE)> \
+		int start(_Fn _Fx COMMA LIST(_TYPE_REFREF_ARG)) \
+		{ \
+			NETP_ASSERT(m_th_data.load(std::memory_order_relaxed) == nullptr); \
+			NETP_ASSERT(m_th.load(std::memory_order_relaxed) == nullptr); \
+			m_th_data.store(netp::allocator<impl::thread_data>::make(), std::memory_order_relaxed); \
+			NETP_ASSERT(m_th_data.load(std::memory_order_relaxed) != nullptr); \
+			try { \
+				m_th_run = impl::_M_make_routine(std::bind(std::forward<_Fn>(_Fx) COMMA LIST(_FORWARD_ARG))); \
+				m_th = new std::thread(&thread::__RUN_PROXY__, this); \
+			} catch (...) { \
+				netp::allocator<impl::thread_data>::trash(m_th_data.load(std::memory_order_relaxed));\
+				m_th_data.store(nullptr, std::memory_order_relaxed);\
+				::delete (m_th.load(std::memory_order_relaxed));\
+				m_th.store(nullptr, std::memory_order_relaxed);\
+				int _eno = netp_last_errno();\
+				NETP_ERR("[thread]new std::thread(&thread::__RUN_PROXY__, _THH_) failed: %d", _eno); \
+				return NETP_NEGATIVE(_eno); \
+			} \
+			return netp::OK; \
+		}
+
+_VARIADIC_EXPAND_0X(_THREAD_CONS, , , , )
+#else
+		template <typename _Fun_t, typename... _Args>
+		int start(_Fun_t&& __fun, _Args&&... __args) {
+
+			NETP_ASSERT(m_th_data.load(std::memory_order_relaxed) == nullptr);
+			NETP_ASSERT(m_th.load(std::memory_order_relaxed) == nullptr);
+			//th_data should be prior to m_th, in case we call interrupt immediately after calling start
+			m_th_data.store(netp::allocator<impl::thread_data>::make(), std::memory_order_relaxed);
+			NETP_ASSERT(m_th_data.load(std::memory_order_relaxed) != nullptr);
+
+			try {
+				m_th_run = impl::_M_make_routine(std::bind(std::forward<typename std::remove_reference<_Fun_t>::type>(__fun), std::forward<_Args>(__args)...));
+
+				//force a release for th related data
+				std::atomic_thread_fence(std::memory_order_release);
+
+				//@NOTE: A thread object is joinable if it represents a thread of execution.
+				//A thread object is not joinable in any of these cases :
+				//if it was default - constructed.
+				//	if it has been moved from(either constructing another thread object, or assigning to it).
+				//	if either of its members join or detach has been called.
+				m_th = ::new std::thread(&thread::__RUN_PROXY__, this);
+			} catch (...) {
+				netp::allocator<impl::thread_data>::trash(m_th_data.load(std::memory_order_relaxed));
+				m_th_data.store(nullptr, std::memory_order_relaxed);
+
+				::delete m_th.load(std::memory_order_relaxed);
+				m_th.store(nullptr, std::memory_order_relaxed);
+
+				int _eno = netp_last_errno();
+				NETP_ERR("[thread]new std::thread(&thread::__RUN_PROXY__, _THH_) failed: %d", _eno);
+				return (_eno);
+			}
+			return netp::OK;
+		}
+#endif
+
+		void join() {
+
+			//only one join call is allowed
+			std::thread* th = m_th.load(std::memory_order_acquire);
+			while (th) {
+				if (m_th.compare_exchange_weak(th, nullptr, std::memory_order_acq_rel, std::memory_order_acquire)) {
+					goto __join_begin;
+				}
+				th = m_th.load(std::memory_order_acquire);
+			}
+
+			//the failed thread shhoul be blocked until the other thread's join done
+			NETP_ASSERT(m_th.load(std::memory_order_acquire) == nullptr);
+			while (m_th_data.load(std::memory_order_acquire) != nullptr) {
+				netp::this_thread::no_interrupt_usleep(8);
+			}
+			return;
+		__join_begin:
+			NETP_ASSERT( m_th.load(std::memory_order_acquire) == nullptr );
+
+			NETP_ASSERT(th->joinable());
+			th->join();
+			NETP_DELETE(th);
+
+			impl::thread_data* th_data = m_th_data.load( std::memory_order_relaxed );
+			m_th_data.store(nullptr, std::memory_order_relaxed);
+			netp::allocator<impl::thread_data>::trash(th_data);
+		}
+
+		void interrupt() {
+			impl::thread_data* th_data = m_th_data.load(std::memory_order_relaxed);
+			if (NETP_UNLIKELY(th_data != nullptr)) {
+				th_data->interrupt();
+			}
+		}
+	};
 
 	//will run until you call stop
 	class thread_run_object_abstract:
@@ -319,9 +340,9 @@ namespace netp {
 	{
 		enum thread_run_object_state {
 			TR_IDLE,
-			TR_START,
+			TR_LAUNCHING,
 			TR_RUNNING,
-			TR_STOP,
+			TR_EXITING,
 		};
 
 	private:
@@ -329,25 +350,25 @@ namespace netp {
 		std::atomic<u8_t> m_state;
 		void __run__();
 
-		int start_thread();
-		void join_thread() {
+		int _start_thread();
+		void _join_thread() {
 			if (m_th != nullptr) {
 				m_th->join();
 				m_th = nullptr;
 			}
 		}
-		void interrupt_thread() {
+		void _interrupt_thread() {
 			NETP_ASSERT(m_th != nullptr);
 			m_th->interrupt();
 		}
 
 		void __on_start__() {
-			NETP_ASSERT(m_state.load(std::memory_order_acquire) == TR_START);
+			NETP_ASSERT(m_state.load(std::memory_order_acquire) == TR_LAUNCHING);
 			on_start();
 			m_state.store(TR_RUNNING, std::memory_order_release); //if launch failed, we'll not reach here, and it will not in TR_RUNNING ..., so don't worry
 		}
 		void __on_stop__() {
-			NETP_ASSERT(m_state.load(std::memory_order_acquire) == TR_STOP);
+			NETP_ASSERT(m_state.load(std::memory_order_acquire) == TR_EXITING);
 			on_stop();
 		}
 
@@ -358,16 +379,6 @@ namespace netp {
 		}
 		void __on_exit__() {}
 
-		void __on_launching__() {
-#ifdef _NETP_GNU_LINUX
-			//check stack size
-			size_t ssize = netp::get_stack_size();
-			NETP_DEBUG("[thread_run_object_abstract::__on_launching__()]thread stack size: %d", ssize);
-			NETP_ASSERT(ssize >= (1024 * 1024 * 4)); //4M
-			(void)ssize;
-#endif
-		}
-
 	public:
 		thread_run_object_abstract() :
 			m_th(nullptr),
@@ -377,8 +388,8 @@ namespace netp {
 
 		virtual ~thread_run_object_abstract() { stop(); }
 
-		inline bool is_starting() const {
-			return m_state.load(std::memory_order_acquire) == TR_START;
+		inline bool is_launching() const {
+			return m_state.load(std::memory_order_acquire) == TR_LAUNCHING;
 		}
 		inline bool is_running() const {
 			return m_state.load(std::memory_order_acquire) == TR_RUNNING;
@@ -390,11 +401,11 @@ namespace netp {
 		//@NOTE, all thread_run_object must call stop explicitly if start return netp::OK
 		virtual int start(bool block_start = true) {
 			NETP_ASSERT(m_state.load(std::memory_order_acquire) == TR_IDLE);
-			int start_rt = start_thread();
+			int start_rt = _start_thread();
 			if (start_rt != netp::OK || block_start == false) {
 				return start_rt;
 			}
-			for (int k = 0; is_starting(); ++k) {
+			for (int k = 0; is_launching(); ++k) {
 				netp::this_thread::yield(k);
 			}
 			return netp::OK;
@@ -402,19 +413,24 @@ namespace netp {
 
 		virtual void stop() {
 			u8_t s = m_state.load(std::memory_order_acquire);
-			NETP_ASSERT((s == TR_IDLE || s == TR_START || s == TR_RUNNING));
+			while (s != TR_IDLE) {
+				if (s == TR_LAUNCHING) {
+					int k = 0;
+					while (is_launching()) netp::this_thread::yield(++k);
+				} else if (s == TR_RUNNING) {
+					if (m_state.compare_exchange_weak(s, TR_EXITING, std::memory_order_acq_rel, std::memory_order_release)) {
+						_interrupt_thread();
+						goto __exit_thread_run;
+					}
+				}
 
-			if (s == TR_IDLE) {
+				s = m_state.load(std::memory_order_acquire);
 				return;
-			} else if (s == TR_START) {
-				int k = 0;
-				while (is_starting()) netp::this_thread::yield(++k);
-			} else if (s == TR_RUNNING) {
-				interrupt_thread();
-				s = TR_STOP;
 			}
 
-			join_thread();
+			return;
+__exit_thread_run:
+			_join_thread();
 			m_state.store(TR_IDLE, std::memory_order_release);
 		}
 

@@ -6,9 +6,9 @@
 namespace netp {
 
 	thread::thread() :
-		m_handler(nullptr),
+		m_th(nullptr),
 		m_th_data(nullptr),
-		m_run_base_type(nullptr)
+		m_th_run(nullptr)
 	{
 	}
 
@@ -17,13 +17,15 @@ namespace netp {
 	}
 
 	void thread::__PRE_RUN_PROXY__() {
-		NETP_ASSERT(m_th_data != nullptr);
-		tls_set<impl::thread_data>(m_th_data);
+		netp::random_init_seed();
+
+		impl::thread_data* th_data = m_th_data.load(std::memory_order_relaxed);
+		NETP_ASSERT(th_data != nullptr);
+		tls_set<impl::thread_data>(th_data);
 
 #ifdef NETP_MEMORY_USE_TLS_POOL
 		netp::global_pool_align_allocator::instance()->incre_thread_count();
 		tls_create<netp::pool_align_allocator_t>();
-
 #endif
 
 #if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
@@ -35,17 +37,25 @@ namespace netp {
 	}
 
 	void thread::__RUN_PROXY__() {
+		std::atomic_thread_fence(std::memory_order_acquire);
+#ifdef _NETP_GNU_LINUX
+		//check stack size
+		size_t ssize = netp::get_stack_size();
+		NETP_DEBUG("[thread]__RUN_PROXY__, thread stack size: %d", ssize);
+		NETP_ASSERT(ssize >= (1024 * 1024 * 4)); //4M
+		(void)ssize;
+#endif
+
 #ifdef NETP_ENABLE_DEBUG_STACK_SIZE
 		int __run_proxy_begin = 0;
 		NETP_ASSERT(m_th_data !=nullptr);
 		m_th_data->record_stack_address(&__run_proxy_begin);
 #endif
-		netp::random_init_seed();
 
 		__PRE_RUN_PROXY__();
-		NETP_ASSERT(m_run_base_type.get() != nullptr);
+		NETP_ASSERT(m_th_run != nullptr);
 		try {
-			m_run_base_type->_W_run();
+			m_th_run->_W_run();
 		} catch (impl::interrupt_exception&) {
 			NETP_WARN("[thread]__RUN_PROXY__ thread interrupt catch" );
 		} catch (netp::exception& e) {
@@ -110,26 +120,8 @@ namespace netp {
 
 
 	void thread_run_object_abstract::__run__() {
-		NETP_ASSERT(m_th != nullptr);
-		try {
-			NETP_TRACE_THREAD("[thread_run_object_abstract::__run__]__on_launching__() begin");
-			__on_launching__();
-			NETP_TRACE_THREAD("[thread_run_object_abstract::__run__]__on_launching__() end");
-		}
-		catch (netp::exception & e) {
-			NETP_ERR("[thread_run_object_abstract::__run__]__on_launching__() netp::exception:[%d]%s\n%s(%d) %s\n%s",
-				e.code(), e.what(), e.file(), e.line(), e.function(), e.callstack());
-			throw;
-		}
-		catch (std::exception & e) {
-			NETP_ERR("[thread_run_object_abstract::__run__]__on_launching__() std::exception: %s", e.what());
-			throw;
-		}
-		catch (...) {
-			NETP_ERR("[thread_run_object_abstract::__run__]__on_launching__() unknown thread exception");
-			throw;
-		}
-
+		//sync m_th
+		std::atomic_thread_fence(std::memory_order_acquire);
 		try {
 			NETP_TRACE_THREAD("[thread_run_object_abstract::__run__]__on_start__() begin");
 			__on_start__();
@@ -215,7 +207,7 @@ namespace netp {
 		}
 	}
 
-	int thread_run_object_abstract::start_thread() {
+	int thread_run_object_abstract::_start_thread() {
 		NETP_ASSERT(m_th == nullptr);
 		try {
 			m_th = netp::make_ref<thread>();
@@ -224,7 +216,7 @@ namespace netp {
 			NETP_ERR("[thread_run_object_abstract::start_thread] failed: %d", _eno);
 			return _eno;
 		}
-		m_state.store(TR_START, std::memory_order_release);
+		m_state.store(TR_LAUNCHING, std::memory_order_release);
 		return m_th->start(&thread_run_object_abstract::__run__, this);
 	}
 }
