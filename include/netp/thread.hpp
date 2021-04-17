@@ -319,7 +319,7 @@ _VARIADIC_EXPAND_0X(_THREAD_CONS, , , , )
 
 			NETP_ASSERT(th->joinable());
 			th->join();
-			NETP_DELETE(th);
+			::delete th;
 
 			impl::thread_data* th_data = m_th_data.load( std::memory_order_relaxed );
 			m_th_data.store(nullptr, std::memory_order_relaxed);
