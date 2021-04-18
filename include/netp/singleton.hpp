@@ -23,7 +23,7 @@ namespace netp {
 				//@note, try ..catch would prevent inline
 				//if there is a exception , we just let it bubbling up
 				//try {
-					ins = new T();
+					ins = ::new T();
 					s_instance.store(ins, std::memory_order_release);
 
 					//in case of debuging purpose
@@ -47,7 +47,7 @@ namespace netp {
 				std::lock_guard<std::mutex> lg(__s_instance_for_destroy_mutex);
 				ins = s_instance.load(std::memory_order_acquire);
 				if (ins != nullptr) {
-					delete ins;
+					::delete ins;
 					s_instance.store(nullptr, std::memory_order_release);
 				}
 			}

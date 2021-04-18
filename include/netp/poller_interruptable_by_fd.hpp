@@ -1,6 +1,7 @@
 #ifndef _NETP_POLLER_INTERRUPTABLE_BY_FD_HPP
 #define _NETP_POLLER_INTERRUPTABLE_BY_FD_HPP
 
+#include <netp/list.hpp>
 #include <netp/smart_ptr.hpp>
 #include <netp/address.hpp>
 #include <netp/poller_abstract.hpp>
@@ -97,7 +98,7 @@ namespace netp {
 			NETP_TRACE_IOE("[io_event_loop][default]deinit done");
 
 			//NETP_ASSERT(m_ctxs.size() == 0);
-			NETP_ASSERT(NETP_IO_CTX_LIST_IS_EMPTY(&m_io_ctx_list), "m_io_ctx_list not empty");
+			NETP_ASSERT(NETP_LIST_IS_EMPTY(&m_io_ctx_list), "m_io_ctx_list not empty");
 		}
 
 		void init() {

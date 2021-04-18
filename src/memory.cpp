@@ -87,7 +87,7 @@ const static size_t TABLE_4[T3] = {
 
 	#define calc_SIZE_by_TABLE_SLOT(t, s) (TABLE_BOUND[t] + ((1ULL<<(t + 4))) * ((s + 1)))
 
-	#define calc_TABLE(size, t) do { \
+	#define calc_TABLE__(size, t) do { \
 		for (u8_t ti = 1; ti < (TABLE::T_COUNT+1); ++ti) { \
 			if (size <= TABLE_BOUND[ti]) { \
 				t = (--ti); \
@@ -96,7 +96,7 @@ const static size_t TABLE_4[T3] = {
 		} \
 	}while(false);\
 
-#define calc_TABLE_(size,t) do { \
+#define calc_TABLE(size,t) do { \
 	size_t div128 = (size>>7); \
 	switch (div128) { \
 	case 0: \

@@ -88,7 +88,7 @@ namespace netp {
 
 		netp::mutex m_mutex;
 		netp::condition m_cond;
-		std::vector<std::tuple<int,long>> m_signo_tuple_vec;
+		std::vector<std::tuple<int,i64_t>> m_signo_tuple_vec;
 		app_cfg m_cfg;
 
 		fn_app_hook_t m_app_startup_prev;

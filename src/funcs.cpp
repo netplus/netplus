@@ -5,7 +5,7 @@
 
 namespace netp {
 
-	std::atomic<long> s_event_handler_id{ 1 };
+	std::atomic<i32_t> s_event_handler_id{ 1 };
 
 	__NETP_TLS std::mt19937_64 __netp_rndg_64;
 	__NETP_TLS std::mt19937 __netp_rndg_32;

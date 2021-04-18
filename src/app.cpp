@@ -42,7 +42,7 @@ namespace netp {
 		g_sigbroker->signal_raise(signo);
 	}
 
-	long signal_register(int signo, netp::fn_signal_handler_t&& H) {
+	i64_t signal_register(int signo, netp::fn_signal_handler_t&& H) {
 		if (H == nullptr) {
 			NETP_WARN("[signal_broker]register_signal, ignore: %d", signo);
 			::signal(signo, SIG_IGN);
@@ -53,9 +53,9 @@ namespace netp {
 		return g_sigbroker->bind(signo, std::forward<netp::fn_signal_handler_t>(H));
 	}
 
-	void signal_unregister(int signo, long handle_id) {
+	void signal_unregister(int signo, i64_t handle_id) {
 		::signal(signo, &signal_void);
-		g_sigbroker->unbind(signo, handle_id);
+		g_sigbroker->unbind(handle_id);
 	}
 
 	app::app(app_cfg const& cfg) :
@@ -306,12 +306,12 @@ namespace netp {
 		signal_register(SIGPIPE, nullptr);
 #endif
 
-		long id_int =signal_register(SIGINT, std::bind(&app::handle_signal, this, std::placeholders::_1));
+		i64_t id_int =signal_register(SIGINT, std::bind(&app::handle_signal, this, std::placeholders::_1));
 		if (id_int > 0) {
 			m_signo_tuple_vec.push_back(std::make_tuple(SIGINT, id_int));
 		}
 
-		long id_term = signal_register(SIGTERM, std::bind(&app::handle_signal, this, std::placeholders::_1));
+		i64_t id_term = signal_register(SIGTERM, std::bind(&app::handle_signal, this, std::placeholders::_1));
 		if (id_term > 0) {
 			m_signo_tuple_vec.push_back(std::make_tuple(SIGTERM, id_term));
 		}
@@ -320,7 +320,7 @@ namespace netp {
 	void app::__signal_deinit() {
 		netp::unique_lock<netp::mutex> ulk(m_mutex);
 		while (m_signo_tuple_vec.size()) {
-			std::tuple<int, long>& pair = m_signo_tuple_vec.back();
+			std::tuple<int, i64_t>& pair = m_signo_tuple_vec.back();
 			signal_unregister(std::get<0>(pair), std::get<1>(pair));
 			m_signo_tuple_vec.pop_back();
 		}
