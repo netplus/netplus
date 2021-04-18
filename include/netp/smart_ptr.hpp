@@ -63,7 +63,7 @@ namespace netp {
 		virtual ~sp_counter_base() {}
 		virtual void dispose() = 0;
 
-		virtual void destroy() { ::delete this;}
+		virtual void destroy() { delete this;}
 
 		inline long sp_count() const { return sp_c.load(std::memory_order_acquire);}
 		inline long weak_count() const { return sp_weak_c.load(std::memory_order_acquire);}
@@ -438,7 +438,8 @@ _VARIADIC_EXPAND_0X(_ALLOCATE_MAKE_SHARED, , , , )
 	template <class _TTM, typename... _Args>
 	inline shared_ptr<_TTM> make_shared(_Args&&... args)
 	{
-		_TTM* t = ::new _TTM(std::forward<_Args>(args)...);
+		//@@pls note that , if we use ::new here, the operator new would be skiped
+		_TTM* t = new _TTM(std::forward<_Args>(args)...);
 		//NETP_ALLOC_CHECK(t,sizeof(_TTM));
 		return shared_ptr<_TTM>(t, construct_from_make_shared());
 	}
@@ -666,7 +667,7 @@ template<class _Ty COMMA LIST(_CLASS_TYPE)> \
 			ref_counter_t::__ref_grab();
 		}
 		__NETP_FORCE_INLINE void _ref_drop() {
-			if (ref_counter::__ref_drop()) { ::delete this; }
+			if (ref_counter::__ref_drop()) { delete this; }
 		}
 		__NETP_FORCE_INLINE long _ref_count() const { return ref_counter::__ref_count(); }
 
@@ -935,7 +936,7 @@ template<class _Ty COMMA LIST(_CLASS_TYPE)> \
 	template <class _Ref_t, typename... _Args>
 	inline ref_ptr<_Ref_t> make_ref(_Args&&... args)
 	{
-		_Ref_t* t = ::new _Ref_t(std::forward<_Args>(args)...);
+		_Ref_t* t = new _Ref_t(std::forward<_Args>(args)...);
 		return ref_ptr<_Ref_t>(t, construct_from_make_ref());
 	}
 #endif
