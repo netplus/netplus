@@ -307,6 +307,7 @@ namespace netp {
 			return p;
 		}
 
+		//no virutal sub destruct supported currently
 		inline static void trash(pointer p) {
 			if (p != 0) {
 				p->~value_type();
