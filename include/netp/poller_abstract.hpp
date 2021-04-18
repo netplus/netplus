@@ -15,34 +15,7 @@
 
 namespace netp {
 
-	template<class list_t>
-	inline static void list_init(list_t* list) {
-		list->next = list;
-		list->prev = list;
-	}
-	template<class list_t>
-	inline static void __list_insert(list_t* prev, list_t* next, list_t* item) {
-		item->next = next;
-		item->prev = prev;
-		next->prev = item;
-		prev->next = item;
-	}
-	template<class list_t>
-	inline static void list_prepend(list_t* list, list_t* item) {
-		__list_insert(list, list->next, item);
-	}
-	template<class list_t>
-	inline static void list_append(list_t* list, list_t* item) {
-		__list_insert(list->prev, list, item);
-	}
-	template<class list_t>
-	inline static void list_delete(list_t* item) {
-		item->prev->next = item->next;
-		item->next->prev = item->prev;
-		item->next = 0;
-		item->prev = 0;
-	}
-#define NETP_IO_CTX_LIST_IS_EMPTY(list) ( ((list) == (list)->next) && ((list)==(list)->prev) )
+
 
 	enum io_poller_type {
 		T_SELECT, //win&linux&android
