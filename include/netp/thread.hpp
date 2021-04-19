@@ -1,15 +1,6 @@
 #ifndef _NETP_THREAD_HPP_
 #define _NETP_THREAD_HPP_
 
-#if defined( _DEBUG) || defined(DEBUG)
-	#ifndef _DEBUG_THREAD
-		#define _DEBUG_THREAD
-	#endif
-#endif
-
-#ifdef _DEBUG_THREAD
-#endif
-
 #include <thread>
 #include <exception>
 
@@ -22,7 +13,6 @@
 #include <netp/thread_impl/mutex.hpp>
 #include <netp/thread_impl/condition.hpp>
 #include <netp/tls.hpp>
-
 
 //#define NETP_ENABLE_TRACE_THREAD
 #ifdef NETP_ENABLE_TRACE_THREAD

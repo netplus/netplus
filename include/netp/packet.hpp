@@ -72,7 +72,7 @@ namespace netp {
 		}
 
 		__NETP_FORCE_INLINE void reset(netp::u32_t left_capacity = LEFT_RESERVE) {
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 			NETP_ASSERT(left_capacity < m_capacity);
 #endif
 			m_read_idx = m_write_idx = left_capacity;
@@ -101,14 +101,14 @@ namespace netp {
 		}
 
 		__NETP_FORCE_INLINE void incre_read_idx(netp::u32_t bytes) {
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 			NETP_ASSERT(bytes <= len());
 #endif
 			m_read_idx += bytes;
 		}
 
 		__NETP_FORCE_INLINE void decre_read_idx(netp::u32_t bytes) {
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 			NETP_ASSERT(m_read_idx >= bytes);
 #endif
 			m_read_idx -= bytes;
@@ -157,7 +157,7 @@ namespace netp {
 
 		template <class T, class endian = netp::bytes_helper::big_endian>
 		inline T read() {
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 			NETP_ASSERT(sizeof(T) <= len());
 #endif
 			const T t = endian::read_impl(m_buffer + m_read_idx, netp::bytes_helper::type<T>());
@@ -179,7 +179,7 @@ namespace netp {
 
 		template <class T, class endian = netp::bytes_helper::big_endian>
 		inline T peek() const {
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 			NETP_ASSERT(sizeof(T) <= len());
 #endif
 			return endian::read_impl(m_buffer + m_read_idx, netp::bytes_helper::type<T>());
@@ -263,7 +263,7 @@ namespace netp {
 				_extend_leftbuffer_capacity__( ((len - (cap_fix_packet_t::left_left_capacity() ))<<1));
 			}
 
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 			NETP_ASSERT(cap_fix_packet_t::m_read_idx >= len);
 #endif
 			cap_fix_packet_t::m_read_idx -= len;
@@ -279,7 +279,7 @@ namespace netp {
 
 			cap_fix_packet_t::m_read_idx -= sizeof(T);
 			netp::u32_t wnbytes = endian::write_impl(t, (cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_read_idx) );
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 			NETP_ASSERT( wnbytes == sizeof(T) );
 #endif
 			(void)wnbytes;

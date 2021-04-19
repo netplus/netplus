@@ -13,7 +13,7 @@
 
 #define _NETP_USE_MUTEX_WRAPPER
 
-#if defined(_DEBUG) || defined(DEBUG)
+#if defined(_NETP_DEBUG)
 	//#define _DEBUG_MUTEX
 	//#define _DEBUG_SHARED_MUTEX
 #endif

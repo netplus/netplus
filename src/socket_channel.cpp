@@ -93,7 +93,7 @@ namespace netp {
 		}
 
 		int rt;
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 		rt = get_snd_buffer_size();
 		NETP_TRACE_SOCKET("[socket_base][#%d]snd buffer size: %u, try to set: %u", m_fd, rt, size);
 #endif
@@ -146,7 +146,7 @@ int socket_base::get_left_snd_queue() const {
 		}
 
 		int rt;
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 		rt = get_rcv_buffer_size();
 		NETP_TRACE_SOCKET("[socket_base][#%d]rcv buffer size: %u, try to set: %u", m_fd, rt, size);
 #endif

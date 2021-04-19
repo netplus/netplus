@@ -74,7 +74,7 @@ namespace netp {
 		template <class T, class endian=netp::bytes_helper::big_endian>
 		inline T read() {
 			NETP_ASSERT( m_buffer != nullptr );
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 			byte_t tmp[sizeof(T)] = {'i'} ;
 #else
 			byte_t tmp[sizeof(T)] ;

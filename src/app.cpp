@@ -12,10 +12,6 @@
 
 #include <netp/benchmark.hpp>
 
-#ifdef _DEBUG
-	#include <netp/channel.hpp>
-#endif
-
 #ifdef _NETP_WIN
 	#include <netp/os/winsock_helper.hpp>
 #endif
@@ -93,7 +89,7 @@ namespace netp {
 	void app::_init() {
 		__log_init();
 
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 		dump_arch_info();
 #endif
 		
@@ -451,7 +447,7 @@ namespace netp {
 		NRP<netp::packet> tmp = netp::make_ref<netp::packet>(1024 * 1024);
 	}
 
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 	#define POOL_CACHE_MAX_SIZE (16*1024)
 #else
 	#define POOL_CACHE_MAX_SIZE (64*1024)
@@ -527,8 +523,8 @@ namespace netp {
 		test_memory();
 		test_packet();
 
-		size_t loop = 3;
-#ifdef _DEBUG
+		size_t loop = 2;
+#ifdef _NETP_DEBUG
 		loop = 1;
 #endif
 

@@ -61,7 +61,7 @@ namespace netp {
 
 	void logger_broker::write(logger::log_mask mask, char const* const file, int line, char const* const func, ...) {
 
-#ifdef _DEBUG
+#if defined(_NETP_DEBUG)
 		char __traceInfo[TRACE_INFO_SIZE] = { 0 };
 		size_t tracelen = snprintf(__traceInfo, ((sizeof(__traceInfo) / sizeof(__traceInfo[0])) - 1), "TRACE: %s:[%d] %s", file, line, func);
 		if (tracelen > TRACE_INFO_SIZE) {
@@ -108,7 +108,7 @@ namespace netp {
 			idx_fmt += fmtsize;
 			NETP_ASSERT(idx_fmt < LOG_BUFFER_SIZE_MAX);
 
-#ifdef _DEBUG
+#if defined(_NETP_DEBUG)
 			netp::size_t trace_len = netp::strlen(__traceInfo)+5; //...+\n+info+'\0' 
 			NETP_ASSERT(LOG_BUFFER_SIZE_MAX > trace_len);
 			if ( (netp::size_t)(LOG_BUFFER_SIZE_MAX) < (trace_len +idx_fmt)) {
