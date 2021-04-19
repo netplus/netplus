@@ -88,6 +88,7 @@ ARCH_IS_X86 := YES
 ARCH_IS_ARMV7A := NO
 SIMD_DEFINES := 
 
+#note: default PRJ_SIMD IS EMPTY, EMPTY PASS THROUGH EMPTY
 ifeq ($(PRJ_ARCH), $(findstring $(PRJ_ARCH),$(X86_X86_X86) ))
 	ifeq ($(PRJ_SIMD),$(findstring $(PRJ_SIMD),avx2))
 		CC_SIMD := -mssse3 -mavx2
