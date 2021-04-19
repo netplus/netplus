@@ -47,7 +47,7 @@
 	#define NETP_ENABLE_CONSOLE_LOGGER 1
 #endif
 
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 	#define __DEFAULT_CONSOLE_LOG_LEVEL 3
 	#define __DEFAULT_FILE_LOG_LEVEL 3
 	#define __DEFAULT_SYS_LOG_LEVEL 3
@@ -114,7 +114,7 @@
 
 //#define NETP_ENABLE_WEBSOCKET
 
-#ifdef DEBUG
+#ifdef _NETP_DEBUG
 //	#define NETP_ENABLE_TRACE_DH
 //	#define NETP_ENABLE_TRACE_SOCKET
 //	#define NETP_ENABLE_TRACE_IOE

@@ -4,7 +4,7 @@
 #include <netp/core.hpp>
 #include <netp/io_monitor.hpp>
 
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 	#define NETP_DEBUG_IO_CTX_
 #endif
 
@@ -14,8 +14,6 @@
 #define NETP_POLLER_WAIT_EXIT(wt_in_nano,W) ( ((u64_t(wt_in_nano)>NETP_POLLER_WAIT_IGNORE_DUR)) ? (W).store(false,std::memory_order_release): (void)0)
 
 namespace netp {
-
-
 
 	enum io_poller_type {
 		T_SELECT, //win&linux&android

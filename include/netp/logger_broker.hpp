@@ -36,7 +36,7 @@ namespace netp {
 #define	NETP_WARN(...)			(NETP_LOGGER_BROKER->write( netp::logger::LOG_MASK_WARN, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__ ))
 #define	NETP_ERR(...)				(NETP_LOGGER_BROKER->write( netp::logger::LOG_MASK_ERR, __FILE__, __LINE__, __FUNCTION__,__VA_ARGS__ ))
 
-#ifndef _DEBUG
+#ifndef _NETP_DEBUG
 	#undef NETP_DEBUG
 	#define NETP_DEBUG(...)
 #endif

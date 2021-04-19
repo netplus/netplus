@@ -41,12 +41,8 @@ namespace netp {
 #endif
 
 #if defined(_DEBUG) || defined(DEBUG)
-	#ifndef _DEBUG
-		#define _DEBUG
-	#endif
-
-	#ifndef DEBUG
-		#define DEBUG
+	#ifndef _NETP_DEBUG
+		#define _NETP_DEBUG
 	#endif
 #endif
 

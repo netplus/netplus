@@ -85,7 +85,7 @@ namespace netp {
 		}
 	};
 
-#if defined(_NETP_WIN) && (defined(_DEBUG) || defined(DEBUG) || 1)
+#if defined(_NETP_WIN) && (defined(_NETP_DEBUG) || 1)
 	#define NETP_ADD_PT_IN_IMPL_FOR_DEBUG
 #endif
 
@@ -377,7 +377,7 @@ namespace netp {
 		*/
 
 		__NETP_FORCE_INLINE POINTER_TYPE operator -> () const {
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 			NETP_ASSERT( sp_ct.base != 0 );
 			NETP_ASSERT( sp_ct.base->__p != 0 );
 #endif
@@ -385,7 +385,7 @@ namespace netp {
 		}
 
 		__NETP_FORCE_INLINE T& operator * () const {
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 			NETP_ASSERT(sp_ct.base != 0);
 			NETP_ASSERT(sp_ct.base->__p != 0);
 #endif
@@ -887,7 +887,7 @@ template<class _Ty COMMA LIST(_CLASS_TYPE)> \
 
 		__NETP_FORCE_INLINE _Ref_t* operator -> () const
 		{
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 			NETP_ASSERT( _p != 0 );
 #endif
 			return (_p);
@@ -895,7 +895,7 @@ template<class _Ty COMMA LIST(_CLASS_TYPE)> \
 
 		__NETP_FORCE_INLINE _Ref_t& operator * () const
 		{
-#ifdef _DEBUG
+#ifdef _NETP_DEBUG
 			NETP_ASSERT( _p != 0 );
 #endif
 			return (*_p);

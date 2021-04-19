@@ -46,7 +46,9 @@ namespace netp {
 
 		void *original = std::malloc(size + alignment+ __NETP_ALIGNED_HEAD);
 		if (original == 0) return 0;
-		void *aligned = reinterpret_cast<void*>(((reinterpret_cast<std::size_t>(original) + __NETP_ALIGNED_HEAD) & ~(std::size_t(alignment - 1))) + alignment);
+//		void *aligned = reinterpret_cast<void*>(((reinterpret_cast<std::size_t>(original) + __NETP_ALIGNED_HEAD ) & ~(std::size_t(alignment - 1))) + alignment );
+		//this one is better, if the address is aligned already, offset is zero
+		void *aligned = reinterpret_cast<void*>( (reinterpret_cast<std::size_t>(original) + __NETP_ALIGNED_HEAD + (alignment-1)) & ~(alignment-1) );
 
 		*(reinterpret_cast<char*>(aligned) - 1) = u8_t(size_t(aligned) - size_t(original));
 
@@ -116,6 +118,7 @@ namespace netp {
 		T_COUNT
 	};
 
+	//be careful, ptr should better aligned to 8bytes
 	struct table_slot_t {
 		u32_t max;
 		u32_t count;
@@ -418,6 +421,9 @@ namespace netp {
 			//all the object created instanced by operator placement new must not be called by operate delete.
 			//we have to call destructor by ourself first, then do memory free by ourown logic
 			//so, construct&destroy must be paired
+#ifdef _NETP_DEBUG
+			NETP_ASSERT(_Ptr != 0);
+#endif
 			::new ((void*)_Ptr) _Objty( std::forward<_Types>(_Args)...);
 		}
 

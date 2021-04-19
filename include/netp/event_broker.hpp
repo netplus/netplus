@@ -61,7 +61,7 @@ namespace netp {
 			friend class event_broker_any;
 			typedef event_handler_any<_callable> _this_type_t;
 			typedef typename std::decay<_callable>::type __callee_type;
-			__callee_type __callee;
+			__callee_type __callee;//this member must be aligned to 8bytes: arm32
 
 			void* address_of_callee() const { return (void*)&__callee; }
 
@@ -140,6 +140,8 @@ namespace netp {
 				evt_node_list* evt_hl = it->second;
 				if(evt_hl->flag & evt_node_flag::f_invoking) {
 					evt_node->flag |= evt_node_flag::f_insert_pending;
+					//told invoker that we have pending insert
+					evt_hl->flag |= evt_node_flag::f_insert_pending;
 				}
 				netp::list_append(evt_hl->prev, evt_node );
 			} else {
@@ -163,6 +165,7 @@ namespace netp {
 				evt_node_list* evt_hl = it->second;
 				evt_node_list* cur, *nxt;
 				NETP_LIST_SAFE_FOR(cur, nxt, evt_hl) {
+					NETP_ASSERT( (cur->flag&(evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending)) == 0);
 					netp::list_delete(cur);
 					evt_node_deallocate(cur);
 				}
@@ -188,6 +191,7 @@ namespace netp {
 			NETP_LIST_SAFE_FOR(cur, nxt, evt_hl) {
 				if (evt_hl->flag & evt_node_flag::f_invoking) {
 					cur->flag |= evt_node_flag::f_delete_pending;
+					evt_hl->flag |= evt_node_flag::f_delete_pending;
 				} else {
 					netp::list_delete(cur);
 					evt_node_deallocate(cur);
@@ -216,6 +220,7 @@ namespace netp {
 
 				if (evt_hl->flag & evt_node_flag::f_invoking) {
 					cur->flag |= evt_node_flag::f_delete_pending;
+					evt_hl->flag |= evt_node_flag::f_delete_pending;
 				} else {
 					netp::list_delete(cur);
 					evt_node_deallocate(cur);
@@ -296,8 +301,8 @@ namespace netp {
 				 }
 			 }
 			 
+			 //full scan for deallocating
 			 if (ev_hl->flag & (evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending)) {
-				 //full scan for deallocateing
 				 NETP_LIST_SAFE_FOR(cur,nxt, ev_hl) {
 					 if (cur->flag & evt_node_flag::f_insert_pending) {
 						 cur->flag &= ~evt_node_flag::f_insert_pending;
@@ -307,7 +312,7 @@ namespace netp {
 					 } else {}
 				 }
 			 }
-			 ev_hl->flag &= ~(evt_node_flag::f_invoking| evt_node_flag::f_insert_pending);
+			 ev_hl->flag &= ~(evt_node_flag::f_invoking| evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending);
 		}
 
 #ifdef __NETP_DEBUG_BROKER_INVOKER_

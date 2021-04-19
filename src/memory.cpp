@@ -164,7 +164,7 @@ const static size_t TABLE_4[T3] = {
 		for (i = 0; i < (item_count); ++i) {
 			ptr[i] = (u8_t*) pool_align_allocator::malloc(size, NETP_DEFAULT_ALIGN);
 		}
-		for (int j = 0; j < i; ++j) {
+		for (size_t j = 0; j < i; ++j) {
 			pool_align_allocator::free(ptr[j]);
 		}
 		netp::aligned_free(ptr);
@@ -177,7 +177,6 @@ const static size_t TABLE_4[T3] = {
 	}
 
 	void pool_align_allocator::init( bool preallocate ) {
-		static_assert((sizeof(table_slot_t) % NETP_DEFAULT_ALIGN) == 0, "check table slot size");
 		for (u8_t t = 0; t < TABLE::T_COUNT; ++t) {
 			for (u8_t s = 0; s < SLOT_MAX; ++s) {
 				u8_t* __ptr = (u8_t*) netp::aligned_malloc(sizeof(table_slot_t) + (sizeof(u8_t*) * TABLE_SLOT_ENTRIES_INIT_LIMIT[t]), NETP_DEFAULT_ALIGN);
@@ -228,6 +227,9 @@ const static size_t TABLE_4[T3] = {
 			//fast path
 __fast_path:
 			if (tst->count) {
+#ifdef _NETP_DEBUG
+				NETP_ASSERT(tst->ptr[tst->count-1] != 0);
+#endif
 				return (tst->ptr[--tst->count]);
 			}
 			//borrow
@@ -243,6 +245,9 @@ __fast_path:
 
 		//aligned_malloc has a 8 bytes h
 		uptr = (u8_t*)netp::aligned_malloc((size), align_size);
+#ifdef _NETP_DEBUG
+		NETP_ASSERT(uptr != 0);
+#endif
 		if (NETP_LIKELY(uptr != 0)) {
 			*(uptr - 2) = ((t << 4) | (s & 0xf));
 		}
