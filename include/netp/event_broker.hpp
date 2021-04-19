@@ -140,6 +140,8 @@ namespace netp {
 				evt_node_list* evt_hl = it->second;
 				if(evt_hl->flag & evt_node_flag::f_invoking) {
 					evt_node->flag |= evt_node_flag::f_insert_pending;
+					//told invoker that we have pending insert
+					evt_hl->flag |= evt_node_flag::f_insert_pending;
 				}
 				netp::list_append(evt_hl->prev, evt_node );
 			} else {
@@ -188,6 +190,7 @@ namespace netp {
 			NETP_LIST_SAFE_FOR(cur, nxt, evt_hl) {
 				if (evt_hl->flag & evt_node_flag::f_invoking) {
 					cur->flag |= evt_node_flag::f_delete_pending;
+					evt_hl->flag |= evt_node_flag::f_delete_pending;
 				} else {
 					netp::list_delete(cur);
 					evt_node_deallocate(cur);
@@ -216,6 +219,7 @@ namespace netp {
 
 				if (evt_hl->flag & evt_node_flag::f_invoking) {
 					cur->flag |= evt_node_flag::f_delete_pending;
+					evt_hl->flag |= evt_node_flag::f_delete_pending;
 				} else {
 					netp::list_delete(cur);
 					evt_node_deallocate(cur);
@@ -307,7 +311,7 @@ namespace netp {
 					 } else {}
 				 }
 			 }
-			 ev_hl->flag &= ~(evt_node_flag::f_invoking| evt_node_flag::f_insert_pending);
+			 ev_hl->flag &= ~(evt_node_flag::f_invoking| evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending);
 		}
 
 #ifdef __NETP_DEBUG_BROKER_INVOKER_
