@@ -427,7 +427,17 @@ namespace netp {
 		return m_should_exit;
 	}
 
-	void app_test_unit::test_memory() {}
+	void app_test_unit::test_memory() {	
+		NRP<packet>* p = netp::allocator<NRP<packet>>::make();
+		netp::allocator<NRP<packet>>::trash(p);
+
+		NRP<packet>* pn = netp::allocator<NRP<packet>>::make_array(10);
+		netp::allocator<NRP<packet>>::trash_array(pn,10);
+
+		
+		u8_t* u8ptr = netp::allocator<u8_t>::malloc(14, 16);
+		netp::allocator<u8_t>::free(u8ptr);
+	}
 
 	void app_test_unit::test_packet() {
 

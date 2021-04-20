@@ -22,7 +22,6 @@
 
 namespace netp {
 
-#define SLOT_MAX (8)
 	enum TABLE {
 		T0 = 0,
 		T1,
@@ -45,7 +44,7 @@ namespace netp {
 	struct table_slot_t {
 		u32_t max;
 		u32_t count;
-		//pointer to sizeof(u8_t*) * slot_max;
+		//pointer to sizeof(u8_t*) * max;
 		u8_t** ptr; //
 
 		//if count == slot_max, we move half of count into global
@@ -56,15 +55,13 @@ namespace netp {
 #define TABLE_SLOT_POP(tst) ( tst->ptr + sizeof(u8_t*) * (--tst->count)))
 #define TABLE_SLOT_PUSH(tst,ptr) (tst->ptr + sizeof(u8_t*) * (tst->count++)))
 
-	typedef table_slot_t* table_t;
-
 	//NOTE: if want to share address with different alignment in the same pool, we need to check alignment and do a re-align if necessary
 	class pool_aligned_allocator {
 
 	protected:
 		//pointer to the first table slot
 		//not all the table has seem size
-		table_slot_t* m_tables[TABLE::T_COUNT][SLOT_MAX];
+		table_slot_t** m_tables[TABLE::T_COUNT];
 
 		void preallocate_table_slot_item(table_slot_t* tst, u8_t t, u8_t slot, size_t item_count);
 		void deallocate_table_slot_item(table_slot_t* tst);
@@ -86,7 +83,7 @@ namespace netp {
 		public pool_aligned_allocator,
 		public singleton<global_pool_aligned_allocator>
 	{
-		spin_mutex m_table_slots_mtx[TABLE::T_COUNT][SLOT_MAX];
+		spin_mutex* m_table_slots_mtx[TABLE::T_COUNT];
 	public:
 		global_pool_aligned_allocator();
 		virtual ~global_pool_aligned_allocator();

@@ -25,11 +25,12 @@ namespace netp {
 		u8_t __bytes_0_7[8];
 	};
 	static_assert( sizeof(aligned_hdr) == 8, "check sizeof(aligned_hdr) failed");
-	
+	static_assert(alignof(std::max_align_t) == NETP_DEFAULT_ALIGN, "check default aligne failed");
+
 	//@note: msvc debug compiler would not inline these func, but release version do
 	__NETP_FORCE_INLINE static u8_t __AH_UPDATE_OFFSET__(aligned_hdr* a_hdr, size_t alignment) {
 		//@note: pls refer to https://en.wikipedia.org/wiki/Data_structure_alignment 
-		const u8_t offset = u8_t(sizeof(aligned_hdr)) + u8_t((~(std::size_t(a_hdr) + sizeof(aligned_hdr) - 1)) & ((alignment)-1));
+		const u8_t offset = u8_t(sizeof(aligned_hdr)) + ((alignment == alignof(std::max_align_t)) ? 0 : u8_t((~(std::size_t(a_hdr) + sizeof(aligned_hdr) - 1)) & ((alignment)-1)));
 		NETP_ASSERT(alignment<=32 && offset < 32 && offset>=sizeof(aligned_hdr));
 		
 		a_hdr->hdr.AH_4_7.alignment = u8_t(alignment);
@@ -40,7 +41,7 @@ namespace netp {
 	}
 
 	__NETP_FORCE_INLINE static void __AH_UPDATE_SIZE(aligned_hdr* a_hdr, size_t size) {
-		a_hdr->hdr.size_L = (size) & 0xffffffff;
+		a_hdr->hdr.size_L = size& 0xffffffff;
 #ifdef _NETP_AM64
 		a_hdr->hdr.AH_4_7.size_H = ((size >> 32) & 0xff);
 #endif
@@ -49,7 +50,7 @@ namespace netp {
 	__NETP_FORCE_INLINE static size_t __AH_SIZE(aligned_hdr* a_hdr) {
 		size_t size_ = a_hdr->hdr.size_L;
 #ifdef _NETP_AM64
-		size_ |= (size_t(a_hdr->hdr.AH_4_7.size_H)>>32);
+		size_ |= (size_t(a_hdr->hdr.AH_4_7.size_H)<<32);
 #endif
 		return size_;
 	}
@@ -168,6 +169,25 @@ const static size_t TABLE_4[T3] = {
 #define __NETP_MEMORY_POOL_INIT_FACTOR (___FACTOR)
 #endif
 
+#define NETP_ALIGNED_ALLOCATOR_16_SLOT_EDGE_T size_t(T4)
+#define NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t) ( (t < NETP_ALIGNED_ALLOCATOR_16_SLOT_EDGE_T) ? 16 : 8)
+	const static u8_t TABLE_SLOT[TABLE::T_COUNT] = {
+		16,
+		16,
+		16,
+		16,
+		8,
+		8,
+		8,
+		8,
+		8,
+		8,
+		8,
+		8,
+		8,
+		8,
+	};
+
 //object pool does not suit for large memory gap objects
 	const static u32_t TABLE_SLOT_ENTRIES_INIT_LIMIT[TABLE::T_COUNT] = {
 		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2048, //256-128 Byte
@@ -204,7 +224,8 @@ const static size_t TABLE_4[T3] = {
 		128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072 + 262144 + 524288 + 1048576//
 	};
 
-	#define calc_SIZE_by_TABLE_SLOT(t, s) (TABLE_BOUND[t] + ((1ULL<<(t + 4))) * ((s + 1)))
+	#define calc_F_by_slot(s) ((s<NETP_ALIGNED_ALLOCATOR_16_SLOT_EDGE_T)?3:4)
+	#define calc_SIZE_by_TABLE_SLOT(t,f,s) (TABLE_BOUND[t] + ((1ULL<<((t) + (f)))) * (((s) + 1)))
 
 	#define calc_TABLE__(size, t) do { \
 		for (u8_t ti = 1; ti < (TABLE::T_COUNT+1); ++ti) { \
@@ -279,10 +300,10 @@ const static size_t TABLE_4[T3] = {
 	void pool_aligned_allocator::preallocate_table_slot_item(table_slot_t* tst, u8_t t, u8_t slot, size_t item_count) {
 		(void)tst;
 		u8_t** ptr = (u8_t**)std::malloc(sizeof(u8_t*) * (item_count));
-		size_t size = calc_SIZE_by_TABLE_SLOT(t, slot);
+		size_t size = calc_SIZE_by_TABLE_SLOT(t, calc_F_by_slot(t), slot);
 		size_t i;
 		for (i = 0; i < (item_count); ++i) {
-			ptr[i] = (u8_t*) pool_aligned_allocator::malloc((size-NETP_DEFAULT_ALIGN), NETP_DEFAULT_ALIGN);
+			ptr[i] = (u8_t*) pool_aligned_allocator::malloc((size), NETP_DEFAULT_ALIGN);
 		}
 		for (size_t j = 0; j < i; ++j) {
 			pool_aligned_allocator::free(ptr[j]);
@@ -298,14 +319,16 @@ const static size_t TABLE_4[T3] = {
 
 	void pool_aligned_allocator::init( bool preallocate ) {
 		for (u8_t t = 0; t < TABLE::T_COUNT; ++t) {
-			for (u8_t s = 0; s < SLOT_MAX; ++s) {
+			const u8_t slot_max = NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t);
+			m_tables[t] = (table_slot_t**) std::malloc(sizeof(table_slot_t**) * slot_max);
+			for (u8_t s = 0; s < slot_max; ++s) {
 				u8_t* __ptr = (u8_t*) std::malloc(sizeof(table_slot_t) + (sizeof(u8_t*) * TABLE_SLOT_ENTRIES_INIT_LIMIT[t]));
 				m_tables[t][s] = (table_slot_t*)__ptr;
 				m_tables[t][s]->max = TABLE_SLOT_ENTRIES_INIT_LIMIT[t];
 				m_tables[t][s]->count = 0;
 				m_tables[t][s]->ptr = (u8_t**)(__ptr + (sizeof(table_slot_t)));
 
-				if (preallocate && (t<T2 /*<1k*/) ) {
+				if (preallocate && (t< NETP_ALIGNED_ALLOCATOR_16_SLOT_EDGE_T /*<1k*/) ) {
 					preallocate_table_slot_item(m_tables[t][s], t, s, (TABLE_SLOT_ENTRIES_INIT_LIMIT[t]>>1) );
 				}
 			}
@@ -314,11 +337,13 @@ const static size_t TABLE_4[T3] = {
 
 	void pool_aligned_allocator::deinit() {
 		for (u8_t t = 0; t < TABLE::T_COUNT; ++t) {
-			for (u8_t s = 0; s < SLOT_MAX; ++s) {
+			const u8_t slot_max = NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t);
+			for (u8_t s = 0; s < slot_max; ++s) {
 				deallocate_table_slot_item(m_tables[t][s]);
 				//deallocate_table_slot(m_tables[t][s]);
 				std::free(m_tables[t][s]);
 			}
+			std::free(m_tables[t]);
 		}
 	}
 
@@ -334,32 +359,36 @@ const static size_t TABLE_4[T3] = {
 		NETP_ASSERT( size < _NETP_ALIGN_MALLOC_SIZE_MAX );
 		u8_t t = T_COUNT;
 		u8_t s = u8_t(-1);
-		aligned_hdr* a_hdr;
-		size_t slot_size = (size +alignment);
-		calc_TABLE(slot_size,t);
 
+		aligned_hdr* a_hdr;
+
+		//assume that the std::malloc always return address aligned to alignof(std::max_align_t)
+		size_t slot_size = (alignment == alignof(std::max_align_t)) ? size : (size +alignment);
+		calc_TABLE(slot_size,t);
 		
 		if (NETP_LIKELY(t<T_COUNT)) {
 			slot_size -= TABLE_BOUND[t];
-			s = u8_t(slot_size >> (t + 4));
-			(slot_size % ((1ULL << (t + 4)))) == 0 ? --s : 0;
 
+			u8_t f = calc_F_by_slot(t);
+			s = u8_t(slot_size >> (t + f));
+			(slot_size % ((1ULL << (t + f)))) == 0 ? --s : 0;
+
+#ifdef _NETP_DEBUG
+			NETP_ASSERT((t < NETP_ALIGNED_ALLOCATOR_16_SLOT_EDGE_T) ? (s < 16) : (s < 8));
+#endif
 			table_slot_t*& tst = (m_tables[t][s]);
 
 			//fast path
 __fast_path:
 			if (tst->count) {
+
 	#ifdef _NETP_DEBUG
-					NETP_ASSERT(tst->ptr[tst->count-1] != 0);
+				NETP_ASSERT(tst->ptr[tst->count-1] != 0);
 	#endif
 				 a_hdr = (aligned_hdr*) (tst->ptr[--tst->count]);
 
 				 //update new size
 				 __AH_UPDATE_SIZE(a_hdr, size);
-
-				 if (( (a_hdr->hdr.AH_4_7.alignment) % alignment) == 0) {
-					 return (u8_t*)a_hdr + (a_hdr->hdr.AH_4_7.offset);
-				 }
 				 return (u8_t*)a_hdr + __AH_UPDATE_OFFSET__(a_hdr, alignment);
 			}
 			//borrow
@@ -370,12 +399,13 @@ __fast_path:
 			}
 
 			//update size for new malloc
-			slot_size = calc_SIZE_by_TABLE_SLOT(t, s);
+			slot_size = calc_SIZE_by_TABLE_SLOT(t,f,s);
 		}
 
 		//std::malloc alwasy return ptr aligned to alignof(std::max_align_t), so ,we do not need to worry about the hdr access
 		a_hdr = (aligned_hdr*)std::malloc(sizeof(aligned_hdr)+ slot_size );
-		
+		NETP_ASSERT(std::size_t(a_hdr) % alignof(std::max_align_t) == 0);
+
 		if (NETP_UNLIKELY(a_hdr == 0)) {
 			return 0;
 		}
@@ -396,7 +426,7 @@ __fast_path:
 
 		if (NETP_LIKELY(t < T_COUNT)) {
 			u8_t s = a_hdr->hdr.AH_4_7.s;
-			NETP_ASSERT(s < SLOT_MAX);
+
 			table_slot_t*& tst = (m_tables[t][s]);
 			if ((tst->count < tst->max)) {
 				tst->ptr[tst->count++] = (u8_t*)a_hdr;
@@ -436,11 +466,15 @@ __fast_path:
 	
 	global_pool_aligned_allocator::global_pool_aligned_allocator():
 		pool_aligned_allocator(false)
-	{}
+	{
+		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
+			m_table_slots_mtx[t] = ::new spin_mutex[NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t)];
+		}
+	}
 
 	global_pool_aligned_allocator::~global_pool_aligned_allocator() {
 		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
-			for (size_t s = 0; s < SLOT_MAX; ++s) {
+			for (size_t s = 0; s < NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t); ++s) {
 				lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
 				u32_t& _gcount = m_tables[t][s]->count;
 				while ( _gcount>0) {
@@ -448,13 +482,16 @@ __fast_path:
 				}
 			}
 		}
+		//deallocate mutex
+		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
+			::delete[] m_table_slots_mtx[t];
+		}
 	}
-	
 
 	//default: one thread -- main thread
 	void global_pool_aligned_allocator::incre_thread_count() {
 		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
-			for (size_t s = 0; s < SLOT_MAX; ++s) {
+			for (size_t s = 0; s < NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t); ++s) {
 				lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s] );
 				u32_t max_n = m_tables[t][s]->max + TABLE_SLOT_ENTRIES_INIT_LIMIT[t];
 				u8_t* __ptr = (u8_t*)(std::realloc(m_tables[t][s], sizeof(table_slot_t) + sizeof(u8_t*) * max_n));
@@ -467,7 +504,7 @@ __fast_path:
 
 	void global_pool_aligned_allocator::decre_thread_count() {
 		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
-			for (size_t s = 0; s < SLOT_MAX; ++s) {
+			for (size_t s = 0; s < NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t); ++s) {
 				lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
 				NETP_ASSERT(m_tables[t][s]->max >= TABLE_SLOT_ENTRIES_INIT_LIMIT[t]);
 				u32_t max_n = m_tables[t][s]->max - TABLE_SLOT_ENTRIES_INIT_LIMIT[t];
