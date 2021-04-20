@@ -46,8 +46,6 @@ NETP_INFO("make bh done");
 
 
 //so, the current solution is just set the align to 8bytes
- 
-#define NETP_DEFAULT_ALIGN (8)
 
 #ifdef __ARM_NEON__
 	#define NETP_ENABLE_NEON

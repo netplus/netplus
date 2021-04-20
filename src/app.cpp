@@ -163,8 +163,8 @@ namespace netp {
 		netp::tls_create< netp::impl::thread_data>();
 
 #ifdef NETP_MEMORY_USE_TLS_POOL
-		netp::global_pool_align_allocator::instance();
-		netp::tls_create<netp::pool_align_allocator_t>();
+		netp::global_pool_aligned_allocator::instance();
+		netp::tls_create<netp::pool_aligned_allocator_t>();
 #endif
 
 #if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
@@ -183,8 +183,8 @@ namespace netp {
 		netp::tls_destroy< netp::impl::thread_data>();
 
 #ifdef NETP_MEMORY_USE_TLS_POOL
-		netp::tls_destroy< netp::pool_align_allocator_t>();
-		netp::global_pool_align_allocator::instance()->destroy_instance();
+		netp::tls_destroy< netp::pool_aligned_allocator_t>();
+		netp::global_pool_aligned_allocator::instance()->destroy_instance();
 #endif
 	}
 
@@ -255,6 +255,7 @@ namespace netp {
 		support_message(arch_info, "NEON", netp::CPUID::NEON());
 
 		NETP_INFO("ARCH INFO: %s\n", arch_info.c_str());
+		NETP_INFO("alignof(std::max_align_t): %d\n", alignof(std::max_align_t) );
 	}
 
 #if defined(NETP_DEBUG_OBJECT_SIZE)

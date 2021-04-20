@@ -28,6 +28,17 @@
 
 #define __NETP_TLS thread_local
 #define __NETP_NOEXCEPT noexcept
+
+/*
+This function attribute indicates that a function must be inlined.
+
+The compiler attempts to inline the function, regardless of the characteristics of the function.
+In some circumstances the compiler may choose to ignore the __attribute__((always_inline)) attribute and not inline a function. For example:
+A recursive function is never inlined into itself.
+Functions making use of alloca() are never inlined.
+Note
+This function attribute is a GNU compiler extension that the ARM compiler supports. It has the keyword equivalent __forceinline.
+*/
 #define __NETP_FORCE_INLINE inline __attribute__((always_inline))
 
 #define NETP_LIKELY(x) __builtin_expect(!!(x), 1)

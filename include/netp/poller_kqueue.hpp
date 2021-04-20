@@ -26,7 +26,7 @@ namespace netp {
 				NETP_THROW("KQUEUE CREATE FAILED");
 			}
 			NETP_DEBUG("CREATE KQUEUE DONE");
-			m_kevts = (struct kevent*)netp::aligned_malloc( sizeof(struct kevent)* NETP_KEVT_COUNT, NETP_DEFAULT_ALIGN);
+			m_kevts = (struct kevent*)netp::allocator<char>::malloc(sizeof(struct kevent) * NETP_KEVT_COUNT, NETP_DEFAULT_ALIGN);
 			NETP_ALLOC_CHECK(m_kevts, sizeof(struct kevent)* NETP_KEVT_COUNT);
 			poller_interruptable_by_fd::init();
 		}
@@ -35,7 +35,7 @@ namespace netp {
 			poller_interruptable_by_fd::deinit();
 			close(m_kq);
 			m_kq = -1;
-			netp::aligned_free(m_kevts);
+			netp::allocator<char>::free(m_kevts);
 			m_kevts=0;
 			m_kevt_size = 0;
 		}

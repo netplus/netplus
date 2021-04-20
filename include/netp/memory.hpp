@@ -22,83 +22,6 @@
 
 namespace netp {
 
-	//AVX 32
-	//SSE16
-	//@todo
-
-	//ALIGN_SIZE SHOUDL BE LESS THAN 256bit
-	//STORE OFFSET IN PREVIOUS BYTES
-
-	//1<<48 should be ok
-	struct _pseudo_aligned_alloc_hdr {
-		u64_t aligned_size_L : 32;
-		u64_t aligned_size_H : 16;
-	};
-
-	//data bit sequence
-	//[size:48][might be empty, it depends][reserver:8][offset:8][returned ptr]
-
-	#define __NETP_ALIGNED_HEAD (sizeof(u64_t))
-
-	inline void* aligned_malloc(std::size_t size, std::size_t alignment)
-	{
-		NETP_ASSERT( (alignment <= 32) && (size<(1ULL<<48)) );
-
-		void *original = std::malloc(size + alignment+ __NETP_ALIGNED_HEAD);
-		if (original == 0) return 0;
-//		void *aligned = reinterpret_cast<void*>(((reinterpret_cast<std::size_t>(original) + __NETP_ALIGNED_HEAD ) & ~(std::size_t(alignment - 1))) + alignment );
-		//this one is better, if the address is aligned already, offset is zero
-		void *aligned = reinterpret_cast<void*>( (reinterpret_cast<std::size_t>(original) + __NETP_ALIGNED_HEAD + (alignment-1)) & ~(alignment-1) );
-
-		*(reinterpret_cast<char*>(aligned) - 1) = u8_t(size_t(aligned) - size_t(original));
-
-		//the value would only be used by realloc
-		*(reinterpret_cast<u32_t*>(original)) = (size & 0xffffffff);// L:32
-
-#ifdef _NETP_AM64
-		*(reinterpret_cast<u16_t*>(((u8_t*)original) + 4)) = ((size >> 32) & 0xffff); //H:16
-#endif
-
-		return aligned;
-	}
-
-	/** \internal Frees memory allocated with handmade_aligned_malloc */
-	inline void aligned_free(void *ptr)
-	{
-		if (ptr) std::free( (char*)ptr - *(reinterpret_cast<char*>(ptr)-1) );
-	}
-
-	inline void* aligned_realloc(void* ptr, std::size_t size, std::size_t alignment)
-	{
-		if (ptr == 0) { return aligned_malloc(size, alignment); }
-
-		//void *previous_aligned = static_cast<u8_t *>(original) + previous_offset;
-		//align data
-		void* original = (u8_t*)ptr - *(reinterpret_cast<u8_t*>(ptr) - 1);
-		size_t old_size = *(reinterpret_cast<u32_t*>(original));
-#ifdef _NETP_AM64
-		size_t old_size_H = *(reinterpret_cast<u16_t*>(((u8_t*)original) + 4));
-		if (old_size_H > 0) {
-			old_size |= (old_size_H << 32);
-		}
-#endif
-		//refer to: https://en.cppreference.com/w/cpp/memory/c/realloc
-		//The contents of the area remain unchanged up to the lesser of the new and old sizes.
-		if (old_size == size) {
-			return ptr;
-		}
-
-		void* new_ptr = aligned_malloc(size, alignment);
-		if (new_ptr == 0) { 
-			aligned_free(ptr);
-			return 0; 
-		}
-
-		std::memcpy(new_ptr, ptr, NETP_MIN(old_size, size) );
-		aligned_free(ptr);
-		return new_ptr;
-	}
-
 #define SLOT_MAX (8)
 	enum TABLE {
 		T0 = 0,
@@ -136,7 +59,7 @@ namespace netp {
 	typedef table_slot_t* table_t;
 
 	//NOTE: if want to share address with different alignment in the same pool, we need to check alignment and do a re-align if necessary
-	class pool_align_allocator {
+	class pool_aligned_allocator {
 
 	protected:
 		//pointer to the first table slot
@@ -149,66 +72,66 @@ namespace netp {
 		void init(bool preallocate);
 		void deinit();
 
+
 		public:
-			pool_align_allocator( bool preallocate = true );
-			virtual ~pool_align_allocator();
+			pool_aligned_allocator( bool preallocate = true );
+			virtual ~pool_aligned_allocator();
 
 			void* malloc(size_t size, size_t alignment );
 			void free(void* ptr);
 			void* realloc(void* ptr, size_t size, size_t alignment);
 	};
 
-	class global_pool_align_allocator final :
-		public pool_align_allocator,
-		public singleton<global_pool_align_allocator>
+	class global_pool_aligned_allocator final :
+		public pool_aligned_allocator,
+		public singleton<global_pool_aligned_allocator>
 	{
 		spin_mutex m_table_slots_mtx[TABLE::T_COUNT][SLOT_MAX];
 	public:
-		global_pool_align_allocator();
-		virtual ~global_pool_align_allocator();
+		global_pool_aligned_allocator();
+		virtual ~global_pool_aligned_allocator();
 		void incre_thread_count();
 		void decre_thread_count();
 		u32_t commit(u8_t t, u8_t slot, table_slot_t* tst);
 		u32_t borrow(u8_t t, u8_t slot, table_slot_t* tst);
 	};
 
-	using pool_align_allocator_t = pool_align_allocator;
+	using pool_aligned_allocator_t = pool_aligned_allocator;
 
 	struct tag_allocator_std_malloc {};
 	struct tag_allocator_default_new {};
-	struct tag_allocator_align_malloc {};
 	struct tag_allocator_tls_pool {};
 
 	//std::allocator<T> AA;
 	template<class allocator_t>
 	struct allocator_wrapper {
-		static inline void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 			return 0;
 		}
-		static inline void* calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static void* calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 			return 0;
 		}
-		static inline void free(void* p) {
+		__NETP_FORCE_INLINE static void free(void* p) {
 		}
-		static inline void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
 			return 0;
 		}
 	};
 
 	template<>
 	struct allocator_wrapper<tag_allocator_std_malloc> {
-		static inline void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 			(void)alignment;
 			return std::malloc(n);
 		}
-		static inline void* calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static void* calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 			(void)alignment;
 			return std::calloc(1,n);
 		}
-		static inline void free(void* p) {
+		__NETP_FORCE_INLINE static void free(void* p) {
 			std::free(p);
 		}
-		static inline void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
 			(void)(alignment);
 			return std::realloc(ptr, size);
 		}
@@ -216,19 +139,19 @@ namespace netp {
 
 	template<>
 	struct allocator_wrapper<tag_allocator_default_new> {
-		static inline void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 			(void)(alignment);
 			return static_cast<void*>(::operator new(n));
 		}
-		static inline void* calloc(size_t , size_t alignment = NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static void* calloc(size_t , size_t alignment = NETP_DEFAULT_ALIGN) {
 			(void)(alignment);
 			throw std::bad_alloc();
 		}
-		static inline void free(void* p) {
+		__NETP_FORCE_INLINE static void free(void* p) {
 			::operator delete(p);
 		}
 		
-		static inline void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
 			(void)(alignment);
 			(void)ptr;
 			(void)size;
@@ -237,40 +160,21 @@ namespace netp {
 	};
 
 	template<>
-	struct allocator_wrapper<tag_allocator_align_malloc> {
-		static inline void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return netp::aligned_malloc(n, alignment);
-		}
-		static inline void* calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			char* p = (char*)netp::aligned_malloc(n, alignment);
-			//might it be optimized ? let's see
-			std::memset(p,0,n);
-			return (void*)p;
-		}
-		static inline void free(void* p) {
-			netp::aligned_free(p);
-		}
-		static inline void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return netp::aligned_realloc(ptr, size, alignment);
-		}
-	};
-
-	template<>
 	struct allocator_wrapper<tag_allocator_tls_pool> {
-		static inline void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return tls_get<netp::pool_align_allocator>()->malloc(n, alignment);
+		__NETP_FORCE_INLINE static void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+			return tls_get<netp::pool_aligned_allocator>()->malloc(n, alignment);
 		}
-		static inline void* calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			char* p = (char*)tls_get<netp::pool_align_allocator>()->malloc(n, alignment);
+		__NETP_FORCE_INLINE static void* calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+			char* p = (char*)tls_get<netp::pool_aligned_allocator>()->malloc(n, alignment);
 			//might it be optimized ? let's see
 			std::memset(p, 0, n);
 			return (void*)p;
 		}
-		static inline void free(void* p) {
-			tls_get<netp::pool_align_allocator>()->free(p);
+		__NETP_FORCE_INLINE static void free(void* p) {
+			tls_get<netp::pool_aligned_allocator>()->free(p);
 		}
-		static inline void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return tls_get<netp::pool_align_allocator>()->realloc(ptr, size, alignment);
+		__NETP_FORCE_INLINE static void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
+			return tls_get<netp::pool_aligned_allocator>()->realloc(ptr, size, alignment);
 		}
 	};
 
@@ -288,16 +192,16 @@ namespace netp {
 		typedef T value_type;
 
 		//these three api for convenience purpose
-		inline static pointer malloc(size_t n, size_t alignment= NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static pointer malloc(size_t n, size_t alignment= NETP_DEFAULT_ALIGN) {
 			return static_cast<pointer>(allocator_wrapper_t::malloc(sizeof(value_type) * n, alignment));
 		}
-		inline static pointer calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static pointer calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 			return static_cast<pointer>(allocator_wrapper_t::calloc(sizeof(value_type) * n, alignment));
 		}
-		inline static void free(pointer p) {
+		__NETP_FORCE_INLINE static void free(pointer p) {
 			allocator_wrapper_t::free(p);
 		}
-		inline static pointer realloc(pointer ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static pointer realloc(pointer ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
 			return static_cast<pointer>(allocator_wrapper_t::realloc(ptr,size,alignment));
 		}
 
@@ -515,48 +419,6 @@ namespace netp {
 		//hint for kinds of container construct proxy
 		template <class U>
 		allocator_default_new( const allocator_default_new<U>& ) _NETP_NOEXCEPT
-		{
-		}
-	};
-
-	//thread safe
-	template <class T>
-	struct allocator_align_malloc :
-		public allocator_base<T, allocator_wrapper<tag_allocator_align_malloc>>
-	{
-		typedef  allocator_base<T, allocator_wrapper<tag_allocator_align_malloc>> allocator_base_t;
-		typedef allocator_align_malloc<T> allocator_t;
-
-		typedef typename allocator_base_t::size_type size_type;
-		typedef typename allocator_base_t::difference_type difference_type;
-		typedef typename allocator_base_t::pointer pointer;
-		typedef typename allocator_base_t::const_pointer const_pointer;
-		typedef typename allocator_base_t::reference reference;
-		typedef typename allocator_base_t::const_reference const_reference;
-		typedef typename allocator_base_t::value_type value_type;
-
-		//cpp 17
-		//typedef true_type is_always_equal;
-
-		template <class U>
-		struct rebind {
-			typedef allocator_align_malloc<U> other;
-		};
-
-#if __cplusplus >= 201103L
-		typedef std::true_type propagate_on_container_move_assignment;
-#endif
-
-		allocator_align_malloc() _NETP_NOEXCEPT
-		{}
-		allocator_align_malloc(const allocator_t&) _NETP_NOEXCEPT
-		{}
-		~allocator_align_malloc() _NETP_NOEXCEPT
-		{}
-
-		//hint for kinds of container construct proxy
-		template <class U>
-		allocator_align_malloc(const allocator_align_malloc<U>&) _NETP_NOEXCEPT
 		{
 		}
 	};

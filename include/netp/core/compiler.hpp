@@ -81,6 +81,9 @@
     #error
 #endif
 
+
+#define NETP_DEFAULT_ALIGN (alignof(std::max_align_t))
+
 #define _NETP_OVERRIDE		override
 #define _NETP_NOEXCEPT		noexcept
 #define _NETP_CONSTEXPR	constexpr
