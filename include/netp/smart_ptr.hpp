@@ -65,9 +65,9 @@ namespace netp {
 
 		virtual void destroy() { delete this;}
 
-		inline long sp_count() const { return sp_c.load(std::memory_order_acquire);}
-		inline long weak_count() const { return sp_weak_c.load(std::memory_order_acquire);}
-		inline void require() {netp::atomic_incre(&sp_c,std::memory_order_acq_rel);}
+		inline long sp_count() const { return sp_c.load(std::memory_order_relaxed);}
+		inline long weak_count() const { return sp_weak_c.load(std::memory_order_relaxed);}
+		inline void require() {netp::atomic_incre(&sp_c,std::memory_order_relaxed);}
 		inline long require_lock(long const& val) {
 			return netp::atomic_incre_if_not_equal(&sp_c,val,std::memory_order_acq_rel, std::memory_order_acquire);
 		}
@@ -77,7 +77,7 @@ namespace netp {
 				weak_release();
 			}
 		}
-		void weak_require() { netp::atomic_incre(&sp_weak_c,std::memory_order_acq_rel);}
+		void weak_require() { netp::atomic_incre(&sp_weak_c,std::memory_order_relaxed);}
 		void weak_release() {
 			if( netp::atomic_decre(&sp_weak_c,std::memory_order_acq_rel) == 1 ) {
 				destroy();
@@ -607,14 +607,20 @@ namespace netp {
 		{}
 		typedef std::atomic<long> __atomic_p_t;
 		__NETP_FORCE_INLINE void __ref_grab() {
-			NETP_ASSERT(0 < __atomic_p_t::load(std::memory_order_acquire));
-			netp::atomic_incre(this, std::memory_order_acq_rel);
+			NETP_ASSERT(0 < __atomic_p_t::load(std::memory_order_relaxed));
+			//@note: should we add a release barrier here to sure all modification happens before this line (assigning a ref_ptr to another object) be flushed to other cpus, and stop compiler to reorder across this line ?
+			//@netp gives this job to the user, user has to place a release barrier manually if the other thread might access the related addresses
+			//@__atomic_counter is just a counter
+			//@ref_base impl based upon __atomic_counter has a gurantee for decre operation, not incre
+			netp::atomic_incre(this, std::memory_order_relaxed);
 		}
 		__NETP_FORCE_INLINE bool __ref_drop() {
-			NETP_ASSERT(0 < __atomic_p_t::load(std::memory_order_acquire));
+			NETP_ASSERT(0 < __atomic_p_t::load(std::memory_order_relaxed));
+			//@acq_rel guard delete operation,
+			//@it make sure all modification happens before delete be synchronized to other cpu, and make sure there is no compiler reorder across decre
 			return (netp::atomic_decre(this, std::memory_order_acq_rel) == 1);
 		}
-		__NETP_FORCE_INLINE long __ref_count() const { return __atomic_p_t::load(std::memory_order_acquire); }
+		__NETP_FORCE_INLINE long __ref_count() const { return __atomic_p_t::load(std::memory_order_relaxed); }
 	};
 
 	struct __non_atomic_counter

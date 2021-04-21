@@ -11,14 +11,16 @@ namespace netp {
 	class singleton {
 	public:
 		__NETP_FORCE_INLINE static T* instance() {
-			T* ins = s_instance.load(std::memory_order_acquire);
+			//we have a mutex guard below,,, 
+			T* ins = s_instance.load(std::memory_order_relaxed);
 			if ( NETP_LIKELY(nullptr != ins)) {
 				return ins;
 			}
 
 			static std::mutex __s_instance_mutex;
 			std::lock_guard<std::mutex> _lg(__s_instance_mutex);
-			ins = s_instance.load(std::memory_order_acquire);
+			//we have a mutex guard above,,, 
+			ins = s_instance.load(std::memory_order_relaxed);
 			if ( NETP_LIKELY(nullptr == ins)) {
 				//@note, try ..catch would prevent inline
 				//if there is a exception , we just let it bubbling up
