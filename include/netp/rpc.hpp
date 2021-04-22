@@ -26,7 +26,7 @@ namespace netp {
 		public netp::ref_base
 	{
 		static std::atomic<netp::u32_t> __rpc_message_id__;
-		const int __make_id__() { return netp::atomic_incre(&__rpc_message_id__); }
+		const int __make_id__() { return __rpc_message_id__.fetch_add(1, std::memory_order_relaxed); }
 
 		rpc_message_type type;
 		netp::u32_t id;

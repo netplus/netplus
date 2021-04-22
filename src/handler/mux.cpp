@@ -2,7 +2,7 @@
 
 namespace netp { namespace handler {
 	static std::atomic<int> __stream_id_{1};
-	int mux_make_stream_id() {return netp::atomic_incre(&__stream_id_) % 0x7FFFFFFF; }
+	int mux_make_stream_id() {return __stream_id_.fetch_add(1, std::memory_order_relaxed) % 0x7FFFFFFF; }
 
 	void mux_stream::_timer_updatewndforremote(NRP<netp::timer> const& t) {
 		if (m_chflag&int(channel_flag::F_WRITING)) {

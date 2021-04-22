@@ -67,19 +67,19 @@ namespace netp {
 
 		inline long sp_count() const { return sp_c.load(std::memory_order_relaxed);}
 		inline long weak_count() const { return sp_weak_c.load(std::memory_order_relaxed);}
-		inline void require() {netp::atomic_incre(&sp_c,std::memory_order_relaxed);}
+		inline void require() {sp_c.fetch_add(1,std::memory_order_relaxed);}
 		inline long require_lock(long const& val) {
 			return netp::atomic_incre_if_not_equal(&sp_c,val,std::memory_order_acq_rel, std::memory_order_acquire);
 		}
 		inline void release() {
-			if( netp::atomic_decre(&sp_c,std::memory_order_acq_rel) == 1) {
+			if( sp_c.fetch_sub(1,std::memory_order_acq_rel) == 1) {
 				dispose();
 				weak_release();
 			}
 		}
-		void weak_require() { netp::atomic_incre(&sp_weak_c,std::memory_order_relaxed);}
+		void weak_require() { sp_weak_c.fetch_add(1,std::memory_order_relaxed);}
 		void weak_release() {
-			if( netp::atomic_decre(&sp_weak_c,std::memory_order_acq_rel) == 1 ) {
+			if( sp_weak_c.fetch_sub(1,std::memory_order_acq_rel) == 1 ) {
 				destroy();
 			}
 		}
@@ -612,13 +612,13 @@ namespace netp {
 			//@netp gives this job to the user, user has to place a release barrier manually if the other thread might access the related addresses
 			//@__atomic_counter is just a counter
 			//@ref_base impl based upon __atomic_counter has a gurantee for decre operation, not incre
-			netp::atomic_incre(this, std::memory_order_relaxed);
+			__atomic_p_t::fetch_add(1, std::memory_order_relaxed);
 		}
 		__NETP_FORCE_INLINE bool __ref_drop() {
 			NETP_ASSERT(0 < __atomic_p_t::load(std::memory_order_relaxed));
 			//@acq_rel guard delete operation,
 			//@it make sure all modification happens before delete be synchronized to other cpu, and make sure there is no compiler reorder across decre
-			return (netp::atomic_decre(this, std::memory_order_acq_rel) == 1);
+			return (__atomic_p_t::fetch_sub(1, std::memory_order_acq_rel) == 1);
 		}
 		__NETP_FORCE_INLINE long __ref_count() const { return __atomic_p_t::load(std::memory_order_relaxed); }
 	};

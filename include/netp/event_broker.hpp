@@ -39,7 +39,7 @@ namespace netp {
 			prev(0),
 			next(0),
 			flag(0),
-			id(i32_t(netp::atomic_incre(&s_event_handler_id, std::memory_order_relaxed)))
+			id(i32_t(s_event_handler_id.fetch_add(1, std::memory_order_relaxed)))
 		{}
 		virtual ~evt_node_list() {}
 		virtual void* address_of_callee() const { return 0; };

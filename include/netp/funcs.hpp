@@ -84,6 +84,7 @@ namespace netp {
 	u32_t get_stack_size();
 	void assert_failed(const char* error, const char* file, int line, const char* function, ...);
 
+	//@deprecated
 	template <typename T>
 	inline T atomic_incre(std::atomic<T>* atom, std::memory_order order = std::memory_order_acq_rel) _NETP_NOEXCEPT {
 		return atom->fetch_add(1, order);

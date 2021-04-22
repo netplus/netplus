@@ -269,8 +269,8 @@ _VARIADIC_EXPAND_0X(_THREAD_CONS, , , , )
 				//@NOTE: A thread object is joinable if it represents a thread of execution.
 				//A thread object is not joinable in any of these cases :
 				//if it was default - constructed.
-				//	if it has been moved from(either constructing another thread object, or assigning to it).
-				//	if either of its members join or detach has been called.
+				//if it has been moved from(either constructing another thread object, or assigning to it).
+				//if either of its members join or detach has been called.
 				m_th = ::new std::thread(&thread::__RUN_PROXY__, this);
 			} catch (...) {
 				netp::allocator<impl::thread_data>::trash(m_th_data.load(std::memory_order_relaxed));

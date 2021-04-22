@@ -77,16 +77,16 @@ namespace netp {
 		event_loop_cfg m_cfg;
 
 	protected:
-		inline long internal_ref_count() { return m_internal_ref_count.load(std::memory_order_acquire); }
-		inline void store_internal_ref_count( long count ) { m_internal_ref_count.store( count, std::memory_order_release); }
-		inline void inc_internal_ref_count() { netp::atomic_incre(&m_internal_ref_count); }
+		inline long internal_ref_count() { return m_internal_ref_count.load(std::memory_order_relaxed); }
+		inline void store_internal_ref_count( long count ) { m_internal_ref_count.store( count, std::memory_order_relaxed); }
+		inline void inc_internal_ref_count() { m_internal_ref_count.fetch_add(1, std::memory_order_relaxed); }
 		//inline void __internal_ref_count_inc() { netp::atomic_incre(&m_internal_ref_count); }
 		//0,	NO WAIT
 		//~0,	INFINITE WAIT
 		//>0,	WAIT nanosecond
 		__NETP_FORCE_INLINE i64_t _calc_wait_dur_in_nano() {
 
-			NETP_ASSERT( m_waiting.load(std::memory_order_acquire) == false, "_calc_wait_dur_in_nano waiting check failed" );
+			NETP_ASSERT( m_waiting.load(std::memory_order_relaxed) == false, "_calc_wait_dur_in_nano waiting check failed" );
 			static_assert(TIMER_TIME_INFINITE == i64_t(-1), "timer infinite check");
 			netp::timer_duration_t ndelay;
 			m_tb->expire(ndelay);
@@ -165,7 +165,7 @@ namespace netp {
 			{
 				lock_guard<spin_mutex> lg(m_tq_mutex);
 				m_tq_standby.push_back(std::move(f));
-				_interrupt_poller=( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_acquire));
+				_interrupt_poller=( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_relaxed));
 			}
 			if (NETP_UNLIKELY(_interrupt_poller)) {
 				m_poller->interrupt_wait();
@@ -177,7 +177,7 @@ namespace netp {
 			{
 				lock_guard<spin_mutex> lg(m_tq_mutex);
 				m_tq_standby.push_back(f);
-				_interrupt_poller=( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_acquire));
+				_interrupt_poller=( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_relaxed));
 			}
 			if (NETP_UNLIKELY(_interrupt_poller)) {
 				m_poller->interrupt_wait();

@@ -117,6 +117,7 @@ namespace netp {
 			m_tq_standby.clear();
 			m_tb->expire_all();
 		}
+
 		deinit();
 	}
 
@@ -293,6 +294,7 @@ namespace netp {
 
 			bye_event_loop_state running = bye_event_loop_state::S_RUNNING;
 			if (m_bye_state.compare_exchange_strong(running, bye_event_loop_state::S_EXIT, std::memory_order_acq_rel, std::memory_order_acquire)) {
+				NETP_INFO("[io_event_loop]__dealloc_poller bye, type: %d done");
 				NETP_ASSERT(m_bye_event_loop != nullptr);
 				m_bye_event_loop->__notify_terminating();
 				while (m_bye_ref_count != m_bye_event_loop.ref_count()) {
@@ -300,6 +302,8 @@ namespace netp {
 				}
 				m_bye_event_loop->__terminate();
 				m_bye_event_loop = nullptr;
+				m_bye_ref_count = 0;
+				NETP_INFO("[io_event_loop]__dealloc_poller bye done");
 			}
 		}
 
@@ -329,19 +333,19 @@ namespace netp {
 						//if (exclude_this_list_if_have_more.find(pollers[idx]) == exclude_this_list_if_have_more.end()) {
 						//	return pollers[idx];
 						//}
-						return pollers[netp::atomic_incre(&m_curr_loop_idx[t]) % psize];
+						return pollers[m_curr_loop_idx[t].fetch_add(1, std::memory_order_relaxed) % psize];
 					}
 					else {
-						u32_t idx = netp::atomic_incre(&m_curr_loop_idx[t]) % psize;
+						u32_t idx = m_curr_loop_idx[t].fetch_add(1, std::memory_order_relaxed) % psize;
 						while (exclude_this_list_if_have_more.find(pollers[idx]) != exclude_this_list_if_have_more.end()) {
-							idx = netp::atomic_incre(&m_curr_loop_idx[t]) % psize;
+							idx = m_curr_loop_idx[t].fetch_add(1, std::memory_order_relaxed) % psize;
 						}
 						return pollers[idx];
 					}
 				}
 			}
 
-			if (m_bye_state.load(std::memory_order_acquire) == bye_event_loop_state::S_RUNNING) {
+			if (m_bye_state.load(std::memory_order_relaxed) == bye_event_loop_state::S_RUNNING) {
 				return m_bye_event_loop;
 			}
 			NETP_THROW("io_event_loop_group deinit logic issue");
@@ -352,10 +356,10 @@ namespace netp {
 				shared_lock_guard<shared_mutex> lg(m_loop_mtx[t]);
 				const io_event_loop_vector& pollers = m_loop[t];
 				if (pollers.size() != 0) {
-					return pollers[netp::atomic_incre(&m_curr_loop_idx[t]) % pollers.size()];
+					return pollers[m_curr_loop_idx[t].fetch_add(1, std::memory_order_relaxed) % pollers.size()];
 				}
 			}
-			if(m_bye_state.load(std::memory_order_acquire) == bye_event_loop_state::S_RUNNING) {
+			if(m_bye_state.load(std::memory_order_relaxed) == bye_event_loop_state::S_RUNNING) {
 				return m_bye_event_loop;
 			}
 			NETP_THROW("io_event_loop_group deinit logic issue");
@@ -366,7 +370,7 @@ namespace netp {
 			shared_lock_guard<shared_mutex> lg(m_loop_mtx[t]);
 			const io_event_loop_vector& pollers = m_loop[t];
 			NETP_ASSERT(m_loop[t].size() != 0);
-			int idx = netp::atomic_incre(&m_curr_loop_idx[t]) % pollers.size();
+			int idx = m_curr_loop_idx[t].fetch_add(1, std::memory_order_relaxed) % pollers.size();
 			pollers[idx]->inc_internal_ref_count();
 			return pollers[idx];
 			//NETP_THROW("io_event_loop_group deinit logic issue");

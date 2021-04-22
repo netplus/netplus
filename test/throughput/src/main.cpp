@@ -24,6 +24,14 @@
 thp_param g_param;
 
 
+void printoutp(std::vector<NRP<netp::packet>>& outp) {
+	(void)outp;
+	for (auto p : outp)
+	{
+		NETP_INFO("%s", std::string((char*)p->head(), p->len()));
+	}
+}
+
 int main(int argc, char** argv) {
 	parse_param(g_param, argc, argv);
 
@@ -36,6 +44,30 @@ int main(int argc, char** argv) {
 		appcfg.cfg_channel_rcv_buf(NETP_DEFAULT_POLLER_TYPE, 64);
 
 		netp::app _app(appcfg);
+
+		NRP<netp::packet> outp1 = netp::make_ref<netp::packet>();
+		NRP<netp::packet> outp2 = outp1;		
+
+		NRP<netp::packet> outp3 = outp1;
+		NRP<netp::packet> outp4 = outp1;
+
+		std::vector<NRP<netp::packet>> pvec;
+		pvec.emplace_back(outp1);
+		pvec.emplace_back(outp2);
+		pvec.emplace_back(outp3);
+		pvec.emplace_back(outp4);
+
+		outp2 = nullptr;
+		outp3 = nullptr;
+		outp4 = nullptr;
+
+
+		std::atomic<long> _atomic_long;
+		_atomic_long.fetch_add(1, std::memory_order_relaxed);
+		_atomic_long.fetch_add(1, std::memory_order_acq_rel);
+
+
+		printoutp(pvec);
 
 		netp::benchmark bmarker("start");
 		handler_start_listener(g_param);

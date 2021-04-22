@@ -66,7 +66,7 @@ namespace netp {
 
 	static std::atomic<netp::u16_t> __pingseq(1);
 	static netp::u16_t ping_make_seq() {
-		return netp::atomic_incre<netp::u16_t>(&__pingseq);
+		return __pingseq.fetch_add(1, std::memory_order_relaxed);
 	}
 
 	//@deprecated
