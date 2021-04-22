@@ -608,10 +608,59 @@ namespace netp {
 		typedef std::atomic<long> __atomic_p_t;
 		__NETP_FORCE_INLINE void __ref_grab() {
 			NETP_ASSERT(0 < __atomic_p_t::load(std::memory_order_relaxed));
-			//@note: should we add a release barrier here to sure all modification happens before this line (assigning a ref_ptr to another object) be flushed to other cpus, and stop compiler to reorder across this line ?
-			//@netp gives this job to the user, user has to place a release barrier manually if the other thread might access the related addresses
-			//@__atomic_counter is just a counter
-			//@ref_base impl based upon __atomic_counter has a gurantee for decre operation, not incre
+			// @QUESTION: should we add a release barrier here to sure all modification happens before this line (assigning a ref_ptr to another object) be flushed to other cpus, and stop compiler to reorder across this line ?
+			
+			// @NOTE, the currently impl of __atomic_counter
+			// it is just a counter, the only gurantee is that the couting is thead safe
+			// if we use it to impl a ref based object as below <this is what netp do>:
+			// struct ref_obj : public __atomic_counter {
+			//		int i;
+			//		void bar() { ++i; }
+			//		...
+			// };
+			// 
+			// thread 1 :
+			// ref_obj* ptr = new ref_obj();
+			//
+			// then pass ptr to other thread 2, and call a member function as below
+			// 	thread 2: 
+			// ptr->bar();
+			// 
+			// It is absolutely a ub, cuz the the cache on thead2's cpu might not be ready (still in the origin cpu's store buffer)
+			//		1, ptr itself
+			//		2, object's member if any (here is ref_obj::i)
+			// 
+			// to fix this, we have to do as the following steps
+			// (1) place a release barrier right after the line of opeation new 
+			// (2) place a acquire barrier right before dereferencing of ptr
+
+			// the situation goes even more complicated in the following scenario
+
+			//step 1:
+			//thread 1
+			// obj* ptr = new ref_obj();
+			// std::atomic_memory_fence(std::memory_order_release);
+
+			//step 2:
+			//pass the ptr to thread 2, and call bar on thread 2
+			// std::atomic_memory_fence(std::memory_order_acquire);
+			// ptr->bar();
+
+			//step 3:
+			//thread 1, we update value of i
+			//ptr->i = 3;
+			//again, we have to place a release barrier to enable the visibility of the latest i for thread 2
+			//std::atomic_memory_fence(std::memory_order_release);
+
+			//step4:
+			//thread2 , call bar again
+			// //std::atomic_memory_fence(std::memory_order_acquire)
+			//ptr->bar();
+
+			//these kind of operation is non-trivial, and erron-prone, do you have a better way here ?
+			//
+
+			// @NOTE: ref_base impl based upon __atomic_counter has a gurantee for decre operation, not incre
 			__atomic_p_t::fetch_add(1, std::memory_order_relaxed);
 		}
 		__NETP_FORCE_INLINE bool __ref_drop() {
