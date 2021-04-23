@@ -633,6 +633,8 @@ namespace netp {
 			// (1) place a release barrier right after the line of opeation new 
 			// (2) place a acquire barrier right before dereferencing of ptr
 
+			//@NOTE: new impl utilize std::memory_order_acq_rel, the step 1 could be saved, but acquire barrier is still needed on the other thread
+			// 
 			// the situation goes even more complicated in the following scenario
 
 			//step 1:

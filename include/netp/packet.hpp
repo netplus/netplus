@@ -11,7 +11,8 @@
 #define PACK_MIN_CAPACITY ((PACK_MIN_LEFT_CAPACITY)+(PACK_MIN_RIGHT_CAPACITY))
 #define PACK_MAX_CAPACITY (netp::u32::MAX)
 #define PACK_DEFAULT_CAPACITY (1920)
-#define PACK_INCREMENT_SIZE ((1024*4))
+#define PACK_INCREMENT_SIZE_RIGHT ((1024*4)-32)
+#define PACK_INCREMENT_SIZE_LEFT (64)
 
 namespace netp {
 
@@ -120,7 +121,7 @@ namespace netp {
 		void write_left(byte_t const* buf, netp::u32_t len) {
 			NETP_ASSERT(m_read_idx >= len);
 			m_read_idx -= len;
-			::memcpy(m_buffer + m_read_idx, buf, len);
+			std::memcpy(m_buffer + m_read_idx, buf, len);
 		}
 
 		//would result in memmove if left space is not enough
@@ -141,13 +142,13 @@ namespace netp {
 
 		inline void write(void const* const buf, netp::u32_t len) {
 			NETP_ASSERT(left_right_capacity() >= len);
-			::memcpy(m_buffer + m_write_idx, buf, len);
+			std::memcpy(m_buffer + m_write_idx, buf, len);
 			m_write_idx += len;
 		}
 
 		inline void fill(u8_t b, netp::u32_t len) {
 			NETP_ASSERT(left_right_capacity() >= len);
-			::memset(m_buffer + m_write_idx, b, len);
+			std::memset(m_buffer + m_write_idx, b, len);
 			m_write_idx += len;
 		}
 
@@ -168,7 +169,7 @@ namespace netp {
 		inline netp::u32_t read(byte_t* const dst, netp::u32_t cap_) {
 			if ((dst == nullptr) || cap_ == 0) { return 0; }
 			netp::u32_t c = (len() > cap_ ? cap_ : len());
-			::memcpy(dst, m_buffer + m_read_idx, c);
+			std::memcpy(dst, m_buffer + m_read_idx, c);
 			m_read_idx += c;
 			return c;
 		}
@@ -189,7 +190,7 @@ namespace netp {
 			if ((dst == nullptr) || len_ == 0) { return 0; }
 
 			const netp::u32_t can_peek_size = len_ >= len() ? len() : len_;
-			::memcpy(dst, m_buffer + m_read_idx, can_peek_size);
+			std::memcpy(dst, m_buffer + m_read_idx, can_peek_size);
 			return can_peek_size;
 		}
 
@@ -197,7 +198,7 @@ namespace netp {
 			if (len() != other.len()) {
 				return false;
 			}
-			return ::memcmp(head(), other.head(), len()) == 0;
+			return std::memcmp(head(), other.head(), len()) == 0;
 		}
 
 		inline bool operator != (fix_packet_t const& other) const {
@@ -216,7 +217,7 @@ namespace netp {
 		typedef cap_fix_packet<_ref_base, LEFT_RESERVE, DEFAULT_CAPACITY, AGN> cap_fix_packet_t;
 		typedef cap_expandable_packet<_ref_base, LEFT_RESERVE, DEFAULT_CAPACITY, AGN> expandable_packet_t;
 	private:
-		inline void _extend_leftbuffer_capacity__(netp::u32_t increment = PACK_INCREMENT_SIZE) {
+		inline void _extend_leftbuffer_capacity__(netp::u32_t increment) {
 
 			NETP_ASSERT(cap_fix_packet_t::m_buffer != nullptr);
 			NETP_ASSERT(((cap_fix_packet_t::m_capacity + increment) <= PACK_MAX_CAPACITY));
@@ -231,13 +232,12 @@ namespace netp {
 			}
 			cap_fix_packet_t::m_read_idx = new_left;
 			cap_fix_packet_t::m_write_idx = cap_fix_packet_t::m_read_idx+_len;
-//			std::swap(_newbuffer, cap_fix_packet_t::m_buffer);
 			
 			netp::allocator<byte_t>::free(cap_fix_packet_t::m_buffer);
 			cap_fix_packet_t::m_buffer = _newbuffer;
 		}
 
-		inline void _extend_rightbuffer_capacity__(netp::u32_t increment = PACK_INCREMENT_SIZE) {
+		inline void _extend_rightbuffer_capacity__(netp::u32_t increment) {
 			NETP_ASSERT(cap_fix_packet_t::m_capacity != 0);
 			NETP_ASSERT(cap_fix_packet_t::m_buffer != nullptr);
 			NETP_ASSERT((cap_fix_packet_t::m_capacity + increment) <= PACK_MAX_CAPACITY);
@@ -267,14 +267,14 @@ namespace netp {
 			NETP_ASSERT(cap_fix_packet_t::m_read_idx >= len);
 #endif
 			cap_fix_packet_t::m_read_idx -= len;
-			::memcpy(cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_read_idx, buf, len) ;
+			std::memcpy(cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_read_idx, buf, len) ;
 		}
 
 		//would result in memmove if left space is not enough
 		template <class T, class endian=netp::bytes_helper::big_endian>
 		inline void write_left(T t) {
 			while ( NETP_UNLIKELY(sizeof(T) > (cap_fix_packet_t::left_left_capacity())) ) {
-				_extend_leftbuffer_capacity__();
+				_extend_leftbuffer_capacity__(PACK_INCREMENT_SIZE_LEFT);
 			}
 
 			cap_fix_packet_t::m_read_idx -= sizeof(T);
@@ -288,7 +288,7 @@ namespace netp {
 		template <class T, class endian=netp::bytes_helper::big_endian>
 		inline void write(T t) {
 			while ( NETP_UNLIKELY(sizeof(T) > (cap_fix_packet_t::left_right_capacity())) ) {
-				_extend_rightbuffer_capacity__();
+				_extend_rightbuffer_capacity__(PACK_INCREMENT_SIZE_RIGHT);
 			}
 
 			cap_fix_packet_t::m_write_idx += endian::write_impl(t, (cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_write_idx) );
@@ -298,7 +298,7 @@ namespace netp {
 			while ( NETP_UNLIKELY(len > (cap_fix_packet_t::left_right_capacity())) ) {
 				_extend_rightbuffer_capacity__(((len - (cap_fix_packet_t::left_right_capacity()))<<1));
 			}
-			::memcpy(cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_write_idx, buf, len) ;
+			std::memcpy(cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_write_idx, buf, len) ;
 			cap_fix_packet_t::m_write_idx += len;
 		}
 
@@ -306,7 +306,7 @@ namespace netp {
 			while (NETP_UNLIKELY(len > (cap_fix_packet_t::left_right_capacity()))) {
 				_extend_rightbuffer_capacity__(((len - (cap_fix_packet_t::left_right_capacity())) << 1));
 			}
-			::memset(cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_write_idx, b, len);
+			std::memset(cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_write_idx, b, len);
 			cap_fix_packet_t::m_write_idx += len;
 		}
 
@@ -318,7 +318,7 @@ namespace netp {
 			if (cap_fix_packet_t::len() != other.len()) {
 				return false;
 			}
-			return ::memcmp(cap_fix_packet_t::head(), other.head(), cap_fix_packet_t::len()) == 0;
+			return std::memcmp(cap_fix_packet_t::head(), other.head(), cap_fix_packet_t::len()) == 0;
 		}
 
 		inline bool operator != (expandable_packet_t const& other) const {
