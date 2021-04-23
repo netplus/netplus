@@ -167,7 +167,7 @@ namespace netp {
 				m_tq_standby.push_back(std::move(f));
 				_interrupt_poller=( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_relaxed));
 			}
-			if (NETP_UNLIKELY(_interrupt_poller)) {
+			if (_interrupt_poller) {
 				m_poller->interrupt_wait();
 			}
 		}

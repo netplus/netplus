@@ -32,6 +32,8 @@ void printoutp(std::vector<NRP<netp::packet>>& outp) {
 	}
 }
 
+std::atomic<long> _atomic_long;
+
 int main(int argc, char** argv) {
 	parse_param(g_param, argc, argv);
 
@@ -45,6 +47,7 @@ int main(int argc, char** argv) {
 
 		netp::app _app(appcfg);
 
+/*
 		NRP<netp::packet> outp1 = netp::make_ref<netp::packet>();
 		NRP<netp::packet> outp2 = outp1;		
 
@@ -62,13 +65,38 @@ int main(int argc, char** argv) {
 		outp4 = nullptr;
 
 
-		std::atomic<long> _atomic_long;
+
+		_atomic_long.load(std::memory_order_relaxed);
+		_atomic_long.load(std::memory_order_acquire);
+
+		_atomic_long.store(7, std::memory_order_relaxed);
+		_atomic_long.store(7, std::memory_order_release);
+		_atomic_long.store(7, std::memory_order_seq_cst);
+
+		std::atomic_thread_fence(std::memory_order_relaxed);
+		std::atomic_thread_fence(std::memory_order_acq_rel);
+		std::atomic_thread_fence(std::memory_order_seq_cst);
+		std::atomic_thread_fence(std::memory_order_acquire);
+
+		std::atomic_signal_fence(std::memory_order_relaxed);
+		std::atomic_signal_fence(std::memory_order_acq_rel);
+		std::atomic_signal_fence(std::memory_order_seq_cst);
+		std::atomic_signal_fence(std::memory_order_acquire);
+
+		_atomic_long.load(std::memory_order_relaxed);
+		_atomic_long.load(std::memory_order_acquire);
+
+		std::atomic_thread_fence(std::memory_order_seq_cst);
+		_atomic_long.store(7, std::memory_order_relaxed);
+
+		_atomic_long.store(7, std::memory_order_release);
+
 		_atomic_long.fetch_add(1, std::memory_order_relaxed);
 		_atomic_long.fetch_add(1, std::memory_order_acq_rel);
 
 
 		printoutp(pvec);
-
+*/
 		netp::benchmark bmarker("start");
 		handler_start_listener(g_param);
 		bmarker.mark("listen done");

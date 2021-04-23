@@ -167,11 +167,11 @@ namespace netp {
 			m_ch_close_p(nullptr),
 			m_ctx(nullptr)
 		{
-			NETP_TRACE_CHANNEL("channel::channel()");
+			NETP_TRACE_CHANNEL_CREATION("channel::channel()");
 		}
 
 		~channel() {
-			NETP_TRACE_CHANNEL("channel::~channel()");
+			NETP_TRACE_CHANNEL_CREATION("channel::~channel()");
 		}
 
 		//__NETP_FORCE_INLINE NRP<io_event_loop> const& event_loop() const { return m_loop;}

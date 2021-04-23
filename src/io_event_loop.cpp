@@ -294,7 +294,7 @@ namespace netp {
 
 			bye_event_loop_state running = bye_event_loop_state::S_RUNNING;
 			if (m_bye_state.compare_exchange_strong(running, bye_event_loop_state::S_EXIT, std::memory_order_acq_rel, std::memory_order_acquire)) {
-				NETP_INFO("[io_event_loop]__dealloc_poller bye, type: %d done");
+				NETP_INFO("[io_event_loop]__dealloc_poller bye, begin");
 				NETP_ASSERT(m_bye_event_loop != nullptr);
 				m_bye_event_loop->__notify_terminating();
 				while (m_bye_ref_count != m_bye_event_loop.ref_count()) {
@@ -303,6 +303,7 @@ namespace netp {
 				m_bye_event_loop->__terminate();
 				m_bye_event_loop = nullptr;
 				m_bye_ref_count = 0;
+				m_bye_state.store(bye_event_loop_state::S_IDLE);
 				NETP_INFO("[io_event_loop]__dealloc_poller bye done");
 			}
 		}

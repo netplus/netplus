@@ -607,7 +607,6 @@ namespace netp {
 		{}
 		typedef std::atomic<long> __atomic_p_t;
 		__NETP_FORCE_INLINE void __ref_grab() {
-			NETP_ASSERT(0 < __atomic_p_t::load(std::memory_order_relaxed));
 			// @QUESTION: should we add a release barrier here to sure all modification happens before this line (assigning a ref_ptr to another object) be flushed to other cpus, and stop compiler to reorder across this line ?
 			
 			// @NOTE, the currently impl of __atomic_counter
@@ -650,26 +649,49 @@ namespace netp {
 			//thread 1, we update value of i
 			//ptr->i = 3;
 			//again, we have to place a release barrier to enable the visibility of the latest i for thread 2
-			//std::atomic_memory_fence(std::memory_order_release);
+			//@NOTE: memory_order_release is just nop on x86 cpu, but it can stops compiler's reorder
+			//std::atomic_thread_fence(std::memory_order_release);
 
 			//step4:
 			//thread2 , call bar again
-			// //std::atomic_memory_fence(std::memory_order_acquire)
+			//@NOTE: memory_order_acquire is just nop on x86 cpu, but it can stops compiler's reorder
+			//std::atomic_thread_fence(std::memory_order_acquire)
 			//ptr->bar();
 
 			//these kind of operation is non-trivial, and erron-prone, do you have a better way here ?
-			//
+			//netp suggests to use event_loop::execute() to pass messages to other threads always
 
-			// @NOTE: ref_base impl based upon __atomic_counter has a gurantee for decre operation, not incre
-			__atomic_p_t::fetch_add(1, std::memory_order_relaxed);
+			//@NOTE: std::memory_order_ralaxed, std::memory_order_acq_rel produce same(lock xadd: it's a full barrier) asm code on x86 [g++ -o2&msvc release]
+			//@NOTE: std::memory_order_ralaxed, std::memory_order_acq_rel produce same asm code(with dmb, it's a full barrier) code on armv7a g++ -o2
+			// 
+			//but we might miss a compiler barrier on other platform according to https://en.cppreference.com/w/cpp/atomic/memory_order
+			//in short: Relaxed operation: there are no synchronization or ordering constraints imposed on other reads or writes, only this operation's atomicity is guaranteed (see Relaxed ordering below)
+			//! to sure compiler's offensive optimization,,, we force a std::atomic_signal_fence() here again 
+			//! it is used to prevent any construct code be moved below the ref_ptr's assigning operation
+
+			//note: std::atomic_signal_fence(std::memory_order_acq_rel) + __atomic_p_t::fetch_add(1, std::memory_order_relaxed) == __atomic_p_t::fetch_add(1, std::memory_order_acq_rel);
+			//std::atomic_signal_fence(std::memory_order_acq_rel);
+			NETP_ASSERT(0 < __atomic_p_t::load(std::memory_order_relaxed));
+			//__atomic_p_t::fetch_add(1, std::memory_order_relaxed);
+			__atomic_p_t::fetch_add(1, std::memory_order_acq_rel);
 		}
+
 		__NETP_FORCE_INLINE bool __ref_drop() {
 			NETP_ASSERT(0 < __atomic_p_t::load(std::memory_order_relaxed));
 			//@acq_rel guard delete operation,
 			//@it make sure all modification happens before delete be synchronized to other cpu, and make sure there is no compiler reorder across decre
 			return (__atomic_p_t::fetch_sub(1, std::memory_order_acq_rel) == 1);
 		}
-		__NETP_FORCE_INLINE long __ref_count() const { return __atomic_p_t::load(std::memory_order_relaxed); }
+		__NETP_FORCE_INLINE long __ref_count() const { 
+			//force a acq compiler fence to stop reorder in between atomic[volatile] and non-atomic access
+			//note: volatile and compiler fence does not prevent cpu reorder
+			//note: std::atomic_signal_fence(std::memory_order_acquire) + __atomic_p_t::load(std::memory_order_relaxed) == should equal std::atomic<>::load(std::memory_order_acquire); 
+			//so just update it to load with acquire order
+			
+			//std::atomic_signal_fence(std::memory_order_acquire);
+			//return __atomic_p_t::load(std::memory_order_relaxed); 
+			return __atomic_p_t::load(std::memory_order_acquire);
+		}
 	};
 
 	struct __non_atomic_counter
