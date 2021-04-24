@@ -736,7 +736,7 @@ int socket_base::get_left_snd_queue() const {
 		NETP_ASSERT(L->in_event_loop());
 		__CH_WRITEABLE_CHECK__(outlet, intp)
 		m_outbound_entry_q.push_back({
-			netp::make_ref<netp::packet>(outlet->head(), outlet_len),
+			netp::make_ref<netp::non_atomic_ref_packet>(outlet->head(), outlet_len,0),
 			intp
 		});
 		m_noutbound_bytes += outlet_len;
@@ -760,7 +760,7 @@ int socket_base::get_left_snd_queue() const {
 
 		__CH_WRITEABLE_CHECK__(outlet, intp)
 		m_outbound_entry_q.push_back({
-			netp::make_ref<netp::packet>(outlet->head(), outlet_len),
+			netp::make_ref<netp::non_atomic_ref_packet>(outlet->head(), outlet_len,0),
 			intp,
 			to,
 		});

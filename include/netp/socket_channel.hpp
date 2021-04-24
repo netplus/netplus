@@ -109,7 +109,7 @@ namespace netp {
 	};
 
 	struct socket_outbound_entry final {
-		NRP<packet> data;
+		NRP<non_atomic_ref_packet> data;
 		NRP<promise<int>> write_promise;
 		NRP<address> to;
 	};

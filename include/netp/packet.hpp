@@ -59,12 +59,12 @@ namespace netp {
 			_init_buffer(left_capacity, right_capacity);
 		}
 
-		explicit cap_fix_packet(void const* const buf, netp::u32_t len) :
+		explicit cap_fix_packet(void const* const buf, netp::u32_t len, u32_t left_cap = LEFT_RESERVE) :
 			m_buffer(nullptr),
 			m_read_idx(0),
 			m_write_idx(0)
 		{
-			_init_buffer(LEFT_RESERVE, len);
+			_init_buffer(left_cap, len);
 			write(buf, len);
 		}
 
@@ -118,7 +118,7 @@ namespace netp {
 		const inline netp::u32_t left_left_capacity() const { return (NETP_UNLIKELY(m_buffer == nullptr)) ? 0 : m_read_idx; }
 		const inline netp::u32_t left_right_capacity() const { return (NETP_UNLIKELY(m_buffer == nullptr)) ? 0 : m_capacity - m_write_idx; }
 
-		void write_left(byte_t const* buf, netp::u32_t len) {
+		inline void write_left(byte_t const* buf, netp::u32_t len) {
 			NETP_ASSERT(m_read_idx >= len);
 			m_read_idx -= len;
 			std::memcpy(m_buffer + m_read_idx, buf, len);
@@ -253,8 +253,8 @@ namespace netp {
 		{
 		}
 
-		explicit cap_expandable_packet(void const* const buf, netp::u32_t len):
-			cap_fix_packet_t(buf,len)
+		explicit cap_expandable_packet(void const* const buf, netp::u32_t len,u32_t left_cap = LEFT_RESERVE):
+			cap_fix_packet_t(buf,len,left_cap)
 		{
 		}
 
@@ -331,5 +331,6 @@ namespace netp {
 	};
 
 	using packet = cap_expandable_packet<netp::ref_base, PACK_MIN_LEFT_CAPACITY, PACK_DEFAULT_CAPACITY,NETP_DEFAULT_ALIGN>;
+	using non_atomic_ref_packet = cap_expandable_packet<netp::non_atomic_ref_base, PACK_MIN_LEFT_CAPACITY, PACK_DEFAULT_CAPACITY, NETP_DEFAULT_ALIGN>;
 }
 #endif
