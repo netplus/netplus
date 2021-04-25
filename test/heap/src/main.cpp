@@ -91,8 +91,11 @@ void test_heap<BinH, MyNode>(netp::u32_t const& max_v , bool increr_mode ) {
 			h.push(std::move(bn));
 		}
 		
+		MyNode last = h.front();
 		while (!h.empty()) {
 			MyNode& n = h.front();
+			NETP_ASSERT( n.v >= last.v );
+			last = n;
 			//printf("%d ", n.v);
 			h.pop();
 		}
@@ -136,7 +139,7 @@ int main(int argc, char** argv) {
 	netp::app _app;
 	const unsigned int size = 5000000;
 
-	test_heap<std::vector<MyNode>, MyNode>(size, false);
+	//test_heap<std::vector<MyNode>, MyNode>(size, false);
 	test_heap<BinH, MyNode>(size, false);
 
 	/*
