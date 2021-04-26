@@ -1,6 +1,5 @@
 CURRENT_DIR 	:= $(shell pwd)
 UNAME_S 		:= $(shell uname -s)
-
 PRJ_BUILD		:= release
 PRJ_ARCH		:= x86_64
 PRJ_SIMD		:= 
@@ -52,15 +51,12 @@ CC_3RD_CPP_MISC =
 #-fPIC https://gcc.gnu.org/onlinedocs/gcc-8.3.0/gcc/Code-Gen-Options.html#Code-Gen-Options
 CC_MISC		:= -fPIC -c
 CC_C11		:= -std=c++11
-
-LINK_MISC := -rdynamic $(LINK_MISC)
-
+LINK_MISC 	:= -rdynamic $(LINK_MISC)
 LINK_CXX_LIBS = -lpthread -ldl
 
 ifneq ($(UNAME_S),Darwin)
 	LINK_CXX_LIBS := -lrt $(LINK_CXX_LIBS)
 endif
-
 
 ifeq ($(PRJ_BUILD),debug)
 	PRJ_BUILD_SUFFIX := d
@@ -75,8 +71,10 @@ endif
 
 ifeq ($(PRJ_ARCH),x86_64)
     CC_MISC := $(CC_MISC) -m64
+	LINK_MISC := -m64 $(LINK_MISC)
 else ifeq ($(PRJ_ARCH),x86_32)
     CC_MISC := $(CC_MISC) -m32
+	LINK_MISC := -m32 $(LINK_MISC)
 else ifeq ($(PRJ_ARCH),armv7a)
     CC_MISC := $(CC_MISC)
 else 
@@ -88,16 +86,22 @@ ARCH_IS_X86 := YES
 ARCH_IS_ARMV7A := NO
 SIMD_DEFINES := 
 
-#note: default PRJ_SIMD IS EMPTY, EMPTY PASS THROUGH EMPTY
+#for x86_64, sse2 is on by default for both x32&x64 gcc compiler
+#for x86_32, sse2 is off by default for a x32 gcc compiler
 ifeq ($(PRJ_ARCH), $(findstring $(PRJ_ARCH),$(X86_X86_X86) ))
 	ifeq ($(PRJ_SIMD),$(findstring $(PRJ_SIMD),avx2))
-		CC_SIMD := -mssse3 -mavx2
-		SIMD_DEFINES := BFR_ENABLE_AVX2 BFR_ENABLE_SSSE3
+		CC_SIMD := -msse2 -mssse3 -mavx2
+		SIMD_DEFINES := BFR_ENABLE_SSE2 BFR_ENABLE_SSSE3 BFR_ENABLE_AVX2
 	else ifeq ($(PRJ_SIMD),ssse3)
-		CC_SIMD := -mssse3
-		SIMD_DEFINES := BFR_ENABLE_SSSE3
+		CC_SIMD := -msse2 -mssse3
+		SIMD_DEFINES := BFR_ENABLE_SSE2 BFR_ENABLE_SSSE3
 	else 
-		CC_SIMD :=
+		ifeq ($(PRJ_ARCH),x86_32)
+			CC_SIMD := -msse2
+			SIMD_DEFINES := BFR_ENABLE_SSE2
+		else
+			CC_SIMD :=
+		endif
 	endif
 else ifeq ($(PRJ_ARCH),armv7a)
 	CC_SIMD := -mcpu=cortex-a7 -mfloat-abi=hard -mfpu=neon -fno-tree-vectorize

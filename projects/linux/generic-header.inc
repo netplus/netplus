@@ -1,4 +1,5 @@
 CURRENT_DIR 	:= $(shell pwd)
+UNAME_S 		:= $(shell uname -s)
 PRJ_BUILD		:= release
 PRJ_ARCH		:= x86_64
 PRJ_SIMD		:= 
@@ -70,10 +71,10 @@ endif
 
 ifeq ($(PRJ_ARCH),x86_64)
     CC_MISC := $(CC_MISC) -m64
-	LINK_MISC := -m64
+	LINK_MISC := -m64 $(LINK_MISC)
 else ifeq ($(PRJ_ARCH),x86_32)
     CC_MISC := $(CC_MISC) -m32
-	LINK_MISC := -m32
+	LINK_MISC := -m32 $(LINK_MISC)
 else ifeq ($(PRJ_ARCH),armv7a)
     CC_MISC := $(CC_MISC)
 else 
