@@ -38,7 +38,7 @@ namespace netp {
 			f_running = 1<<3
 		};
 
-		NRP<io_event_loop> m_loop;
+		NRP<io_event_loop> L;
 		NRP<netp::socket_channel> m_so;
 		struct dns_ctx* m_dns_ctx;
 		NRP<netp::timer> m_tm_dnstimeout;

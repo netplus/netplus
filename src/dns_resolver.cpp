@@ -16,8 +16,8 @@ namespace netp {
 		netp::E_DNS_BADQUERY
 	};
 
-	void dns_resolver::reset( NRP<io_event_loop> const& L ) {
-		m_loop = L;
+	void dns_resolver::reset( NRP<io_event_loop> const& L_ ) {
+		L = L_;
 		m_ns.clear();
 		m_flag = 0;
 
@@ -26,7 +26,7 @@ namespace netp {
 	}
 
 	dns_resolver::dns_resolver() :
-		m_loop(nullptr),
+		L(nullptr),
 		m_so(nullptr),
 		m_dns_ctx(&dns_defctx),
 		m_flag(0)
@@ -35,7 +35,7 @@ namespace netp {
 	}
 
 	void dns_resolver::_do_add_name_server() {
-		NETP_ASSERT(m_loop->in_event_loop());
+		NETP_ASSERT(L->in_event_loop());
 		std::for_each(m_ns.begin(), m_ns.end(), [&](std::string const& serv) {
 			dns_add_serv(m_dns_ctx, serv.c_str());
 			NETP_DEBUG("[dns_resolver]add dns serv: %s", serv.c_str());
@@ -44,7 +44,7 @@ namespace netp {
 
 	NRP<netp::promise<int>> dns_resolver::add_name_server(std::vector<std::string> const& ns) {
 		NRP<netp::promise<int>> p = netp::make_ref<netp::promise<int>>();
-		m_loop->execute([dnsr = this, ns, p]() {
+		L->execute([dnsr = this, ns, p]() {
 			dnsr->m_ns.insert(dnsr->m_ns.begin(), ns.begin(), ns.end());
 			p->set(netp::OK);
 		});
@@ -52,7 +52,7 @@ namespace netp {
 	}
 
 	void dns_resolver::_do_start(NRP<netp::promise<int>> const& p) {
-
+		NETP_ASSERT(L->in_event_loop());
 		if ( m_flag &( u8_t(dns_resolver_flag::f_launching|dns_resolver_flag::f_running|dns_resolver_flag::f_stop_called)) ) {
 			p->set(netp::E_INVALID_STATE);
 			return;
@@ -70,12 +70,12 @@ namespace netp {
 		m_tm_dnstimeout = netp::make_ref<netp::timer>(std::chrono::milliseconds(200), &dns_resolver::cb_dns_timeout, this, std::placeholders::_1);
 		//tm always finished before loop terminated
 
-		NRP<socket_cfg> cfg = netp::make_ref<socket_cfg>(m_loop);
+		NRP<socket_cfg> cfg = netp::make_ref<socket_cfg>(L);
 		cfg->fd = fd;
 		cfg->family = NETP_AF_INET;
 		cfg->type = NETP_SOCK_DGRAM;
 		cfg->proto = NETP_PROTOCOL_UDP;
-		cfg->L = m_loop;
+		cfg->L = L;
 
 		int rt;
 		std::tie(rt,m_so) = netp::create_socket_channel(cfg);
@@ -101,10 +101,11 @@ namespace netp {
 			NETP_ASSERT(dnsr->m_flag & dns_resolver_flag::f_launching);
 			dnsr->m_flag &= dns_resolver_flag::f_launching;
 			if (status == netp::OK) {
-				NETP_DEBUG("[dns_resolver][%s]init done", dnsr->m_so->ch_info().c_str());
+				NETP_INFO("[dns_resolver][%s]init done", dnsr->m_so->ch_info().c_str());
 				dnsr->m_flag |= dns_resolver_flag::f_running;
 				dnsr->m_so->ch_io_read(std::bind(&dns_resolver::async_read_dns_reply, dns_resolver::instance(), std::placeholders::_1, std::placeholders::_2));
 				dnsr->m_so->ch_close_promise()->if_done([dnsr](int const&) {
+					NETP_INFO("[dns_resolver][%s]dns socket_channel closed", dnsr->m_so->ch_info().c_str());
 					dnsr->m_flag &= ~dns_resolver_flag::f_running;
 					dnsr->m_so = nullptr;
 					dnsr->_do_start(netp::make_ref<netp::promise<int>>());
@@ -118,14 +119,14 @@ namespace netp {
 
 	NRP<netp::promise<int>> dns_resolver::start() {
 		NRP<netp::promise<int>> p = netp::make_ref<netp::promise<int>>();
-		m_loop->execute([dnsr=this,p]() {
+		L->execute([dnsr=this,p]() {
 			dnsr->_do_start(p);
 		});
 		return p;
 	}
 
 	void dns_resolver::_do_stop(NRP<netp::promise<int>> const& p) {
-		NETP_ASSERT(m_loop->in_event_loop());
+		NETP_ASSERT(L->in_event_loop());
 		if ((m_flag& dns_resolver_flag::f_running) == 0) {
 			p->set(netp::E_INVALID_STATE);
 			return;
@@ -148,7 +149,7 @@ namespace netp {
 
 	NRP<netp::promise<int>> dns_resolver::stop() {
 		NRP<netp::promise<int>> p = netp::make_ref<netp::promise<int>>();
-		m_loop->execute([dnsr=this,p]() {
+		L->execute([dnsr=this,p]() {
 			dnsr->m_flag |= f_stop_called;
 			dnsr->_do_stop(p);
 		});
@@ -164,12 +165,12 @@ namespace netp {
 		dns_timeouts(m_dns_ctx, -1, 0);
 		if (dns_active(m_dns_ctx)>0) {
 			m_flag |= f_timeout_timer;
-			m_loop->launch(t, netp::make_ref<netp::promise<int>>());
+			L->launch(t, netp::make_ref<netp::promise<int>>());
 		}
 	}
 
 	void dns_resolver::async_read_dns_reply(int status, io_ctx* ctx_) {
-		NETP_ASSERT(m_loop->in_event_loop());
+		NETP_ASSERT(L->in_event_loop());
 		//NETP_ASSERT(status == netp::OK);
 #ifdef NETP_HAS_POLLER_IOCP
 		iocp_ctx* ctx = (iocp_ctx*)ctx_;
@@ -232,7 +233,7 @@ namespace netp {
 	}
 
 	void dns_resolver::_do_resolve(string_t const& domain, NRP<dns_query_promise> const& p) {
-		NETP_ASSERT(m_loop->in_event_loop());
+		NETP_ASSERT(L->in_event_loop());
 		if ( (m_flag& dns_resolver_flag::f_running) == 0) {
 			p->set(std::make_tuple(netp::E_INVALID_STATE,std::vector<ipv4_t,netp::allocator<ipv4_t>>()));
 			return;
@@ -259,13 +260,13 @@ namespace netp {
 		dns_timeouts(m_dns_ctx, -1, 0);
 		if ( (m_flag&f_timeout_timer) == 0) {
 			m_flag |= f_timeout_timer;
-			m_loop->launch(m_tm_dnstimeout, netp::make_ref<netp::promise<int>>());
+			L->launch(m_tm_dnstimeout, netp::make_ref<netp::promise<int>>());
 		}
 	}
 
 	NRP<dns_query_promise> dns_resolver::resolve(string_t const& domain) {
 		NRP<dns_query_promise> dnsp = netp::make_ref<dns_query_promise>();
-		m_loop->execute([dnsr=this, domain, dnsp]() {
+		L->execute([dnsr=this, domain, dnsp]() {
 			dnsr->_do_resolve(domain, dnsp);
 		});
 		return dnsp;

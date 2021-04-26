@@ -562,6 +562,8 @@ namespace netp {
 			int rt = netp::OK;
 			if (m_fd == NETP_INVALID_SOCKET) {
 				rt = open();
+				ch_errno() = rt;
+				m_chflag |= int(channel_flag::F_READ_ERROR);
 				NETP_RETURN_V_IF_MATCH(rt, rt != netp::OK);
 			}
 
