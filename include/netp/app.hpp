@@ -184,6 +184,8 @@ namespace netp {
 		void test_packet();
 		void test_netp_allocator(size_t loop);
 		void test_std_allocator(size_t loop);
+
+		void benchmark_hash();
 	};
 }
 #endif

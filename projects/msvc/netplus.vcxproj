@@ -123,6 +123,7 @@
     <ClInclude Include="..\..\include\netp\rpc.hpp" />
     <ClInclude Include="..\..\include\netp\scheduler.hpp" />
     <ClInclude Include="..\..\include\netp\security\cipher_abstract.hpp" />
+    <ClInclude Include="..\..\include\netp\security\crc.hpp" />
     <ClInclude Include="..\..\include\netp\security\dh.hpp" />
     <ClInclude Include="..\..\include\netp\security\fletcher.hpp" />
     <ClInclude Include="..\..\include\netp\security\formula.hpp" />

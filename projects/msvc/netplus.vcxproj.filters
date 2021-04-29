@@ -471,6 +471,9 @@
     <ClInclude Include="..\..\include\netp\scheduler.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\security\crc.hpp">
+      <Filter>Header Files\netp\security</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">

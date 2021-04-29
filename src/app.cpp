@@ -10,6 +10,9 @@
 #include <netp/os/api_wrapper.hpp>
 #include <netp/signal_broker.hpp>
 
+#include <netp/security/crc.hpp>
+#include <netp/security/fletcher.hpp>
+
 #include <netp/benchmark.hpp>
 
 #ifdef _NETP_WIN
@@ -530,6 +533,30 @@ namespace netp {
 		}
 	}
 
+	void app_test_unit::benchmark_hash() {
+		int total = 100000;
+		NRP<netp::packet> p = netp::make_ref<netp::packet>();
+		for (int j = 0; j < 1500; ++j) {
+			p->write<byte_t>(j%10);
+		}
+		{
+			netp::benchmark mk("f16");
+			for (int i = 0; i < total; ++i) {
+				volatile u16_t h1 = netp::security::fletcher16((const uint8_t*)p->head(), p->len());
+			}
+		}
+		{
+			netp::benchmark mk("crc16");
+			for (int i = 0; i < total; ++i) {
+				volatile u16_t h2 = netp::security::crc16(p->head(), p->len());
+			}
+		}
+
+		{
+			NETP_INFO("crc16: %u", netp::security::crc16(p->head(), p->len()));
+		}
+	}
+
 	bool app_test_unit::run() {
 		test_memory();
 		test_packet();
@@ -541,6 +568,10 @@ namespace netp {
 
 		test_netp_allocator(loop);
 		test_std_allocator(loop);
+
+#ifdef _NETP_DEBUG
+		benchmark_hash();
+#endif
 		return true;
 	}
 
