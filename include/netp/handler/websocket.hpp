@@ -76,18 +76,31 @@ namespace netp { namespace handler {
 			struct _H {
 				union _B1 {
 					struct _Bit {
+#ifdef __NETP_IS_LITTLE_ENDIAN
 						u8_t opcode : 4;
 						u8_t rsv3 : 1;
 						u8_t rsv2 : 1;
 						u8_t rsv1 : 1;
 						u8_t fin : 1;
+#else
+						u8_t fin : 1;
+						u8_t rsv1 : 1;
+						u8_t rsv2 : 1;
+						u8_t rsv3 : 1;
+						u8_t opcode : 4;
+#endif
 					} Bit;
 					u8_t B;
 				} B1;
 				union _B2 {
 					struct _Bit {
+#ifdef __NETP_IS_LITTLE_ENDIAN
 						u8_t len : 7;
 						u8_t mask : 1;
+#else
+						u8_t mask : 1;
+						u8_t len : 7;
+#endif
 					} Bit;
 					u8_t B;
 				} B2;
