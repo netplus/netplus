@@ -53,7 +53,7 @@ namespace netp { namespace handler {
 		m_tls_client->received_data((uint8_t*)income->head(), income->len());
 	}
 
-	void tls::write(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<promise<int>> const& chp) {
+	void tls::write(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet ) {
 			NETP_ASSERT( ctx == m_ctx);
 			if(m_state != tls_state::S_TRANSFER) {
 				chp->set(netp::E_CHANNEL_INVALID_STATE);

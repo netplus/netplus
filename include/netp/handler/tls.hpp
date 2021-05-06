@@ -122,7 +122,7 @@ namespace netp { namespace handler {
 			void write_closed(NRP<channel_handler_context> const& ctx)override;
 
 			void read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income) override;
-			void write(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<promise<int>> const& chp) override;
+			void write(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) override;
 	};
 }}
 

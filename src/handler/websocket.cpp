@@ -234,7 +234,7 @@ _CHECK:
 				if (m_type == websocket_type::T_SERVER) {
 					if (m_tmp_frame->H.B2.Bit.mask == 0) {
 						//invalid request
-						close(ctx, make_ref<promise<int>>());
+						close(make_ref<promise<int>>(),ctx);
 						m_state = state::S_CLOSED;
 						return;
 					}
@@ -294,7 +294,7 @@ _CHECK:
 						//reply a CLOSE, then do ctx->close();
 						NETP_DEBUG("<<< op_close");
 						m_state = state::S_FRAME_CLOSE_RECEIVED;
-						close(ctx, make_ref<promise<int>>());
+						close(make_ref<promise<int>>(),ctx);
 					}
 					break;
 				case OP_PING:
@@ -359,14 +359,14 @@ _CHECK:
 					{
 						//reply a CLOSE, then do ctx->close();
 						NETP_WARN("<<< op_not_supported");
-						close(ctx, make_ref<promise<int>>());
+						close(make_ref<promise<int>>(), ctx );
 					}
 					break;
 				default:
 					{
 						//reply a CLOSE, then do ctx->close();
 						NETP_WARN("<<< op_unknown");
-						close(ctx, make_ref<promise<int>>());
+						close(make_ref<promise<int>>(),ctx);
 					}
 				}
 			}
@@ -388,7 +388,7 @@ _CHECK:
 	}
 
 
-	void websocket::write(NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<promise<int>> const& chp) {
+	void websocket::write(NRP<promise<int>> const& chp,NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) {
 
 		NSP<ws_frame> _frame = netp::make_shared<ws_frame>();
 		_frame->H.B1.Bit.fin = 0x1;
@@ -424,10 +424,10 @@ _CHECK:
 			outlet->write_left<u8_t>(_frame->H.B1.B);
 		}
 
-		ctx->write(outlet,chp);
+		ctx->write(chp,outlet);
 	}
 
-	void websocket::close(NRP<channel_handler_context> const& ctx, NRP<promise<int>> const& chp) {
+	void websocket::close(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx) {
 
 		if (m_close_sent == true) {
 			ctx->close();
@@ -452,7 +452,7 @@ _CHECK:
 		chp->if_done([ctx](int const& rt) {
 			ctx->close();
 		});
-		ctx->write(outp_CLOSE, chp);
+		ctx->write(chp, outp_CLOSE);
 		m_close_sent = true;
 	}
 
