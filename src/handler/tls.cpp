@@ -90,7 +90,7 @@ namespace netp { namespace handler {
 				m_tls_client->close();
 			}
 
-			NETP_ASSERT(m_write_state == tls_write_state::S_APPDATE_WRITING);
+			//NETP_ASSERT(m_write_state == tls_write_state::S_APPDATE_WRITING);
 		}
 	}
 

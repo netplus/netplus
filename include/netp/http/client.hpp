@@ -64,7 +64,8 @@ namespace netp { namespace http {
 	typedef std::vector<NRP<http_request_ctx>,netp::allocator<NRP<http_request_ctx>>> request_ctx_vector_t;
 
 	struct tls_cfg {
-		std::string cert;
+		NRP<netp::handler::tls_context> tlsctx;
+//		std::string cert;
 	};
 
 	struct dial_cfg {
@@ -135,7 +136,7 @@ namespace netp { namespace http {
 		void do_get(NRP<request_promise> const& reqp, const char* uri, size_t len, NRP<header> const& H, std::chrono::seconds const& timeout) {
 			NRP<message> reqm = netp::make_ref<message>();
 			reqm->url = string_t(uri, len);
-			reqm->opt = O_GET;
+			reqm->opt = option::O_GET;
 			H != nullptr ? reqm->H = H : 0;
 			do_request(reqp, reqm, timeout);
 		}
@@ -168,7 +169,7 @@ namespace netp { namespace http {
 		void do_post(NRP<request_promise> const& reqp, const char* uri, size_t len, NRP<header> const& H, NRP<netp::packet> const& body, std::chrono::seconds const& timeout) {
 			NRP<message> reqm = netp::make_ref<message>();
 			reqm->url = string_t(uri, len);
-			reqm->opt = O_POST;
+			reqm->opt = option::O_POST;
 			H != nullptr ? reqm->H = H : 0;
 			body != nullptr ? reqm->body = body : 0;
 			do_request( reqp, reqm,timeout);

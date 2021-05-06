@@ -197,6 +197,7 @@ namespace netp { namespace http {
 	void client::http_cb_message_end(NRP<netp::channel_handler_context> const& ctx_) {
 		NETP_ASSERT(m_loop->in_event_loop());
 		_do_request_done(netp::OK, m_mtmp);
+		m_mtmp = nullptr;
 		(void)ctx_;
 	}
 
@@ -232,17 +233,17 @@ namespace netp { namespace http {
 
 		auto fn_initializer = [fn_connected, fn_dial_error, is_https, dcfg, http_host](NRP<channel> const& ch) {
 
-#ifdef NETP_ENABLE_TLS
-			NETP_TODO("to impl");
-			if (is_https && dcfg.tls.cert.length() ) {
+#ifdef NETP_WITH_BOTAN
+			//NETP_TODO("to impl");
+			if (is_https && dcfg.tls.tlsctx == nullptr ) {
 				NETP_TODO("we have to set a default tls_context for https");
 			}
 
-			if (dcfg.tls.cert.length() ) {
-				ch->pipeline()->add_last(netp::make_ref<netp::handler::tls>(dcfg.tls_ctx));
+			if (dcfg.tls.tlsctx) {
+				ch->pipeline()->add_last(netp::make_ref<netp::handler::tls>(dcfg.tls.tlsctx));
 			}
 #else
-			if (dcfg.tls.cert.length()) {
+			if (dcfg.tls.tlsctx != nullptr ) {
 				NETP_ASSERT(!"do not supported yet");
 			}
 #endif
