@@ -8,7 +8,7 @@ int main(int argc, char** argv) {
 	std::string host = "botan.randombit.net";
 //	int rt =  netp::get_ip_by_host(host.c_str(), host_ip);
 	NETP_INFO("%s -> %s", host.c_str(), host_ip.c_str() );
-	std::string dialurl = "https://" + host_ip + ":443";
+	std::string dialurl = "https://botan.randombit.net";
 
 	NRP<netp::handler::tls_context> tlsctx = netp::make_ref<netp::handler::tls_context>();
 	tlsctx->server_info = netp::make_shared<Botan::TLS::Server_Information>("botan.randombit.net",443);

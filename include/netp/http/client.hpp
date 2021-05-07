@@ -19,6 +19,14 @@
 
 
 #define DEFAULT_HTTP_REQUEST_TIMEOUT (60)
+
+#ifndef NETP_WITH_BOTAN
+namespace netp { namespace handler {
+	class tls_context : public netp::ref_base {};
+}}
+
+#endif
+
 namespace netp { namespace http {
 	
 	//when message end, notify a nullptr data with len of -1
@@ -62,6 +70,8 @@ namespace netp { namespace http {
 	};
 
 	typedef std::vector<NRP<http_request_ctx>,netp::allocator<NRP<http_request_ctx>>> request_ctx_vector_t;
+
+
 
 	struct tls_cfg {
 		NRP<netp::handler::tls_context> tlsctx;

@@ -5,6 +5,10 @@
 #include <netp/handler/dump_in_text.hpp>
 #include <netp/handler/dump_out_text.hpp>
 
+#ifdef NETP_WITH_BOTAN
+	#include <botan/auto_rng.h>
+#endif
+
 namespace netp { namespace http {
 
 	enum client_activity {
@@ -224,6 +228,24 @@ namespace netp { namespace http {
 			}
 		});
 
+		dial_cfg __dialcfg = dcfg;
+
+		if (is_https && __dialcfg.tls.tlsctx == nullptr) {
+#ifdef NETP_WITH_BOTAN
+			NRP<netp::handler::tls_context> tlsctx = netp::make_ref<netp::handler::tls_context>();
+			tlsctx->server_info = netp::make_shared<Botan::TLS::Server_Information>( std::string(fields.host.c_str(),fields.host.length()), fields.port);
+			tlsctx->rng = netp::make_shared<Botan::AutoSeeded_RNG>();
+			tlsctx->session_mgr = netp::make_shared<Botan::TLS::Session_Manager_In_Memory>(*(tlsctx->rng));
+			tlsctx->credentials_mgr = netp::make_shared<netp::handler::Basic_Credentials_Manager>(false, "");
+			tlsctx->policy = netp::make_shared<netp::handler::Policy>(Botan::TLS::Protocol_Version::TLS_V12);
+			tlsctx->tls_version = Botan::TLS::Protocol_Version::TLS_V12;
+			tlsctx->next_protocols = {};
+			__dialcfg.tls.tlsctx = tlsctx;
+#else
+			NETP_ASSERT(!"do not supported yet");
+#endif
+		}
+
 		auto fn_connected = [dp](NRP<client> const& c_) {
 			dp->set(std::make_tuple(netp::OK, c_));
 		};
@@ -231,25 +253,16 @@ namespace netp { namespace http {
 			dp->set(std::make_tuple(err, nullptr));
 		};
 
-		auto fn_initializer = [fn_connected, fn_dial_error, is_https, dcfg, http_host](NRP<channel> const& ch) {
-
+		auto fn_initializer = [fn_connected, fn_dial_error, is_https, __dialcfg, http_host, fields](NRP<channel> const& ch) {
+			if (is_https && __dialcfg.tls.tlsctx) {
 #ifdef NETP_WITH_BOTAN
-			//NETP_TODO("to impl");
-			if (is_https && dcfg.tls.tlsctx == nullptr ) {
-				NETP_TODO("we have to set a default tls_context for https");
-			}
-
-			if (dcfg.tls.tlsctx) {
-				ch->pipeline()->add_last(netp::make_ref<netp::handler::tls>(dcfg.tls.tlsctx));
-			}
+				ch->pipeline()->add_last(netp::make_ref<netp::handler::tls>(__dialcfg.tls.tlsctx));
 #else
-			if (dcfg.tls.tlsctx != nullptr ) {
 				NETP_ASSERT(!"do not supported yet");
-			}
 #endif
-
+			}
 #ifndef NETP_ENABLE_TRACE_HTTP_MESSAGE
-			if (dcfg.dump_in) {
+			if (__dialcfg.dump_in) {
 #endif
 
 				ch->pipeline()->add_last(netp::make_ref<netp::handler::dump_in_text>());
@@ -258,7 +271,7 @@ namespace netp { namespace http {
 #endif
 
 #ifndef NETP_ENABLE_TRACE_HTTP_MESSAGE
-			if (dcfg.dump_out) {
+			if (__dialcfg.dump_out) {
 #endif
 				ch->pipeline()->add_last(netp::make_ref<netp::handler::dump_out_text>());
 #ifndef NETP_ENABLE_TRACE_HTTP_MESSAGE
