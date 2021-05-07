@@ -101,6 +101,7 @@ namespace netp { namespace handler {
 			void __tls_try_interleave_flush();
 
 			bool tls_session_established(const Botan::TLS::Session& session) override;
+			void tls_session_activated() override;
 			void tls_emit_data(const uint8_t buf[], size_t length) override;
 			void tls_alert(Botan::TLS::Alert alert) override;
 			void tls_record_received(uint64_t /*seq_no*/, const uint8_t buf[], size_t buf_size) override;

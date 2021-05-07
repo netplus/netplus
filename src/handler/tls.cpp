@@ -163,10 +163,13 @@ namespace netp { namespace handler {
 					, certs[i].to_string().c_str(), certs[i].PEM_encode().c_str());
 			}
 		}
+		return true;
+	}
+
+	void tls::tls_session_activated() {
 		NETP_ASSERT(m_ctx != nullptr);
 		m_state = tls_state::S_TRANSFER;
 		m_ctx->fire_connected();
-		return true;
 	}
 
 	void tls::tls_emit_data(const uint8_t buf[], size_t length)
