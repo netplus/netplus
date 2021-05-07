@@ -5,7 +5,7 @@ int main(int argc, char** argv) {
 	netp::app _app;
 
 //	std::string url = "http://www.neea.edu.cn/";
-	std::string url = "https://botan.randombit.net/";
+	std::string url = "https://www.163.com/";
 
 	NRP<netp::http::request_promise> rp = netp::http::get(url);
 	const std::tuple<int, NRP<netp::http::message>>& resp = rp->get();
