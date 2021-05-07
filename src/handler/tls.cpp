@@ -43,10 +43,6 @@ namespace netp { namespace handler {
 		m_ctx->close();
 	}
 
-	//void tls::write_unblock(NRP<channel_handler_context> const& ctx) {
-	//	NETP_TODO("[tls]unblock");
-	//}
-
 	void tls::read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income) {
 		NETP_ASSERT(m_ctx != nullptr);
 		NETP_ASSERT(m_tls_client != nullptr);

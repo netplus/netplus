@@ -57,17 +57,22 @@ namespace netp {
 
 		NETP_DECLARE_NONCOPYABLE(sp_counter_base)
 	public:
-		sp_counter_base(void* const& p): __p(p),sp_c(1),sp_weak_c(1)
+		sp_counter_base(void* const& p): 
+			__p(p),
+			sp_c(1),
+			sp_weak_c(1)
 		{}
 
 		virtual ~sp_counter_base() {}
 		virtual void dispose() = 0;
 
-		virtual void destroy() { delete this;}
+		virtual void destroy() {
+			delete this;
+		}
 
-		inline long sp_count() const { return sp_c.load(std::memory_order_relaxed);}
-		inline long weak_count() const { return sp_weak_c.load(std::memory_order_relaxed);}
-		inline void require() {sp_c.fetch_add(1,std::memory_order_relaxed);}
+		inline long sp_count() const { return sp_c.load(std::memory_order_acquire);}
+		inline long weak_count() const { return sp_weak_c.load(std::memory_order_acquire);}
+		inline void require() {sp_c.fetch_add(1,std::memory_order_acq_rel);}
 		inline long require_lock(long const& val) {
 			return netp::atomic_incre_if_not_equal(&sp_c,val,std::memory_order_acq_rel, std::memory_order_acquire);
 		}
@@ -77,11 +82,19 @@ namespace netp {
 				weak_release();
 			}
 		}
-		void weak_require() { sp_weak_c.fetch_add(1,std::memory_order_relaxed);}
+		void weak_require() { sp_weak_c.fetch_add(1,std::memory_order_acq_rel);}
 		void weak_release() {
 			if( sp_weak_c.fetch_sub(1,std::memory_order_acq_rel) == 1 ) {
 				destroy();
 			}
+		}
+
+		void* operator new(size_t sz) {
+			return netp::allocator<char>::malloc(sz);
+		}
+
+		void operator delete(void* m) {
+			return netp::allocator<char>::free((char*)m);
 		}
 	};
 
@@ -93,7 +106,6 @@ namespace netp {
 	class sp_counter_impl_p:
 		public sp_counter_base
 	{
-
 #ifdef NETP_ADD_PT_IN_IMPL_FOR_DEBUG
 		pt* _pt;
 #endif
@@ -121,7 +133,6 @@ namespace netp {
 			try {
 				base = new sp_counter_impl_p<pt>(p);
 			} catch(...) {
-				netp::checked_delete(base);
 				throw netp::sp_counter_impl_malloc_failed();
 			}
 		}
@@ -278,9 +289,16 @@ namespace netp {
 		sp_counter sp_ct;//sp_counter
 
 		//_Tp_rel related type
+		/*
 		template <typename _Tp_rel
 			, class = typename std::enable_if<std::is_convertible<_Tp_rel*, POINTER_TYPE>::value>::type>
 			explicit shared_ptr(_Tp_rel* const& r, construct_from_make_shared) :
+			sp_ct(r)
+		{
+		}
+		*/
+
+		explicit inline shared_ptr(POINTER_TYPE const& r, construct_from_make_shared) :
 			sp_ct(r)
 		{
 		}
@@ -822,10 +840,16 @@ template<class _Ty COMMA LIST(_CLASS_TYPE)> \
 
 		POINTER_TYPE _p;
 
+		/*
 		template <typename _Tp_rel
 			, class = typename std::enable_if<std::is_convertible<_Tp_rel*, POINTER_TYPE>::value>::type
 		>
 			inline ref_ptr(_Tp_rel* const& p, construct_from_make_ref)
+			:_p(p)
+		{
+		}
+		*/
+		explicit inline ref_ptr(POINTER_TYPE const& p, construct_from_make_ref)
 			:_p(p)
 		{
 		}

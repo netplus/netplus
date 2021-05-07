@@ -1,10 +1,13 @@
 #include <netp.hpp>
 
+
+
 int main(int argc, char** argv) {
 
 	netp::app _app;
 
-//	std::string url = "http://www.neea.edu.cn/";
+
+
 	std::string url = "https://www.163.com/";
 
 	NRP<netp::http::request_promise> rp = netp::http::get(url);

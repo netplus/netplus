@@ -63,7 +63,7 @@ namespace netp { namespace http {
 			return;
 		}
 
-		//we donot support pipeline for now
+		//we donot support http pipeline for now
 		if (m_reqs.size()) {
 			reqp->set(std::make_tuple(netp::E_HTTP_CLIENT_REQ_IN_OP,nullptr));
 			return;
