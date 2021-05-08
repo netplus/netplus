@@ -43,9 +43,6 @@
     <Filter Include="3rd\getopt">
       <UniqueIdentifier>{dafd47e5-7252-40de-8a44-b1002cd7d889}</UniqueIdentifier>
     </Filter>
-    <Filter Include="3rd\http_parser">
-      <UniqueIdentifier>{14117c91-1926-4b22-907b-d1b3c6cc935c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="3rd\stack_walker">
       <UniqueIdentifier>{519c73f6-1732-4621-bd61-a18c206cc53c}</UniqueIdentifier>
     </Filter>
@@ -95,9 +92,6 @@
     </ClInclude>
     <ClInclude Include="..\..\3rd\getopt\getopt.h">
       <Filter>3rd\getopt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\3rd\http_parser\http_parser.h">
-      <Filter>3rd\http_parser</Filter>
     </ClInclude>
     <ClInclude Include="..\..\3rd\udns\0.4\config.h">
       <Filter>3rd\udns</Filter>
@@ -535,9 +529,6 @@
     </ClCompile>
     <ClCompile Include="..\..\3rd\getopt\getopt.c">
       <Filter>3rd\getopt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\3rd\http_parser\http_parser.c">
-      <Filter>3rd\http_parser</Filter>
     </ClCompile>
     <ClCompile Include="..\..\3rd\udns\0.4\udns_bl.c">
       <Filter>3rd\udns</Filter>

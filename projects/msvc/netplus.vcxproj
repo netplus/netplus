@@ -20,7 +20,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\3rd\getopt\getopt.h" />
-    <ClInclude Include="..\..\3rd\http_parser\http_parser.h" />
     <ClInclude Include="..\..\3rd\llhttp\llhttp.h" />
     <ClInclude Include="..\..\3rd\stack_walker\StackWalker.h" />
     <ClInclude Include="..\..\3rd\udns\0.4\config.h" />
@@ -153,7 +152,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\3rd\getopt\getopt.c" />
-    <ClCompile Include="..\..\3rd\http_parser\http_parser.c" />
     <ClCompile Include="..\..\3rd\llhttp\llapi.c" />
     <ClCompile Include="..\..\3rd\llhttp\llhttp_.c" />
     <ClCompile Include="..\..\3rd\llhttp\llhttp.c" />
