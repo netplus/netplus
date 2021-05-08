@@ -154,7 +154,7 @@ namespace netp { namespace http {
 				_out->write((netp::byte_t*)value.c_str(), (netp::u32_t)value.length());
 				_out->write((netp::byte_t*)NETP_HTTP_CRLF, (netp::u32_t)netp::strlen(NETP_HTTP_CRLF));
 			});
-			packet_o = _out;
+			packet_o = std::move(_out);
 		}
 	};
 

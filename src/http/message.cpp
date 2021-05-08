@@ -53,6 +53,6 @@ namespace netp { namespace http {
 		if (has_body) {
 			_outp->write((netp::byte_t*)body->head(), body->len());
 		}
-		outp = _outp;
+		outp = std::move(_outp);
 	}
 }}

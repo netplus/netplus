@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\3rd\getopt\getopt.h" />
     <ClInclude Include="..\..\3rd\http_parser\http_parser.h" />
+    <ClInclude Include="..\..\3rd\llhttp\llhttp.h" />
     <ClInclude Include="..\..\3rd\stack_walker\StackWalker.h" />
     <ClInclude Include="..\..\3rd\udns\0.4\config.h" />
     <ClInclude Include="..\..\3rd\udns\0.4\udns.h" />
@@ -64,6 +65,7 @@
     <ClInclude Include="..\..\include\netp\core\platform\win_x86_.hpp" />
     <ClInclude Include="..\..\include\netp\CPUID.hpp" />
     <ClInclude Include="..\..\include\netp\dns_resolver.hpp" />
+    <ClInclude Include="..\..\include\netp\http\url_parser.hpp" />
     <ClInclude Include="..\..\include\netp\list.hpp" />
     <ClInclude Include="..\..\include\netp\poller_abstract.hpp" />
     <ClInclude Include="..\..\include\netp\poller_epoll.hpp" />
@@ -152,6 +154,9 @@
   <ItemGroup>
     <ClCompile Include="..\..\3rd\getopt\getopt.c" />
     <ClCompile Include="..\..\3rd\http_parser\http_parser.c" />
+    <ClCompile Include="..\..\3rd\llhttp\llapi.c" />
+    <ClCompile Include="..\..\3rd\llhttp\llhttp_.c" />
+    <ClCompile Include="..\..\3rd\llhttp\llhttp.c" />
     <ClCompile Include="..\..\3rd\stack_walker\StackWalker.cpp" />
     <ClCompile Include="..\..\3rd\udns\0.4\udns_bl.c" />
     <ClCompile Include="..\..\3rd\udns\0.4\udns_codes.c" />
@@ -188,6 +193,7 @@
     <ClCompile Include="..\..\src\http\client.cpp" />
     <ClCompile Include="..\..\src\http\message.cpp" />
     <ClCompile Include="..\..\src\http\parser.cpp" />
+    <ClCompile Include="..\..\src\http\url_parser.cpp" />
     <ClCompile Include="..\..\src\io_event_loop.cpp" />
     <ClCompile Include="..\..\src\logger\android_log_print.cpp" />
     <ClCompile Include="..\..\src\logger\console_logger.cpp" />

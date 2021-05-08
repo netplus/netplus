@@ -4,7 +4,13 @@
 #include <string>
 #include <functional>
 
-#include "./../../../3rd/http_parser/http_parser.h"
+#define NETP_USE_LLHTTP
+
+#ifdef NETP_USE_LLHTTP
+	#include "./../../../3rd/llhttp/llhttp.h"
+#else
+	#include "./../../../3rd/http_parser/http_parser.h"
+#endif
 
 #include <netp/core.hpp>
 #include <netp/http/message.hpp>
@@ -28,12 +34,24 @@ namespace netp { namespace http {
 		NONE = 0,
 		FIELD,
 		VALUE
-	}; 
+	};
+
+#ifdef NETP_USE_LLHTTP
+	#define netp_http_parser_t llhttp_t
+	#define netp_http_parser_settings llhttp_settings_t
+	#define netp_http_parser_init llhttp_init
+	#define netp_http_parser_settings_init llhttp_settings_init
+	#define netp_http_parser_execute llhttp_execute
+#else
+	typedef http_parser netp_http_parser_t;
+	#define netp_http_parser_init http_parser_init
+	#define netp_http_parser_execute http_parser_execute
+#endif
 
 	struct parser final :
 		public netp::ref_base
 	{
-		http_parser* _p;
+		netp_http_parser_t* _p;
 		int _http_errno;
 		NRP<netp::ref_base> ctx;
 
