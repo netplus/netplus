@@ -47,7 +47,7 @@ namespace netp { namespace handler {
 
 	void websocket::closed(NRP<channel_handler_context> const& ctx) {
 		if (m_http_parser != nullptr) {
-			m_http_parser->reset();
+			m_http_parser->cb_reset();
 			m_http_parser = nullptr;
 		}
 	}
@@ -64,7 +64,6 @@ namespace netp { namespace handler {
 			m_income_prev->reset();
 		}
 
-		int ec = 0;
 _CHECK:
 		switch (m_state) {
 
@@ -84,16 +83,21 @@ _CHECK:
 		break;
 		case state::S_HANDSHAKING:
 			{
-				size_t nparsed = m_http_parser->parse( (char*) income->head(), income->len(), ec );
-				if(ec != netp::OK) {
-					NETP_WARN("[websocket][#%u]handshake, parse handshake message failed: %d", ctx->ch->ch_id(), ec );
-					ctx->close();
-					return ;
+				int http_parse_ec = m_http_parser->parse( (char*) income->head(), income->len() );
+				if(http_parse_ec == HPE_OK) {
+					//NETP_ASSERT(nparsed == income->len());
+					income->skip(income->len());
+				} else {
+					income->skip(m_http_parser->calc_parsed_bytes((char*)income->head()));
+					if (NETP_HTTP_IS_PARSE_ERROR(http_parse_ec)) {
+						NETP_WARN("[websocket][#%u]handshake, parse handshake message failed: %d", ctx->ch->ch_id(), http_parse_ec);
+						ctx->close();
+						return;
+					} else if (http_parse_ec == HPE_PAUSED_UPGRADE) {
+						NETP_ASSERT( income->len() ==0 );
+					}
+					goto _CHECK;
 				}
-
-				//NETP_ASSERT(nparsed == income->len());
-				income->skip(nparsed);
-				goto _CHECK;
 			}
 			break;
 		case state::S_UPGRADE_REQ_MESSAGE_DONE:

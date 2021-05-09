@@ -4,13 +4,7 @@
 #include <string>
 #include <functional>
 
-#define NETP_USE_LLHTTP
-
-#ifdef NETP_USE_LLHTTP
-	#include "./../../../3rd/llhttp/llhttp.h"
-#else
-	#include "./../../../3rd/http_parser/http_parser.h"
-#endif
+#include "./../../../3rd/llhttp/llhttp.h"
 
 #include <netp/core.hpp>
 #include <netp/http/message.hpp>
@@ -36,23 +30,12 @@ namespace netp { namespace http {
 		VALUE
 	};
 
-#ifdef NETP_USE_LLHTTP
-	#define netp_http_parser_t llhttp_t
-	#define netp_http_parser_settings llhttp_settings_t
-	#define netp_http_parser_init llhttp_init
-	#define netp_http_parser_settings_init llhttp_settings_init
-	#define netp_http_parser_execute llhttp_execute
-#else
-	typedef http_parser netp_http_parser_t;
-	#define netp_http_parser_init http_parser_init
-	#define netp_http_parser_execute http_parser_execute
-#endif
+#define NETP_HTTP_IS_PARSE_ERROR( ec ) ( !(ec == HPE_OK || ec == HPE_PAUSED_UPGRADE) )
 
 	struct parser final :
 		public netp::ref_base
 	{
-		netp_http_parser_t* _p;
-		int _http_errno;
+		llhttp_t* _llp;
 		NRP<netp::ref_base> ctx;
 
 		parser_cb_header on_headers_complete;
@@ -73,9 +56,24 @@ namespace netp { namespace http {
 
 		void init(http_parse_type type);
 		void deinit();
-		void reset();
 
-		netp::u32_t parse(char const* const data, netp::u32_t len, int& ec);
+		void cb_reset();
+
+		int parse(char const* const data, netp::u32_t len);
+		int finish();
+
+		int should_keep_alive();
+		//int pause();
+
+		//it makes no sense to have this function here
+		// (1) resume do not have a return value to tell the resume result
+		// (2) we could use error_pos to resume llhttp_execute call to make progress anyway
+		//void resume();
+		
+		//int resume_after_upgrade();
+		int get_errno();
+		const char* get_error_pos();
+		u32_t calc_parsed_bytes(const char* begin);
 	};
 
 }}

@@ -44,7 +44,7 @@ namespace netp { namespace http {
 		return netp::OK;
 	}
 	
-	inline static int _on_message_begin(netp_http_parser_t* p_) {
+	inline static int _on_message_begin(llhttp_t* p_) {
 		parser* p = (parser*)p_->data;
 		NETP_ASSERT(p != nullptr);
 		p->message_tmp = netp::make_ref<netp::http::message>();
@@ -52,7 +52,7 @@ namespace netp { namespace http {
 		return 0;
 	}
 
-	inline static int _on_url(netp_http_parser_t* p_, const char* data, ::size_t len) {
+	inline static int _on_url(llhttp_t* p_, const char* data, ::size_t len) {
 		parser* p = (parser*)p_->data;
 		NETP_ASSERT(p != nullptr);
 
@@ -133,7 +133,7 @@ namespace netp { namespace http {
 		return 0;
 	}
 
-	inline static int _on_status(netp_http_parser_t* p_, char const* data, ::size_t len) {
+	inline static int _on_status(llhttp_t* p_, char const* data, ::size_t len) {
 		parser* p = (parser*)p_->data;
 		NETP_ASSERT(p != nullptr);
 
@@ -143,7 +143,7 @@ namespace netp { namespace http {
 		return 0;
 	}
 
-	inline static int _on_header_field(netp_http_parser_t* p_, char const* data, ::size_t len) {
+	inline static int _on_header_field(llhttp_t* p_, char const* data, ::size_t len) {
 		parser* p = (parser*)p_->data;
 		NETP_ASSERT(p != nullptr);
 		if (len == 0) {
@@ -162,7 +162,7 @@ namespace netp { namespace http {
 		return 0;
 	}
 
-	inline static int _on_header_value(netp_http_parser_t* p_, char const* data, ::size_t len) {
+	inline static int _on_header_value(llhttp_t* p_, char const* data, ::size_t len) {
 		parser* p = (parser*)p_->data;
 		NETP_ASSERT(p != nullptr);
 		NETP_ASSERT(p->field_tmp.length());
@@ -171,7 +171,7 @@ namespace netp { namespace http {
 		return 0;
 	}
 
-	inline static int _on_headers_complete(netp_http_parser_t* p_) {
+	inline static int _on_headers_complete(llhttp_t* p_) {
 		parser* p = (parser*)p_->data;
 		NETP_ASSERT(p != nullptr);
 
@@ -190,26 +190,26 @@ namespace netp { namespace http {
 		return p->on_headers_complete(NRP<parser>(p), p->message_tmp);
 	}
 
-	inline static int _on_body(netp_http_parser_t* p_, char const* data, ::size_t len) {
+	inline static int _on_body(llhttp_t* p_, char const* data, ::size_t len) {
 		parser* p = (parser*)p_->data;
 		NETP_ASSERT(p != nullptr);
 		return p->on_body == nullptr?-1: p->on_body(NRP<parser>(p), data, (u32_t)len);
 	}
 
-	inline static int _on_message_complete(netp_http_parser_t* p_) {
+	inline static int _on_message_complete(llhttp_t* p_) {
 		parser* p = (parser*)p_->data;
 		NETP_ASSERT(p != nullptr);
 		return p->on_message_complete ==nullptr ? -1: p->on_message_complete(NRP<parser>(p));
 	}
 
-	inline static int _on_chunk_header(netp_http_parser_t* p_) {
+	inline static int _on_chunk_header(llhttp_t* p_) {
 		parser* p = (parser*)p_->data;
 		NETP_ASSERT(p != nullptr);
 		return p->on_chunk_header == nullptr ? 0: 
 			p->on_chunk_header(NRP<parser>(p));
 	}
 
-	inline static int _on_chunk_complete(netp_http_parser_t* p_) {
+	inline static int _on_chunk_complete(llhttp_t* p_) {
 		parser* p = (parser*)p_->data;
 		NETP_ASSERT(p != nullptr);
 		return p->on_chunk_complete == nullptr ? 0: 
@@ -217,7 +217,7 @@ namespace netp { namespace http {
 	}
 
 	parser::parser() :
-		_p(nullptr),
+		_llp(nullptr),
 		ctx(nullptr),
 		on_headers_complete(nullptr),
 		on_body(nullptr),
@@ -233,11 +233,11 @@ namespace netp { namespace http {
 	}
 
 	void parser::init(http_parse_type type_ = HPT_BOTH) {
-		NETP_ASSERT(_p == nullptr);
-		_p = (netp_http_parser_t*) netp::allocator<netp_http_parser_t>::malloc(1);
-		NETP_ALLOC_CHECK(_p, sizeof(netp_http_parser_t));
+		NETP_ASSERT(_llp == nullptr);
+		_llp = (llhttp_t*) netp::allocator<llhttp_t>::malloc(1);
+		NETP_ALLOC_CHECK(_llp, sizeof(llhttp_t));
 
-		static netp_http_parser_settings _settings;
+		static llhttp_settings_t _settings;
 		_settings.on_message_begin = _on_message_begin;
 		_settings.on_url = _on_url;
 		_settings.on_status = _on_status;
@@ -251,28 +251,28 @@ namespace netp { namespace http {
 		_settings.on_chunk_complete = _on_chunk_complete;
 
 		if (type_ == HPT_REQ) {
-			netp_http_parser_init(_p, HTTP_REQUEST, &_settings);
+			llhttp_init(_llp, HTTP_REQUEST, &_settings);
 		} else if (type_ == HPT_RESP) {
-			netp_http_parser_init(_p, HTTP_RESPONSE, &_settings);
+			llhttp_init(_llp, HTTP_RESPONSE, &_settings);
 		} else {
-			netp_http_parser_init(_p, HTTP_BOTH,&_settings);
+			llhttp_init(_llp, HTTP_BOTH,&_settings);
 		}
-		_p->data = this;
+		_llp->data = this;
 	}
 
 	void parser::deinit() {
-		if (_p != nullptr) {
+		if (_llp != nullptr) {
 			//reserve ec first
-			_http_errno = _p->error;
-			netp::allocator<netp_http_parser_t>::free(_p);
-			_p = nullptr;
+			llhttp_finish(_llp);
+			netp::allocator<llhttp_t>::free(_llp);
+			_llp = nullptr;
 		}
 
 		//ctx = nullptr;
-		reset();
+		cb_reset();
 	}
 
-	void parser::reset() {
+	void parser::cb_reset() {
 		on_headers_complete = nullptr;
 		on_body = nullptr;
 		on_message_complete = nullptr;
@@ -281,13 +281,33 @@ namespace netp { namespace http {
 		on_chunk_complete = nullptr;
 	}
 
-	//return number of parsed bytes
-	netp::u32_t parser::parse(char const* const data, netp::u32_t len, int& ec) {
-		NETP_ASSERT(_p != nullptr);
-		::size_t nparsed = netp_http_parser_execute(_p, data, len);
-		if (NETP_LIKELY(_p != 0)) { _http_errno = _p->error; };
-		ec = _http_errno;
-		return u32_t(nparsed);
+	//return error or ok
+	int parser::parse(char const* const data, netp::u32_t len) {
+		NETP_ASSERT(_llp != nullptr);
+		::size_t nparsed = llhttp_execute(_llp, data, len);
+		return int(nparsed);
 	}
+
+	int parser::finish() {
+		NETP_ASSERT(_llp != nullptr);
+		return int(llhttp_finish(_llp));
+	}
+
+	//void parser::resume() {
+	//	NETP_ASSERT(_llp != nullptr);
+	//	llhttp_resume(_llp);
+	//}
+
+	const char* parser::get_error_pos() {
+		NETP_ASSERT( _llp != nullptr );
+		return _llp->error_pos;
+	}
+
+	u32_t parser::calc_parsed_bytes(const char* begin) {
+		NETP_ASSERT(_llp != nullptr);
+		NETP_ASSERT( _llp->error_pos > begin );
+		return _llp->error_pos - begin;
+	}
+
 
 }}

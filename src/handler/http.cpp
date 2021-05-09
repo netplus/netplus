@@ -26,7 +26,7 @@ namespace netp { namespace handler {
 
 	void http::__unsetup_parser() {
 		if (m_http_parser != nullptr ) {
-			m_http_parser->reset();
+			m_http_parser->cb_reset();
 			
 			//m_http_parser = nullptr;
 			//NETP_DEBUG("[http]parser reset");
@@ -36,14 +36,18 @@ namespace netp { namespace handler {
 	void http::__http_parse(NRP<netp::channel_handler_context> const& ctx, NRP<packet> const& income) {
 		NETP_ASSERT(m_http_parser != nullptr);
 		NETP_ASSERT(income != nullptr);
-		int ec = netp::OK;
-		while (income->len() && ec == netp::OK && m_ctx != nullptr /*http parser would be reset during parse phase by http evt listener*/) {
-			const netp::u32_t nparsed = m_http_parser->parse((char*)income->head(), income->len(), ec);
-			if (NETP_LIKELY(nparsed > 0)) {
-				income->skip(nparsed);
-			}
-			if (NETP_LIKELY(ec != netp::OK)) {
-				ctx->close();
+		int http_parse_ec = HPE_OK;
+		while (income->len() && http_parse_ec == netp::OK && m_ctx != nullptr /*http parser would be reset during parse phase by http evt listener*/) {
+			http_parse_ec = m_http_parser->parse((char*)income->head(), income->len() );
+			if (NETP_LIKELY(http_parse_ec == HPE_OK)) {
+				income->skip( income->len() );
+			} else {
+				income->skip( m_http_parser->calc_parsed_bytes((char*)income->head()) );
+				if (NETP_HTTP_IS_PARSE_ERROR(http_parse_ec)) {
+					ctx->close();
+				} else if (http_parse_ec == HPE_PAUSED_UPGRADE) {
+					NETP_ASSERT( income->len() == 0 );
+				}
 			}
 		}
 	}
