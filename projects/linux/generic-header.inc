@@ -1,5 +1,6 @@
 CURRENT_DIR 	:= $(shell pwd)
 UNAME_S 		:= $(shell uname -s)
+OS_NAME			:= $(shell hostnamectl status| grep -i 'Operating System' | awk '{print $$3}')
 PRJ_BUILD		:= release
 PRJ_ARCH		:= x86_64
 PRJ_SIMD		:= 
@@ -10,19 +11,10 @@ PRJ_BUILD_SUFFIX :=
 # make build=debug arch=x86_32 simd=ssse3
 # make build=release arch=x86_64 simd=ssse3
 #
-#
-
-#CXX := armv7-rpi2-linux-gnueabihf-g++
-#CC := armv7-rpi2-linux-gnueabihf-gcc
-
-# x86_32, x86_64
-#ifdef arch
-#	PRJ_ARCH:=$(arch)
-#endif
 
 #build_config could be [release|debug]
 ifdef build
-	PRJ_BUILD:=$(build)
+	PRJ_BUILD := $(build)
 endif
 
 
@@ -39,6 +31,11 @@ ifeq ($(PRJ_ARCH),armv7a)
 	CC := armv7-rpi2-linux-gnueabihf-gcc
 	AR := armv7-rpi2-linux-gnueabihf-ar
 endif
+
+#detect cxx version
+$(shell $(CXX) -v 2> ./__tmp_makefile_cxx_version)
+CXX_VERSION := $(shell cat ./__tmp_makefile_cxx_version | grep -i 'gcc version' | awk '{print $$3}')
+$(shell rm -f ./__tmp_makefile_cxx_version)
 
 
 CC_SIMD = 

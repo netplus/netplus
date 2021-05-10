@@ -3,8 +3,9 @@ include generic-header.inc
 LIB_ARCH_BUILD = $(ARCH_BUILD_NAME)
 LIBNAME		:= netplus
 
-LIB_DIR 	:= ../..
-LIB_PARENT_DIR := ../../..
+LIB_DIR 				:= ../..
+LIB_3RD_DIR 			:= ../../3rd
+LIB_3RD_EXTERNAL_DIR	:= ../../3rd_external
 
 LIB_INCLUDE_DIR := $(LIB_DIR)/include
 LIB_SOURCE_DIR 	:= $(LIB_DIR)/src
@@ -20,9 +21,12 @@ LIB_O_FILES		:= $(LIB_CPP_FILES:.cpp=.$(O_EXT))
 LIB_O_FILES		:= $(foreach path,$(LIB_O_FILES), $(subst $(LIB_SOURCE_DIR)/,,$(path)))
 LIB_O_FILES		:= $(addprefix $(LIB_BUILD_DIR)/,$(LIB_O_FILES))
 
-#LIB_BOTAN_VER			:= 2.15.0
-#LIB_BOTAN_DIR 			:= $(LIB_PARENT_DIR)/botan/$(LIB_BOTAN_VER)/gcc_4.8.5
+LIB_BOTAN_VER			:= 2.18.0
+LIB_BOTAN_DIR 			:= $(LIB_3RD_EXTERNAL_DIR)/botan/$(LIB_BOTAN_VER)/gcc/$(CXX_VERSION)/$(PRJ_ARCH)/$(PRJ_BUILD)/static
+LIB_BOTAN_INC_DIR 		:= $(LIB_BOTAN_DIR)/include
+LIB_BOTAN_LIB_DIR		:= $(LIB_BOTAN_DIR)/libtotan-2.a
 
+LIB_INCLUDE_DIR := $(LIB_INCLUDE_DIR) $(LIB_BOTAN_INC_DIR)
 
 #ifeq ($(PRJ_ARCH), x86_64)
 #	LIB_BOTAN_DIR := $(LIB_BOTAN_DIR)/x86_64/static
@@ -32,8 +36,7 @@ LIB_O_FILES		:= $(addprefix $(LIB_BUILD_DIR)/,$(LIB_O_FILES))
 #LIB_BOTAN_A := $(LIB_BOTAN_DIR)/lib/libbotan-2.a
 
 
-LIB_3RD_DIR				:= $(LIB_DIR)/3rd
-LIB_3RD_FILES_DIR		:= $(LIB_3RD_DIR)/http_parser $(LIB_3RD_DIR)/udns/0.4
+LIB_3RD_FILES_DIR		:= $(LIB_3RD_DIR)/llhttp $(LIB_3RD_DIR)/udns/0.4
 
 
 LIB_3RD_CPP_BUILD_DIR	:= $(LIB_3RD_DIR)/build/cpp/$(LIB_ARCH_BUILD)
@@ -74,6 +77,7 @@ INCLUDES:= \
 all: precc_netplus netplus
 netplus: $(LIB_FULL_PATH_NAME)
 
+
 precc:
 	@echo "-------------------------------"
 	@echo \*\* compiling...
@@ -98,6 +102,8 @@ precc_netplus: precc
 	@echo "LIB_3RD_C_FILES: $(LIB_3RD_C_FILES)"
 	@echo "LIB_3RD_C_O_FILES: $(LIB_3RD_C_O_FILES)"
 	
+	@echo "OS_NAME: $(OS_NAME)"
+	@echo "CXX_VERSION: $(CXX_VERSION)"
 	@echo ""
 
 $(LIB_FULL_PATH_NAME): $(LIB_O_FILES) $(LIB_3RD_CPP_O_FILES) $(LIB_3RD_C_O_FILES)
