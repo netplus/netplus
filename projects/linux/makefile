@@ -5,7 +5,7 @@ LIBNAME		:= netplus
 
 LIB_DIR 				:= ../..
 LIB_3RD_DIR 			:= ../../3rd
-LIB_3RD_EXTERNAL_DIR	:= ../../3rd_external
+LIB_DEPS_DIR			:= ../../../deps
 
 LIB_INCLUDE_DIR := $(LIB_DIR)/include
 LIB_SOURCE_DIR 	:= $(LIB_DIR)/src
@@ -21,19 +21,7 @@ LIB_O_FILES		:= $(LIB_CPP_FILES:.cpp=.$(O_EXT))
 LIB_O_FILES		:= $(foreach path,$(LIB_O_FILES), $(subst $(LIB_SOURCE_DIR)/,,$(path)))
 LIB_O_FILES		:= $(addprefix $(LIB_BUILD_DIR)/,$(LIB_O_FILES))
 
-LIB_BOTAN_VER			:= 2.18.0
-LIB_BOTAN_DIR 			:= $(LIB_3RD_EXTERNAL_DIR)/botan/$(LIB_BOTAN_VER)/gcc/$(CXX_VERSION)/$(PRJ_ARCH)/$(PRJ_BUILD)/static
-LIB_BOTAN_INC_DIR 		:= $(LIB_BOTAN_DIR)/include
-LIB_BOTAN_LIB_DIR		:= $(LIB_BOTAN_DIR)/libtotan-2.a
-
-LIB_INCLUDE_DIR := $(LIB_INCLUDE_DIR) $(LIB_BOTAN_INC_DIR)
-
-#ifeq ($(PRJ_ARCH), x86_64)
-#	LIB_BOTAN_DIR := $(LIB_BOTAN_DIR)/x86_64/static
-#endif
-
-#LIB_BOTAN_INCLUDE := $(LIB_BOTAN_DIR)/include/botan-2
-#LIB_BOTAN_A := $(LIB_BOTAN_DIR)/lib/libbotan-2.a
+LIB_INCLUDE_DIR 		:= $(LIB_INCLUDE_DIR) $(DEPS_INC)
 
 
 LIB_3RD_FILES_DIR		:= $(LIB_3RD_DIR)/llhttp $(LIB_3RD_DIR)/udns/0.4
@@ -43,10 +31,6 @@ LIB_3RD_CPP_BUILD_DIR	:= $(LIB_3RD_DIR)/build/cpp/$(LIB_ARCH_BUILD)
 LIB_3RD_C_BUILD_DIR		:= $(LIB_3RD_DIR)/build/c/$(LIB_ARCH_BUILD)
 
 
-LIB_INCLUDE_DIR := $(LIB_INCLUDE_DIR)
-LIB_NETP_INCLUDE := $(LIB_INCLUDE_DIR)
-
-# for botan
 LIB_3RD_CPP_FILES 		:= $(shell find $(LIB_3RD_FILES_DIR) -name *.cpp -not -name ".*")
 LIB_3RD_CPP_O_FILES		:= $(LIB_3RD_CPP_FILES:.cpp=.$(O_EXT))
 LIB_3RD_CPP_O_FILES		:= $(foreach path,$(LIB_3RD_CPP_O_FILES), $(subst $(LIB_3RD_DIR)/,,$(path)))
@@ -63,7 +47,7 @@ LIB_FULL_PATH_NAME	:= $(LIB_BIN_DIR)/$(LIB_FULL_NAME)
 
 LIB_NETP_A := $(LIB_FULL_PATH_NAME)
 
-DEFINES	:=__NETP__ $(DEFINES) $(LIB_SIMD_DEFINE)
+DEFINES	:= __NETP__ $(DEFINES) $(LIB_SIMD_DEFINE)
 
 #we have to output these define to a build.hpp file to be referenced by others
 DEFINES :=\
@@ -104,6 +88,8 @@ precc_netplus: precc
 	
 	@echo "OS_NAME: $(OS_NAME)"
 	@echo "CXX_VERSION: $(CXX_VERSION)"
+	@echo "DEPS_INC: $(DEPS_INC)"
+	@echo "DEPS_LIB: $(DEPS_LIB)"
 	@echo ""
 
 $(LIB_FULL_PATH_NAME): $(LIB_O_FILES) $(LIB_3RD_CPP_O_FILES) $(LIB_3RD_C_O_FILES)

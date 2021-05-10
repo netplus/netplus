@@ -53,9 +53,12 @@
 #include <netp/handler/fragment.hpp>
 #include <netp/handler/symmetric_encrypt.hpp>
 #include <netp/handler/dh_symmetric_encrypt.hpp>
-#include <netp/handler/tls.hpp>
 #include <netp/handler/http.hpp>
-#include <netp/handler/websocket.hpp>
+
+#ifdef NETP_WITH_BOTAN
+	#include <netp/handler/tls.hpp>
+	#include <netp/handler/websocket.hpp>
+#endif
 
 #include <netp/handler/echo.hpp>
 #include <netp/handler/dump_in_text.hpp>

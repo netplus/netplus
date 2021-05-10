@@ -1,11 +1,11 @@
-CURRENT_DIR 	:= $(shell pwd)
-UNAME_S 		:= $(shell uname -s)
-OS_NAME			:= $(shell hostnamectl status| grep -i 'Operating System' | awk '{print $$3}')
-PRJ_BUILD		:= release
-PRJ_ARCH		:= x86_64
-PRJ_SIMD		:= 
-PRJ_BUILD_SUFFIX := 
-
+CURRENT_DIR 		:= $(shell pwd)
+UNAME_S 			:= $(shell uname -s)
+OS_NAME				:= $(shell hostnamectl status| grep -i 'Operating System' | awk '{print $$3}')
+PRJ_BUILD			:= release
+PRJ_ARCH			:= x86_64
+PRJ_SIMD			:= 
+PRJ_BUILD_SUFFIX 	:= 
+PRJ_DEFS			:= 
 #
 # usage
 # make build=debug arch=x86_32 simd=ssse3
@@ -18,13 +18,20 @@ ifdef build
 endif
 
 
+ifdef arch
+	PRJ_ARCH :=$(arch)
+endif
+
 ifdef simd
 	PRJ_SIMD := $(simd)
 endif
 
-ifdef arch
-	PRJ_ARCH :=$(arch)
+
+ifdef defs
+	PRJ_DEFS := $(defs)
 endif
+
+DEFINES := $(DEFINES) $(PRJ_DEFS)
 
 ifeq ($(PRJ_ARCH),armv7a)
 	CXX := armv7-rpi2-linux-gnueabihf-g++
@@ -36,6 +43,30 @@ endif
 $(shell $(CXX) -v 2> ./__tmp_makefile_cxx_version)
 CXX_VERSION := $(shell cat ./__tmp_makefile_cxx_version | grep -i 'gcc version' | awk '{print $$3}')
 $(shell rm -f ./__tmp_makefile_cxx_version)
+
+ifdef deps
+	PRJ_DEPS := $(deps)
+else
+	PRJ_DEPS := ../../../../libs/deps
+endif
+
+DEPS_LIBS_CONFIG_INC_FILE := $(PRJ_DEPS)/deps-libs-config.inc
+DEPS_LIBS_DEFS_FILE		 := $(PRJ_DEPS)/deps-libs-defs
+
+DEPS_INC 	:= 
+DEPS_LIB 	:= 
+DEPS_DEFS 	:= 
+
+ifneq ("$(wildcard $(DEPS_LIBS_CONFIG_INC_FILE))","")
+	include $(DEPS_LIBS_CONFIG_INC_FILE)
+	DEPS_INC := $(DEPS_INC) $(_DEPS_INC)
+	DEPS_LIB := $(DEPS_LIB) $(_DEPS_LIB)
+endif
+
+ifneq ("$(wildcard $(DEPS_LIBS_DEFS_FILE))","")
+	DEPS_DEFS := $(shell cat $(DEPS_LIBS_DEFS_FILE))
+	DEFINES := $(DEPS_DEFS) $(DEFINES)
+endif
 
 
 CC_SIMD = 
