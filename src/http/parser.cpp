@@ -305,7 +305,7 @@ namespace netp { namespace http {
 
 	u32_t parser::calc_parsed_bytes(const char* begin) {
 		NETP_ASSERT(_llp != nullptr);
-		NETP_ASSERT( _llp->error_pos > begin );
+		NETP_ASSERT( _llp->error_pos >= begin, "error_pos: %p, begin: %p", _llp->error_pos, begin );
 		return _llp->error_pos - begin;
 	}
 

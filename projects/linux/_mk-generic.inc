@@ -48,7 +48,7 @@ $(shell rm -f ./__tmp_makefile_cxx_version)
 ifdef deps
 	PRJ_DEPS := $(deps)
 else
-	PRJ_DEPS := $(MK_GENERIC_DIR)/../../../deps
+	PRJ_DEPS := $(MK_GENERIC_DIR)/../../../netplus_deps
 endif
 
 DEPS_LIBS_CONFIG_INC_FILE 	:= $(PRJ_DEPS)/deps-libs-config.inc
