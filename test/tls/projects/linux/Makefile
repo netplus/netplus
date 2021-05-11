@@ -1,9 +1,12 @@
+include ../../../../projects/linux/_mk-generic.inc
+include ../../../_libs-config.inc
+
 APP_TEST_PATH					:= ../../..
 APP_PROJECTS_PATH				:= ../../projects
 APP_BUILD_BIN_PATH				:= $(APP_PROJECTS_PATH)/build
 APP_TMP_PATH					:= $(APP_PROJECTS_PATH)/build/tmp/$(ARCH_BUILD_NAME)
 
-APP_NAME = throughput
+APP_NAME = tls
 
 APP_SRC				:= $(APP_TEST_PATH)/$(APP_NAME)/src
 APP_TARGET			:= $(APP_BUILD_BIN_PATH)/$(APP_NAME).$(ARCH_BUILD_NAME)
@@ -64,4 +67,18 @@ $(APP_BIN_PATH)/%.o : $(APP_SRC)/%.cpp
 	@echo ''
 	@echo $(CXX) $(CC_MISC) $(CC_C11) $(DEFINES) $(INCLUDES) $< -o $@
 	@$(CXX) $(CC_MISC) $(CC_C11) $(DEFINES) $(INCLUDES) $< -o $@
+	
+
+dumpinfo:
+	@echo 'CC' $(CC)
+	@echo ''
+	@echo 'CXX' $(CXX)
+	@echo ''
+	@echo 'CC_MISC' $(CC_MISC)
+	@echo 'CC_NATIVE' $(CC_NATIVE)
+	@echo ''
+	@echo 'DEFINES' $(DEFINES)
+	@echo ''
+	@echo 'INCLUDES' $(INCLUDES)
+	@echo ''
 	
