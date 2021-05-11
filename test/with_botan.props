@@ -5,11 +5,11 @@
   <PropertyGroup />
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)./../../../../3rd_external/botan/2.18.0/msvc_$(PlatformToolSet)/$(Platform)/$(Configuration)/static/include/botan-2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)./../../../../../netplus_deps/botan_build/2.18.0/msvc/$(PlatformToolSet)/$(Platform)/$(Configuration)/static/include/botan-2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NETP_WITH_BOTAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>$(SolutionDir)./../../../../3rd_external/botan/2.18.0/msvc_$(PlatformToolSet)/$(Platform)/$(Configuration)/static/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)./../../../../../netplus_deps/botan_build/2.18.0/msvc/$(PlatformToolSet)/$(Platform)/$(Configuration)/static/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>botan.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
