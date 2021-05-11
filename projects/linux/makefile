@@ -1,4 +1,4 @@
-include generic-header.inc
+include _mk-generic.inc
 
 LIB_ARCH_BUILD = $(ARCH_BUILD_NAME)
 LIBNAME		:= netplus
@@ -21,7 +21,7 @@ LIB_O_FILES		:= $(LIB_CPP_FILES:.cpp=.$(O_EXT))
 LIB_O_FILES		:= $(foreach path,$(LIB_O_FILES), $(subst $(LIB_SOURCE_DIR)/,,$(path)))
 LIB_O_FILES		:= $(addprefix $(LIB_BUILD_DIR)/,$(LIB_O_FILES))
 
-LIB_INCLUDE_DIR 		:= $(LIB_INCLUDE_DIR) $(DEPS_INC)
+CC_INC 			:= $(LIB_INCLUDE_DIR) $(CC_INC)
 
 
 LIB_3RD_FILES_DIR		:= $(LIB_3RD_DIR)/llhttp $(LIB_3RD_DIR)/udns/0.4
@@ -55,7 +55,7 @@ DEFINES :=\
 
 
 INCLUDES:= \
-	$(foreach include,$(LIB_INCLUDE_DIR), -I"$(include)")
+	$(foreach include,$(CC_INC), -I"$(include)")
 
 
 all: precc_netplus netplus
@@ -90,6 +90,7 @@ precc_netplus: precc
 	@echo "CXX_VERSION: $(CXX_VERSION)"
 	@echo "DEPS_INC: $(DEPS_INC)"
 	@echo "DEPS_LIB: $(DEPS_LIB)"
+	@echo "MK_GENERIC_DIR: $(MK_GENERIC_DIR)"
 	@echo ""
 
 $(LIB_FULL_PATH_NAME): $(LIB_O_FILES) $(LIB_3RD_CPP_O_FILES) $(LIB_3RD_C_O_FILES)

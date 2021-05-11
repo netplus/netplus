@@ -1,3 +1,4 @@
+MK_GENERIC_DIR 		:= $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 CURRENT_DIR 		:= $(shell pwd)
 UNAME_S 			:= $(shell uname -s)
 OS_NAME				:= $(shell hostnamectl status| grep -i 'Operating System' | awk '{print $$3}')
@@ -47,11 +48,11 @@ $(shell rm -f ./__tmp_makefile_cxx_version)
 ifdef deps
 	PRJ_DEPS := $(deps)
 else
-	PRJ_DEPS := ../../../../libs/deps
+	PRJ_DEPS := $(MK_GENERIC_DIR)/../../../deps
 endif
 
-DEPS_LIBS_CONFIG_INC_FILE := $(PRJ_DEPS)/deps-libs-config.inc
-DEPS_LIBS_DEFS_FILE		 := $(PRJ_DEPS)/deps-libs-defs
+DEPS_LIBS_CONFIG_INC_FILE 	:= $(PRJ_DEPS)/deps-libs-config.inc
+DEPS_LIBS_DEFS_FILE		 	:= $(PRJ_DEPS)/deps-libs-defs
 
 DEPS_INC 	:= 
 DEPS_LIB 	:= 
@@ -64,10 +65,13 @@ ifneq ("$(wildcard $(DEPS_LIBS_CONFIG_INC_FILE))","")
 endif
 
 ifneq ("$(wildcard $(DEPS_LIBS_DEFS_FILE))","")
-	DEPS_DEFS := $(shell cat $(DEPS_LIBS_DEFS_FILE))
-	DEFINES := $(DEPS_DEFS) $(DEFINES)
+	DEPS_DEFS 	:= $(shell cat $(DEPS_LIBS_DEFS_FILE))
+	DEFINES 	:= $(DEPS_DEFS) $(DEFINES)
 endif
 
+
+CC_INC 		:= $(DEPS_INC) $(CC_INC)
+LINK_LIBS 	:= $(DEPS_LIB) $(LINK_LIBS)
 
 CC_SIMD = 
 CC_3RD_CPP_MISC = 
@@ -85,6 +89,8 @@ LINK_CXX_LIBS = -lpthread -ldl
 ifneq ($(UNAME_S),Darwin)
 	LINK_CXX_LIBS := -lrt $(LINK_CXX_LIBS)
 endif
+
+LINK_LIBS := $(LINK_LIBS) $(LINK_CXX_LIBS)
 
 ifeq ($(PRJ_BUILD),debug)
 	PRJ_BUILD_SUFFIX := d
