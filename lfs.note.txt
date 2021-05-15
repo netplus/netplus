@@ -1,8 +1,0 @@
-As botan.lib exceed 100M on --debug-mode
-we have to install https://git-lfs.github.com/
-
-initialize lfs : git lfs install
-
-track large file steps:
-(1) track large files
-(2) git add large_files
