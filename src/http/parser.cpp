@@ -152,7 +152,7 @@ namespace netp { namespace http {
 
 		if (p->last_h == last_header_element::VALUE) {
 			NETP_ASSERT(p->field_tmp.length());
-			p->message_tmp->H->set(p->field_tmp, p->field_value_tmp);
+			p->message_tmp->H->add_header_line(p->field_tmp, p->field_value_tmp);
 			p->field_tmp.clear();
 			p->field_value_tmp.clear();
 		}
@@ -177,7 +177,7 @@ namespace netp { namespace http {
 
 		if (p->last_h == last_header_element::VALUE) {
 			NETP_ASSERT(p->field_tmp.length());
-			p->message_tmp->H->set(p->field_tmp, p->field_value_tmp);
+			p->message_tmp->H->add_header_line(p->field_tmp, p->field_value_tmp);
 			p->field_tmp.clear();
 			p->field_value_tmp.clear();
 			p->last_h = last_header_element::NONE;

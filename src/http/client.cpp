@@ -77,14 +77,14 @@ namespace netp { namespace http {
 
 		m->ver = { 1,1 };
 		if (!m->H->have("host")) {
-			m->H->set("Host", m_host);
+			m->H->add_header_line("Host", m_host);
 		}
 
 		netp::http::url_fields fields;
 		netp::http::parse_url(m->url.c_str(), m->url.length(), m->urlfields);
 
 		if (!m->H->have("user-agent")) {
-			m->H->set("User-Agent", __NETP_VER_STR);
+			m->H->add_header_line("User-Agent", __NETP_VER_STR);
 		}
 
 		NRP<netp::packet> outp;

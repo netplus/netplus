@@ -154,11 +154,11 @@ _CHECK:
 				reply->status = "Switching Protocols";
 				reply->ver = netp::http::version{ 1,1 };
 				
-				reply->H->set(_H_Upgrade, "websocket");
-				reply->H->set(_H_Connection, "Upgrade");
-				reply->H->set(_H_SEC_WEBSOCKET_ACCEPT, string_t(xx,nbytes) );
-				reply->H->set(_H_SEC_WEBSOCKET_VERSION, "13" );
-				reply->H->set(_H_WEBSOCKET_SERVER, __NETP_VER_STR );
+				reply->H->add_header_line(_H_Upgrade, "websocket");
+				reply->H->add_header_line(_H_Connection, "Upgrade");
+				reply->H->add_header_line(_H_SEC_WEBSOCKET_ACCEPT, string_t(xx,nbytes) );
+				reply->H->add_header_line(_H_SEC_WEBSOCKET_VERSION, "13" );
+				reply->H->add_header_line(_H_WEBSOCKET_SERVER, __NETP_VER_STR );
 
 				NRP<packet> outp;
 				reply->encode(outp);

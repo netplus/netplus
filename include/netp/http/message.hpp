@@ -60,56 +60,75 @@ namespace netp { namespace http {
 		u16_t minor;
 	};
 
+	// Field names are case-insensitive.
+	// The order in which header fields with differing field names are received is not significant. However, it is "good practice" to send general-header fields first,
+	// The order in which header fields with the same field-name are received is therefore significant to the interpretation of the combined field value, and thus a proxy MUST NOT change the order of these field values when a message is forwarded.
+
+	//@date 2021-05-15
+	// add support for the following header format
+	// header - 1: aaa0, aaa1
+	//	header - 2 : aaa0
+	//	header - 2 : aaa1
+	
+	//when forwards for a proxy tunel, we should alway gurantee:
+	//1, all header fileds order from the src
+	//2, do not merge multi line header field when do forwarding
+
 	struct header final:
 		public netp::ref_base
 	{
-		struct _H {
+		struct mul_hfv_pos {
+			size_t begin;
+			size_t len;
+		};
+
+		typedef std::list<mul_hfv_pos> mul_header_filed_with_same_name_pos_list_t;
+		struct _header_line {
 			netp::string_t name;
 			netp::string_t value;
+			mul_header_filed_with_same_name_pos_list_t mul_hf_pos_list;
 		};
-		const static inline netp::string_t H_key(netp::string_t const& field) {
-			netp::string_t _key(field);
-#ifdef _NETP_WIN
-#pragma warning(push)
-#pragma warning(disable:4244)
-#endif
-			std::transform(_key.begin(), _key.end(), _key.begin(), ::tolower);
-#ifdef _NETP_WIN
-#pragma warning(pop)
-#endif
-			return _key;
+
+		const static inline netp::size_t H_key(netp::string_t const& field) {
+			return ihash_seq((const unsigned char*)field.c_str(), field.length());
 		}
 
-		typedef std::unordered_map<typename netp::string_t, _H, std::hash<typename netp::string_t>, std::equal_to<typename netp::string_t>, netp::allocator<std::pair<const typename netp::string_t, _H>>>	header_map;
-		typedef std::pair<netp::string_t, _H>	header_pair;
+		typedef std::unordered_map<size_t, _header_line, std::hash<size_t>, std::equal_to<size_t>, netp::allocator<std::pair<const size_t, _header_line>>>	header_map;
+		typedef std::pair<size_t, _header_line>	header_pair;
+		typedef std::list<netp::string_t, netp::allocator<netp::string_t>> keys_order_list_t;
 
 		header_map map;
-		std::list<netp::string_t> keys_order;
+		keys_order_list_t keys_order;
 
 		header() {}
 		~header() {}
+
 		void reset() {
 			map.clear();
 			keys_order.clear();
 		}
+
 		bool have(netp::string_t const& field) const {
 			header_map::const_iterator&& it = map.find(H_key(field));
 			return it != map.end();
 		}
 
 		void remove(netp::string_t const& field) {
-			header_map::iterator it = map.find(H_key(field));
+			size_t key = H_key(field);
+			header_map::iterator it = map.find(key);
 			if (it != map.end()) {
-				const header_pair& HP = *it;
-				std::list<netp::string_t>::iterator&& it_key = std::find_if(keys_order.begin(), keys_order.end(), [name = HP.second.name](netp::string_t const& key) {
+				keys_order_list_t::iterator it_key = std::find_if(keys_order.begin(), keys_order.end(), [name = it->second.name](netp::string_t const& key) {
 					return key == name;
 				});
 				NETP_ASSERT(it_key != keys_order.end());
 				keys_order.erase(it_key);
 				map.erase(it);
+
+				it = map.find(key);
 			}
 		}
 
+		//return merged field value automatically
 		string_t get(string_t const& field) const {
 			header_map::const_iterator&& it = map.find(H_key(field));
 			if (it != map.end()) {
@@ -118,41 +137,52 @@ namespace netp { namespace http {
 			return "";
 		}
 
-		void set(string_t const& field, string_t const& value) {
-
-			/*
-			 * replace if exists, otherwise add to tail
-			 */
-			const string_t _key = H_key(field);
+		void add_header_line(string_t const& field, string_t const& value) {
+			const size_t _key = H_key(field);
 			header_map::iterator&& it = map.find(_key);
 			if (it != map.end()) {
-				it->second.value = value;
+				mul_hfv_pos hf_pos = {value.length() + 2 /*netp::strlen(", ")*/, value.length()  };
+				it->second.value += ", " + value;
+				it->second.mul_hf_pos_list.push_back(hf_pos);
+
+#ifdef NETP_DEBUG
+				keys_order_list_t::iterator kit = std::find_if(keys_order.begin(), keys_order.end(), [name=it->second.name](netp::string_t const& key) {
+					return key == name;
+				});
+				NETP_ASSERT( kit != keys_order.end() );
+#endif
 				return;
 			}
 
-			header_pair pair(_key, { field,value });
-			map.insert(pair);
-
-			keys_order.push_back(field);
+			mul_header_filed_with_same_name_pos_list_t hf_pos_list;
+			hf_pos_list.push_back({ 0, value.length() });
+			map.insert({ _key, { field,value, hf_pos_list } });
+			keys_order.push_front(field);
 		}
 
 		void replace(string_t const& field, string_t const& value) {
 			header_map::iterator&& it = map.find(H_key(field));
 			if (it != map.end()) {
 				it->second.value = value;
+				it->second.mul_hf_pos_list.clear();
+				it->second.mul_hf_pos_list.push_back({ 0, value.length() });
 			}
 		}
 
 		void encode(NRP<packet>& packet_o) const {
 			NRP<packet> _out = netp::make_ref<packet>();
-			std::for_each(keys_order.begin(), keys_order.end(), [&](string_t const& key) {
+			std::for_each(keys_order.rbegin(), keys_order.rend(), [&](string_t const& key) {
 				header_map::const_iterator&& it = map.find(H_key(key));
 				NETP_ASSERT(it != map.end());
-				const string_t& value = it->second.value;
-				_out->write((netp::byte_t*)key.c_str(), (netp::u32_t)key.length());
-				_out->write((netp::byte_t*)NETP_HTTP_COLON_SP, 2);
-				_out->write((netp::byte_t*)value.c_str(), (netp::u32_t)value.length());
-				_out->write((netp::byte_t*)NETP_HTTP_CRLF, (netp::u32_t)netp::strlen(NETP_HTTP_CRLF));
+				const char* value_cstr = it->second.value.c_str();
+				mul_header_filed_with_same_name_pos_list_t::const_iterator&& it_hf_pos = it->second.mul_hf_pos_list.begin();
+				while (it_hf_pos != it->second.mul_hf_pos_list.end()) {
+					_out->write((netp::byte_t*)key.c_str(), (netp::u32_t)key.length());
+					_out->write((netp::byte_t*)NETP_HTTP_COLON_SP, 2);
+					_out->write((netp::byte_t*)(value_cstr + it_hf_pos->begin), it_hf_pos->len );
+					_out->write((netp::byte_t*)NETP_HTTP_CRLF, (netp::u32_t)netp::strlen(NETP_HTTP_CRLF));
+					++it_hf_pos;
+				}
 			});
 			packet_o = std::move(_out);
 		}

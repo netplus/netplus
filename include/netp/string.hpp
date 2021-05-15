@@ -224,7 +224,7 @@ namespace netp {
 		if (len != b.length()) { return false; }
 		size_t i = 0;
 		while (i < len) {
-			if ( ::tolower(a[i]) != tolower(b[i])) {
+			if ( tolower(a[i]) != tolower(b[i])) {
 				return false;
 			}
 			++i;
@@ -529,7 +529,7 @@ namespace netp {
 	}
 
 	//this code borrow from msvc stl
-	inline size_t _Hash_seq(const unsigned char* _First, size_t _Count)
+	inline size_t hash_seq(const unsigned char* _First, size_t _Count)
 	{	// FNV-1a hash function for bytes in [_First, _First + _Count)
 #ifdef _NETP_ARCH_X64
 		static_assert(sizeof(size_t) == 8, "This code is for 64-bit size_t.");
@@ -550,6 +550,29 @@ namespace netp {
 		}
 		return (_Val);
 	}
+
+	//this code borrow from msvc stl
+	inline size_t ihash_seq(const unsigned char* _First, size_t _Count)
+	{	// FNV-1a hash function for bytes in [_First, _First + _Count)
+#ifdef _NETP_ARCH_X64
+		static_assert(sizeof(size_t) == 8, "This code is for 64-bit size_t.");
+		const size_t _FNV_offset_basis = 14695981039346656037ULL;
+		const size_t _FNV_prime = 1099511628211ULL;
+
+#else /* defined(_WIN64) */
+		static_assert(sizeof(size_t) == 4, "This code is for 32-bit size_t.");
+		const size_t _FNV_offset_basis = 2166136261U;
+		const size_t _FNV_prime = 16777619U;
+#endif /* defined(_WIN64) */
+
+		size_t _Val = _FNV_offset_basis;
+		for (size_t _Next = 0; _Next < _Count; ++_Next)
+		{	// fold in another byte
+			_Val ^= size_t(tolower(_First[_Next]));
+			_Val *= _FNV_prime;
+		}
+		return (_Val);
+	}
 }
 
 namespace std {
@@ -558,7 +581,7 @@ namespace std {
 	{
 		typedef size_t result_type;
 		inline result_type operator () (const netp::string_t& x) const {
-			return netp::_Hash_seq((const unsigned char*)x.c_str(), x.size()*sizeof(char) );
+			return netp::hash_seq((const unsigned char*)x.c_str(), x.size()*sizeof(char) );
 		}
 	};
 
@@ -567,7 +590,7 @@ namespace std {
 	{
 		typedef size_t result_type;
 		inline result_type operator () (const netp::wstring_t& x) const {
-			return netp::_Hash_seq((const unsigned char*)x.c_str(), x.size() * sizeof(wchar_t));
+			return netp::hash_seq((const unsigned char*)x.c_str(), x.size() * sizeof(wchar_t));
 		}
 	};
 }

@@ -45,10 +45,10 @@ public:
 		resp->status = "OK";
 
 		if (m->H->have("Connection") && m->H->get("Connection") == "Keep-Alive") {
-			resp->H->set("Connection", "Keep-Alive");
+			resp->H->add_header_line("Connection", "Keep-Alive");
 		}
 		else {
-			resp->H->set("Connection", "close");
+			resp->H->add_header_line("Connection", "close");
 			close_after_write = true;
 		}
 
