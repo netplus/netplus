@@ -179,7 +179,7 @@ namespace netp { namespace http {
 				while (it_hf_pos != it->second.mul_hf_pos_list.end()) {
 					_out->write((netp::byte_t*)key.c_str(), (netp::u32_t)key.length());
 					_out->write((netp::byte_t*)NETP_HTTP_COLON_SP, 2);
-					_out->write((netp::byte_t*)(value_cstr + it_hf_pos->begin), it_hf_pos->len );
+					_out->write((netp::byte_t*)(value_cstr + it_hf_pos->begin), u32_t(it_hf_pos->len) );
 					_out->write((netp::byte_t*)NETP_HTTP_CRLF, (netp::u32_t)netp::strlen(NETP_HTTP_CRLF));
 					++it_hf_pos;
 				}
