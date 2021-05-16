@@ -30,7 +30,8 @@ namespace netp {
 	struct evt_node_list 
 	{
 		evt_node_list *prev, *next;
-		int flag;
+		int flag:8;
+		int cnt : 24;
 		//H:32 would be updated when insert happens
 		//H:32 -> evt_id
 		//L:32 -> handler_id
@@ -52,85 +53,85 @@ namespace netp {
 		f_delete_pending = 1 << 2
 	};
 
+	template <class _callable>
+	class event_handler_any : public evt_node_list
+	{
+		friend class event_broker_any;
+		typedef event_handler_any<_callable> _this_type_t;
+		typedef typename std::decay<_callable>::type __callee_type;
+		__callee_type __callee;//this member must be aligned to 8bytes: arm32
+
+		void* address_of_callee() const { return (void*)&__callee; }
+
+		void destroy(void* node) {
+			NETP_ASSERT(((_this_type_t*)node) == this);
+			netp::allocator<_this_type_t>::trash((_this_type_t*)node);
+		}
+#ifdef __NETP_DEBUG_BROKER_INVOKER_
+		template<class... Args>
+		inline auto call(Args&&... args)
+			-> decltype(__callee(std::forward<Args>(args)...))
+		{
+			return __callee(std::forward<Args>(args)...);
+		}
+#endif
+
+	public:
+		template<class _Callable_from
+			, class = typename std::enable_if<std::is_convertible<_Callable_from, __callee_type>::value>::type>
+			event_handler_any(_Callable_from&& callee) :
+			evt_node_list(),
+			__callee(std::forward<_Callable_from>(callee))
+		{}
+	};
+
+
+	inline evt_node_list* evt_node_allocate_head() {
+		return netp::allocator<evt_node_list>::make();
+	}
+	inline void evt_node_deallocate_head(evt_node_list* node) {
+		return netp::allocator<evt_node_list>::trash(node);
+	}
+
+	//it's save to cast to parent class
+	template <class _callable>
+	inline evt_node_list* evt_node_allocate(_callable&& _func) {
+		typedef event_handler_any<typename std::decay<_callable>::type> evt_handler_any_type_t;
+		return netp::allocator<evt_handler_any_type_t>::make(std::forward<_callable>(_func));
+	}
+
+	template <class _callable_conv_to, class _callable
+		, class = typename std::enable_if<std::is_convertible<_callable, typename std::decay<_callable_conv_to>::type>::value>::type>
+		inline evt_node_list* evt_node_allocate(_callable&& _func) {
+		typedef event_handler_any<typename std::decay<_callable_conv_to>::type> evt_handler_any_type_t;
+		return netp::allocator<evt_handler_any_type_t>::make(std::forward<_callable>(_func));
+	}
+
+	inline void evt_node_deallocate(evt_node_list* node) {
+		//no placement delete for virtual dtor impl..., just hack it with virutal func
+		node->destroy(node);
+	}
+
+	struct id_hash {
+		inline std::size_t operator()(int k) const
+		{
+			return k;
+		}
+	};
+
+	struct id_equal {
+		inline bool operator()(int lhs, int rhs) const
+		{
+			return lhs == rhs;
+		}
+	};
+
+	typedef std::unordered_map<int, evt_node_list*, id_hash, id_equal, netp::allocator<std::pair<const int, evt_node_list*>>> event_map_t;
 
 	class event_broker_any
 	{
-		template <class _callable>
-		class event_handler_any : public evt_node_list
-		{
-			friend class event_broker_any;
-			typedef event_handler_any<_callable> _this_type_t;
-			typedef typename std::decay<_callable>::type __callee_type;
-			__callee_type __callee;//this member must be aligned to 8bytes: arm32
-
-			void* address_of_callee() const { return (void*)&__callee; }
-
-			void destroy(void* node) {
-				NETP_ASSERT(((_this_type_t*)node) == this);
-				netp::allocator<_this_type_t>::trash((_this_type_t*)node);
-			}
-#ifdef __NETP_DEBUG_BROKER_INVOKER_
-			template<class... Args>
-			inline auto call(Args&&... args)
-				-> decltype(__callee(std::forward<Args>(args)...))
-			{
-				return __callee(std::forward<Args>(args)...);
-			}
-#endif
-
-		public:
-			template<class _Callable_from
-				, class = typename std::enable_if<std::is_convertible<_Callable_from, __callee_type>::value>::type>
-				event_handler_any(_Callable_from&& callee) :
-				evt_node_list(),
-				__callee(std::forward<_Callable_from>(callee))
-			{}
-		};
-
-
-		inline evt_node_list* evt_node_allocate_head() {
-			return netp::allocator<evt_node_list>::make();
-		}
-		inline void evt_node_deallocate_head(evt_node_list* node) {
-			return netp::allocator<evt_node_list>::trash(node);
-		}
-
-		//it's save to cast to parent class
-		template <class _callable>
-		inline evt_node_list* evt_node_allocate(_callable&& _func) {
-			typedef event_handler_any<typename std::decay<_callable>::type> evt_handler_any_type_t;
-			return netp::allocator<evt_handler_any_type_t>::make(std::forward<_callable>(_func));
-		}
-
-		template <class _callable_conv_to, class _callable
-			, class = typename std::enable_if<std::is_convertible<_callable, typename std::decay<_callable_conv_to>::type>::value>::type>
-		inline evt_node_list* evt_node_allocate(_callable&& _func) {
-			typedef event_handler_any<typename std::decay<_callable_conv_to>::type> evt_handler_any_type_t;
-			return netp::allocator<evt_handler_any_type_t>::make(std::forward<_callable>(_func));
-		}
-
-		inline void evt_node_deallocate(evt_node_list* node) {
-			//no placement delete for virtual dtor impl..., just hack it with virutal func
-			node->destroy(node);
-		}
-
-		struct id_hash {
-			inline std::size_t operator()(int k) const
-			{
-				return k;
-			}
-		};
-
-		struct id_equal {
-			inline bool operator()(int lhs, int rhs) const
-			{
-				return lhs == rhs;
-			}
-		};
-
-		typedef std::unordered_map<int, evt_node_list*, id_hash, id_equal, netp::allocator<std::pair<const int, evt_node_list*>>> event_map_t;
+	protected:
 		event_map_t m_handlers;
-
 		void __insert_into_evt_map(int evt_id, evt_node_list* evt_node) {
 			//(1) always insert into tail
 			//(2) if we are in invoking stage, we flag with in_invoking,
@@ -143,10 +144,13 @@ namespace netp {
 					//told invoker that we have pending insert
 					evt_hl->flag |= evt_node_flag::f_insert_pending;
 				}
+				++evt_hl->cnt;
 				netp::list_append(evt_hl->prev, evt_node );
 			} else {
 				//make a header first, then insert h into the tail
 				evt_node_list* evt_hl = evt_node_allocate_head();//head
+				evt_hl->cnt = 1;
+
 				netp::list_init(evt_hl);
 				netp::list_append(evt_hl->prev, evt_node);
 				m_handlers.insert({ evt_id, evt_hl });
@@ -166,9 +170,12 @@ namespace netp {
 				evt_node_list* cur, *nxt;
 				NETP_LIST_SAFE_FOR(cur, nxt, evt_hl) {
 					NETP_ASSERT( (cur->flag&(evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending)) == 0);
+					NETP_ASSERT(evt_hl->cnt >0 );
+					--evt_hl->cnt;
 					netp::list_delete(cur);
 					evt_node_deallocate(cur);
 				}
+				NETP_ASSERT( evt_hl->cnt == 0 );
 				evt_node_deallocate_head(evt_hl);
 				event_map_t::iterator it_cur = it++;
 				m_handlers.erase(it_cur);
@@ -193,6 +200,8 @@ namespace netp {
 					cur->flag |= evt_node_flag::f_delete_pending;
 					evt_hl->flag |= evt_node_flag::f_delete_pending;
 				} else {
+					NETP_ASSERT(evt_hl->cnt > 0);
+					--evt_hl->cnt;
 					netp::list_delete(cur);
 					evt_node_deallocate(cur);
 				}
@@ -222,17 +231,14 @@ namespace netp {
 					cur->flag |= evt_node_flag::f_delete_pending;
 					evt_hl->flag |= evt_node_flag::f_delete_pending;
 				} else {
+					NETP_ASSERT(evt_hl->cnt > 0);
+					--evt_hl->cnt;
 					netp::list_delete(cur);
 					evt_node_deallocate(cur);
 				}
 				return;
 			}
 		}
-
-		inline void unbind(i64_t handler_id) {
-			return unbind_by_handle_id(handler_id);
-		}
-		
 
 		template<class _callable>
 		inline i64_t bind(int evt_id, _callable&& callee ) {
@@ -307,6 +313,9 @@ namespace netp {
 					 if (cur->flag & evt_node_flag::f_insert_pending) {
 						 cur->flag &= ~evt_node_flag::f_insert_pending;
 					 } else if (cur->flag & evt_node_flag::f_delete_pending) {
+						 NETP_ASSERT(ev_hl->cnt > 0);
+						 --ev_hl->cnt;
+
 						 netp::list_delete(cur);
 						 evt_node_deallocate(cur);
 					 } else {}
@@ -360,21 +369,6 @@ namespace netp {
 			return netp::OK;
 		}
 #endif
-
-		template<class _callable_conv_to, class... _Args>
-		auto invoke_first(int evt_id, _Args&&... _args)
-			-> decltype( std::declval<typename std::remove_reference<_callable_conv_to>::type>()(std::forward<_Args>(_args)...))
-		{
-			typename event_map_t::iterator&& it = m_handlers.find(evt_id);
-			if (it == m_handlers.end()) {
-				throw netp::callee_exception(netp::E_EVENT_BROKER_NO_LISTENER);
-			}
-			evt_node_list* ev_hl = it->second;
-			if (NETP_LIST_IS_EMPTY(ev_hl)) {
-				throw netp::callee_exception(netp::E_EVENT_BROKER_NO_LISTENER);
-			}
-			return (*((_callable_conv_to*)(ev_hl->next->address_of_callee()) ))(std::forward<_Args>(_args)...);
-		}
 	};
 }
 #endif

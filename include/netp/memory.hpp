@@ -69,7 +69,6 @@ namespace netp {
 		void init(bool preallocate);
 		void deinit();
 
-
 		public:
 			pool_aligned_allocator( bool preallocate = true );
 			virtual ~pool_aligned_allocator();

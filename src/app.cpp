@@ -78,6 +78,7 @@ namespace netp {
 		}
 	}
 
+
 	app::~app()
 	{
 		if (m_app_exit_prev ) {
@@ -163,7 +164,7 @@ namespace netp {
 #endif
 
 		netp::random_init_seed();
-		netp::tls_create< netp::impl::thread_data>();
+		netp::tls_create<netp::impl::thread_data>();
 
 #ifdef NETP_MEMORY_USE_TLS_POOL
 		netp::global_pool_aligned_allocator::instance();
@@ -183,10 +184,10 @@ namespace netp {
 #if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
 		tls_destroy<mutex_set_t>();
 #endif
-		netp::tls_destroy< netp::impl::thread_data>();
+		netp::tls_destroy<netp::impl::thread_data>();
 
 #ifdef NETP_MEMORY_USE_TLS_POOL
-		netp::tls_destroy< netp::pool_aligned_allocator_t>();
+		netp::tls_destroy<netp::pool_aligned_allocator_t>();
 		netp::global_pool_aligned_allocator::instance()->destroy_instance();
 #endif
 	}

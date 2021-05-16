@@ -109,10 +109,46 @@ namespace netp {
 	typedef netp::promise<std::tuple<int, NRP<rpc>>> rpc_dial_promise;
 	typedef netp::channel_listen_promise rpc_listen_promise;
 
+	class rpc_event_broker_any : 
+		protected event_broker_any 
+	{
+	protected:
+		//I do not like virtual here
+		void __insert_into_evt_map(int evt_id, evt_node_list* evt_node) {
+			event_map_t::iterator&& it = m_handlers.find(evt_id);
+			NETP_ASSERT( it == m_handlers.end() || it->second->cnt == 0);
+
+			//make a header first, then insert h into the tail
+			evt_node_list* evt_hl = evt_node_allocate_head();//head
+			evt_hl->cnt = 1;
+
+			netp::list_init(evt_hl);
+			netp::list_append(evt_hl->prev, evt_node);
+			m_handlers.insert({ evt_id, evt_hl });
+		}
+	public:
+		template<class _callable_conv_to, class _callable
+			, class = typename std::enable_if<std::is_convertible<_callable, _callable_conv_to>::value>::type>
+			inline i64_t bind(int evt_id, _callable&& evt_callee) {
+			static_assert(std::is_class<std::remove_reference<_callable>>::value, "_callable must be lambda or std::function type");
+			evt_node_list* evt_node = evt_node_allocate<_callable_conv_to, _callable>(std::forward<_callable>(evt_callee));
+			evt_node->id |= (i64_t(evt_id) << 32);
+			__insert_into_evt_map(evt_id, evt_node);
+			return evt_node->id;
+		}
+
+		template<class _callable_conv_to, class _Fx, class... _Args>
+		inline i64_t bind(int evt_id, _Fx&& _func, _Args&&... _args) {
+			evt_node_list* evt_node = evt_node_allocate<_callable_conv_to>(std::bind(std::forward<_Fx>(_func), std::forward<_Args>(_args)...));
+			evt_node->id |= (i64_t(evt_id) << 32);
+			__insert_into_evt_map(evt_id, evt_node);
+			return evt_node->id;
+		}
+	};
 
 	class rpc final:
 		public netp::channel_handler_abstract,
-		protected event_broker_any
+		private rpc_event_broker_any
 	{
 		typedef std::deque<NRP<netp::rpc_message>, netp::allocator<NRP<netp::rpc_message>>> rpc_message_reply_queue_t;
 		typedef std::list<NRP<netp::rpc_req_message>, netp::allocator<NRP<netp::rpc_req_message>>> rpc_message_req_list_t;
@@ -169,13 +205,17 @@ namespace netp {
 
 		template<class _callable
 			, class = typename std::enable_if<std::is_convertible<_callable, fn_rpc_call_t>::value>::type>
-		inline long bindcall(int id, _callable&& callee) {
-			return event_broker_any::bind<fn_rpc_call_t>(id, std::forward<_callable>(callee));
+		inline i64_t bindcall(int id, _callable&& callee) {
+			return rpc_event_broker_any::bind<fn_rpc_call_t>(id, std::forward<_callable>(callee));
 		}
 
 		template<class _Fx, class... _Args>
-		inline long bindcall(int id, _Fx&& _func, _Args&&... _args) {
-			return event_broker_any::bind<fn_rpc_call_t>(id, std::forward<_Fx>(_func), std::forward<_Args>(_args)...);
+		inline i64_t bindcall(int id, _Fx&& _func, _Args&&... _args) {
+			return rpc_event_broker_any::bind<fn_rpc_call_t>(id, std::forward<_Fx>(_func), std::forward<_Args>(_args)...);
+		}
+
+		inline void unbindcall(int id) {
+			rpc_event_broker_any::unbind(id);
 		}
 
 		void on_push(fn_on_push_t const& fn);

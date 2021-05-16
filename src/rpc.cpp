@@ -285,9 +285,9 @@ namespace netp {
 		NETP_ASSERT(m_wstate == rpc_write_state::S_WRITE_CLOSED);
 		m_wstate = rpc_write_state::S_WRITE_IDLE;
 		m_close_promise = netp::make_ref<promise<int>>();
-		event_broker_any::invoke<fn_rpc_activity_notify_t>(E_RPC_CONNECTED,NRP<rpc>(this) );
-		event_broker_any::unbind(E_RPC_CONNECTED);
-		event_broker_any::unbind(E_RPC_ERROR);
+		invoke<fn_rpc_activity_notify_t>(E_RPC_CONNECTED,NRP<rpc>(this) );
+		unbind(E_RPC_CONNECTED);
+		unbind(E_RPC_ERROR);
 
 		NRP<netp::timer> tm_TIMEOUT = netp::make_ref<netp::timer>(std::chrono::seconds(1), &rpc::_timer_timeout, NRP<rpc>(this), std::placeholders::_1 ) ;
 		m_loop->launch(tm_TIMEOUT,netp::make_ref<promise<int>>());
@@ -332,9 +332,9 @@ namespace netp {
 		NETP_ASSERT(m_loop->in_event_loop());
 		NETP_ERR("[rpc][#%u]rpc error: %d", ctx->ch->ch_id(), err );
 		NETP_ASSERT(m_close_promise == nullptr);
-		event_broker_any::invoke<fn_rpc_activity_notify_error_t>(E_RPC_ERROR, NRP<rpc>(this), err );
-		event_broker_any::unbind(E_RPC_CONNECTED);
-		event_broker_any::unbind(E_RPC_ERROR);
+		invoke<fn_rpc_activity_notify_error_t>(E_RPC_ERROR, NRP<rpc>(this), err );
+		unbind(E_RPC_CONNECTED);
+		unbind(E_RPC_ERROR);
 		ctx->close();
 	}
 
@@ -370,12 +370,12 @@ namespace netp {
 			NRP<rpc_message> r = netp::make_ref<rpc_message>(netp::rpc_message_type::T_RESP, in->id);
 			try {
 				NRP<netp::rpc_call_promise> f = netp::make_ref<netp::rpc_call_promise>();
-				f->if_done([r, rpc_ = NRP<rpc>(this)]( std::tuple<int, NRP<packet>> const& tupp) {
+				f->if_done([r, rpc_=(this)]( std::tuple<int, NRP<packet>> const& tupp) {
 					r->code = std::get<0>(tupp);
 					r->data = std::get<1>(tupp);
 					rpc_->_do_reply(r);
 				});
-				event_broker_any::invoke_first<fn_rpc_call_t>(in->code, NRP<netp::rpc>(this), in->data, f );
+				invoke<fn_rpc_call_t>(in->code, NRP<netp::rpc>(this), in->data, f );
 				return;
 			} catch (netp::callee_exception& e) {
 				r->code = e.code();

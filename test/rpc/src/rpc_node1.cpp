@@ -95,7 +95,8 @@ void call(NRP<netp::rpc> const& r, NRP<netp::packet> const& outp, long long rc) 
 }
 
 int main(int argc, char** argv) {
-	NSP<netp::app> _app = netp::make_shared<netp::app>();
+	std::shared_ptr<netp::app> _app = std::make_shared<netp::app>();
+
 	g_total = 10000;
 	g_message_size = 64;
 	g_total_rpc = 1;

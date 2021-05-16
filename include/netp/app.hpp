@@ -102,6 +102,7 @@ namespace netp {
 		fn_app_hook_t m_app_event_loop_deinit_post;
 
 	public:
+		//@warn: if we do need to create app on heap, we should always use new/delete, or std::shared_ptr
 		app(app_cfg const& cfg = {});
 		~app();
 
