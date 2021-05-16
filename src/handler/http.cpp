@@ -24,12 +24,6 @@ namespace netp { namespace handler {
 		m_http_parser->on_chunk_complete = std::bind(&http::http_on_chunk_complete, NRP<http>(this), std::placeholders::_1);
 	}
 
-	void http::__finish_parser() {
-		if (m_http_parser != nullptr) {
-			m_http_parser->finish();
-		}
-	}
-
 	void http::__unsetup_parser() {
 		if (m_http_parser != nullptr ) {
 			m_http_parser->finish();
@@ -75,7 +69,6 @@ namespace netp { namespace handler {
 	}
 
 	void http::read_closed(NRP<channel_handler_context> const& ctx) {
-		__finish_parser();
 		event_broker_any::invoke<fn_http_activity_t>(E_READ_CLOSED, ctx);
 	}
 	void http::write_closed(NRP<channel_handler_context> const& ctx) {

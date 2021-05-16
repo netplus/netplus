@@ -192,27 +192,28 @@ namespace netp { namespace http {
 
 	inline static int _on_body(llhttp_t* p_, char const* data, ::size_t len) {
 		parser* p = (parser*)p_->data;
-		NETP_ASSERT(p != nullptr && p->on_body != nullptr );
-		return p->on_body(NRP<parser>(p), data, (u32_t)len);
+		NETP_ASSERT(p != nullptr);
+		return p->on_body == nullptr ? -1 : p->on_body(NRP<parser>(p), data, (u32_t)len);
 	}
 
 	inline static int _on_message_complete(llhttp_t* p_) {
 		parser* p = (parser*)p_->data;
-		NETP_ASSERT(p != nullptr && p->on_message_complete != nullptr );
-		return p->on_message_complete(NRP<parser>(p));
+		NETP_ASSERT(p != nullptr);
+		return p->on_message_complete == nullptr ? -1 : p->on_message_complete(NRP<parser>(p));
 	}
 
 	inline static int _on_chunk_header(llhttp_t* p_) {
 		parser* p = (parser*)p_->data;
-		NETP_ASSERT(p != nullptr && p->on_chunk_header != nullptr );
-		return p->on_chunk_header(NRP<parser>(p));
+		NETP_ASSERT(p != nullptr);
+		return p->on_chunk_header == nullptr ? -1 :
+			p->on_chunk_header(NRP<parser>(p));
 	}
 
 	inline static int _on_chunk_complete(llhttp_t* p_) {
 		parser* p = (parser*)p_->data;
 		NETP_ASSERT(p != nullptr);
-		NETP_ASSERT(p != nullptr && p->on_chunk_complete != nullptr);
-		return p->on_chunk_complete(NRP<parser>(p));
+		return p->on_chunk_complete == nullptr ? -1 :
+			p->on_chunk_complete(NRP<parser>(p));
 	}
 
 	parser::parser() :

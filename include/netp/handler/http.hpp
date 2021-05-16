@@ -51,6 +51,7 @@ namespace netp { namespace handler {
 		typedef std::function<void(NRP<netp::channel_handler_context> const& ctx, NRP<address> const& from)> fn_http_message_end_from_t;
 
 	private:
+
 		NRP<netp::http::parser> m_http_parser;
 		NRP<netp::channel_handler_context> m_ctx;
 
@@ -59,7 +60,6 @@ namespace netp { namespace handler {
 		NRP<address> m_from_tmp;
 
 		void __setup_parser( bool is_httpu = false );
-		void __finish_parser();
 		void __unsetup_parser();
 		void __http_parse(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& income);
 	public:
