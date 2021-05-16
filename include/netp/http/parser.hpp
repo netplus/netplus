@@ -33,7 +33,7 @@ namespace netp { namespace http {
 #define NETP_HTTP_IS_PARSE_ERROR( ec ) ( !(ec == HPE_OK || ec == HPE_PAUSED_UPGRADE) )
 
 	struct parser final :
-		public netp::ref_base
+		public netp::non_atomic_ref_base
 	{
 		llhttp_t* _llp;
 		NRP<netp::ref_base> ctx;

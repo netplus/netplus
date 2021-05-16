@@ -6,22 +6,23 @@ int main(int argc, char** argv) {
 
 	netp::app _app;
 
-
-
 	std::string url = "https://www.163.com/";
 
 	NRP<netp::http::request_promise> rp = netp::http::get(url);
-	const std::tuple<int, NRP<netp::http::message>>& resp = rp->get();
 
-	if (std::get<0>(resp) != netp::OK) {
-		return std::get<0>(resp);
+	int request_result;
+	NRP<netp::http::message> http_resp;
+	std::tie(request_result, http_resp) = rp->get();
+
+	if (request_result != netp::OK) {
+		return request_result;
 	}
 
-	int httpcode = std::get<1>(resp)->code;
+	int httpcode = http_resp->code;
 	if (httpcode == 200) {
-		NETP_INFO("url: %s\n%s", url.c_str(), std::string((char*)std::get<1>(resp)->body->head(), std::get<1>(resp)->body->len()).c_str());
+		NETP_INFO("url: %s\n%s", url.c_str(), std::string((char*)(http_resp)->body->head(), http_resp->body->len()).c_str());
 	} else {
-		NETP_INFO("url: %s\nhttp response: %d %s", url.c_str(), (char*)std::get<1>(resp)->code, std::get<1>(resp)->status.c_str() );
+		NETP_INFO("url: %s\nhttp response: %d %s", url.c_str(), (char*)http_resp->code, http_resp->status.c_str() );
 	}
 
 	std::string host = "http://127.0.0.1:80";

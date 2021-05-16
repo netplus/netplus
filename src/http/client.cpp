@@ -45,7 +45,6 @@ namespace netp { namespace http {
 			NETP_ASSERT(r == nullptr);
 			rctx->reqp->fn_body(nullptr, -1);
 		}
-		NETP_ASSERT(r != nullptr);
 		rctx->reqp->set(std::make_tuple(code, r ));
 	}
 
@@ -134,7 +133,7 @@ namespace netp { namespace http {
 
 	void client::http_cb_closed(NRP<netp::channel_handler_context> const& ctx_) {
 		NETP_ASSERT(m_loop->in_event_loop());
-		_do_request_done(netp::E_HTTP_REQ_TIMEOUT,nullptr);
+		_do_request_done(netp::E_HTTP_REQ_TIMEOUT, m_mtmp);
 		m_mtmp = nullptr;
 		m_ctx = nullptr;
 		m_close_f->set( netp::OK );
