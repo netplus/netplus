@@ -47,8 +47,11 @@ public:
 
 		NRP<netp::promise<int>> f_write = ctx->write(outp);
 		f_write->if_done([close_after_write, ctx](int const& rt) {
-			NETP_INFO("http reply done: %d", rt );
-			ctx->close();
+			//NETP_DEBUG("http reply done: %d", rt );
+
+			if (close_after_write) {
+				ctx->close();
+			}
 		});
 	}
 };
