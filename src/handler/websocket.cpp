@@ -77,6 +77,10 @@ _CHECK:
 				m_http_parser->on_body = std::bind(&websocket::http_on_body, NRP<websocket>(this), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
 				m_http_parser->on_message_complete = std::bind(&websocket::http_on_message_complete, NRP<websocket>(this), std::placeholders::_1);
 
+
+				m_http_parser->on_chunk_header = [](NRP<netp::http::parser> const &) { return netp::OK; };
+				m_http_parser->on_chunk_complete = [](NRP<netp::http::parser> const&) { return netp::OK; };
+
 				m_state = state::S_HANDSHAKING;
 				goto _CHECK;
 			}

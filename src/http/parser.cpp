@@ -198,7 +198,7 @@ namespace netp { namespace http {
 
 	inline static int _on_message_complete(llhttp_t* p_) {
 		parser* p = (parser*)p_->data;
-		NETP_ASSERT(p != nullptr && p->on_chunk_complete != nullptr );
+		NETP_ASSERT(p != nullptr && p->on_message_complete != nullptr );
 		return p->on_message_complete(NRP<parser>(p));
 	}
 
