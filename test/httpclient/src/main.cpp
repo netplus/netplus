@@ -6,6 +6,34 @@ int main(int argc, char** argv) {
 
 	netp::app _app;
 
+
+
+	std::string eastmoney = "http://quote.eastmoney.com/";
+	NRP<netp::http::client_dial_promise> dial_f_estmoney = netp::http::dial(eastmoney);
+	int diart = std::get<0>(dial_f_estmoney->get());
+
+	if (diart != netp::OK) {
+		return diart;
+	}
+
+	std::vector< std::chrono::steady_clock::duration> cost_dur;
+	int faile_count=0;
+	NRP<netp::http::client> http_client = std::get<1>(dial_f_estmoney->get());
+	for (int i = 0; i < 10; ++i) {
+		netp::benchmark bk("get", true);
+		NRP<netp::http::request_promise> rp = http_client->get("/center/api/portfolio");
+		int getrt = std::get<0>(rp->get());
+
+		if (getrt != netp::OK) {
+			++faile_count;
+		}
+		NETP_INFO("i: %d, cost: %.2f ms", i, bk.mark("done") / 1000000.0 );
+	}
+
+
+
+
+	netp::logger_broker::instance()->init();
 	std::string url = "https://www.163.com/";
 
 	NRP<netp::http::request_promise> rp = netp::http::get(url);

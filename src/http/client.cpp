@@ -304,11 +304,13 @@ namespace netp { namespace http {
 
 	void do_get(NRP<netp::http::request_promise> const& reqp, std::string const& url, std::chrono::seconds timeout) {
 		
+		dial_cfg dcfg = { false, false, {nullptr}, netp::make_ref<netp::socket_cfg>() };
 #ifdef _NETP_DEBUG
-		NRP<client_dial_promise> dp = netp::http::dial(url, { true,true,{},netp::make_ref<netp::socket_cfg>() });
-#else
-		NRP<client_dial_promise> dp = netp::http::dial(url, { false,false,{},netp::make_ref<netp::socket_cfg>() });
+		dcfg.dump_in = true;
+		dcfg.dump_out = true;
 #endif
+
+		NRP<client_dial_promise> dp = netp::http::dial(url, dcfg);
 
 		dp->if_done([url,reqp,timeout]( std::tuple<int, NRP<client>> const& tupc ) {
 			int dialrt = std::get<0>(tupc);
