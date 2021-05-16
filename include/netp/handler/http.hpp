@@ -59,6 +59,7 @@ namespace netp { namespace handler {
 		NRP<address> m_from_tmp;
 
 		void __setup_parser( bool is_httpu = false );
+		void __finish_parser();
 		void __unsetup_parser();
 		void __http_parse(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const& income);
 	public:

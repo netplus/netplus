@@ -145,7 +145,7 @@ namespace netp { namespace http {
 				it->second.value += ", " + value;
 				it->second.mul_hf_pos_list.push_back(hf_pos);
 
-#ifdef NETP_DEBUG
+#ifdef _NETP_DEBUG
 				keys_order_list_t::iterator kit = std::find_if(keys_order.begin(), keys_order.end(), [name=it->second.name](netp::string_t const& key) {
 					return key == name;
 				});

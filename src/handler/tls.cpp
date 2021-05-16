@@ -139,15 +139,15 @@ namespace netp { namespace handler {
 	
 	bool tls::tls_session_established(const Botan::TLS::Session& session)
 	{
-		NETP_INFO("Handshake complete, %s, using: %s", session.version().to_string().c_str(), session.ciphersuite().to_string().c_str());
+		NETP_DEBUG("Handshake complete, %s, using: %s", session.version().to_string().c_str(), session.ciphersuite().to_string().c_str());
 		if (!session.session_id().empty())
 		{
-			NETP_INFO("Session ID: %s", Botan::hex_encode(session.session_id()).c_str());
+			NETP_DEBUG("Session ID: %s", Botan::hex_encode(session.session_id()).c_str());
 		}
 
 		if (!session.session_ticket().empty())
 		{
-			NETP_INFO("Session ticket: %s", Botan::hex_encode(session.session_ticket()).c_str());
+			NETP_DEBUG("Session ticket: %s", Botan::hex_encode(session.session_ticket()).c_str());
 		}
 
 		//if (flag_set("print-certs"))
@@ -155,7 +155,7 @@ namespace netp { namespace handler {
 			const std::vector<Botan::X509_Certificate>& certs = session.peer_certs();
 			for (size_t i = 0; i != certs.size(); ++i)
 			{
-				NETP_INFO("Certificate: %d/%d\n: %s\n%s", i + 1, certs.size()
+				NETP_DEBUG("Certificate: %d/%d\n: %s\n%s", i + 1, certs.size()
 					, certs[i].to_string().c_str(), certs[i].PEM_encode().c_str());
 			}
 		}
@@ -212,7 +212,7 @@ namespace netp { namespace handler {
 	void tls::tls_record_received(uint64_t /*seq_no*/, const uint8_t buf[], size_t buf_size)
 	{
 		NETP_ASSERT(m_ctx != nullptr);
-		NETP_INFO("received bytes: %d", buf_size );
+		NETP_DEBUG("received bytes: %d", buf_size );
 		if(buf_size>0) {
 			NRP<netp::packet> in = netp::make_ref<netp::packet>(buf_size);
 			in->write( buf, buf_size );

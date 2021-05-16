@@ -260,22 +260,13 @@ namespace netp { namespace http {
 				NETP_ASSERT(!"do not supported yet");
 #endif
 			}
-#ifndef NETP_ENABLE_TRACE_HTTP_MESSAGE
 			if (__dialcfg.dump_in) {
-#endif
-
 				ch->pipeline()->add_last(netp::make_ref<netp::handler::dump_in_text>());
-#ifndef NETP_ENABLE_TRACE_HTTP_MESSAGE
 			}
-#endif
 
-#ifndef NETP_ENABLE_TRACE_HTTP_MESSAGE
 			if (__dialcfg.dump_out) {
-#endif
 				ch->pipeline()->add_last(netp::make_ref<netp::handler::dump_out_text>());
-#ifndef NETP_ENABLE_TRACE_HTTP_MESSAGE
 			}
-#endif
 
 			NRP<netp::handler::http> httph = netp::make_ref<netp::handler::http>();
 			NRP<netp::http::client> c = netp::make_ref<client>(http_host.c_str(), http_host.length(), ch->L);
@@ -312,7 +303,13 @@ namespace netp { namespace http {
 	}
 
 	void do_get(NRP<netp::http::request_promise> const& reqp, std::string const& url, std::chrono::seconds timeout) {
+		
+#ifdef _NETP_DEBUG
 		NRP<client_dial_promise> dp = netp::http::dial(url, { true,true,{},netp::make_ref<netp::socket_cfg>() });
+#else
+		NRP<client_dial_promise> dp = netp::http::dial(url, { false,false,{},netp::make_ref<netp::socket_cfg>() });
+#endif
+
 		dp->if_done([url,reqp,timeout]( std::tuple<int, NRP<client>> const& tupc ) {
 			int dialrt = std::get<0>(tupc);
 			if(dialrt != netp::OK) {
