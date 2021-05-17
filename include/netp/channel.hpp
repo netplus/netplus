@@ -34,27 +34,29 @@ namespace netp {
 		F_WRITE_BARRIER = 1<<8,
 		F_WRITING = 1<<9, //directly write flag, used by mux_stream and direct socket write
 		F_WRITE_SHUTDOWN_PENDING = 1<<10,
-		F_FIN_RECEIVED = 1 << 11,
+		F_CONNECTING = 1 << 11,
+		F_CONNECTED = 1 << 12,
 
-		F_CLOSE_PENDING = 1<<12, //for transport, update close state
-		F_CLOSING = 1 << 13,
-		F_CLOSED = 1 << 14,
+		F_CLOSE_PENDING = 1<<13, //for transport, update close state
+		F_CLOSING = 1 << 14,
+		F_CLOSED = 1 << 15,
 
-		F_CONNECTING =1<<15,
-		F_CONNECTED = 1<<16,
-		F_LISTENING = 1<<17,
+		F_FIN_RECEIVED = 1 << 16,
+		F_FIN_DELIVERED = 1<<17,
 
-		F_ACTIVE = 1 << 18,
-		F_BDLIMIT = 1 << 19,
-		F_BDLIMIT_TIMER = 1 << 20,
+		F_LISTENING = 1<<18,
+		F_ACTIVE = 1 << 19,
+		F_BDLIMIT = 1 << 20,
+		F_BDLIMIT_TIMER = 1 << 21,
 
-		F_IO_EVENT_LOOP_BEGIN_DONE = 1<<21,
-		F_IO_EVENT_LOOP_NOTIFY_TERMINATING=1<<22,
+		F_IO_EVENT_LOOP_BEGIN_DONE = 1<<22,
+		F_IO_EVENT_LOOP_NOTIFY_TERMINATING=1<<23,
 
-		F_TIMER_1 = 1 << 23,
+		F_TIMER_1 = 1 << 24,
+		F_TIMER_2 = 1 << 25,
 
-		F_USE_DEFAULT_READ=1<<24,
-		F_USE_DEFAULT_WRITE = 1<<25,
+		F_USE_DEFAULT_READ=1<<26,
+		F_USE_DEFAULT_WRITE = 1<<27
 	};
 
 	struct channel_buf_cfg {

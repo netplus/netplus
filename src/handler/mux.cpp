@@ -224,8 +224,7 @@ namespace netp { namespace handler {
 				NETP_TRACE_STREAM("[muxs][s%u][data]nbytes, fin received already,ignore data, and reply a rst", m_id, data->len());
 				break;
 			}
-			NETP_ASSERT((m_chflag & int(channel_flag::F_READ_SHUTDOWNING)) == 0);
-
+			NETP_ASSERT((m_chflag & (int(channel_flag::F_READ_SHUTDOWNING)|int(channel_flag::F_FIN_RECEIVED)) ) == 0);
 		_BEGIN:
 			if (!(m_chflag & int(channel_flag::F_WATCH_READ))) {
 				m_incomes_buffer_q.push(data);
@@ -250,7 +249,17 @@ namespace netp { namespace handler {
 		{
 			NETP_TRACE_STREAM("[muxs][s%u][fin]recv", ch_id());
 			NETP_ASSERT(data->len() == 0);
+			if (m_chflag&int(channel_flag::F_FIN_RECEIVED)) {
+				m_transport_mux->__do_mux_write(mux_stream_make_frame(m_id, FRAME_RST, 0, 0), netp::make_ref<netp::promise<int>>());
+				NETP_TRACE_STREAM("[muxs][s%u][data]nbytes, fin received already,ignore data, and reply a rst", m_id, data->len());
+				return;
+			}
+
 			m_chflag |= int(channel_flag::F_FIN_RECEIVED);
+			if (!(m_chflag & int(channel_flag::F_WATCH_READ)) || m_incomes_buffer_q.size() ) {
+				break;
+			}
+			m_chflag |= int(channel_flag::F_FIN_DELIVERED);
 			ch_close_read_impl(nullptr);
 		}
 		break;

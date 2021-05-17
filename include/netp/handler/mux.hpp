@@ -294,6 +294,10 @@ namespace netp { namespace handler {
 				m_incomes_buffer_q.pop();
 				if (m_incomes_buffer_q.size() == 0) {
 					std::queue<NRP<netp::packet>>().swap(m_incomes_buffer_q);
+					if (m_chflag & int(channel_flag::F_FIN_RECEIVED) && !(m_chflag&int(channel_flag::F_FIN_DELIVERED)) ) {
+						m_chflag |= int(channel_flag::F_FIN_DELIVERED);
+						ch_close_read_impl(nullptr);
+					}
 				}
 			}
 			_check_rcv_data_inc();
