@@ -255,10 +255,10 @@ int socket_base::get_left_snd_queue() const {
 		}
 	}
 
-	void socket_channel::do_listen_on(NRP<promise<int>> const& intp, NRP<address> const& addr, fn_channel_initializer_t const& fn_accepted_initializer, NRP<socket_cfg> const& ccfg, int backlog ) {
+	void socket_channel::do_listen_on(NRP<promise<int>> const& intp, NRP<address> const& addr, fn_channel_initializer_t const& fn_accepted_initializer, NRP<socket_cfg> const& listener_cfg, int backlog ) {
 		if (!L->in_event_loop()) {
-			L->schedule([_this=NRP<socket_channel>(this), addr, fn_accepted_initializer, intp,ccfg, backlog]() ->void {
-				_this->do_listen_on(intp, addr, fn_accepted_initializer, ccfg, backlog);
+			L->schedule([_this=NRP<socket_channel>(this), addr, fn_accepted_initializer, intp, listener_cfg, backlog]() ->void {
+				_this->do_listen_on(intp, addr, fn_accepted_initializer, listener_cfg, backlog);
 			});
 			return;
 		}
@@ -281,14 +281,14 @@ int socket_base::get_left_snd_queue() const {
 		}
 
 		NETP_ASSERT(rt == netp::OK);
-		ccfg->family = m_family;
-		ccfg->type = m_type;
-		ccfg->proto = m_protocol;
+		listener_cfg->family = m_family;
+		listener_cfg->type = m_type;
+		listener_cfg->proto = m_protocol;
 
-		ch_io_begin([intp, fn_accepted_initializer,ccfg, ch = NRP<socket_channel>(this)]( int status, io_ctx*){
+		ch_io_begin([intp, fn_accepted_initializer, listener_cfg, ch = NRP<socket_channel>(this)]( int status, io_ctx*){
 			intp->set(status);
 			if(status == netp::OK) {
-				ch->ch_io_accept(fn_accepted_initializer, ccfg);
+				ch->ch_io_accept(fn_accepted_initializer, listener_cfg);
 			}
 		});
 	}
@@ -411,7 +411,7 @@ int socket_base::get_left_snd_queue() const {
 		ch_io_read();
 	}
 
-	void socket_channel::__do_io_accept_impl(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& cfg, int status, io_ctx* ) {
+	void socket_channel::__do_io_accept_impl(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& listener_cfg, int status, io_ctx* ) {
 
 		NETP_ASSERT(L->in_event_loop());
 		/*ignore the left fds, cuz we're closed*/
@@ -434,20 +434,20 @@ int socket_base::get_left_snd_queue() const {
 			}
 			
 			NRP<io_event_loop> LL = io_event_loop_group::instance()->next(L->poller_type());
-			LL->execute([LL,fn_initializer,nfd, laddr, raddr, cfg]() {
+			LL->execute([LL,fn_initializer,nfd, laddr, raddr, listener_cfg]() {
 				NRP<socket_cfg> cfg_ = netp::make_ref<socket_cfg>();
 				cfg_->fd = nfd;
-				cfg_->family = cfg->family;
-				cfg_->type = cfg->type;
-				cfg_->proto = cfg->proto;
+				cfg_->family = listener_cfg->family;
+				cfg_->type = listener_cfg->type;
+				cfg_->proto = listener_cfg->proto;
 				cfg_->laddr = laddr;
 				cfg_->raddr = raddr;
 
 				cfg_->L = LL;
-				cfg_->option = cfg->option;
-				cfg_->kvals = cfg->kvals;
-				cfg_->sock_buf = cfg->sock_buf;
-				cfg_->bdlimit = cfg->bdlimit;
+				cfg_->option = listener_cfg->option;
+				cfg_->kvals = listener_cfg->kvals;
+				cfg_->sock_buf = listener_cfg->sock_buf;
+				cfg_->bdlimit = listener_cfg->bdlimit;
 				int rt;
 				NRP<socket_channel> so;
 				std::tie(rt,  so) = create_socket_channel(cfg_);
@@ -858,15 +858,15 @@ int socket_base::get_left_snd_queue() const {
 		}
 
 		//we can override this function to enable custom accept way
-		void socket_channel::ch_io_accept(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& cfg, fn_io_event_t const& fn) {
+		void socket_channel::ch_io_accept(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& listener_cfg, fn_io_event_t const& fn) {
 			if (fn != nullptr) {
 				ch_io_read(fn);
 				(void)fn_initializer;
-				(void)cfg;
+				(void)listener_cfg;
 				return;
 			}
 			//posix impl
-			ch_io_read(std::bind(&socket_channel::__do_io_accept_impl, NRP<socket_channel>(this), fn_initializer, cfg, std::placeholders::_1, std::placeholders::_2));
+			ch_io_read(std::bind(&socket_channel::__do_io_accept_impl, NRP<socket_channel>(this), fn_initializer, listener_cfg, std::placeholders::_1, std::placeholders::_2));
 		}
 
 		void socket_channel::ch_io_read(fn_io_event_t const& fn_read) {

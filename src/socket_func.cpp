@@ -174,8 +174,6 @@ namespace netp {
 		NETP_ASSERT(cfg->L != nullptr);
 		NETP_ASSERT(cfg->L->in_event_loop());
 
-		cfg->option &= ~int(socket_option::OPTION_KEEP_ALIVE);
-		cfg->option &= ~int(socket_option::OPTION_NODELAY);
 
 		std::tuple<int, NRP<socket_channel>> tupc = create_socket_channel(cfg);
 		int rt = std::get<0>(tupc);
