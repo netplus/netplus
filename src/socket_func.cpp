@@ -92,9 +92,9 @@ namespace netp {
 			return;
 		}
 
-		NRP<promise<int>> so_dialf = netp::make_ref<promise<int>>();
+		NRP<promise<int>> so_dialp = netp::make_ref<promise<int>>();
 		NRP<socket_channel> so = std::get<1>(tupc);
-		so_dialf->if_done([ch_dialf, so](int const& rt) {
+		so_dialp->if_done([ch_dialf, so](int const& rt) {
 			if (rt == netp::OK) {
 				ch_dialf->set(std::make_tuple(rt, so));
 			} else {
@@ -105,7 +105,7 @@ namespace netp {
 			}
 		});
 
-		so->do_dial(so_dialf, addr, initializer);
+		so->do_dial(so_dialp, addr, initializer);
 	}
 
 	void do_dial(NRP<channel_dial_promise> const& ch_dialf, netp::size_t idx, std::vector< NRP<address>> const& addrs, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {

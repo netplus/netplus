@@ -248,7 +248,7 @@ namespace netp {
 				to_deattach.back()->__terminate();
 				to_deattach.pop_back();
 			}
-			netp::this_thread::usleep(8);
+			netp::this_thread::sleep(1);
 			goto __dealloc_begin;
 		}
 
