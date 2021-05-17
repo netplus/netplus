@@ -26,7 +26,6 @@ namespace netp { namespace handler {
 
 	void http::__unsetup_parser() {
 		if (m_http_parser != nullptr ) {
-			m_http_parser->finish();
 			m_http_parser->cb_reset();
 		}
 	}
@@ -69,8 +68,10 @@ namespace netp { namespace handler {
 	}
 
 	void http::read_closed(NRP<channel_handler_context> const& ctx) {
+		if (m_http_parser != nullptr) { m_http_parser->finish(); }
 		event_broker_any::invoke<fn_http_activity_t>(E_READ_CLOSED, ctx);
 	}
+
 	void http::write_closed(NRP<channel_handler_context> const& ctx) {
 		event_broker_any::invoke<fn_http_activity_t>(E_WRITE_CLOSED, ctx);
 	}
