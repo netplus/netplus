@@ -36,54 +36,57 @@ namespace netp { namespace traffic {
 		typedef _dst_writer _repeater_writer_t;
 		typedef repeater<_dst_writer>	_self_t;
 		typedef std::deque<NRP<netp::packet>,netp::allocator<NRP<netp::packet>>> repeater_outlet_q_t;
-		enum class repeater_state {
-			S_IDLE,
-			S_WRITING,
-			S_FINISHED
+		enum repeater_flag {
+			f_writing =1<<1,
+			f_finished = 1<<2,
+			f_finish_pending=1<<3,
+			f_buf_full = 1<<4
 		};
 
 		NRP<netp::io_event_loop> m_loop;
 		_repeater_writer_t m_writer;
+		int m_flag;
 		netp::size_t m_bufsize;
-
-		repeater_outlet_q_t m_outlets;
 		netp::size_t m_outlets_nbytes;
-		repeater_state m_state;
+		repeater_outlet_q_t m_outlets;
 
-		bool m_buffer_full;
-		bool m_mark_finished;
 
-		void _flush_done(int rt) {
+		void _do_write_done(int rt) {
+			NETP_ASSERT(m_outlets.size() && (m_flag&f_writing) );
+			m_flag &= ~f_writing;
+
 			if (rt != netp::OK) {
 				NETP_ASSERT(rt != netp::E_CHANNEL_WRITE_BLOCK);
+				m_flag &= ~f_finish_pending; //if any
+				m_flag |= f_finished;
 				event_broker_any::invoke<fn_repeater_error_event_t>(repeater_event::e_write_error, rt);
-				m_state = repeater_state::S_FINISHED;
 				return;
 			}
 
-			NETP_ASSERT(m_outlets.size() && m_state == repeater_state::S_WRITING);
 			m_outlets_nbytes -= m_outlets.front()->len();
 			m_outlets.pop_front();
-			m_state = repeater_state::S_IDLE;
 
 			if (m_outlets.size()) {
-				_do_flush();
+				_do_write();
 				return;
 			}
+
 			NETP_ASSERT(m_outlets_nbytes == 0);
 			repeater_outlet_q_t().swap(m_outlets);
-			if (m_buffer_full) {
-				m_buffer_full = false;
+			if (m_flag&f_buf_full) {
+				m_flag &= ~f_buf_full;
 				event_broker_any::invoke<fn_repeater_event_t>(repeater_event::e_buffer_empty);
 			}
-			if (m_mark_finished) {
-				m_state = repeater_state::S_FINISHED;
+
+			if (m_flag&f_finish_pending) {
+				m_flag &= ~f_finish_pending;
+				m_flag |= f_finished;
 				event_broker_any::invoke<fn_repeater_event_t>(repeater_event::e_finished);
 			}
 		}
-		void _do_flush() {
+		void _do_write() {
 			NETP_ASSERT(m_loop->in_event_loop());
-			if (m_state != repeater_state::S_IDLE) {
+			if ( m_flag&f_writing ) {
 				return;
 			}
 
@@ -91,10 +94,10 @@ namespace netp { namespace traffic {
 				NRP<netp::promise<int>> wp = netp::make_ref<netp::promise<int>>();
 				wp->if_done([L = m_loop, r = NRP<_self_t>(this)](int const& rt) {
 					L->execute([r, rt]() {
-						r->_flush_done(rt);
+						r->_do_write_done(rt);
 					});
 				});
-				m_state = repeater_state::S_WRITING;
+				m_flag |= f_writing;
 				m_writer->write(wp,m_outlets.front());
 			}
 		}
@@ -103,11 +106,9 @@ namespace netp { namespace traffic {
 		repeater(NRP<netp::io_event_loop> const& L_, _repeater_writer_t const& writer_, netp::size_t bufsize_ = NETP_TRAFFIC_REPEATER_BUF_DEF ) :
 			m_loop(L_),
 			m_writer(writer_),
-			m_bufsize(bufsize_>NETP_TRAFFIC_REPEATER_BUF_MAX?NETP_TRAFFIC_REPEATER_BUF_MAX: bufsize_ < NETP_TRAFFIC_REPEATER_BUF_MIN? NETP_TRAFFIC_REPEATER_BUF_MIN:bufsize_),
+			m_flag(0),
 			m_outlets_nbytes(0),
-			m_state(repeater_state::S_IDLE),
-			m_buffer_full(false),
-			m_mark_finished(false)
+			m_bufsize(bufsize_>NETP_TRAFFIC_REPEATER_BUF_MAX?NETP_TRAFFIC_REPEATER_BUF_MAX: bufsize_ < NETP_TRAFFIC_REPEATER_BUF_MIN? NETP_TRAFFIC_REPEATER_BUF_MIN:bufsize_)
 		{
 		}
 
@@ -119,7 +120,7 @@ namespace netp { namespace traffic {
 				return;
 			}
 
-			if (m_state == repeater_state::S_FINISHED) {
+			if (m_flag&(f_finished|f_finish_pending)) {
 				event_broker_any::invoke<fn_repeater_error_event_t>(repeater_event::e_write_error, netp::E_INVALID_STATE);
 				return;
 			}
@@ -129,10 +130,10 @@ namespace netp { namespace traffic {
 			m_outlets_nbytes += outp->len();
 
 			if (m_outlets_nbytes > m_bufsize) {
-				m_buffer_full = true;
+				m_flag |= f_buf_full;
 				event_broker_any::invoke<fn_repeater_event_t>(repeater_event::e_buffer_full);
 			}
-			_do_flush();
+			_do_write();
 		}
 
 		void finish() {
@@ -143,17 +144,17 @@ namespace netp { namespace traffic {
 				return;
 			}
 
-			m_mark_finished = true;
-			if (m_state == repeater_state::S_FINISHED) {
-				//error or marked already
+			if (m_flag & (f_finished | f_finish_pending)) {
 				return;
 			}
 
 			//all write error would be triggered during write operation, so we only need to mark state here
 			if ((m_outlets.size() == 0)) {
-				NETP_ASSERT(m_state == repeater_state::S_IDLE);
-				m_state = repeater_state::S_FINISHED;
+				NETP_ASSERT((m_flag&f_writing) ==0);
+				m_flag |= f_finished;
 				event_broker_any::invoke<fn_repeater_event_t>(repeater_event::e_finished);
+			} else {
+				m_flag |= f_finish_pending;
 			}
 		}
 	};

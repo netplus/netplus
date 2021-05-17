@@ -118,8 +118,11 @@ namespace netp { namespace traffic {
 					F->m_forward_state = forwarder_iptcp_payload_state::DIAL_FAILED;
 					F->m_dial_errno = rt;
 					NETP_WARN("[forwarder_iptcp_payload][s%u--%s]dial failed: %d", F->m_src_channel_id, dialurl.c_str(), rt);
-					NRP<packet> outp = netp::make_ref<packet>(64);
-					outp->write<int32_t>(rt);
+					const char* fail_error_str = "dial_dst_failed";
+					NRP<packet> outp = netp::make_ref<packet>(fail_error_str, u32_t(netp::strlen(fail_error_str)));
+					outp->write_left<u32_t>( u32_t(netp::strlen(fail_error_str)));
+
+					outp->write_left<int32_t>(rt);
 					F->m_repeater_dst_to_src->relay(outp);
 					F->m_repeater_dst_to_src->finish();
 				}
@@ -210,8 +213,12 @@ namespace netp { namespace traffic {
 						//refer to https://stackoverflow.com/questions/32290167/what-is-the-maximum-length-of-a-dns-name
 						if (dlen >= 255 /*DOMAIN MAX LEN*/) {
 							NETP_ERR("[server][s%u]domain len exceed %d bytes, close stream, domain name: %s", ctx->ch->ch_id(), E_FORWARDER_DOMAIN_LEN_EXCEED, dlen );
-							NRP<netp::packet> outp = netp::make_ref<netp::packet>();
-							outp->write<int32_t>(netp::E_FORWARDER_DOMAIN_LEN_EXCEED);
+							const char* fail_error_str = "domain exceed len";
+							NRP<packet> outp = netp::make_ref<packet>(fail_error_str, u32_t(netp::strlen(fail_error_str)));
+							outp->write_left<u32_t>(u32_t(netp::strlen(fail_error_str)));
+
+							outp->write_left<int32_t>(netp::E_FORWARDER_DOMAIN_LEN_EXCEED);
+
 							m_repeater_dst_to_src->relay(outp);
 							m_repeater_dst_to_src->finish();
 							return;
@@ -233,8 +240,11 @@ namespace netp { namespace traffic {
 						ipv4_t ipv4 = m_first_packet->read<ipv4_t>();
 						if (ipv4 == 0) {
 							NETP_ERR("[forwarder_iptcp_payload][s%u]ipv4==0, close", m_src_channel_id );
-							NRP<netp::packet> outp = netp::make_ref<netp::packet>();
-							outp->write<int32_t>(netp::E_FORWARDER_INVALID_IPV4);
+							const char* fail_error_str = "invalid_ipv4";
+							NRP<packet> outp = netp::make_ref<packet>(fail_error_str, u32_t(netp::strlen(fail_error_str)));
+							outp->write_left<u32_t>(u32_t(netp::strlen(fail_error_str)));
+							outp->write_left<int32_t>(netp::E_FORWARDER_INVALID_IPV4);
+
 							m_repeater_dst_to_src->relay(outp);
 							m_repeater_dst_to_src->finish();
 							return;
