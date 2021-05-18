@@ -184,14 +184,14 @@ namespace netp {
 		{
 		}
 
-		void io_event_loop_group::notify_terminating(io_poller_type t) {
+		void io_event_loop_group::notify_terminating_loop(io_poller_type t) {
 			shared_lock_guard<shared_mutex> slg(m_loop_mtx[t]);
 			for(::size_t i=0;i<m_loop[t].size();++i) {
 				m_loop[t][i]->__notify_terminating();
 			}
 		}
 
-		void io_event_loop_group::alloc_add_event_loop(io_poller_type t, int count, event_loop_cfg const& cfg, fn_event_loop_maker_t const& fn_maker ) {
+		void io_event_loop_group::launch_loop(io_poller_type t, int count, event_loop_cfg const& cfg, fn_event_loop_maker_t const& fn_maker ) {
 			NETP_DEBUG("[io_event_loop_group]alloc poller: %u, count: %u, ch_buf_size: %u", t, count, cfg.ch_buf_size );
 			lock_guard<shared_mutex> lg(m_loop_mtx[t]);
 			m_curr_loop_idx[t] = 0;
@@ -207,7 +207,7 @@ namespace netp {
 			}
 		}
 
-		void io_event_loop_group::dealloc_remove_event_loop(io_poller_type t) {
+		void io_event_loop_group::wait_loop(io_poller_type t) {
 		__dealloc_begin:
 			std::vector<NRP<io_event_loop>> to_deattach;
 			{
@@ -252,10 +252,20 @@ namespace netp {
 			goto __dealloc_begin;
 		}
 
-		void io_event_loop_group::init(int count[io_poller_type::T_POLLER_MAX], event_loop_cfg cfgs[io_poller_type::T_POLLER_MAX]) {
+		void io_event_loop_group::_init(int count[io_poller_type::T_POLLER_MAX], event_loop_cfg cfgs[io_poller_type::T_POLLER_MAX]) {
 			for (int i = 0; i < T_POLLER_MAX; ++i) {
 				if (count[i] > 0) {
-					alloc_add_event_loop(io_poller_type(i),count[i], cfgs[i]);
+					launch_loop(io_poller_type(i),count[i], cfgs[i]);
+				}
+			}
+		}
+
+		void io_event_loop_group::_notify_terminating_all() {
+			//phase 1, terminating
+			for (int t = T_POLLER_MAX - 1; t >= 0; --t) {
+				if (m_loop[t].size()) {
+					NETP_INFO("[io_event_loop]__notify_terminating, type: %d", io_poller_type(t));
+					notify_terminating_loop(io_poller_type(t));
 				}
 			}
 		}
@@ -273,21 +283,13 @@ namespace netp {
 
 				IV, in phase 2, we stop m_bye_io_event_loop
 		*/
-		void io_event_loop_group::deinit() {
-
-			//phase 1, terminating
-			for (int t= T_POLLER_MAX-1; t >=0; --t) {
-				if (m_loop[t].size()) {
-					NETP_INFO("[io_event_loop]__notify_terminating, type: %d", io_poller_type(t) );
-					notify_terminating(io_poller_type(t));
-				}
-			}
+		void io_event_loop_group::_wait_all() {
 
 			//phase 2, deattach one by one
 			for (int t = T_POLLER_MAX - 1; t >= 0; --t) {
 				if (m_loop[t].size()) {
 					NETP_INFO("[io_event_loop]__dealloc_poller, type: %d", io_poller_type(t));
-					dealloc_remove_event_loop(io_poller_type(t));
+					wait_loop(io_poller_type(t));
 					NETP_INFO("[io_event_loop]__dealloc_poller, type: %d done", io_poller_type(t));
 				}
 			}
