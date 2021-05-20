@@ -243,7 +243,11 @@ int socket_base::get_left_snd_queue() const {
 		} else {
 			m_chflag |= int(channel_flag::F_BDLIMIT_TIMER);
 			m_outbound_budget += tokens;
-			L->launch(t);
+
+			//if we got write error just at terminating period
+			//the call to expire_all might reach here
+			
+			L->launch(t, netp::make_ref<netp::promise<int>>());
 		}
 
 		if (m_chflag & int(channel_flag::F_BDLIMIT)) {

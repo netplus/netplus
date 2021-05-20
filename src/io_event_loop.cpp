@@ -65,6 +65,9 @@ namespace netp {
 	void io_event_loop::__run() {
 		//NETP_ASSERT(!"CHECK EXCEPTION STACK");
 		init();
+
+		//record a snapshot, used by update state
+		m_io_ctx_count_before_running = m_io_ctx_count;
 		u8_t _SL = u8_t(loop_state::S_LAUNCHING);
 		const bool rt = m_state.compare_exchange_strong(_SL, u8_t(loop_state::S_RUNNING), std::memory_order_acq_rel, std::memory_order_acquire);
 		NETP_ASSERT(rt == true);
@@ -124,23 +127,29 @@ namespace netp {
 	void io_event_loop::__do_notify_terminating() {
 		NETP_ASSERT( in_event_loop() );
 		io_do(io_action::NOTIFY_TERMINATING, 0);
-		//no competitor here, store directly
-		NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_TERMINATING));
-		m_state.store(u8_t(loop_state::S_TERMINATED), std::memory_order_release);
-
-		NETP_ASSERT(m_tb != nullptr);
-		m_tb->expire_all();
+		if (m_io_ctx_count == m_io_ctx_count_before_running) {
+			__do_enter_terminated();
+		}
 	//	NETP_DEBUG("[io_event_loop]__do_notify_terminating done");
 	}
-		//terminating phase 1
-		void io_event_loop::__notify_terminating() {
-			u8_t running = u8_t(loop_state::S_RUNNING);
-			if (m_state.compare_exchange_strong(running, u8_t(loop_state::S_TERMINATING), std::memory_order_acq_rel, std::memory_order_acquire)) {
-				schedule([L = NRP<io_event_loop>(this)]() {
-					L->__do_notify_terminating();
-				});
-			}
+
+	void io_event_loop::__do_enter_terminated() {
+		//no competitor here, store directly
+		NETP_ASSERT(in_event_loop());
+		m_state.store(u8_t(loop_state::S_TERMINATED), std::memory_order_release);
+		NETP_ASSERT(m_tb != nullptr);
+		m_tb->expire_all();
+	}
+	
+	//terminating phase 1
+	void io_event_loop::__notify_terminating() {
+		u8_t running = u8_t(loop_state::S_RUNNING);
+		if (m_state.compare_exchange_strong(running, u8_t(loop_state::S_TERMINATING), std::memory_order_acq_rel, std::memory_order_acquire)) {
+			schedule([L = NRP<io_event_loop>(this)]() {
+				L->__do_notify_terminating();
+			});
 		}
+	}
 
 		int io_event_loop::__launch() {
 			u8_t _si = u8_t(loop_state::S_IDLE);
@@ -160,7 +169,7 @@ namespace netp {
 		void io_event_loop::__terminate() {
 			NETP_DEBUG("[io_event_loop][%u]__terminate begin", m_type );
 			while (m_state.load(std::memory_order_acquire) != u8_t(loop_state::S_TERMINATED)) {
-				netp::this_thread::usleep(16);
+				netp::this_thread::sleep(1);
 			}
 			u8_t terminated = u8_t(loop_state::S_TERMINATED);
 			if (m_state.compare_exchange_strong(terminated, u8_t(loop_state::S_EXIT), std::memory_order_acq_rel, std::memory_order_acquire)) {

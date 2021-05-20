@@ -61,6 +61,9 @@ namespace netp {
 		std::atomic<u8_t> m_state;
 		io_poller_type m_type;
 
+		int m_io_ctx_count;
+		int m_io_ctx_count_before_running;
+
 		NRP<poller_abstract> m_poller;
 		NRP<timer_broker> m_tb;
 
@@ -133,7 +136,9 @@ namespace netp {
 
 		void __run();
 		void __do_notify_terminating();
-		void __notify_terminating();
+		void __notify_terminating();		
+		void __do_enter_terminated();
+
 		int __launch();
 		void __terminate();
 
@@ -142,6 +147,8 @@ namespace netp {
 			m_waiting(false),
 			m_state(u8_t(loop_state::S_IDLE)),
 			m_type(t),
+			m_io_ctx_count(0),
+			m_io_ctx_count_before_running(0),
 			m_poller(poller),
 			m_internal_ref_count(0),
 			m_cfg(cfg)
@@ -251,13 +258,21 @@ namespace netp {
 		inline io_ctx* io_begin(SOCKET fd, NRP<io_monitor> const& iom) {
 			NETP_ASSERT(in_event_loop());
 			if (m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
-				return m_poller->io_begin(fd, iom);
+				io_ctx* _ctx= m_poller->io_begin(fd, iom);
+				if (NETP_LIKELY(_ctx != nullptr)) {
+					++m_io_ctx_count;
+				}
+				return _ctx;
 			}
 			return 0;
 		}
 		inline void io_end(io_ctx* ctx) {
 			NETP_ASSERT(in_event_loop());
 			m_poller->io_end(ctx);
+
+			if ( (--m_io_ctx_count == m_io_ctx_count_before_running) && m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_TERMINATING)) {
+				__do_enter_terminated();
+			}
 		}
 	};
 
