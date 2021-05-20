@@ -617,7 +617,7 @@ namespace netp {
 			ch_io_end_write();
 
 			while (m_outbound_entry_q.size()) {
-				NETP_ASSERT((ch_errno() != 0) && (m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_READ_ERROR) | int(channel_flag::F_IO_EVENT_LOOP_NOTIFY_TERMINATING))));
+				NETP_ASSERT((ch_errno() != 0) && (m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_READ_ERROR) )) );
 				socket_outbound_entry& entry = m_outbound_entry_q.front();
 				NETP_WARN("[socket][%s]cancel outbound, nbytes:%u, errno: %d", ch_info().c_str(), entry.data->len(), ch_errno());
 				//hold a copy before we do pop it from queue
@@ -808,6 +808,11 @@ namespace netp {
 		virtual void io_notify_write(int status, io_ctx* ctx) override;
 		
 		virtual void __ch_clean();
+		virtual void __ch_io_cancel_connect(int cancel_code, io_ctx* ctx_) {
+			NETP_ASSERT(m_fn_write != nullptr);
+			(*m_fn_write)(cancel_code, ctx_);
+		}
+
 	public:
 		void ch_io_begin(fn_io_event_t const& fn_begin_done) override;
 		void ch_io_end() override;

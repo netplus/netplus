@@ -232,7 +232,7 @@ int socket_base::get_left_snd_queue() const {
 		NETP_ASSERT(m_outbound_limit > 0);
 		NETP_ASSERT(m_chflag&int(channel_flag::F_BDLIMIT_TIMER) );
 		m_chflag &= ~int(channel_flag::F_BDLIMIT_TIMER);
-		if (m_chflag & (int(channel_flag::F_WRITE_SHUTDOWN)|int(channel_flag::F_WRITE_ERROR)|int(channel_flag::F_IO_EVENT_LOOP_NOTIFY_TERMINATING))) {
+		if (m_chflag & (int(channel_flag::F_WRITE_SHUTDOWN)|int(channel_flag::F_WRITE_ERROR))) {
 			return;
 		}
 
@@ -334,6 +334,7 @@ int socket_base::get_left_snd_queue() const {
 		_set_fail_and_return:
 			NETP_ASSERT(status != netp::OK);
 			m_chflag |= int(channel_flag::F_WRITE_ERROR);
+			m_cherrno = status;
 			ch_io_end_connect();
 			NETP_ERR("[socket][%s]socket dial error: %d", ch_info().c_str(), status);
 			dialp->set(status);
@@ -689,7 +690,7 @@ int socket_base::get_left_snd_queue() const {
 			}
 
 			if (ch_errno() != netp::OK) {
-				NETP_ASSERT(m_chflag & (int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_IO_EVENT_LOOP_NOTIFY_TERMINATING)));
+				NETP_ASSERT(m_chflag & (int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR) ));
 				NETP_ASSERT( ((m_chflag&(int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED))) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED))) ?
 					m_outbound_entry_q.size() :
 					true);
@@ -780,14 +781,21 @@ int socket_base::get_left_snd_queue() const {
 #endif
 	}
 
-	void socket_channel::io_notify_terminating(int status, io_ctx*) {
+	void socket_channel::io_notify_terminating(int status, io_ctx* ctx_) {
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(status == netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING);
 		//terminating notify, treat as a error
 		NETP_ASSERT(m_chflag & int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE));
 		m_chflag |= (int(channel_flag::F_IO_EVENT_LOOP_NOTIFY_TERMINATING));
-		m_cherrno = netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING;
-		m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
+		
+		//notify terminating is not a error
+		//m_cherrno = netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING;
+		//m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
+		if (m_chflag & int(channel_flag::F_CONNECTING)) {
+			//cancel connect
+			m_cherrno = netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING;
+			__ch_io_cancel_connect(status, ctx_);
+		}
 		ch_close_impl(nullptr);
 	}
 

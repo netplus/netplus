@@ -6,6 +6,18 @@
 
 namespace netp {
 
+	void socket_channel_iocp::__ch_io_cancel_connect(int status, io_ctx* ctx_) {
+		iocp_ctx* ctx = (iocp_ctx*)ctx_;
+		NETP_ASSERT(L->in_event_loop());
+		NETP_ASSERT(status == netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING);
+
+		NETP_ASSERT(m_chflag & int(channel_flag::F_CONNECTING) ); 
+		NETP_ASSERT(ctx->ol_w->fn_ol_done != nullptr );
+		ctx->ol_w->fn_ol_done(status, ctx_);
+
+		ch_close_impl(nullptr);
+	}
+
 	int socket_channel_iocp::__iocp_do_AcceptEx(ol_ctx* olctx) {
 		NETP_ASSERT(olctx != nullptr);
 		olctx->accept_fd = netp::open(m_family, m_type, m_protocol);
@@ -111,12 +123,7 @@ namespace netp {
 	int socket_channel_iocp::__iocp_do_ConnectEx(void* ol_) {
 		NETP_ASSERT(L->in_event_loop());
 
-		//iocp need bind first
-		//int rt = netp::OK;
-		//if (!m_laddr || m_laddr->is_empty()) {
-		//	rt = bind_any();
-		//	NETP_RETURN_V_IF_NOT_MATCH( rt, rt == netp::OK );
-		//}
+		//iocp need bind first, we've done it in socket_connect_impl
 
 		NETP_ASSERT(m_laddr && !m_laddr->is_empty());
 		WSAOVERLAPPED* ol = (WSAOVERLAPPED*)ol_;

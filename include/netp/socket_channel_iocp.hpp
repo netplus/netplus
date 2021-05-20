@@ -46,7 +46,6 @@ namespace netp {
 			}
 			netp_socket_set_last_errno(netp::E_EINPROGRESS);
 			return NETP_SOCKET_ERROR;
-//			return netp::connect(m_fd, addr);
 		}
 	
 		int __iocp_do_AcceptEx(ol_ctx* olctx);
@@ -137,6 +136,8 @@ namespace netp {
 		}
 	*/
 	public:
+		virtual void __ch_io_cancel_connect(int status, io_ctx*) override;
+
 		void ch_io_accept(fn_channel_initializer_t const& fn_initializer, NRP<socket_cfg> const& cfg, fn_io_event_t const& fn = nullptr) override {
 			NETP_ASSERT(L->in_event_loop());
 			if (m_chflag & int(channel_flag::F_WATCH_READ)) {
@@ -179,7 +180,7 @@ namespace netp {
 		}
 
 
-		void ch_io_read(fn_io_event_t const& fn_read = nullptr) {
+		void ch_io_read(fn_io_event_t const& fn_read = nullptr) override {
 			if (!L->in_event_loop()) {
 				L->schedule([s = NRP<socket_channel>(this), fn_read]()->void {
 					s->ch_io_read(fn_read);
@@ -245,7 +246,7 @@ namespace netp {
 			NETP_TRACE_IOE("[socket][%s]io_action::READ", ch_info().c_str());
 		}
 
-		void ch_io_end_read() {
+		void ch_io_end_read() override {
 			if (!L->in_event_loop()) {
 				L->schedule([_so = NRP<socket_channel_iocp>(this)]()->void {
 					_so->ch_io_end_read();

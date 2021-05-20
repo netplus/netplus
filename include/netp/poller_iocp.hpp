@@ -5,6 +5,7 @@
 
 #if defined(NETP_HAS_POLLER_IOCP)
 
+#include <netp/list.hpp>
 #include <netp/poller_abstract.hpp>
 #include <netp/os/winsock_helper.hpp>
 #include <netp/socket_api.hpp>
@@ -103,7 +104,7 @@ namespace netp {
 	}
 
 	class poller_iocp final :
-		public poller_abstract
+		public netp::poller_abstract
 	{
 		HANDLE m_handle;
 		iocp_ctx m_io_ctx_list;
@@ -389,12 +390,12 @@ namespace netp {
 						NETP_ASSERT( _ctx->fd >0 );
 						NETP_ASSERT(_ctx->fn_notify != nullptr);
 
-						if (_ctx->ol_r->fn_ol_done != nullptr) {
-							_ctx->ol_r->fn_ol_done(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, (io_ctx*)_ctx);
-						}
-						if (_ctx->ol_w->fn_ol_done != nullptr) {
-							_ctx->ol_w->fn_ol_done(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, (io_ctx*)_ctx);
-						}
+						//if (_ctx->ol_r->fn_ol_done != nullptr) {
+						//	_ctx->ol_r->fn_ol_done(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, (io_ctx*)_ctx);
+						//}
+						//if (_ctx->ol_w->fn_ol_done != nullptr) {
+						//	_ctx->ol_w->fn_ol_done(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, (io_ctx*)_ctx);
+						//}
 						//in case , close would result in _ctx->fn_notify be nullptr
 						if (_ctx->fn_notify != nullptr) {
 							_ctx->fn_notify(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, (io_ctx*)_ctx);
