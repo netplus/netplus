@@ -10,8 +10,8 @@
 #include <netp/io_event_loop.hpp>
 
 #define NETP_TRAFFIC_REPEATER_BUF_MAX (1024*1024*8)
-#define NETP_TRAFFIC_REPEATER_BUF_MIN (1024*512)
-#define NETP_TRAFFIC_REPEATER_BUF_DEF (1024*1024*2)
+#define NETP_TRAFFIC_REPEATER_BUF_MIN (1024*256)
+#define NETP_TRAFFIC_REPEATER_BUF_DEF (1024*1024)
 
 namespace netp { namespace traffic {
 
