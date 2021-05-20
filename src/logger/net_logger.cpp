@@ -108,7 +108,7 @@ namespace netp { namespace logger {
 			logger->_do_push_done(rt);
 		});
 		NETP_ASSERT(m_loglist.size());
-		m_rpc->do_push(m_loglist.front(), pushp);
+		m_rpc->do_push(pushp,m_loglist.front());
 	}
 
 	net_logger::net_logger(std::string const& server) :

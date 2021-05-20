@@ -231,7 +231,7 @@ namespace netp {
 		m_ctx->close(tf);
 	}
 
-	void rpc::_do_call(int api_id, NRP<netp::packet> const& data, NRP<netp::rpc_call_promise> const& callp, netp::timer_duration_t const& timeout) {
+	void rpc::_do_call(NRP<netp::rpc_call_promise> const& callp, int api_id, NRP<netp::packet> const& data, netp::timer_duration_t const& timeout) {
 
 		NETP_ASSERT(m_loop->in_event_loop());
 		if (m_wstate == rpc_write_state::S_WRITE_CLOSED) {
@@ -254,7 +254,7 @@ namespace netp {
 		_do_flush();
 	}
 
-	void rpc::_do_push(NRP<netp::packet> const& data, NRP<netp::rpc_push_promise> const& pushp, timer_duration_t const& timeout) {
+	void rpc::_do_push(NRP<netp::rpc_push_promise> const& pushp, NRP<netp::packet> const& data,  timer_duration_t const& timeout) {
 		NETP_ASSERT(m_loop->in_event_loop());
 
 		if (m_wstate == rpc_write_state::S_WRITE_CLOSED) {

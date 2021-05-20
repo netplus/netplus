@@ -62,7 +62,7 @@ void push(NRP<netp::rpc> const& r , NRP<netp::packet> const& outp ) {
 				push(r, outp);
 			}
 		});
-		r->do_push(outp,pushp);
+		r->do_push(pushp,outp);
 	}
 }
 
@@ -91,7 +91,7 @@ void call(NRP<netp::rpc> const& r, NRP<netp::packet> const& outp, long long rc) 
 		NETP_ASSERT(std::get<1>(tupp)->len() == outp->len());
 		call(r, outp,nrc);
 	});
-	r->call(rpc_call_test_api::API_PING, outp, cp);
+	r->call(cp, rpc_call_test_api::API_PING, outp );
 }
 
 int main(int argc, char** argv) {
@@ -119,14 +119,14 @@ int main(int argc, char** argv) {
 	}
 
 	netp::fn_rpc_activity_notify_t fn_bind_api = [](NRP<netp::rpc> const& r) {
-		//r->set_queue_size(10000000);
-		NRP<foo> f = netp::make_ref<foo>();
-		r->bindcall(rpc_call_test_api::API_PING, &foo::ping, f, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-		//r->on_push( std::bind(&foo::on_push, f, std::placeholders::_1, std::placeholders::_2));
+		r->bindcall(rpc_call_test_api::API_PING, 
+			[](NRP<netp::rpc> const& r, NRP<netp::packet> const& in, NRP<netp::rpc_call_promise> const& f) {
+				NRP<netp::packet> pong = netp::make_ref<netp::packet>(in->head(), in->len());
+				f->set(std::make_tuple(netp::OK, pong));
+			});
 	};
 
 	NRP<netp::socket_cfg> cfg = netp::make_ref<netp::socket_cfg>();
-
 	NRP<netp::rpc_listen_promise> rpc_lf = netp::rpc::listen("tcp://0.0.0.0:21001", fn_bind_api, nullptr ,cfg );
 
 	int rt = std::get<0>(rpc_lf->get());

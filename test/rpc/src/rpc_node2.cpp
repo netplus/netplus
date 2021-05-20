@@ -58,7 +58,6 @@ int main(int argc, char** argv) {
 			NETP_INFO("[rpc]rpc write data on connected, write rt: %d", rt);
 		});
 
-
 		r->bindcall(rpc_call_test_api::API_LAMBDA, [](NRP<netp::rpc> const& r, NRP<netp::packet> const& in, NRP<netp::rpc_call_promise> const& f) -> void {
 			nlohmann::json json_in = nlohmann::json::parse(in->head(), in->head()+ in->len());
 			nlohmann::json json_out;

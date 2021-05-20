@@ -181,8 +181,8 @@ namespace netp {
 
 		void _do_close(NRP<netp::promise<int>> const& op_future);
 
-		void _do_call(int id, NRP<netp::packet> const& data, NRP<netp::rpc_call_promise> const& f, netp::timer_duration_t const& timeout );
-		void _do_push(NRP<netp::packet> const& data, NRP<netp::rpc_push_promise> const& f, netp::timer_duration_t const& timeout);
+		void _do_call(NRP<netp::rpc_call_promise> const& p, int id, NRP<netp::packet> const& data, netp::timer_duration_t const& timeout );
+		void _do_push(NRP<netp::rpc_push_promise> const& p, NRP<netp::packet> const& data, netp::timer_duration_t const& timeout);
 
 		void connected(NRP<netp::channel_handler_context> const& ctx);
 		void closed(NRP<netp::channel_handler_context> const& ctx);
@@ -233,17 +233,17 @@ namespace netp {
 		}
 
 		template <class dur = std::chrono::seconds>
-		void call(int id, NRP<netp::packet> const& data, NRP<netp::rpc_call_promise> const& callp, dur const& timeout = __NETP_RPC_DEFAULT_TIMEOUT) {
+		void call(NRP<netp::rpc_call_promise> const& callp, int id, NRP<netp::packet> const& data, dur const& timeout = __NETP_RPC_DEFAULT_TIMEOUT) {
 			m_loop->execute([rpc = NRP<rpc>(this), id, data, callp, timeout]() {
-				rpc->_do_call(id, data, callp, timeout);
+				rpc->_do_call(callp, id, data, timeout);
 			});
 		}
 
 		template <class dur=std::chrono::seconds>
 		NRP<netp::rpc_call_promise> call(int id, NRP<netp::packet> const& data, dur const& timeout = __NETP_RPC_DEFAULT_TIMEOUT) {
 			NRP<rpc_call_promise> callp = netp::make_ref<rpc_call_promise>();
-			m_loop->execute([rpc = NRP<rpc>(this), id, data, callp, timeout]() {
-				rpc->_do_call(id, data, callp, timeout);
+			m_loop->execute([rpc = NRP<rpc>(this), callp, id, data, timeout]() {
+				rpc->_do_call(callp, id, data, timeout);
 			});
 			return callp;
 		}
@@ -254,19 +254,19 @@ namespace netp {
 		}
 
 		template <class dur = std::chrono::seconds>
-		void do_push(NRP<netp::packet> const& data, NRP<rpc_push_promise> const& pushp, dur const& timeout = __NETP_RPC_DEFAULT_TIMEOUT) {
+		void do_push(NRP<rpc_push_promise> const& pushp, NRP<netp::packet> const& data, dur const& timeout = __NETP_RPC_DEFAULT_TIMEOUT) {
 			m_loop->execute([R = NRP<netp::rpc>(this), data, pushp, timeout](){
-				R->_do_push(data, pushp, timeout);
+				R->_do_push(pushp,data, timeout);
 			});
 		}
 
 		template <class dur=std::chrono::seconds>
 		NRP<netp::rpc_push_promise> push(NRP<netp::packet> const& data, dur const& timeout = __NETP_RPC_DEFAULT_TIMEOUT ) {
-			NRP<rpc_push_promise> pushf = netp::make_ref<rpc_push_promise>();
-			m_loop->execute([R = NRP<netp::rpc>(this), data, pushf, timeout](){
-				R->_do_push(data, pushf, timeout);
+			NRP<rpc_push_promise> pushp = netp::make_ref<rpc_push_promise>();
+			m_loop->execute([R = NRP<netp::rpc>(this), data, pushp, timeout](){
+				R->_do_push(pushp, data, timeout);
 			});
-			return pushf;
+			return pushp;
 		}
 
 		//@NOTE: operator << can only have a single parameter 
