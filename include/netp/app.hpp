@@ -130,7 +130,7 @@ namespace netp {
 		void __net_deinit();
 
 		void ___event_loop_init();
-		void ___event_loop_deinit();
+		void ___event_loop_wait();
 
 		//ISSUE: if the waken thread is main thread, we would get stuck here
 		void handle_signal(int signo);

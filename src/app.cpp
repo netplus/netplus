@@ -348,10 +348,11 @@ namespace netp {
 
 	void app::__net_deinit() {
 		NETP_INFO("net deinit begin");
+		netp::io_event_loop_group::instance()->_notify_terminating_all();
 		if (m_app_event_loop_deinit_prev) {
 			m_app_event_loop_deinit_prev();
 		}
-		___event_loop_deinit();
+		___event_loop_wait();
 		if (m_app_event_loop_deinit_post) {
 			m_app_event_loop_deinit_post();
 		}
@@ -396,10 +397,9 @@ namespace netp {
 		NETP_INFO("[app]init dns done");
 	}
 
-	void app::___event_loop_deinit() {
+	void app::___event_loop_wait() {
 		netp::dns_resolver::instance()->stop();
 		//reset loop after all loop reference dattached from business code
-		netp::io_event_loop_group::instance()->_notify_terminating_all();
 		netp::io_event_loop_group::instance()->_wait_all();
 		netp::dns_resolver::instance()->reset(nullptr);
 		netp::dns_resolver::destroy_instance();

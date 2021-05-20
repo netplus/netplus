@@ -53,6 +53,7 @@ namespace netp {
 
 	void dns_resolver::_do_start(NRP<netp::promise<int>> const& p) {
 		NETP_ASSERT(L->in_event_loop());
+		NETP_ASSERT(m_tm_dnstimeout == nullptr);
 		if ( m_flag &( u8_t(dns_resolver_flag::f_launching|dns_resolver_flag::f_running|dns_resolver_flag::f_stop_called)) ) {
 			p->set(netp::E_INVALID_STATE);
 			return;
@@ -66,9 +67,6 @@ namespace netp {
 			p->set(fd);
 			return;
 		}
-
-		m_tm_dnstimeout = netp::make_ref<netp::timer>(std::chrono::milliseconds(200), &dns_resolver::cb_dns_timeout, this, std::placeholders::_1);
-		//tm always finished before loop terminated
 
 		NRP<socket_cfg> cfg = netp::make_ref<socket_cfg>(L);
 		cfg->fd = fd;
@@ -98,6 +96,7 @@ namespace netp {
 		m_so->ch_set_connected();
 		
 		m_so->ch_io_begin([dnsr=this, p](int status , io_ctx*) {
+			NETP_ASSERT(dnsr->L->in_event_loop());
 			NETP_ASSERT(dnsr->m_flag & dns_resolver_flag::f_launching);
 			dnsr->m_flag &= dns_resolver_flag::f_launching;
 			if (status == netp::OK) {
@@ -108,8 +107,12 @@ namespace netp {
 					NETP_INFO("[dns_resolver][%s]dns socket_channel closed", dnsr->m_so->ch_info().c_str());
 					dnsr->m_flag &= ~dns_resolver_flag::f_running;
 					dnsr->m_so = nullptr;
+					dnsr->m_tm_dnstimeout = nullptr;
 					dnsr->_do_start(netp::make_ref<netp::promise<int>>());
 				});
+
+				dnsr->m_tm_dnstimeout = netp::make_ref<netp::timer>(std::chrono::milliseconds(200), &dns_resolver::cb_dns_timeout, dnsr, std::placeholders::_1);
+				//tm always finished before loop terminated
 				p->set(netp::OK);
 			} else {
 				p->set(status);
@@ -141,7 +144,6 @@ namespace netp {
 
 		NETP_ASSERT(dns_active(m_dns_ctx) == 0);
 		dns_close(m_dns_ctx);
-		m_tm_dnstimeout = nullptr;
 
 		NETP_INFO("[dns_resolver]exit");
 		p->set(netp::OK);
