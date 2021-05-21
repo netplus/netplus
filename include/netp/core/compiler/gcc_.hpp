@@ -3,7 +3,7 @@
 
 
 //https://sourceforge.net/p/predef/wiki/Endianness/
-#if defined(__APPLE__) && defined(__MACH__) 
+#if defined(__APPLE__) && defined(__MACH__)
 	#include <machine/endian.h>
 	#if !defined(__BYTE_ORDER) && defined(BYTE_ORDER)
 		#define __BYTE_ORDER BYTE_ORDER
@@ -57,4 +57,21 @@ namespace netp {
 	typedef int SOCKET;
 }
 
+
+#if __GNUC__ <= 4 && __GNUC_MINOR__ <= 8
+namespace std {
+    union max_align_t {
+      char          c;
+      float         f;
+      __uint32_t    u32;
+      __uint64_t    u64;
+      double        d;
+      long double   ld;
+      __uint32_t*   ptr;
+    };
+}
+#endif//endof __GNUC__
+
+
 #endif
+

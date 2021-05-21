@@ -42,8 +42,12 @@ endif
 
 #detect cxx version
 $(shell $(CXX) -v 2> ./__tmp_makefile_cxx_version)
-CXX_VERSION := $(shell cat ./__tmp_makefile_cxx_version | grep -i 'gcc version' | awk '{print $$3}')
+CXX_VERSION_WITH_PATCH := $(shell cat ./__tmp_makefile_cxx_version | grep -i 'gcc version' | awk '{print $$3}')
 $(shell rm -f ./__tmp_makefile_cxx_version)
+
+CXX_VERSION_MAJOR := $(shell echo $(CXX_VERSION_WITH_PATCH) | awk -F. '{print $$1}')
+CXX_VERSION_MINOR := $(shell echo $(CXX_VERSION_WITH_PATCH) | awk -F. '{print $$2}')
+CXX_VERSION := $(CXX_VERSION_MAJOR).$(CXX_VERSION_MINOR)
 
 ifdef deps
 	PRJ_DEPS := $(deps)

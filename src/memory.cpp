@@ -2,10 +2,6 @@
 
 namespace netp {
 
-//AVX 32
-//SSE16
-//@todo
-
 //ALIGN_SIZE SHOUDL BE LESS THAN 256bit
 //STORE OFFSET IN PREVIOUS BYTES
 
@@ -25,7 +21,7 @@ namespace netp {
 		u8_t __bytes_0_7[8];
 	};
 	static_assert( sizeof(aligned_hdr) == 8, "check sizeof(aligned_hdr) failed");
-	static_assert(alignof(std::max_align_t) == NETP_DEFAULT_ALIGN, "check default aligne failed");
+	static_assert(alignof(std::max_align_t) <= NETP_DEFAULT_ALIGN, "check default aligne failed");
 
 	//@note: msvc debug compiler would not inline these func, but release version do
 	__NETP_FORCE_INLINE static u8_t __AH_UPDATE_OFFSET__(aligned_hdr* a_hdr, size_t alignment) {
