@@ -72,7 +72,6 @@ namespace netp { namespace http {
 	typedef std::vector<NRP<http_request_ctx>,netp::allocator<NRP<http_request_ctx>>> request_ctx_vector_t;
 
 
-
 	struct tls_cfg {
 		NRP<netp::handler::tls_context> tlsctx;
 //		std::string cert;

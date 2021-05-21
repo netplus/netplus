@@ -517,7 +517,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 
 	const int E_CHANNEL_READ_WRITE_ERROR		= -34014;
 	const int E_CHANNEL_ABORT								= -34015;
-	const int E_CHANNEL_CONTEXT_REMOVED		= -34016;
+	const int E_CHANNEL_CONTEXT_DEATTACHED		= -34016;
 
 	const int E_CHANNEL_OVERLAPPED_OP_TRY = -34017;
 	const int E_CHANNEL_MISSING_MAKER = -34018;//custom socket channel must have its own maker

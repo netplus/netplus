@@ -9,7 +9,7 @@
 #define CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,DIR) \
 __ctx_iterate_begin: \
 	NETP_ASSERT(_ctx != nullptr); \
-	if (NETP_UNLIKELY(_ctx->H_FLAG&CH_CTX_REMOVED)) { \
+	if (NETP_UNLIKELY(_ctx->H_FLAG&CH_CTX_DEATTACHED)) { \
 		_ctx->N->P = _ctx->P; \
 		_ctx->P->N = _ctx->N; \
 		_ctx = _ctx->DIR; \
@@ -96,8 +96,8 @@ __ctx_iterate_begin: \
 #define CH_PROMISE_ACTION_HANDLER_CONTEXT_IMPL_T_TO_H_PACKET_CH_PROMISE(NAME,HANDLER_FLAG) \
 private:\
 	inline void __##NAME(NRP<promise<int>> const& intp, NRP<packet> const& p) { \
-		if( NETP_UNLIKELY(H_FLAG&CH_CTX_REMOVED) ) {\
-			intp->set(netp::E_CHANNEL_CONTEXT_REMOVED); \
+		if( NETP_UNLIKELY(H_FLAG&CH_CTX_DEATTACHED) ) {\
+			intp->set(netp::E_CHANNEL_CONTEXT_DEATTACHED); \
 			return; \
 		} \
 		CH_PROMISE_INVOKE_PREV_PACKET_CH_PROMISE(NAME,HANDLER_FLAG) \
@@ -122,8 +122,8 @@ public:\
 #define CH_PROMISE_ACTION_HANDLER_CONTEXT_IMPL_T_TO_H_PACKET_ADDR_CH_PROMISE(NAME,HANDLER_FLAG) \
 private:\
 	inline void __##NAME(NRP<promise<int>> const& intp, NRP<packet> const& p, NRP<address> const& to) { \
-		if( NETP_UNLIKELY(H_FLAG&CH_CTX_REMOVED) ) {\
-			intp->set(netp::E_CHANNEL_CONTEXT_REMOVED); \
+		if( NETP_UNLIKELY(H_FLAG&CH_CTX_DEATTACHED) ) {\
+			intp->set(netp::E_CHANNEL_CONTEXT_DEATTACHED); \
 			return; \
 		} \
 		CH_PROMISE_INVOKE_PREV_PACKET_ADDR_CH_PROMISE(NAME,HANDLER_FLAG) \
@@ -148,8 +148,8 @@ public:\
 #define CH_PROMISE_ACTION_HANDLER_CONTEXT_IMPL_T_TO_H_PROMISE(NAME,HANDLER_FLAG) \
 private:\
 	inline void __##NAME(NRP<promise<int>> const& intp) { \
-		if( NETP_UNLIKELY(H_FLAG&CH_CTX_REMOVED) ) {\
-			intp->set(netp::E_CHANNEL_CONTEXT_REMOVED); \
+		if( NETP_UNLIKELY(H_FLAG&CH_CTX_DEATTACHED) ) {\
+			intp->set(netp::E_CHANNEL_CONTEXT_DEATTACHED); \
 			return; \
 		} \
 		CH_PROMISE_INVOKE_PREV_CH_PROMISE(NAME,HANDLER_FLAG) \
@@ -196,7 +196,8 @@ namespace netp {
 			NETP_ASSERT(L->in_event_loop());
 			//HEAD,TAIL will never BE REMOVED from outside
 			NETP_ASSERT(P != nullptr && N != nullptr );
-			H_FLAG |= CH_CTX_REMOVED;
+			H_FLAG |= CH_CTX_DEATTACHED;
+
 			p->set(netp::OK);
 		}
 

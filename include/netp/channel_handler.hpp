@@ -32,15 +32,17 @@ namespace netp {
 		CH_OUTBOUND = (CH_OUTBOUND_WRITE|CH_OUTBOUND_FLUSH | CH_OUTBOUND_CLOSE | CH_OUTBOUND_CLOSE_READ | CH_OUTBOUND_CLOSE_WRITE| CH_OUTBOUND_WRITE_TO),
 		CH_INBOUND = (CH_INBOUND_READ|CH_INBOUND_READ_FROM),
 
-		CH_CTX_REMOVED = 1<<14
+		CH_CTX_DEATTACHED = 1<<14
 	};
 
 	class channel_handler_abstract :
 		public ref_base
 	{
 		friend class channel_handler_context;
-	public:
+		friend class channel_pipeline;
 		u16_t CH_H_FLAG;
+
+	public:
 		channel_handler_abstract(u16_t flag) : CH_H_FLAG(flag)
 		{
 		}

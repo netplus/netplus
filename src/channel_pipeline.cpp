@@ -33,9 +33,11 @@ namespace netp {
 	{
 		NRP<channel_handler_context> _hctx = m_tail;
 		while (_hctx != nullptr ) {
-			_hctx->H_FLAG |= CH_CTX_REMOVED; //clear all
+			_hctx->H_FLAG |= CH_CTX_DEATTACHED; //clear all
+
 			_hctx->N = nullptr;
 			_hctx->H = nullptr;
+
 			_hctx = _hctx->P;
 		}
 	}
