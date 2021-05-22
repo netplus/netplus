@@ -41,19 +41,21 @@ namespace netp {
 #ifdef _NETP_USE_C_ARES
 	enum ares_fd_monitor_flag {
 		f_watch_read = 1 << 0,
-		f_watch_write = 1 << 1
+		f_watch_write = 1 << 1,
+		f_closed			= 1<<2
 	};
 
 	struct ares_fd_monitor final :
 		public io_monitor
 	{
-		dns_resolver& _dnsr;
+		dns_resolver& dnsr;
 		int flag;
 		SOCKET fd;
 		io_ctx* ctx;
 
 	public:
 		ares_fd_monitor(dns_resolver& _dnsr_, SOCKET fd_);
+		void io_end();
 		virtual void io_notify_terminating(int, io_ctx*) override;
 		virtual void io_notify_read(int status, io_ctx*) override;
 		virtual void io_notify_write(int status, io_ctx*) override;

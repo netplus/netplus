@@ -24,7 +24,7 @@ LIB_O_FILES		:= $(addprefix $(LIB_BUILD_DIR)/,$(LIB_O_FILES))
 CC_INC 			:= $(LIB_INCLUDE_DIR) $(CC_INC)
 
 
-LIB_3RD_FILES_DIR		:= $(LIB_3RD_DIR)/llhttp $(LIB_3RD_DIR)/udns/0.4
+LIB_3RD_FILES_DIR		:= $(LIB_3RD_DIR)/llhttp $(LIB_3RD_DIR)/c-ares/c-ares-1.17.1/src/lib
 
 
 LIB_3RD_CPP_BUILD_DIR	:= $(LIB_3RD_DIR)/build/cpp/$(LIB_ARCH_BUILD)
@@ -35,6 +35,17 @@ LIB_3RD_CPP_FILES 		:= $(shell find $(LIB_3RD_FILES_DIR) -name *.cpp -not -name 
 LIB_3RD_CPP_O_FILES		:= $(LIB_3RD_CPP_FILES:.cpp=.$(O_EXT))
 LIB_3RD_CPP_O_FILES		:= $(foreach path,$(LIB_3RD_CPP_O_FILES), $(subst $(LIB_3RD_DIR)/,,$(path)))
 LIB_3RD_CPP_O_FILES 	:= $(addprefix $(LIB_3RD_CPP_BUILD_DIR)/,$(LIB_3RD_CPP_O_FILES))
+
+
+LIB_3RD_CPP_FILES_INCLUDES := $(LIB_3RD_DIR)/c-ares/c-ares-1.17.1/src/lib $(LIB_3RD_DIR)/c-ares/c-ares-1.17.1/include
+
+C_3RD_INCLUDES := \
+	$(foreach include,$(LIB_3RD_CPP_FILES_INCLUDES), -I"$(include)")
+
+C_ARES_DEFINES := HAVE_CONFIG_H
+
+C_3RD_DEFINES :=\
+	$(foreach define,$(C_ARES_DEFINES), -D$(define))
 
 # for http parser
 LIB_3RD_C_FILES 	:= $(shell find $(LIB_3RD_FILES_DIR) -name *.c -not -name ".*")
@@ -128,7 +139,7 @@ $(LIB_3RD_C_BUILD_DIR)/%.o : $(LIB_3RD_DIR)/%.c
 	@echo $(<F)
 	@echo "------build 3rd c file end------"
 	
-	$(CC) $(CC_MISC) $(DEFINES) $(INCLUDES) $< -o $@
+	$(CC) $(CC_MISC) $(DEFINES) $(C_3RD_DEFINES) $(INCLUDES) $(C_3RD_INCLUDES) $< -o $@
 	
 # Don't load dependencies when we're cleaning
 # ifeq (0, $(words $(findstring $(MAKECMDGOALS), clean)))

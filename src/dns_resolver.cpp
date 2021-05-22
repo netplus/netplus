@@ -17,29 +17,43 @@ namespace netp {
 	};
 
 	ares_fd_monitor::ares_fd_monitor(dns_resolver& _dnsr_, SOCKET fd_) :
-		_dnsr(_dnsr_),
+		dnsr(_dnsr_),
 		flag(0),
 		fd(fd_),
 		ctx(0)
 	{}
+
+	void ares_fd_monitor::io_end() {
+		if (flag & f_watch_read) {
+			dnsr.L->io_do(io_action::READ, ctx);
+			flag &= ~f_watch_read;
+		}
+
+		if (flag & f_watch_write) {
+			dnsr.L->io_do(io_action::WRITE, ctx);
+			flag &= ~f_watch_write;
+		}
+		dnsr.L->io_end(ctx);
+		NETP_CLOSE_SOCKET(fd);
+		flag |= f_closed;
+		dnsr.m_ares_fd_monitor_map.erase(fd);
+	}
 
 	void ares_fd_monitor::io_notify_terminating(int, io_ctx*) {
 		NETP_CLOSE_SOCKET(fd);
 	}
 	void ares_fd_monitor::io_notify_read(int status, io_ctx*) {
 		if (status == netp::OK) {
-			ares_process_fd(_dnsr.m_ares_channel, fd, ARES_SOCKET_BAD);
-		}
-		else {
-			NETP_CLOSE_SOCKET(fd);
+			ares_process_fd(dnsr.m_ares_channel, fd, ARES_SOCKET_BAD);
+		} else {
+			io_end();
 		}
 	}
 	void ares_fd_monitor::io_notify_write(int status, io_ctx*) {
 		if (status == netp::OK) {
-			ares_process_fd(_dnsr.m_ares_channel, ARES_SOCKET_BAD, fd);
-		}
-		else {
-			NETP_CLOSE_SOCKET(fd);
+			ares_process_fd(dnsr.m_ares_channel, ARES_SOCKET_BAD, fd);
+		} else {	
+			io_end();
 		}
 	}
 
@@ -271,7 +285,7 @@ namespace netp {
 			ares_socket_t read_fd = m->flag & f_watch_read ? m->fd : ARES_SOCKET_BAD;
 			ares_socket_t write_fd = m->flag & f_watch_write ? m->fd : ARES_SOCKET_BAD;
 			if ( m->flag &(f_watch_read | f_watch_write) ) {
-				ares_process_fd(m->_dnsr.m_ares_channel, read_fd, write_fd);
+				ares_process_fd(m->dnsr.m_ares_channel, read_fd, write_fd);
 			}
 		}
 #endif
@@ -389,12 +403,9 @@ namespace netp {
 		}
 
 		if ( (readable == 0 && writable == 0) && m->flag == 0 ) {
-			L->io_end( m->ctx );
-			netp::close(m->fd);
-			m_ares_fd_monitor_map.erase(it);
+			m->io_end();
 		}
 	}
-
 
 	int dns_resolver::__ares_socket_create_cb(ares_socket_t socket_fd, int type) {
 		NETP_DEBUG("[dns_resolver]__ares_socket_create_cb, fd: %d, type: %d", socket_fd, type);

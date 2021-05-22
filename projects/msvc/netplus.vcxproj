@@ -284,10 +284,6 @@
     <ClCompile Include="..\..\src\traffic\forwarder_ipudp_payload.cpp" />
     <ClCompile Include="..\..\src\traffic\forwarder_l2.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\3rd\c-ares\c-ares-1.17.1\src\lib\ares_config.h.cmake" />
-    <None Include="..\..\3rd\c-ares\c-ares-1.17.1\src\lib\ares_config.h.in" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

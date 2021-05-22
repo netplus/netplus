@@ -882,12 +882,4 @@
       <Filter>3rd\c-ares\src</Filter>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\3rd\c-ares\c-ares-1.17.1\src\lib\ares_config.h.cmake">
-      <Filter>3rd\c-ares\src</Filter>
-    </None>
-    <None Include="..\..\3rd\c-ares\c-ares-1.17.1\src\lib\ares_config.h.in">
-      <Filter>3rd\c-ares\src</Filter>
-    </None>
-  </ItemGroup>
 </Project>
