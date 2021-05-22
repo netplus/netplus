@@ -18,12 +18,11 @@
 #include <netp/promise.hpp>
 #include <netp/ipv4.hpp>
 #include <netp/io_monitor.hpp>
+#include <netp/io_event_loop.hpp>
 
 namespace netp {
 	class socket_channel;
 	struct io_ctx;
-	class io_event_loop;
-	class timer;
 
 	typedef netp::promise< std::tuple<int, std::vector<netp::ipv4_t,netp::allocator<netp::ipv4_t>>>> dns_query_promise;
 
@@ -84,6 +83,7 @@ namespace netp {
 
 #ifdef _NETP_USE_C_ARES
 		ares_channel m_ares_channel;
+		long m_ares_active_query;
 #endif
 
 		NRP<netp::timer> m_tm_dnstimeout;
@@ -99,6 +99,26 @@ namespace netp {
 		void __ares_wait();
 		int __ares_socket_create_cb(ares_socket_t socket_fd, int type);
 		void __ares_socket_state_cb(ares_socket_t socket_fd, int readable, int writable);
+		inline void __ares_done() { NETP_ASSERT(m_ares_active_query>0); --m_ares_active_query; }
+		inline void __ares_check_timeout() {
+			NETP_ASSERT( m_flag&f_running );
+
+			if ((m_ares_active_query > 0) && ((m_flag & f_timeout_timer) == 0)) {
+				m_flag |= f_timeout_timer;
+				NRP<netp::promise<int>> ltp = netp::make_ref<netp::promise<int>>();
+				ltp->if_done([this](int rt) {
+					if (rt != netp::OK) {
+						m_flag &= ~f_timeout_timer;
+					}
+				});
+
+				struct timeval nxt_exp = {1,1};
+				NETP_ASSERT(m_tm_dnstimeout != nullptr);
+				ares_timeout(m_ares_channel, 0, &nxt_exp);
+				m_tm_dnstimeout->set_delay( std::chrono::milliseconds( (nxt_exp.tv_sec*1000) + (nxt_exp.tv_usec/1000) ) );
+				L->launch(m_tm_dnstimeout, ltp);
+			}
+		}
 #endif
 
 	private:
@@ -112,8 +132,9 @@ namespace netp {
 		NRP<netp::promise<int>> stop();
 
 		void cb_dns_timeout(NRP<netp::timer> const& t);
+#ifdef _NETP_USE_UDNS
 		void async_read_dns_reply( int status,io_ctx* ctx);
-
+#endif
 		void _do_resolve(string_t const& domain, NRP<dns_query_promise> const& p);
 
 	public:
