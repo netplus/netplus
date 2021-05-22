@@ -12,6 +12,7 @@
 #define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_KQUEUE
 #elif defined(NETP_HAS_POLLER_IOCP)
 #include <netp/poller_iocp.hpp>
+#include <netp/poller_select.hpp>
 #define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_IOCP
 #else
 #error "unknown poller type"
@@ -34,6 +35,12 @@ namespace netp {
 		{
 			poller = netp::make_ref<poller_iocp>();
 			NETP_ALLOC_CHECK(poller, sizeof(poller_iocp));
+		}
+		break;
+		case T_SELECT:
+		{
+			poller = netp::make_ref<poller_select>();
+			NETP_ALLOC_CHECK(poller, sizeof(poller_select));
 		}
 		break;
 #elif defined(NETP_HAS_POLLER_KQUEUE)

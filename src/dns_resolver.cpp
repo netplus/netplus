@@ -1,11 +1,12 @@
 #include <netp/core.hpp>
 
 #include <netp/dns_resolver.hpp>
-#include <netp/socket.hpp>
+#include <netp/socket_api.hpp>
 #include <netp/io_event_loop.hpp>
-#include <netp/timer.hpp>
 
 namespace netp {
+
+#ifdef _NETP_USE_C_ARES
 	const static int dns_error_map[] = {
 		0,
 		netp::E_DNS_TEMPORARY_ERROR,
@@ -15,6 +16,7 @@ namespace netp {
 		netp::E_DNS_NOMEM,
 		netp::E_DNS_BADQUERY
 	};
+#endif
 
 	ares_fd_monitor::ares_fd_monitor(dns_resolver& _dnsr_, SOCKET fd_) :
 		dnsr(_dnsr_),
@@ -40,7 +42,7 @@ namespace netp {
 	}
 
 	void ares_fd_monitor::io_notify_terminating(int, io_ctx*) {
-		NETP_CLOSE_SOCKET(fd);
+		io_end();
 	}
 	void ares_fd_monitor::io_notify_read(int status, io_ctx*) {
 		if (status == netp::OK) {
@@ -58,6 +60,9 @@ namespace netp {
 	}
 
 	void dns_resolver::reset( NRP<io_event_loop> const& L_ ) {
+
+		NETP_ASSERT( L_== nullptr || (L_->poller_type() != io_poller_type::T_IOCP && L_->poller_type() != io_poller_type::T_POLLER_CUSTOM_1 && L_->poller_type() != io_poller_type::T_POLLER_CUSTOM_2));
+		
 		L = L_;
 		m_ns.clear();
 		m_flag = 0;
@@ -236,7 +241,9 @@ namespace netp {
 		}
 		m_flag &= ~dns_resolver_flag::f_running;
 
+		ares_cancel(m_ares_channel);
 		ares_destroy(m_ares_channel);
+		m_ares_channel = 0;
 		__ares_wait();
 
 		ares_library_cleanup();
@@ -375,6 +382,9 @@ namespace netp {
 
 	void dns_resolver::__ares_socket_state_cb(ares_socket_t socket_fd, int readable, int writable) {
 		NETP_DEBUG("[dns_resolver]__ares_state_cb, fd: %d, readable: %d, writeable: %d", socket_fd, readable, writable);
+
+		if ((m_flag & dns_resolver_flag::f_running) ==0) { return; }
+
 		ares_fd_monitor_map_t::iterator it = m_ares_fd_monitor_map.find(socket_fd);
 		NETP_ASSERT(it != m_ares_fd_monitor_map.end());
 		NRP<ares_fd_monitor> m = it->second;
@@ -411,13 +421,14 @@ namespace netp {
 		NETP_DEBUG("[dns_resolver]__ares_socket_create_cb, fd: %d, type: %d", socket_fd, type);
 		NETP_ASSERT( L != nullptr );
 		NETP_ASSERT(L->in_event_loop());
+		NETP_ASSERT((m_flag & dns_resolver_flag::f_running));
 
 		NRP<netp::ares_fd_monitor> mm = netp::make_ref<netp::ares_fd_monitor>(*this, socket_fd);
-
 		io_ctx* ctx = L->io_begin(socket_fd, mm);
 		if (ctx == nullptr) {
 			return -1;
 		}
+
 		mm->ctx = ctx;
 		m_ares_fd_monitor_map.insert({socket_fd, mm});
 		return netp::OK;
@@ -426,6 +437,7 @@ namespace netp {
 	static void __ares_gethostbyname_cb(void* arg, int status, int timeouts, struct hostent* hostent)
 	{
 		async_dns_query* adq = (async_dns_query*)arg;
+
 		if (status == ARES_SUCCESS) {
 			std::vector<netp::ipv4_t, netp::allocator<netp::ipv4_t>> ipv4s;
 
@@ -449,7 +461,6 @@ namespace netp {
 				}
 				break;
 				}
-
 			}
 
 			if (ipv4s.size()) {
@@ -457,6 +468,8 @@ namespace netp {
 			} else {
 				adq->dnsquery_p->set(std::make_tuple(netp::E_DNS_DOMAIN_NO_DATA, ipv4s));
 			}
+		} else {
+			adq->dnsquery_p->set(std::make_tuple( status, std::vector<netp::ipv4_t, netp::allocator<netp::ipv4_t>>()));
 		}
 
 		netp::allocator<async_dns_query>::trash(adq);

@@ -366,7 +366,15 @@ namespace netp {
 	void app::___event_loop_init() {
 		netp::io_event_loop_group::instance()->_init(m_cfg.poller_count, m_cfg.event_loop_cfgs);
 		NETP_INFO("[app]init loop done");
-#ifdef _NETP_WIN
+
+		if (NETP_DEFAULT_POLLER_TYPE == io_poller_type::T_IOCP) {
+			io_event_loop_group::instance()->launch_loop(io_poller_type::T_SELECT, 1, m_cfg.event_loop_cfgs[NETP_DEFAULT_POLLER_TYPE]);
+			netp::dns_resolver::instance()->reset(io_event_loop_group::instance()->internal_next(io_poller_type::T_SELECT));
+		} else {
+			netp::dns_resolver::instance()->reset(io_event_loop_group::instance()->internal_next());
+		}
+
+#if defined(_NETP_WIN) && defined(_NETP_USE_UDNS)
 		if (m_cfg.dnsnses.size() == 0) {
 			vector_ipv4_t dnslist;
 			netp::os::get_local_dns_server_list(dnslist);
@@ -381,8 +389,6 @@ namespace netp {
 		}
 #endif
 		
-		netp::dns_resolver::instance()->reset(io_event_loop_group::instance()->internal_next());
-
 		if (m_cfg.dnsnses.size()) {
 			netp::dns_resolver::instance()->add_name_server(m_cfg.dnsnses);
 		}

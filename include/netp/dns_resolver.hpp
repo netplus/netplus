@@ -7,8 +7,6 @@
 #include <netp/core.hpp>
 #include <netp/string.hpp>
 
-#define _NETP_USE_C_ARES
-
 #ifdef _NETP_USE_UDNS
 	#include "../../3rd/udns/0.4/udns.h"
 #elif defined _NETP_USE_C_ARES
