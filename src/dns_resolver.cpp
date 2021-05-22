@@ -26,35 +26,43 @@ namespace netp {
 	{}
 
 	void ares_fd_monitor::io_end() {
+
+		if (flag & f_closed) { return; }
+		flag |= f_closed;
+
 		if (flag & f_watch_read) {
-			dnsr.L->io_do(io_action::READ, ctx);
+			netp::shutdown(fd, SHUT_RD);
+			ares_process_fd(dnsr.m_ares_channel, fd, ARES_SOCKET_BAD);
+			dnsr.L->io_do(io_action::END_READ, ctx);
 			flag &= ~f_watch_read;
 		}
 
 		if (flag & f_watch_write) {
-			dnsr.L->io_do(io_action::WRITE, ctx);
+			netp::shutdown(fd, SHUT_WR);
+			ares_process_fd(dnsr.m_ares_channel,ARES_SOCKET_BAD, fd);
+			dnsr.L->io_do(io_action::END_WRITE, ctx);
 			flag &= ~f_watch_write;
 		}
+		
 		dnsr.L->io_end(ctx);
-		NETP_CLOSE_SOCKET(fd);
-		flag |= f_closed;
+		netp::close(fd);
 		dnsr.m_ares_fd_monitor_map.erase(fd);
 	}
 
-	void ares_fd_monitor::io_notify_terminating(int, io_ctx*) {
+	void ares_fd_monitor::io_notify_terminating(int status, io_ctx*) {
 		io_end();
 	}
 	void ares_fd_monitor::io_notify_read(int status, io_ctx*) {
 		if (status == netp::OK) {
 			ares_process_fd(dnsr.m_ares_channel, fd, ARES_SOCKET_BAD);
-		} else {
+		}  else {
 			io_end();
 		}
 	}
 	void ares_fd_monitor::io_notify_write(int status, io_ctx*) {
 		if (status == netp::OK) {
 			ares_process_fd(dnsr.m_ares_channel, ARES_SOCKET_BAD, fd);
-		} else {	
+		} else {
 			io_end();
 		}
 	}

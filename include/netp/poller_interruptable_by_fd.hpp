@@ -206,13 +206,6 @@ namespace netp {
 					NETP_ASSERT(_ctx->fd > 0);
 					NETP_ASSERT(_ctx->iom != nullptr);
 
-					//NRP<io_monitor>& IOM = _ctx->iom;
-					//if (_ctx->flag & io_flag::IO_READ) {
-					//	IOM->io_notify_read(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
-					//}
-					//if (_ctx->flag & io_flag::IO_WRITE) {
-					//	IOM->io_notify_write(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
-					//}
 					_ctx->iom->io_notify_terminating(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
 				}
 				NETP_DEBUG("[io_event_loop]notify terminating done");

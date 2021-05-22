@@ -294,7 +294,7 @@ namespace netp {
 		std::atomic<u32_t> m_curr_loop_idx[T_POLLER_MAX];
 		io_event_loop_vector m_loop[T_POLLER_MAX];
 
-		int m_bye_ref_count;
+		long m_bye_ref_count;
 		std::atomic<bye_event_loop_state> m_bye_state;
 		NRP<io_event_loop> m_bye_event_loop;
 

@@ -315,8 +315,9 @@ namespace netp {
 				NETP_INFO("[io_event_loop]__dealloc_poller bye, begin");
 				NETP_ASSERT(m_bye_event_loop != nullptr);
 				m_bye_event_loop->__notify_terminating();
-				while (m_bye_ref_count != m_bye_event_loop.ref_count()) {
-					netp::this_thread::usleep(8);
+				while ( m_bye_event_loop.ref_count() != m_bye_ref_count) {
+					//NETP_INFO("l.ref_count: %ld, ref_count: %ld", m_bye_event_loop.ref_count(), m_bye_ref_count.load(std::memory_order_acquire) );
+					netp::this_thread::sleep(1);
 				}
 				m_bye_event_loop->__terminate();
 				m_bye_event_loop = nullptr;
