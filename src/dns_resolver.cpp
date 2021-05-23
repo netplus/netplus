@@ -410,18 +410,20 @@ namespace netp {
 		NETP_DEBUG("[dns_resolver]__ares_state_cb, fd: %d, readable: %d, writeable: %d", socket_fd, readable, writable);
 
 		if ((m_flag & dns_resolver_flag::f_running) ==0) { return; }
-
 		ares_fd_monitor_map_t::iterator it = m_ares_fd_monitor_map.find(socket_fd);
-		NETP_ASSERT(it != m_ares_fd_monitor_map.end());
+		//BOTH READ|WRITE would trigger erase
+		if (it == m_ares_fd_monitor_map.end()) { return; }
+
 		NRP<ares_fd_monitor> m = it->second;
 		if (readable == 1 && (m->flag &f_watch_read) ==0) {
 			int rt = L->io_do(io_action::READ, m->ctx);
 			if (rt != netp::OK) {
-				netp::close(socket_fd);
+				netp::shutdown(socket_fd, SHUT_RD);
+				ares_process_fd(m_ares_channel, socket_fd, ARES_SOCKET_BAD);
 			} else {
 				m->flag |= f_watch_read;
 			}
-		} else if(readable == 0 && (m->flag&f_watch_read) ==1){
+		} else if(readable == 0 && (m->flag&f_watch_read) !=0 ){
 			L->io_do(io_action::END_READ, m->ctx);
 			m->flag &= ~f_watch_read;
 		}
@@ -429,11 +431,12 @@ namespace netp {
 		if (writable == 1 && (m->flag&f_watch_write) == 0) {
 			int rt = L->io_do(io_action::WRITE, m->ctx);
 			if (rt != netp::OK) {
-				netp::close(socket_fd);
+				netp::shutdown(socket_fd, SHUT_WR);
+				ares_process_fd(m_ares_channel, ARES_SOCKET_BAD, socket_fd );
 			} else {
 				m->flag |= f_watch_write;
 			}
-		} else if(writable == 0 && (m->flag&f_watch_write) == 1){
+		} else if(writable == 0 && (m->flag&f_watch_write) !=0 ){
 			L->io_do(io_action::END_WRITE, m->ctx);
 			m->flag &= ~f_watch_write;
 		}
