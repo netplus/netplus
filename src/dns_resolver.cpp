@@ -158,6 +158,29 @@ namespace netp {
 			return;
 		}
 
+		
+		ares_addr_node* ns;
+		int read_server_rt = ares_get_servers(m_ares_channel, &ns);
+		NETP_ASSERT(read_server_rt == ARES_SUCCESS);
+		for (ares_addr_node* n = ns; NULL!=n; n = n->next) {
+			switch (n->family) {
+			case AF_INET:
+			{
+				NETP_INFO("ns: %s", nipv4todotip(n->addr.addr4.s_addr).c_str());
+			}
+			break;
+			case AF_INET6:
+			{
+				NETP_TODO("print ns");
+			}
+			break;
+			default:
+			{}
+			break;
+			}
+		}
+		ares_free_data(ns);
+
 		ares_set_socket_callback(m_ares_channel, ___ares_socket_create_cb, this);
 
 		NETP_ASSERT(m_tm_dnstimeout == nullptr);
