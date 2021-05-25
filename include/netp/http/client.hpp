@@ -11,7 +11,7 @@
 
 #include <netp/channel_handler.hpp>
 #include <netp/channel_handler_context.hpp>
-#include <netp/handler/tls.hpp>
+#include <netp/handler/tls_client.hpp>
 #include <netp/handler/http.hpp>
 
 #include <netp/http/message.hpp>

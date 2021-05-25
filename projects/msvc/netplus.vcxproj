@@ -88,6 +88,7 @@
     <ClInclude Include="..\..\include\netp\core\platform\win_x86_.hpp" />
     <ClInclude Include="..\..\include\netp\CPUID.hpp" />
     <ClInclude Include="..\..\include\netp\dns_resolver.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\tls_server.hpp" />
     <ClInclude Include="..\..\include\netp\http\url_parser.hpp" />
     <ClInclude Include="..\..\include\netp\list.hpp" />
     <ClInclude Include="..\..\include\netp\poller_abstract.hpp" />
@@ -106,7 +107,7 @@
     <ClInclude Include="..\..\include\netp\handler\http.hpp" />
     <ClInclude Include="..\..\include\netp\handler\mux.hpp" />
     <ClInclude Include="..\..\include\netp\handler\symmetric_encrypt.hpp" />
-    <ClInclude Include="..\..\include\netp\handler\tls.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\tls_client.hpp" />
     <ClInclude Include="..\..\include\netp\handler\tls_credentials.hpp" />
     <ClInclude Include="..\..\include\netp\handler\websocket.hpp" />
     <ClInclude Include="..\..\include\netp\heap.hpp" />
@@ -249,7 +250,8 @@
     <ClCompile Include="..\..\src\handler\hlen.cpp" />
     <ClCompile Include="..\..\src\handler\http.cpp" />
     <ClCompile Include="..\..\src\handler\mux.cpp" />
-    <ClCompile Include="..\..\src\handler\tls.cpp" />
+    <ClCompile Include="..\..\src\handler\tls_client.cpp" />
+    <ClCompile Include="..\..\src\handler\tls_server.cpp" />
     <ClCompile Include="..\..\src\handler\websocket.cpp" />
     <ClCompile Include="..\..\src\helper.cpp" />
     <ClCompile Include="..\..\src\http\client.cpp" />

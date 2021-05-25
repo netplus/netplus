@@ -255,7 +255,7 @@ namespace netp { namespace http {
 		auto fn_initializer = [fn_connected, fn_dial_error, is_https, __dialcfg, http_host, fields](NRP<channel> const& ch) {
 			if (is_https && __dialcfg.tls.tlsctx) {
 #ifdef NETP_WITH_BOTAN
-				ch->pipeline()->add_last(netp::make_ref<netp::handler::tls>(__dialcfg.tls.tlsctx));
+				ch->pipeline()->add_last(netp::make_ref<netp::handler::tls_client>(__dialcfg.tls.tlsctx));
 #else
 				NETP_ASSERT(!"do not supported yet");
 #endif

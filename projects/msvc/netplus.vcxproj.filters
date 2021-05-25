@@ -183,7 +183,7 @@
     <ClInclude Include="..\..\include\netp\handler\symmetric_encrypt.hpp">
       <Filter>Header Files\netp\handler</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\netp\handler\tls.hpp">
+    <ClInclude Include="..\..\include\netp\handler\tls_client.hpp">
       <Filter>Header Files\netp\handler</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\netp\handler\tls_credentials.hpp">
@@ -555,6 +555,9 @@
     <ClInclude Include="..\..\3rd\c-ares\c-ares-1.17.1\include\ares_version.h">
       <Filter>3rd\c-ares\include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\tls_server.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">
@@ -623,7 +626,7 @@
     <ClCompile Include="..\..\src\handler\mux.cpp">
       <Filter>Source Files\src\handler</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\handler\tls.cpp">
+    <ClCompile Include="..\..\src\handler\tls_client.cpp">
       <Filter>Source Files\src\handler</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\handler\websocket.cpp">
@@ -880,6 +883,9 @@
     </ClCompile>
     <ClCompile Include="..\..\3rd\c-ares\c-ares-1.17.1\src\lib\windows_port.c">
       <Filter>3rd\c-ares\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\handler\tls_server.cpp">
+      <Filter>Source Files\src\handler</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
