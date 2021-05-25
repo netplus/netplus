@@ -1,5 +1,5 @@
 #include <netp/logger_broker.hpp>
-#include <netp/handler/tls.hpp>
+#include <netp/handler/tls_client.hpp>
 
 #ifdef NETP_WITH_BOTAN
 
@@ -8,7 +8,7 @@
 
 namespace netp { namespace handler {
 
-	void tls::connected(NRP<channel_handler_context> const& ctx)  {
+	void tls_client::connected(NRP<channel_handler_context> const& ctx)  {
 		NETP_ASSERT(m_ctx == nullptr);
 		NETP_ASSERT(m_tls_context != nullptr);
 		NETP_ASSERT(m_tls_client == nullptr);
@@ -27,7 +27,7 @@ namespace netp { namespace handler {
 		m_state = tls_state::S_HANDSHAKE;
 	}
 
-	void tls::closed(NRP<channel_handler_context> const& ctx) {
+	void tls_client::closed(NRP<channel_handler_context> const& ctx) {
 		NETP_ASSERT(m_ctx != nullptr);
 		m_ctx = nullptr;
 		
@@ -38,18 +38,18 @@ namespace netp { namespace handler {
 		ctx->fire_closed();
 	}
 
-	void tls::write_closed(NRP<channel_handler_context> const& ctx) {
+	void tls_client::write_closed(NRP<channel_handler_context> const& ctx) {
 		NETP_ASSERT(m_ctx != nullptr);
 		m_ctx->close();
 	}
 
-	void tls::read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income) {
+	void tls_client::read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income) {
 		NETP_ASSERT(m_ctx != nullptr);
 		NETP_ASSERT(m_tls_client != nullptr);
 		m_tls_client->received_data((uint8_t*)income->head(), income->len());
 	}
 
-	void tls::write(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet ) {
+	void tls_client::write(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet ) {
 			NETP_ASSERT( ctx == m_ctx);
 			if(m_state != tls_state::S_TRANSFER) {
 				chp->set(netp::E_CHANNEL_INVALID_STATE);
@@ -65,7 +65,7 @@ namespace netp { namespace handler {
 	}
 
 	//@NOTE: all error would be processed here
-	void tls::__tls_do_clean() {
+	void tls_client::__tls_do_clean() {
 		while (m_outlets.size()) {
 			tls_outlet& outlet = m_outlets.front();
 			NETP_WARN("[tls]cancel write, nbytes: %u", outlet.outlet->len() );
@@ -74,7 +74,7 @@ namespace netp { namespace handler {
 		}
 	}
 
-	void tls::__tls_try_appdata_flush() {
+	void tls_client::__tls_try_appdata_flush() {
 		if( (m_write_state == tls_write_state::S_WRITE_IDLE) && m_outlets.size() ) {
 			m_write_state = tls_write_state::S_APPDATE_WRITE_PREPARE;
 			NETP_ASSERT( m_outlets.size() );
@@ -90,7 +90,7 @@ namespace netp { namespace handler {
 		}
 	}
 
-	void tls::__tls_do_write_appdata_done(int code) {
+	void tls_client::__tls_do_write_appdata_done(int code) {
 		NETP_ASSERT(m_write_state == tls_write_state::S_APPDATE_WRITING);
 		m_write_state = tls_write_state::S_WRITE_IDLE;
 
@@ -109,19 +109,19 @@ namespace netp { namespace handler {
 		__tls_try_appdata_flush();
 	}
 
-	void tls::__tls_try_interleave_flush() {
+	void tls_client::__tls_try_interleave_flush() {
 		if (m_write_state == tls_write_state::S_WRITE_IDLE && (m_interleave_outlets.size())) {
 			m_write_state = tls_write_state::S_INTERLEAVE_WRITING;
 			NRP<netp::packet>& outp = m_interleave_outlets.front();
 			NRP<netp::promise<int>> f = m_ctx->write(outp);
-			f->if_done([TLS_H = NRP<tls>(this), L = m_ctx->L](int const& rt) {
+			f->if_done([TLS_H = NRP<tls_client>(this), L = m_ctx->L](int const& rt) {
 				NETP_ASSERT(L->in_event_loop());
 				TLS_H->__tls_do_write_interleave_done(rt);
 			});
 		}
 	}
 
-	void tls::__tls_do_write_interleave_done(int code) {
+	void tls_client::__tls_do_write_interleave_done(int code) {
 		NETP_ASSERT(m_interleave_outlets.size());
 		NETP_ASSERT(m_write_state == tls_write_state::S_INTERLEAVE_WRITING);
 		m_write_state = tls_write_state::S_WRITE_IDLE;
@@ -137,7 +137,7 @@ namespace netp { namespace handler {
 		__tls_try_appdata_flush();
 	}
 	
-	bool tls::tls_session_established(const Botan::TLS::Session& session)
+	bool tls_client::tls_session_established(const Botan::TLS::Session& session)
 	{
 		NETP_DEBUG("Handshake complete, %s, using: %s", session.version().to_string().c_str(), session.ciphersuite().to_string().c_str());
 		if (!session.session_id().empty())
@@ -162,13 +162,13 @@ namespace netp { namespace handler {
 		return true;
 	}
 
-	void tls::tls_session_activated() {
+	void tls_client::tls_session_activated() {
 		NETP_ASSERT(m_ctx != nullptr);
 		m_state = tls_state::S_TRANSFER;
 		m_ctx->fire_connected();
 	}
 
-	void tls::tls_emit_data(const uint8_t buf[], size_t length)
+	void tls_client::tls_emit_data(const uint8_t buf[], size_t length)
 	{
 		if (m_write_state == tls_write_state::S_WRITE_SHUTDOWN) {
 			NETP_WARN("[tls]handler shutdown already, ignore write, nbytes: %u", length);
@@ -180,7 +180,7 @@ namespace netp { namespace handler {
 		if(m_write_state == tls_write_state::S_APPDATE_WRITE_PREPARE) {
 			m_write_state = tls_write_state::S_APPDATE_WRITING;
 			NRP<netp::promise<int>> f = m_ctx->write(outp);
-			f->if_done([TLS_H=NRP<tls>(this), L=m_ctx->L](int const& rt) {
+			f->if_done([TLS_H=NRP<tls_client>(this), L=m_ctx->L](int const& rt) {
 				NETP_ASSERT(L->in_event_loop());
 				TLS_H->__tls_do_write_appdata_done(rt);
 			});
@@ -191,7 +191,7 @@ namespace netp { namespace handler {
 		__tls_try_interleave_flush();
 	}
 
-	void tls::tls_alert(Botan::TLS::Alert alert)
+	void tls_client::tls_alert(Botan::TLS::Alert alert)
 	{
 		NETP_DEBUG("Alert: %s", alert.type_string().c_str());
 		Botan::TLS::Alert::Type t = alert.type();
@@ -209,7 +209,7 @@ namespace netp { namespace handler {
 		}
 	}
 
-	void tls::tls_record_received(uint64_t /*seq_no*/, const uint8_t buf[], size_t buf_size)
+	void tls_client::tls_record_received(uint64_t /*seq_no*/, const uint8_t buf[], size_t buf_size)
 	{
 		NETP_ASSERT(m_ctx != nullptr);
 		NETP_DEBUG("received bytes: %d", buf_size );
