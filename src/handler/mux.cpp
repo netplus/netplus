@@ -63,7 +63,7 @@ namespace netp { namespace handler {
 				m_chflag &= ~int(channel_flag::F_WRITING);
 
 				if (m_outlets_q.empty()) {
-					std::queue<mux_stream_outbound_entry>().swap(m_outlets_q);
+					outlets_q_t().swap(m_outlets_q);
 					_do_ch_zero_outlets_check();
 				} else {
 					_do_ch_flush_impl();
@@ -237,7 +237,7 @@ namespace netp { namespace handler {
 				m_incomes_buffer_q.pop();
 
 				if (m_incomes_buffer_q.size() == 0) {
-					std::queue<NRP<netp::packet>>().swap(m_incomes_buffer_q);
+					incomes_buffer_q_t().swap(m_incomes_buffer_q);
 				}
 				goto _BEGIN;
 			}
@@ -404,7 +404,6 @@ namespace netp { namespace handler {
 
 				mux_->invoke<fn_mux_evt_t>(E_MUX_CH_CONNECTED, mux_);
 				//this is the last handler
-				//ctx->fire_connected();
 			}
 		});
 	}

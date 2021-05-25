@@ -49,9 +49,10 @@ namespace netp {
 		dnsr.m_ares_fd_monitor_map.erase(fd);
 	}
 
-	void ares_fd_monitor::io_notify_terminating(int status, io_ctx*) {
+	void ares_fd_monitor::io_notify_terminating(int, io_ctx*) {
 		io_end();
 	}
+
 	void ares_fd_monitor::io_notify_read(int status, io_ctx*) {
 		if (status == netp::OK) {
 			ares_process_fd(dnsr.m_ares_channel, fd, ARES_SOCKET_BAD);
@@ -305,7 +306,7 @@ namespace netp {
 		return p;
 	}
 
-	void dns_resolver::cb_dns_timeout(NRP<netp::timer> const& t) {
+	void dns_resolver::cb_dns_timeout(NRP<netp::timer> const&) {
 		NETP_ASSERT(m_flag&f_timeout_timer);
 		m_flag &= ~f_timeout_timer;
 		if ( (m_flag& dns_resolver_flag::f_running) == 0  || (m_ares_active_query ==0) ) {

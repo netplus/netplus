@@ -93,8 +93,11 @@ namespace netp { namespace handler {
 
 		NRP<netp::handler::mux> m_transport_mux;
 
-		std::queue<mux_stream_outbound_entry> m_outlets_q;
-		std::queue<NRP<netp::packet>> m_incomes_buffer_q;
+		typedef std::queue<mux_stream_outbound_entry, std::deque<mux_stream_outbound_entry, netp::allocator<mux_stream_outbound_entry>>> outlets_q_t; 
+		typedef std::queue<NRP<netp::packet>, std::deque<NRP<netp::packet>, netp::allocator<NRP<netp::packet>>>> incomes_buffer_q_t;
+
+		outlets_q_t m_outlets_q;
+		incomes_buffer_q_t m_incomes_buffer_q;
 
 		//steady_seconds_timepoint_t m_write_bytes_last_update;
 		//u64_t m_write_nbytes_last_avgs; //every 5s
@@ -293,7 +296,7 @@ namespace netp { namespace handler {
 				ch_fire_read(m_incomes_buffer_q.front());
 				m_incomes_buffer_q.pop();
 				if (m_incomes_buffer_q.size() == 0) {
-					std::queue<NRP<netp::packet>>().swap(m_incomes_buffer_q);
+					incomes_buffer_q_t().swap(m_incomes_buffer_q);
 					if (m_chflag & int(channel_flag::F_FIN_RECEIVED) && !(m_chflag&int(channel_flag::F_FIN_DELIVERED)) ) {
 						m_chflag |= int(channel_flag::F_FIN_DELIVERED);
 						ch_close_read_impl(nullptr);

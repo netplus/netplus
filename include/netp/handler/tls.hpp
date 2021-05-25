@@ -76,8 +76,11 @@ namespace netp { namespace handler {
 		tls_state m_state;
 		tls_write_state m_write_state;
 
-		std::queue<tls_outlet> m_outlets;
-		std::queue<NRP<netp::packet>> m_interleave_outlets;
+		typedef std::queue<tls_outlet, std::deque<tls_outlet,netp::allocator<tls_outlet>>> tls_outlet_queue_t;
+		typedef std::queue<NRP<netp::packet>, std::deque<NRP<netp::packet>,netp::allocator<NRP<netp::packet>>>> interleave_outlets_queue_t;
+
+		tls_outlet_queue_t m_outlets;
+		interleave_outlets_queue_t m_interleave_outlets;
 
 		NRP<netp::channel_handler_context> m_ctx;
 		NSP<Botan::TLS::Client> m_tls_client;
