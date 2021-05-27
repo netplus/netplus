@@ -128,8 +128,8 @@ SIMD_DEFINES :=
 #for x86_32, sse2 is off by default for a x32 gcc compiler
 ifeq ($(PRJ_ARCH), $(findstring $(PRJ_ARCH),$(X86_X86_X86) ))
 	ifeq ($(PRJ_SIMD),$(findstring $(PRJ_SIMD),avx2))
-		CC_SIMD := -msse2 -mssse3 -mavx2
-		SIMD_DEFINES := BFR_ENABLE_SSE2 BFR_ENABLE_SSSE3 BFR_ENABLE_AVX2
+		CC_SIMD := -msse2 -mssse3 -msse4.1 -mavx -mavx2
+		SIMD_DEFINES := BFR_ENABLE_SSE2 BFR_ENABLE_SSSE3 BFR_ENABLE_SSE4_1 BFR_ENABLE_AVX BFR_ENABLE_AVX2
 	else ifeq ($(PRJ_SIMD),ssse3)
 		CC_SIMD := -msse2 -mssse3
 		SIMD_DEFINES := BFR_ENABLE_SSE2 BFR_ENABLE_SSSE3
