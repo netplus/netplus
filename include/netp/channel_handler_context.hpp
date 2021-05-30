@@ -201,6 +201,8 @@ namespace netp {
 			p->set(netp::OK);
 		}
 
+		inline bool is_deattached() { return (H_FLAG & CH_CTX_DEATTACHED); }
+
 		VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_0(connected, CH_ACTIVITY_CONNECTED)
 		VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_0(closed, CH_ACTIVITY_CLOSED)
 		VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_0(read_closed, CH_ACTIVITY_READ_CLOSED)

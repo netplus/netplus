@@ -32,7 +32,7 @@ namespace netp { namespace http {
 
 		if( m_reqs.size() == 0) {
 			NETP_ASSERT(m_mtmp == nullptr );
-			NETP_INFO("[client]no request in queue, code: %d", code );
+//			NETP_DEBUG("[client]no request in queue, code: %d", code );
 			return ;
 		}
 
@@ -79,7 +79,6 @@ namespace netp { namespace http {
 			m->H->add_header_line("Host", m_host);
 		}
 
-		netp::http::url_fields fields;
 		netp::http::parse_url(m->url.c_str(), m->url.length(), m->urlfields);
 
 		if (!m->H->have("user-agent")) {
@@ -328,4 +327,29 @@ namespace netp { namespace http {
 		return rp;
 	}
 
+	void do_post(NRP<netp::http::request_promise> const& reqp, std::string const& url, NRP<header> const& H, NRP<netp::packet> const& body, std::chrono::seconds timeout) {
+
+		dial_cfg dcfg = { false, false, {nullptr}, netp::make_ref<netp::socket_cfg>() };
+#ifdef _NETP_DEBUG
+		dcfg.dump_in = true;
+		dcfg.dump_out = true;
+#endif
+
+		NRP<client_dial_promise> dp = netp::http::dial(url, dcfg);
+
+		dp->if_done([url, reqp,H,body, timeout](std::tuple<int, NRP<client>> const& tupc) {
+			int dialrt = std::get<0>(tupc);
+			if (dialrt != netp::OK) {
+				reqp->set(std::make_tuple(dialrt, nullptr));
+				return;
+			}
+			std::get<1>(tupc)->do_post(reqp, url, H,body,timeout);
+			});
+	}
+
+	NRP<netp::http::request_promise> post(std::string const& url, NRP<header> const& H, NRP<netp::packet> const& body, std::chrono::seconds timeout) {
+		NRP<request_promise> rp = netp::make_ref<request_promise>();
+		do_post(rp, url, H,body, timeout);
+		return rp;
+	}
 }}

@@ -211,6 +211,8 @@ namespace netp { namespace http {
 	extern void do_get(NRP<netp::http::request_promise> const& reqp, std::string const& url, std::chrono::seconds timeout = std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT));
 	extern NRP<netp::http::request_promise> get(std::string const& url , std::chrono::seconds timeout = std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT) );
 
+	extern void do_post(NRP<netp::http::request_promise> const& reqp, std::string const& url, NRP<header> const& H, NRP<netp::packet> const& body, std::chrono::seconds timeout = std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT));
+	extern NRP<netp::http::request_promise> post(std::string const& url, NRP<header> const& H, NRP<netp::packet> const& body, std::chrono::seconds timeout = std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT));
 }}
 
 #endif

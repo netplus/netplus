@@ -23,11 +23,13 @@ namespace netp { namespace http {
 		char tmp[256];
 		int n = 0;
 		if (type == T_REQ) {
-			const string_t url_ = (urlfields.path.length() > 0) ? urlfields.path : url;
-			NETP_ASSERT(url_.length() > 0);
 			_outp->write((netp::byte_t*)option_name[(int)opt], (netp::u32_t)netp::strlen(option_name[(int)opt]) );
-			_outp->write((netp::byte_t*)" ", 1);
-			_outp->write((netp::byte_t*)url_.c_str(), (netp::u32_t)url_.length());
+			_outp->write<u8_t>(' ');
+			_outp->write((netp::byte_t*)urlfields.path.c_str(), urlfields.path.length());
+			if (urlfields.query.length()) {
+				_outp->write<u8_t>('?');
+				_outp->write((netp::byte_t*)urlfields.query.c_str(), urlfields.query.length());
+			}
 			n = snprintf(tmp, 256, " HTTP/%d.%d\r\n", ver.major, ver.minor);
 			NETP_ASSERT(n > 0 && n < 256);
 			_outp->write((netp::byte_t*)tmp, n);
