@@ -22,7 +22,7 @@ __ctx_iterate_begin: \
 	} \
 
 
-#define VOID_INVOKE_NEXT(NAME,HANDLER_FLAG) \
+#define VOID_INVOKE(NAME,HANDLER_FLAG) \
 	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,N) \
 	_ctx->H->NAME(_ctx); \
 
@@ -30,15 +30,15 @@ __ctx_iterate_begin: \
 	inline void fire_##NAME() const { \
 		NETP_ASSERT(L->in_event_loop()); \
 		NRP<channel_handler_context>_ctx = N; \
-		VOID_INVOKE_NEXT(NAME,HANDLER_FLAG); \
+		VOID_INVOKE(NAME,HANDLER_FLAG); \
 	} \
 	inline void invoke_##NAME() { \
 		NETP_ASSERT(L->in_event_loop()); \
 		NRP<channel_handler_context>_ctx = NRP<channel_handler_context>(this); \
-		VOID_INVOKE_NEXT(NAME,HANDLER_FLAG); \
+		VOID_INVOKE(NAME,HANDLER_FLAG); \
 	}
 
-#define VOID_INVOKE_NEXT_INT_1(NAME,HANDLER_FLAG) \
+#define VOID_INVOKE_INT_1(NAME,HANDLER_FLAG) \
 	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,N) \
 	_ctx->H->NAME(_ctx,i); \
 
@@ -46,15 +46,15 @@ __ctx_iterate_begin: \
 	inline void fire_##NAME( int i ) const { \
 		NETP_ASSERT(L->in_event_loop()); \
 		NRP<channel_handler_context>_ctx = N; \
-		VOID_INVOKE_NEXT_INT_1(NAME,HANDLER_FLAG); \
+		VOID_INVOKE_INT_1(NAME,HANDLER_FLAG); \
 	} \
 	inline void invoke_##NAME(int i) { \
 		NETP_ASSERT(L->in_event_loop()); \
 		NRP<channel_handler_context>_ctx = NRP<channel_handler_context>(this); \
-		VOID_INVOKE_NEXT_INT_1(NAME,HANDLER_FLAG); \
+		VOID_INVOKE_INT_1(NAME,HANDLER_FLAG); \
 	} \
 
-#define VOID_INVOKE_NEXT_PACKET(NAME,HANDLER_FLAG) \
+#define VOID_INVOKE_PACKET(NAME,HANDLER_FLAG) \
 	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,N) \
 	_ctx->H->NAME(_ctx,p); \
 
@@ -63,15 +63,15 @@ __ctx_iterate_begin: \
 	inline void fire_##NAME( NRP<packet> const& p ) const { \
 		NETP_ASSERT(L->in_event_loop()); \
 		NRP<channel_handler_context>_ctx = N; \
-		VOID_INVOKE_NEXT_PACKET(NAME,HANDLER_FLAG); \
+		VOID_INVOKE_PACKET(NAME,HANDLER_FLAG); \
 	} \
 	inline void invoke_##NAME( NRP<packet> const& p ) { \
 		NETP_ASSERT(L->in_event_loop()); \
 		NRP<channel_handler_context>_ctx = NRP<channel_handler_context>(this); \
-		VOID_INVOKE_NEXT_PACKET(NAME,HANDLER_FLAG); \
+		VOID_INVOKE_PACKET(NAME,HANDLER_FLAG); \
 	} \
 
-#define VOID_INVOKE_NEXT_PACKET_ADDR(NAME,HANDLER_FLAG) \
+#define VOID_INVOKE_PACKET_ADDR(NAME,HANDLER_FLAG) \
 	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,N) \
 	_ctx->H->NAME(_ctx,p,addr); \
 
@@ -79,12 +79,12 @@ __ctx_iterate_begin: \
 	inline void fire_##NAME( NRP<packet> const& p, NRP<address> const& addr ) const { \
 		NETP_ASSERT(L->in_event_loop()); \
 		NRP<channel_handler_context>_ctx = N; \
-		VOID_INVOKE_NEXT_PACKET_ADDR(NAME,HANDLER_FLAG); \
+		VOID_INVOKE_PACKET_ADDR(NAME,HANDLER_FLAG); \
 	} \
 	inline void invoke_##NAME( NRP<packet> const& p, NRP<address> const& addr ) { \
 		NETP_ASSERT(L->in_event_loop()); \
 		NRP<channel_handler_context>_ctx = NRP<channel_handler_context>(this); \
-		VOID_INVOKE_NEXT_PACKET_ADDR(NAME,HANDLER_FLAG); \
+		VOID_INVOKE_PACKET_ADDR(NAME,HANDLER_FLAG); \
 	} \
 
 //--T_TO_H--BEGIN
