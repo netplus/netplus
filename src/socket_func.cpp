@@ -109,21 +109,24 @@ namespace netp {
 	}
 
 	void do_dial(NRP<channel_dial_promise> const& ch_dialf, netp::size_t idx, std::vector< NRP<address>> const& addrs, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
-		if (idx >= addrs.size()) {
-			NETP_WARN("[socket]dail failed after try count: %u", idx);
-			ch_dialf->set(std::make_tuple(netp::E_SOCKET_NO_AVAILABLE_ADDR, nullptr));
-			return;
-		}
+
+		NETP_ASSERT( idx<addrs.size() );
 
 		NRP<channel_dial_promise> _dp = netp::make_ref<channel_dial_promise>();
-		_dp->if_done([nidx = (idx + 1), addrs, initializer, ch_dialf, cfg](std::tuple<int, NRP<channel>> const& tupc) {
+		_dp->if_done([idx, addrs, initializer, ch_dialf, cfg](std::tuple<int, NRP<channel>> const& tupc) {
 			int dialrt = std::get<0>(tupc);
 			if (dialrt == netp::OK) {
 				ch_dialf->set(tupc);
 				return;
 			}
 
-			do_dial( ch_dialf, nidx, addrs, initializer,cfg);
+			if ((idx+1) == addrs.size()) {
+				NETP_WARN("[socket]dail failed after try count: %u, last dialrt: %d", idx, dialrt);
+				ch_dialf->set(std::make_tuple(dialrt, nullptr));
+				return;
+			}
+
+			do_dial(ch_dialf, (idx + 1), addrs, initializer, cfg);
 		});
 
 		do_dial(_dp, addrs[idx], initializer, cfg);
@@ -149,14 +152,19 @@ namespace netp {
 		}
 
 		NRP<dns_query_promise> dnsp = netp::dns_resolver::instance()->resolve(info.host);
-		dnsp->if_done([port = info.port, initializer, ch_dialf, cfg](std::tuple<int, std::vector<ipv4_t, netp::allocator<ipv4_t>>> const& tupdns) {
+		dnsp->if_done([host=info.host,port = info.port, initializer, ch_dialf, cfg](std::tuple<int, std::vector<ipv4_t, netp::allocator<ipv4_t>>> const& tupdns) {
 			if (std::get<0>(tupdns) != netp::OK) {
 				ch_dialf->set(std::make_tuple(std::get<0>(tupdns), nullptr));
 				return;
 			}
 
 			std::vector<ipv4_t, netp::allocator<ipv4_t>> const& ipv4s = std::get<1>(tupdns);
-			NETP_ASSERT(ipv4s.size());
+			if (ipv4s.size() == 0) {
+				NETP_WARN("[socket]no ipv4 record for :%s", host);
+				ch_dialf->set(std::make_tuple(netp::E_SOCKET_NO_AVAILABLE_ADDR, nullptr));
+				return;
+			}
+
 			std::vector<NRP<address>> dialaddrs;
 			for (netp::size_t i = 0; i < ipv4s.size(); ++i) {
 				NRP<address > __a = netp::make_ref<address>();

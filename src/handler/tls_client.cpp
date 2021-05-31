@@ -51,10 +51,10 @@ namespace netp { namespace handler {
 
 	void tls_client::write(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet ) {
 			NETP_ASSERT( ctx == m_ctx);
-			if(m_state != tls_state::S_TRANSFER) {
+			if (m_state != tls_state::S_TRANSFER) {
 				chp->set(netp::E_CHANNEL_INVALID_STATE);
-				return ;
-			}
+				return;
+			};
 
 			if(m_write_state == tls_write_state::S_WRITE_SHUTDOWN) {
 				chp->set(netp::E_CHANNEL_WRITE_CLOSED);
