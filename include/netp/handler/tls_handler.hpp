@@ -39,7 +39,7 @@ namespace netp { namespace handler {
 		tlsctx->session_mgr = netp::make_shared<Botan::TLS::Session_Manager_In_Memory>(*(tlsctx->rng));
 		tlsctx->policy = netp::make_shared<Botan::TLS::Default_Policy>();
 
-		tlsctx->credentials_mgr = netp::make_shared<netp::handler::Basic_Credentials_Manager>(true, "");
+		tlsctx->credentials_mgr = nullptr;
 		tlsctx->server_info = nullptr;
 		tlsctx->next_protocols = {};
 		return tlsctx;
@@ -53,6 +53,7 @@ namespace netp { namespace handler {
 
 	inline static NRP<tls_context> default_tls_client_context(std::string const& host, netp::u16_t port) {
 		NRP<tls_context> _tlsctx = default_tls_context();
+		_tlsctx->credentials_mgr = netp::make_shared<netp::handler::Basic_Credentials_Manager>(true, "");
 		_tlsctx->server_info = netp::make_shared<Botan::TLS::Server_Information>(host, port);
 		return _tlsctx;
 	}
@@ -67,8 +68,10 @@ namespace netp { namespace handler {
 
 		f_write_idle = 1<<5,
 		f_writing = 1<<6,
-		f_write_shutdowned = 1 << 7,
-		f_closed = 1 << 8,
+		f_connected = 1<<7,
+		f_read_closed = 1<<8,
+		f_write_closed = 1 << 9,
+		f_closed = 1 <<10,
 	};
 
 	class tls_handler :
@@ -102,8 +105,8 @@ namespace netp { namespace handler {
 		NRP<tls_context> m_tls_ctx;
 	public:
 		tls_handler( NRP<tls_context> const& tlsctx ) :
-			channel_handler_abstract(CH_ACTIVITY_CONNECTED | CH_ACTIVITY_CLOSED | CH_ACTIVITY_WRITE_CLOSED | CH_INBOUND_READ | CH_OUTBOUND_WRITE|CH_OUTBOUND_CLOSE),
-			m_flag(f_tls_ch_write_idle|f_closed| f_write_idle),
+			channel_handler_abstract(CH_ACTIVITY_CONNECTED | CH_ACTIVITY_CLOSED | CH_ACTIVITY_READ_CLOSED|CH_ACTIVITY_WRITE_CLOSED | CH_INBOUND_READ | CH_OUTBOUND_WRITE|CH_OUTBOUND_CLOSE),
+			m_flag(f_tls_ch_write_idle|f_closed| f_write_closed|f_read_closed),
 			m_ctx(nullptr),
 			m_tls_channel(nullptr),
 			m_tls_ctx(tlsctx)
@@ -137,6 +140,7 @@ namespace netp { namespace handler {
 		void closed(NRP<channel_handler_context> const& ctx) override;
 
 		void write_closed(NRP<channel_handler_context> const& ctx)override;
+		void read_closed(NRP<channel_handler_context> const& ctx)override;
 
 		void read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income) override;
 		void write(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) override;

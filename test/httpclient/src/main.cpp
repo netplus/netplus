@@ -1,7 +1,5 @@
 #include <netp.hpp>
 
-
-
 int main(int argc, char** argv) {
 
 	netp::app _app;

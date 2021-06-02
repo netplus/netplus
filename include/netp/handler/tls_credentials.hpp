@@ -49,8 +49,10 @@ namespace netp {  namespace handler {
             const std::string& server_key)
         {
             Certificate_Info cert;
-
-            cert.key.reset(Botan::PKCS8::load_key(server_key, rng));
+            try {
+                cert.key.reset(Botan::PKCS8::load_key(server_key, rng));
+            } catch (std::exception&) {
+            }
 
             Botan::DataSource_Stream in(server_crt);
             while (!in.end_of_data())
@@ -58,9 +60,8 @@ namespace netp {  namespace handler {
                 try
                 {
                     cert.certs.push_back(Botan::X509_Certificate(in));
-                }
-                catch (std::exception&)
-                {
+                    NETP_DEBUG("[tls_credentials]add cert: %s", server_crt.c_str() );
+                } catch (std::exception&) {
                 }
             }
 

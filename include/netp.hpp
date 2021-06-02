@@ -57,6 +57,7 @@
 
 #ifdef NETP_WITH_BOTAN
 	#include <netp/handler/tls_client.hpp>
+	#include <netp/handler/tls_server.hpp>
 	#include <netp/handler/websocket.hpp>
 #endif
 

@@ -3,16 +3,14 @@
 #ifdef NETP_WITH_BOTAN
 #include <botan/tls_server.h>
 
-namespace netp {
-	namespace handler {
-
+namespace netp { namespace handler {
 		void tls_server::connected(NRP<channel_handler_context> const& ctx) {
 			NETP_ASSERT(m_ctx == nullptr);
 			NETP_ASSERT(m_tls_ctx != nullptr);
 			NETP_ASSERT(m_tls_channel == nullptr);
-			m_flag &= ~f_closed;
-			m_flag |= f_tls_ch_handshake;
-
+			m_flag &= ~(f_closed|f_read_closed|f_write_closed);
+			m_flag |= (f_tls_ch_handshake|f_write_idle);
+		
 			m_ctx = ctx;
 			m_tls_channel = netp::make_shared<Botan::TLS::Server>(*this,
 				*(m_tls_ctx->session_mgr),

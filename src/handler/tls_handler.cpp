@@ -13,16 +13,29 @@ namespace netp { namespace handler {
 		m_tls_channel = nullptr;
 		m_flag |= f_closed;
 		_do_clean();
-		ctx->fire_closed();
+		if (m_flag & f_connected) {
+			ctx->fire_closed();
+		}
 	}
 
 	void tls_handler::write_closed(NRP<channel_handler_context> const& ctx) {
 		NETP_ASSERT(m_ctx != nullptr);
-		m_flag |= f_write_shutdowned;
-		m_ctx->close();
+		m_flag |= f_write_closed;
+		if (m_flag & f_connected) {
+			m_ctx->fire_write_closed();
+		}
+	}
+
+	void tls_handler::read_closed(NRP<channel_handler_context> const& ctx) {
+		NETP_ASSERT(m_ctx != nullptr);
+		m_flag |= f_read_closed;
+		if (m_flag & f_connected) {
+			m_ctx->fire_read_closed();
+		}
 	}
 
 	void tls_handler::read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income) {
+		NETP_ASSERT((m_flag&(f_closed|f_read_closed)) ==0 );
 		NETP_ASSERT(m_ctx != nullptr);
 		NETP_ASSERT(m_tls_channel != nullptr);
 		m_tls_channel->received_data((uint8_t*)income->head(), income->len());
@@ -35,7 +48,7 @@ namespace netp { namespace handler {
 			return;
 		}
 
-		if (m_flag&f_write_shutdowned) {
+		if (m_flag&f_write_closed) {
 			chp->set(netp::E_CHANNEL_WRITE_CLOSED);
 			return;
 		}
@@ -83,7 +96,7 @@ namespace netp { namespace handler {
 	}
 
 	void tls_handler::_tls_ch_flush_done(int code) {
-		NETP_ASSERT( m_flag&(f_tls_ch_writing_user_data) == (f_tls_ch_writing_user_data));
+		NETP_ASSERT( m_flag&f_tls_ch_writing_user_data);
 		NETP_ASSERT(code != netp::E_CHANNEL_WRITE_BLOCK);
 
 		NETP_ASSERT(m_outlets_to_tls_ch.size());
@@ -129,7 +142,7 @@ namespace netp { namespace handler {
 
 	void tls_handler::tls_session_activated() {
 		NETP_ASSERT(m_ctx != nullptr);
-		m_flag |= f_tls_ch_activated;
+		m_flag |= (f_tls_ch_activated|f_connected);
 		m_ctx->fire_connected();
 	}
 
@@ -151,27 +164,32 @@ namespace netp { namespace handler {
 			NETP_INFO("[tls]write failed: %d", code);
 			return;
 		}
-		_try_socket_ch_flush();
+		if (!(m_flag & f_write_closed)) {
+			_try_socket_ch_flush();
+		}
 	}
 
 	void tls_handler::_try_socket_ch_flush() {
+		NETP_ASSERT( (m_flag&(f_closed|f_write_closed)) ==0 );
 		if ( (m_flag&f_write_idle) && (m_outlets_to_socket_ch.size())) {
 			NETP_ASSERT( (m_flag&f_writing)==0 );
 			m_flag |= f_writing;
 			m_flag &= ~f_write_idle;
 
 			socket_ch_outlet& outlet = m_outlets_to_socket_ch.front();
-			NRP<netp::promise<int>> f = m_ctx->write(outlet.data);
+			NRP<netp::promise<int>> f = netp::make_ref<netp::promise<int>>();
 			f->if_done([TLS_H = NRP<tls_handler>(this), L = m_ctx->L](int const& rt) {
 				NETP_ASSERT(L->in_event_loop());
 				TLS_H->_socket_ch_flush_done(rt);
 			});
+
+			m_ctx->write(f,outlet.data);
 		}
 	}
 
 	void tls_handler::tls_emit_data(const uint8_t buf[], size_t length) 
 	{
-		if (m_flag&(f_closed|f_write_shutdowned)) {
+		if (m_flag&(f_closed|f_write_closed)) {
 			NETP_WARN("[tls]handler shutdown already, ignore write, nbytes: %u", length);
 			NETP_ASSERT((m_flag & (f_tls_ch_writing_user_data)) != (f_tls_ch_writing_user_data));
 			return;
