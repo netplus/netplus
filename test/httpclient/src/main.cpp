@@ -6,8 +6,7 @@ int main(int argc, char** argv) {
 
 	netp::app _app;
 
-
-
+	/*
 	std::string eastmoney = "http://quote.eastmoney.com/";
 	NRP<netp::http::client_dial_promise> dial_f_estmoney = netp::http::dial(eastmoney);
 	int diart = std::get<0>(dial_f_estmoney->get());
@@ -29,8 +28,7 @@ int main(int argc, char** argv) {
 		}
 		NETP_INFO("i: %d, cost: %.2f ms", i, bk.mark("done") / 1000000.0 );
 	}
-
-
+	*/
 
 
 	netp::logger_broker::instance()->init();

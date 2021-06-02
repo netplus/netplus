@@ -172,7 +172,7 @@ namespace netp {
 			break;
 			case AF_INET6:
 			{
-				NETP_TODO("print ns");
+				//NETP_TODO("print ns");
 			}
 			break;
 			default:

@@ -10,7 +10,7 @@
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(SolutionDir)./../../../../../netplus_deps/botan_build/2.18.1/msvc/$(PlatformToolSet)/$(Platform)/$(Configuration)/static/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>botan.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>botan.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup />

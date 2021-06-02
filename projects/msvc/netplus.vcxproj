@@ -88,6 +88,7 @@
     <ClInclude Include="..\..\include\netp\core\platform\win_x86_.hpp" />
     <ClInclude Include="..\..\include\netp\CPUID.hpp" />
     <ClInclude Include="..\..\include\netp\dns_resolver.hpp" />
+    <ClInclude Include="..\..\include\netp\handler\tls_handler.hpp" />
     <ClInclude Include="..\..\include\netp\handler\tls_server.hpp" />
     <ClInclude Include="..\..\include\netp\http\url_parser.hpp" />
     <ClInclude Include="..\..\include\netp\list.hpp" />
@@ -251,6 +252,7 @@
     <ClCompile Include="..\..\src\handler\http.cpp" />
     <ClCompile Include="..\..\src\handler\mux.cpp" />
     <ClCompile Include="..\..\src\handler\tls_client.cpp" />
+    <ClCompile Include="..\..\src\handler\tls_handler.cpp" />
     <ClCompile Include="..\..\src\handler\tls_server.cpp" />
     <ClCompile Include="..\..\src\handler\websocket.cpp" />
     <ClCompile Include="..\..\src\helper.cpp" />

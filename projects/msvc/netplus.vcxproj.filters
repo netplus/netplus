@@ -558,6 +558,9 @@
     <ClInclude Include="..\..\include\netp\handler\tls_server.hpp">
       <Filter>Header Files\netp\handler</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\handler\tls_handler.hpp">
+      <Filter>Header Files\netp\handler</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">
@@ -885,6 +888,9 @@
       <Filter>3rd\c-ares\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\handler\tls_server.cpp">
+      <Filter>Source Files\src\handler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\handler\tls_handler.cpp">
       <Filter>Source Files\src\handler</Filter>
     </ClCompile>
   </ItemGroup>

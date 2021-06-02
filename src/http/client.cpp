@@ -230,14 +230,7 @@ namespace netp { namespace http {
 
 		if (is_https && __dialcfg.tls.tlsctx == nullptr) {
 #ifdef NETP_WITH_BOTAN
-			NRP<netp::handler::tls_context> tlsctx = netp::make_ref<netp::handler::tls_context>();
-			tlsctx->server_info = netp::make_shared<Botan::TLS::Server_Information>( std::string(fields.host.c_str(),fields.host.length()), fields.port);
-			tlsctx->rng = netp::make_shared<Botan::AutoSeeded_RNG>();
-			tlsctx->session_mgr = netp::make_shared<Botan::TLS::Session_Manager_In_Memory>(*(tlsctx->rng));
-			tlsctx->credentials_mgr = netp::make_shared<netp::handler::Basic_Credentials_Manager>(false, "");
-			tlsctx->policy = netp::make_shared<netp::handler::Policy>(Botan::TLS::Protocol_Version::TLS_V12);
-			tlsctx->tls_version = Botan::TLS::Protocol_Version::TLS_V12;
-			tlsctx->next_protocols = {};
+			NRP<netp::handler::tls_context> tlsctx = netp::handler::default_tls_client_context(std::string(fields.host.c_str(), fields.host.length()), fields.port);
 			__dialcfg.tls.tlsctx = tlsctx;
 #else
 			NETP_ASSERT(!"do not supported yet");

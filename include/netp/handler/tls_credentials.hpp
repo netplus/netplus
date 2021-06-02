@@ -5,6 +5,7 @@
 
 #ifdef NETP_WITH_BOTAN
 #include <botan/credentials_manager.h>
+#include <botan/certstor_system.h>
 #include <botan/pkcs8.h>
 #include <botan/data_src.h>
 namespace netp {  namespace handler {
@@ -22,139 +23,122 @@ namespace netp {  namespace handler {
 		return false;
 	}
 
-	class Basic_Credentials_Manager : public Botan::Credentials_Manager
-	{
-	public:
-		Basic_Credentials_Manager(bool use_system_store,
-			const std::string& ca_paths)
-		{
-			std::vector<std::string> paths;
+    class Basic_Credentials_Manager : public Botan::Credentials_Manager
+    {
+    public:
+        Basic_Credentials_Manager(bool use_system_store,
+            const std::string& ca_path)
+        {
+            if (ca_path.empty() == false)
+            {
+                m_certstores.push_back(std::make_shared<Botan::Certificate_Store_In_Memory>(ca_path));
+            }
 
-			if (ca_paths.empty() == false)
-				paths.push_back(ca_paths);
+#if defined(BOTAN_HAS_CERTSTOR_SYSTEM)
+            if (use_system_store)
+            {
+                m_certstores.push_back(std::make_shared<Botan::System_Certificate_Store>());
+            }
+#else
+            BOTAN_UNUSED(use_system_store);
+#endif
+        }
 
-			if (use_system_store)
-			{
-				paths.push_back("/etc/ssl/certs");
-				paths.push_back("/usr/share/ca-certificates");
-			}
+        Basic_Credentials_Manager(Botan::RandomNumberGenerator& rng,
+            const std::string& server_crt,
+            const std::string& server_key)
+        {
+            Certificate_Info cert;
 
-			if (paths.empty() == false)
-			{
-				load_certstores(paths);
-			}
-		}
+            cert.key.reset(Botan::PKCS8::load_key(server_key, rng));
 
-		Basic_Credentials_Manager(Botan::RandomNumberGenerator& rng,
-			const std::string& server_crt,
-			const std::string& server_key)
-		{
-			Certificate_Info cert;
+            Botan::DataSource_Stream in(server_crt);
+            while (!in.end_of_data())
+            {
+                try
+                {
+                    cert.certs.push_back(Botan::X509_Certificate(in));
+                }
+                catch (std::exception&)
+                {
+                }
+            }
 
-			cert.key.reset(Botan::PKCS8::load_key(server_key, rng));
+            // TODO: attempt to validate chain ourselves
 
-			Botan::DataSource_Stream in(server_crt);
-			while (!in.end_of_data())
-			{
-				try
-				{
-					cert.certs.push_back(Botan::X509_Certificate(in));
-				}
-				catch (std::exception&)
-				{
-				}
-			}
+            m_creds.push_back(cert);
+        }
 
-			// TODO: attempt to validate chain ourselves
+        std::vector<Botan::Certificate_Store*>
+            trusted_certificate_authorities(const std::string& type,
+                const std::string& /*hostname*/) override
+        {
+            std::vector<Botan::Certificate_Store*> v;
 
-			m_creds.push_back(cert);
-		}
+            // don't ask for client certs
+            if (type == "tls-server")
+            {
+                return v;
+            }
 
-		void load_certstores(const std::vector<std::string>& paths)
-		{
-			try
-			{
-				for (auto const& path : paths)
-				{
-					std::shared_ptr<Botan::Certificate_Store> cs(new Botan::Certificate_Store_In_Memory(path));
-					m_certstores.push_back(cs);
-				}
-			}
-			catch (std::exception&)
-			{
-			}
-		}
+            for (auto const& cs : m_certstores)
+            {
+                v.push_back(cs.get());
+            }
 
-		std::vector<Botan::Certificate_Store*>
-			trusted_certificate_authorities(const std::string& type,
-				const std::string& /*hostname*/) override
-		{
-			std::vector<Botan::Certificate_Store*> v;
+            return v;
+        }
 
-			// don't ask for client certs
-			if (type == "tls-server")
-			{
-				return v;
-			}
+        std::vector<Botan::X509_Certificate> cert_chain(
+            const std::vector<std::string>& algos,
+            const std::string& type,
+            const std::string& hostname) override
+        {
+            BOTAN_UNUSED(type);
 
-			for (auto const& cs : m_certstores)
-			{
-				v.push_back(cs.get());
-			}
+            for (auto const& i : m_creds)
+            {
+                if (std::find(algos.begin(), algos.end(), i.key->algo_name()) == algos.end())
+                {
+                    continue;
+                }
 
-			return v;
-		}
+                if (hostname != "" && !i.certs[0].matches_dns_name(hostname))
+                {
+                    continue;
+                }
 
-		std::vector<Botan::X509_Certificate> cert_chain(
-			const std::vector<std::string>& algos,
-			const std::string& type,
-			const std::string& hostname) override
-		{
-			BOTAN_UNUSED(type);
+                return i.certs;
+            }
 
-			for (auto const& i : m_creds)
-			{
-				if (std::find(algos.begin(), algos.end(), i.key->algo_name()) == algos.end())
-				{
-					continue;
-				}
+            return std::vector<Botan::X509_Certificate>();
+        }
 
-				if (hostname != "" && !i.certs[0].matches_dns_name(hostname))
-				{
-					continue;
-				}
+        Botan::Private_Key* private_key_for(const Botan::X509_Certificate& cert,
+            const std::string& /*type*/,
+            const std::string& /*context*/) override
+        {
+            for (auto const& i : m_creds)
+            {
+                if (cert == i.certs[0])
+                {
+                    return i.key.get();
+                }
+            }
 
-				return i.certs;
-			}
+            return nullptr;
+        }
 
-			return std::vector<Botan::X509_Certificate>();
-		}
+    private:
+        struct Certificate_Info
+        {
+            std::vector<Botan::X509_Certificate> certs;
+            std::shared_ptr<Botan::Private_Key> key;
+        };
 
-		Botan::Private_Key* private_key_for(const Botan::X509_Certificate& cert,
-			const std::string& /*type*/,
-			const std::string& /*context*/) override
-		{
-			for (auto const& i : m_creds)
-			{
-				if (cert == i.certs[0])
-				{
-					return i.key.get();
-				}
-			}
-
-			return nullptr;
-		}
-
-	private:
-		struct Certificate_Info
-		{
-			std::vector<Botan::X509_Certificate> certs;
-			std::shared_ptr<Botan::Private_Key> key;
-		};
-
-		std::vector<Certificate_Info> m_creds;
-		std::vector<std::shared_ptr<Botan::Certificate_Store>> m_certstores;
-	};
+        std::vector<Certificate_Info> m_creds;
+        std::vector<std::shared_ptr<Botan::Certificate_Store>> m_certstores;
+    };
 }}
 
 #endif
