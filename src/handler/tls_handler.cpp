@@ -214,6 +214,7 @@ namespace netp { namespace handler {
 				//tls exception, close under-layer transport anyway
 				m_flag |= f_ch_close_called;
 				ctx->close(chp);
+				return;
 			}
 		}
 
@@ -335,6 +336,7 @@ namespace netp { namespace handler {
 		if ((m_flag & f_ch_close_pending) && m_outlets_to_socket_ch.size() == 0) {
 			//tlsch->close() might result in m_outlets_to_socket_ch.size() non zero, in that case, we'll reach here in next _socket_ch_flush_done
 			NETP_ASSERT( m_flag&f_tls_ch_close_called );
+			NETP_ASSERT(m_flag & f_ch_handler_close_called);
 			NETP_ASSERT((m_flag&f_ch_close_called) ==0);
 			m_flag &= ~(f_ch_close_pending|f_ch_close_write_pending);
 			m_flag |= f_ch_close_called;
@@ -344,9 +346,9 @@ namespace netp { namespace handler {
 		}
 
 		if ((m_flag & f_ch_close_write_pending) && m_outlets_to_socket_ch.size() == 0) {
-			NETP_ASSERT(m_flag & f_tls_ch_close_called);
-
-			NETP_ASSERT((m_flag & f_ch_close_called|f_ch_close_write_called) == 0);
+			NETP_ASSERT( m_flag & f_tls_ch_close_called);
+			NETP_ASSERT( m_flag& f_ch_handler_close_write_called );
+			NETP_ASSERT((m_flag & (f_ch_close_called|f_ch_close_write_called)) == 0);
 			m_flag &= ~f_ch_close_write_pending;
 			m_flag |= f_ch_close_write_called;
 			m_ctx->close_write(m_close_write_p);
