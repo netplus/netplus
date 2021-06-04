@@ -11,9 +11,8 @@ namespace netp { namespace handler {
 			public tls_handler
 		{
 		public:
-			tls_server(NRP<tls_context> const& tlsctx) :
-				tls_handler(tlsctx)
-			{}
+			tls_server(NRP<tls_context> const& tlsctx);
+			virtual ~tls_server();
 			void connected(NRP<channel_handler_context> const& ctx) override;
 		};
 	}

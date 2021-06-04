@@ -4,6 +4,12 @@
 #include <botan/tls_server.h>
 
 namespace netp { namespace handler {
+	tls_server::tls_server(NRP<tls_context> const& tlsctx) :
+		tls_handler(tlsctx)
+	{}
+
+	tls_server::~tls_server() {}
+
 		void tls_server::connected(NRP<channel_handler_context> const& ctx) {
 			NETP_ASSERT(m_ctx == nullptr);
 			NETP_ASSERT(m_tls_ctx != nullptr);

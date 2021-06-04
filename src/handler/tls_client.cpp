@@ -4,6 +4,13 @@
 #include <botan/tls_client.h>
 
 namespace netp { namespace handler {
+	tls_client::tls_client(NRP<tls_context> const& tlsctx) :
+		tls_handler(tlsctx)
+	{
+		m_flag |= f_tls_is_client;
+	}
+
+	tls_client::~tls_client() {}
 
 	void tls_client::connected(NRP<channel_handler_context> const& ctx)  {
 		NETP_ASSERT(m_ctx == nullptr);

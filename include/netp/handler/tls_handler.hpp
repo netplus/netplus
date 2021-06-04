@@ -128,13 +128,8 @@ namespace netp { namespace handler {
 		NRP<promise<int>> m_close_write_p;
 
 	public:
-		tls_handler( NRP<tls_context> const& tlsctx ) :
-			channel_handler_abstract(CH_ACTIVITY_CONNECTED | CH_ACTIVITY_CLOSED | CH_ACTIVITY_READ_CLOSED|CH_ACTIVITY_WRITE_CLOSED | CH_INBOUND_READ | CH_OUTBOUND_WRITE|CH_OUTBOUND_CLOSE| CH_OUTBOUND_CLOSE_WRITE),
-			m_flag(f_tls_ch_write_idle|f_ch_closed| f_ch_write_closed|f_ch_read_closed),
-			m_ctx(nullptr),
-			m_tls_channel(nullptr),
-			m_tls_ctx(tlsctx)
-		{}
+		tls_handler(NRP<tls_context> const& tlsctx);
+		virtual ~tls_handler();
 
 		void _do_clean();
 
@@ -164,7 +159,7 @@ namespace netp { namespace handler {
 		{
 		}
 
-		//void connected(NRP<channel_handler_context> const& ctx) override;
+		void connected(NRP<channel_handler_context> const& ctx) override {};
 		void closed(NRP<channel_handler_context> const& ctx) override;
 
 		void write_closed(NRP<channel_handler_context> const& ctx)override;
