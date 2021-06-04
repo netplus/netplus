@@ -3,6 +3,7 @@
 #ifdef NETP_WITH_BOTAN
 #include <botan/hex.h>
 #include <botan/tls_handshake_msg.h>
+#include <botan/tls_exceptn.h>
 
 namespace netp { namespace handler {
 
@@ -17,7 +18,8 @@ namespace netp { namespace handler {
 		if (m_close_p != nullptr) {
 			m_close_p->set(netp::OK);
 			m_close_p = nullptr;
-		} 
+		}
+		NETP_ASSERT( m_close_write_p == nullptr );
 
 		_do_clean();
 		if (m_flag & f_ch_connected) {
@@ -33,7 +35,6 @@ namespace netp { namespace handler {
 			NETP_WARN("[tls_handler]session: %s, closed in !f_tls_ch_activated state", m_session_id.c_str());
 			return;
 		}
-		NETP_VERBOSE("[tls_handler]session: %s, closed, flag: %d", m_session_id.c_str(), m_flag );
 	}
 
 	void tls_handler::write_closed(NRP<channel_handler_context> const& ctx) {
@@ -64,7 +65,25 @@ namespace netp { namespace handler {
 
 		NNASP<Botan::TLS::Channel> tls_ch = m_tls_channel;
 		//receive_data might reusult in tls_emit , tls_emit might result in ch close, ch close result in a operation of set m_tls_channel to null, so we have to keep one ref first
-		tls_ch->received_data((uint8_t*)income->head(), income->len());
+
+		try {
+			tls_ch->received_data((uint8_t*)income->head(), income->len());
+		} catch (Botan::TLS::TLS_Exception& e) {
+			NETP_ERR("[tls_handler]tls excepton, code: %d, err: %s", e.error_code(), e.what());
+			if (!(m_flag & f_ch_close_called)) {
+				ctx->close();
+			}
+		} catch (std::exception& e) {
+			NETP_ERR("[tls_handler]tls excepton, err: %s", e.what());
+			if (!(m_flag & f_ch_close_called)) {
+				ctx->close();
+			}
+		} catch (...) {
+			NETP_ERR("[tls_handler]unknown tls exception" );
+			if (!(m_flag & f_ch_close_called)) {
+				ctx->close();
+			}
+		}
 	}
 
 	void tls_handler::_try_tls_ch_flush() {
