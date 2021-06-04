@@ -235,7 +235,7 @@ namespace netp { namespace security {
 				, m_key[8], m_key[9], m_key[10], m_key[11]
 				, m_key[12], m_key[13], m_key[14], m_key[15]
 			);
-			NETP_DEBUG("[xxtea]encrypt using key: %s", key_cstr );
+			NETP_VERBOSE("[xxtea]encrypt using key: %s", key_cstr );
 #endif
 			int ec;
 			xxtea_ctx* tea = xxtea_encrypt(in->head(), (netp::u32_t)in->len(), m_key, sizeof(m_key)/sizeof(m_key[0]), ec );
@@ -261,7 +261,7 @@ namespace netp { namespace security {
 				, m_key[8], m_key[9], m_key[10], m_key[11]
 				, m_key[12], m_key[13], m_key[14], m_key[15]
 			);
-			NETP_DEBUG("[xxtea]decrypt using key: %s", key_cstr);
+			NETP_VERBOSE("[xxtea]decrypt using key: %s", key_cstr);
 #endif
 			int ec;
 			xxtea_ctx* tea = xxtea_decrypt(in->head(), (netp::u32_t)in->len(), m_key, sizeof(m_key)/sizeof(m_key[0]), ec );

@@ -58,13 +58,13 @@ namespace netp { namespace os {
 
 			if ( (filter&adp_f_skip_noup) && adapter_address->OperStatus != IfOperStatusUp) {
 				adapter_address = adapter_address->Next;
-				NETP_DEBUG("[api_wrapper_win]get_adapters, not in up status,skip");
+				NETP_VERBOSE("[api_wrapper_win]get_adapters, not in up status,skip");
 				continue;
 			}
 
 			if ((filter & adp_f_skip_loopback) && adapter_address->IfType == IF_TYPE_SOFTWARE_LOOPBACK) {
 				adapter_address = adapter_address->Next;
-				NETP_DEBUG("[api_wrapper_win]get_adapters, loopback skip");
+				NETP_VERBOSE("[api_wrapper_win]get_adapters, loopback skip");
 				continue;
 			}
 

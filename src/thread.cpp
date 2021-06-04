@@ -41,7 +41,7 @@ namespace netp {
 #ifdef _NETP_GNU_LINUX
 		//check stack size
 		size_t ssize = netp::get_stack_size();
-		NETP_DEBUG("[thread]__RUN_PROXY__, thread stack size: %d", ssize);
+		NETP_VERBOSE("[thread]__RUN_PROXY__, thread stack size: %d", ssize);
 		NETP_ASSERT(ssize >= (1024 * 1024 * 4)); //4M
 		(void)ssize;
 #endif

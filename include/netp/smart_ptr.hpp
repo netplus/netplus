@@ -8,12 +8,6 @@
 
 namespace netp {
 
-	template <class T>
-	inline void checked_delete(T* p) {
-		typedef char is_this_a_complete_type[sizeof(T)?1:-1];
-		(void) sizeof(is_this_a_complete_type);
-		delete p;
-	}
 
 	struct weak_ptr_lock_faild :
 		public netp::exception
@@ -31,9 +25,14 @@ namespace netp {
 			exception(netp::E_MEMORY_ALLOC_FAILED, "sp_counter_impl_malloc_failed", __FILE__, __LINE__,__FUNCTION__)
 		{}
 	};
-}
+	
+	template <class T>
+	inline void checked_delete(T* p) {
+		typedef char is_this_a_complete_type[sizeof(T)?1:-1];
+		(void) sizeof(is_this_a_complete_type);
+		delete p;
+	}
 
-namespace netp {
 
 	/*
 	 * usage
@@ -44,26 +43,30 @@ namespace netp {
 
 	/*
 	* two reason result in below classes
-	* 1, sizeof(netp::shared_ptr) == 4, compared to sizeof(std::shared_ptr)==8
+	* 1, sizeof(netp::shared_ptr) == 4, compared to sizeof(std::shared_ptr)==8 (it is not so important!!!!)
 	* 2, safe store in stl's container
 	*/
+	
+	//@notice, the ref is thread safe, but not the __p, user have to place atomic_thread_fence accordingly (write|read)
 
-	class sp_counter_base {
+	//@todo we should work out a better way to access __p, it is possbile!!!
+	//@what we want 
+	class __sp_atomic_counter_base {
 	public:
 		void* __p;
 	private:
 		std::atomic<long> sp_c;
 		std::atomic<long> sp_weak_c;
 
-		NETP_DECLARE_NONCOPYABLE(sp_counter_base)
+		NETP_DECLARE_NONCOPYABLE(__sp_atomic_counter_base)
 	public:
-		sp_counter_base(void* const& p): 
+		__sp_atomic_counter_base(void* const& p):
 			__p(p),
 			sp_c(1),
 			sp_weak_c(1)
 		{}
 
-		virtual ~sp_counter_base() {}
+		virtual ~__sp_atomic_counter_base() {}
 		virtual void dispose() = 0;
 
 		virtual void destroy() {
@@ -98,68 +101,137 @@ namespace netp {
 		}
 	};
 
+	class __sp_non_atomic_counter_base {
+	public:
+		void* __p;
+	private:
+		long sp_c;
+		long sp_weak_c;
+
+		NETP_DECLARE_NONCOPYABLE(__sp_non_atomic_counter_base)
+	public:
+		__sp_non_atomic_counter_base(void* const& p) :
+			__p(p),
+			sp_c(1),
+			sp_weak_c(1)
+		{}
+
+		virtual ~__sp_non_atomic_counter_base() {}
+		virtual void dispose() = 0;
+
+		virtual void destroy() {
+			delete this;
+		}
+
+		inline long sp_count() const { return sp_c; }
+		inline long weak_count() const { return sp_weak_c; }
+		inline void require() { sp_c +=1; }
+		inline long require_lock(long const& val) {
+			if (sp_c == val) {
+				return sp_c;
+			}
+			return ++sp_c;
+		}
+
+		inline void release() {
+			if (sp_c-- == 1) {
+				//no competitor assumption
+				dispose();
+				weak_release();
+			}
+		}
+		void weak_require() { sp_weak_c +=1; }
+		void weak_release() {
+			if (sp_weak_c-- == 1) {
+				destroy();
+			}
+		}
+		void* operator new(size_t sz) {
+			return netp::allocator<char>::malloc(sz);
+		}
+
+		void operator delete(void* m) {
+			return netp::allocator<char>::free((char*)m);
+		}
+	};
+
 #if defined(_NETP_WIN) && (defined(_NETP_DEBUG) || 1)
 	#define NETP_ADD_PT_IN_IMPL_FOR_DEBUG
 #endif
 
-	template <class pt>
-	class sp_counter_impl_p:
-		public sp_counter_base
+	template <class pt, class sp_count_base_t>
+	class __sp_counter_impl_p:
+		public sp_count_base_t
 	{
 #ifdef NETP_ADD_PT_IN_IMPL_FOR_DEBUG
 		pt* _pt;
 #endif
-		NETP_DECLARE_NONCOPYABLE(sp_counter_impl_p)
-		typedef sp_counter_impl_p<pt> this_type;
+		NETP_DECLARE_NONCOPYABLE(__sp_counter_impl_p)
+		typedef __sp_counter_impl_p<pt, sp_count_base_t> this_type;
 	public:
-		explicit sp_counter_impl_p(pt* const& p): sp_counter_base(p)
+		explicit __sp_counter_impl_p(pt* const& p): sp_count_base_t(p)
 #ifdef NETP_ADD_PT_IN_IMPL_FOR_DEBUG
 			,_pt(p)
 #endif
 		{}
-		virtual void dispose() { netp::checked_delete<pt>(static_cast<pt*>(__p)); __p=0;}
+		virtual void dispose() { netp::checked_delete<pt>(static_cast<pt*>(sp_count_base_t::__p)); sp_count_base_t::__p=0;}
 	};
 
-	struct sp_weak_counter;
-	struct sp_counter final {
-		sp_counter_base* base;
+	template <class _sp_counter_base_t>
+	struct __sp_weak_counter;
 
-		sp_counter():
-			base(0)
+	template <class _sp_counter_base_t>
+	struct __sp_counter final {
+		
+		typedef __sp_weak_counter<_sp_counter_base_t> __sp_weak_counter_t;
+		typedef __sp_counter<_sp_counter_base_t> __sp_counter_t;
+		_sp_counter_base_t* base;
+
+		__sp_counter():
+			base(nullptr)
 		{}
 
 		template <class pt>
-		explicit sp_counter(pt* const& p): base(0) {
+		explicit __sp_counter(pt* const& p): base(0) {
 			try {
-				base = new sp_counter_impl_p<pt>(p);
+				base = new __sp_counter_impl_p<pt, _sp_counter_base_t>(p);
 			} catch(...) {
 				throw netp::sp_counter_impl_malloc_failed();
 			}
 		}
 
-		~sp_counter() _NETP_NOEXCEPT { if( base != 0) base->release();}
+		~__sp_counter() _NETP_NOEXCEPT { if( base != nullptr) base->release();}
 
-		inline sp_counter(sp_counter const& r) _NETP_NOEXCEPT :
+		inline __sp_counter(__sp_counter_t const& r) _NETP_NOEXCEPT :
 			base(r.base)
 		{
 			if( base != 0 ) base->require();
 		}
 
-		inline sp_counter(sp_counter&& r) _NETP_NOEXCEPT:
+		inline __sp_counter(__sp_counter_t&& r) _NETP_NOEXCEPT:
 			base(r.base)
 		{
 			r.reset();
 		}
 
-		sp_counter(sp_weak_counter const& weak);
+		inline __sp_counter(__sp_weak_counter_t const& weak) :
+			base(weak->base)
+		{
+			if (base != 0 && base->require_lock(0)) {
+				NETP_ASSERT(base->__p != 0);
+				NETP_ASSERT(base->sp_count() > 0);
+			} else {
+				base = 0;
+			}
+		}
 
-		inline sp_counter& operator = (sp_counter const& r) _NETP_NOEXCEPT {
+		inline __sp_counter_t& operator = (__sp_counter_t const& r) _NETP_NOEXCEPT {
 			NETP_ASSERT( base == r.base ? base == nullptr: true );
-			sp_counter(r).swap( *this );
+			__sp_counter_t(r).swap( *this );
 			return (*this);
 		}
 
-		inline sp_counter& operator = (sp_counter&& r) _NETP_NOEXCEPT {
+		inline __sp_counter_t& operator = (__sp_counter_t&& r) _NETP_NOEXCEPT {
 			NETP_ASSERT(base == r.base ? base == nullptr : true);
 			if (base != 0) base->release();
 			base = r.base;
@@ -167,7 +239,7 @@ namespace netp {
 			return (*this);
 		}
 
-		inline void swap( sp_counter& r ) _NETP_NOEXCEPT {
+		inline void swap(__sp_counter_t& r ) _NETP_NOEXCEPT {
 			std::swap(base,r.base);
 		}
 
@@ -185,108 +257,108 @@ namespace netp {
 			return 0;
 		}
 
-		inline bool operator == ( sp_counter const& r ) const {
+		inline bool operator == (__sp_counter_t const& r ) const {
 			return base == r.base;
 		}
 
-		inline bool operator != ( sp_counter const& r ) const {
+		inline bool operator != (__sp_counter_t const& r ) const {
 			return base != r.base;
 		}
 
-		inline bool operator < ( sp_counter const& r ) const {
+		inline bool operator < (__sp_counter_t const& r ) const {
 			return base < r.base;
 		}
-		inline bool operator > ( sp_counter const& r ) const {
+		inline bool operator > (__sp_counter_t const& r ) const {
 			return base > r.base;
 		}
 	};
 
-	struct sp_weak_counter final {
-		sp_counter_base* base;
+	template <class _sp_counter_base_t>
+	struct __sp_weak_counter final {
+		typedef __sp_weak_counter<_sp_counter_base_t> __sp_weak_counter_t;
+		typedef __sp_counter<_sp_counter_base_t> __sp_counter_t;
 
-		sp_weak_counter(): base(0) {}
-		sp_weak_counter( sp_weak_counter const& counter ):
+		_sp_counter_base_t* base;
+		__sp_weak_counter(): base(0) {}
+		__sp_weak_counter(__sp_weak_counter_t const& counter ):
 			base(counter.base)
 		{
 			if( base != 0 ) base->weak_require();
 		}
 
-		sp_weak_counter( sp_counter const& counter ):
+		__sp_weak_counter(__sp_counter_t const& counter ):
 			base(counter.base)
 		{
 			if( base != 0 ) base->weak_require();
 		}
-		~sp_weak_counter() {
+		~__sp_weak_counter() {
 			if( base != 0 ) base->weak_release();
 		}
 
-		sp_weak_counter& operator = ( sp_weak_counter const& weak_counter ) {
+		__sp_weak_counter_t& operator = (__sp_weak_counter_t const& weak_counter ) {
 			NETP_ASSERT( base != weak_counter.base );
-			sp_weak_counter(weak_counter).swap(*this);
+			__sp_weak_counter_t(weak_counter).swap(*this);
 			return *this;
 		}
 
-		sp_weak_counter& operator = (sp_counter const& sp_counter) {
+		__sp_weak_counter_t& operator = (__sp_counter_t const& sp_counter) {
 			NETP_ASSERT( base != sp_counter.base );
-			sp_weak_counter(sp_counter).swap(*this);
+			__sp_weak_counter_t(sp_counter).swap(*this);
 			return *this;
 		}
 
-		void swap( sp_weak_counter& r ) _NETP_NOEXCEPT {
+		void swap(__sp_weak_counter_t& r ) _NETP_NOEXCEPT {
 			std::swap(base,r.base);
 		}
 
-		bool operator == ( sp_weak_counter const& r ) const {
+		bool operator == (__sp_weak_counter_t const& r ) const {
 			return base == r.base;
 		}
 
-		bool operator != ( sp_weak_counter const& r) const {
+		bool operator != (__sp_weak_counter_t const& r) const {
 			return base != r.base;
 		}
-		bool operator < ( sp_weak_counter const& r) const {
+		bool operator < (__sp_weak_counter_t const& r) const {
 			return base < r.base;
 		}
-		bool operator > ( sp_weak_counter const& r) const {
+		bool operator > (__sp_weak_counter_t const& r) const {
 			return base > r.base;
 		}
 	};
 
-	inline sp_counter::sp_counter(sp_weak_counter const& weak):
-			base(weak.base)
-	{
-		if( base != 0 && base->require_lock(0) ) {
-			NETP_ASSERT( base->__p != 0 );
-			NETP_ASSERT( base->sp_count() > 0 );
-		}
-	}
+	template <class T, class __counter_t>
+	class __weak_ptr_impl;
 
-	template <class T>
-	class weak_ptr;
+	template <class __counter_t>
+	struct __shared_maker_impl;
 
 	enum class construct_from_make_shared {};
 
-	template <class T>
-	class shared_ptr final {
-		friend class weak_ptr<T>;
+	template <class T, class __counter_t>
+	class __shared_ptr_impl final {
 
-		template <class _Shared_ty, typename... _Args>
-		friend shared_ptr<_Shared_ty> make_shared(_Args&&... args);
+		friend class __weak_ptr_impl<T,__counter_t>;
+
+		template <class Y, class __counter_t>
+		friend class __shared_ptr_impl;
+
+		friend __shared_maker_impl<__counter_t>;
 
 		typedef typename std::remove_reference<T>::type __ELEMENT_TYPE;
 		typedef __ELEMENT_TYPE* POINTER_TYPE;
-		typedef shared_ptr<T> THIS_TYPE;
-		typedef weak_ptr<T> WEAK_POINTER_TYPE;
+		typedef __shared_ptr_impl<T,__counter_t> THIS_TYPE;
+		typedef __weak_ptr_impl<T, __counter_t> WEAK_POINTER_TYPE;
 
 		template <class _To, class _From>
-		friend shared_ptr<_To> static_pointer_cast(shared_ptr<_From> const& r);
+		friend __shared_ptr_impl<_To,__counter_t> static_pointer_cast(__shared_ptr_impl<_From, __counter_t> const& r);
 
 		template <class _To, class _From>
-		friend shared_ptr<_To> dynamic_pointer_cast(shared_ptr<_From> const& r);
+		friend __shared_ptr_impl<_To, __counter_t> dynamic_pointer_cast(__shared_ptr_impl<_From, __counter_t> const& r);
 
 		template <class _To, class _From>
-		friend shared_ptr<_To> const_pointer_cast(shared_ptr<_From> const& r);
+		friend __shared_ptr_impl<_To, __counter_t> const_pointer_cast(__shared_ptr_impl<_From, __counter_t> const& r);
 
-		sp_counter sp_ct;//sp_counter
+		__sp_counter<__counter_t> sp_ct;
 
 		//_Tp_rel related type
 		/*
@@ -298,28 +370,28 @@ namespace netp {
 		}
 		*/
 
-		explicit inline shared_ptr(POINTER_TYPE const& r, construct_from_make_shared) :
+		explicit inline __shared_ptr_impl(POINTER_TYPE const& r, construct_from_make_shared) :
 			sp_ct(r)
 		{
 		}
 
 	public:
-		_NETP_CONSTEXPR shared_ptr() _NETP_NOEXCEPT:sp_ct() {}
-		_NETP_CONSTEXPR shared_ptr(std::nullptr_t) _NETP_NOEXCEPT : sp_ct() {}
+		_NETP_CONSTEXPR __shared_ptr_impl() _NETP_NOEXCEPT:sp_ct() {}
+		_NETP_CONSTEXPR __shared_ptr_impl(std::nullptr_t) _NETP_NOEXCEPT : sp_ct() {}
 
-		~shared_ptr() _NETP_NOEXCEPT {}
+		~__shared_ptr_impl() _NETP_NOEXCEPT {}
 		long use_count() const _NETP_NOEXCEPT { return sp_ct.sp_count(); }
 
-		inline shared_ptr(THIS_TYPE const& r) _NETP_NOEXCEPT:
+		inline __shared_ptr_impl(THIS_TYPE const& r) _NETP_NOEXCEPT:
 			sp_ct(r.sp_ct)
 		{}
 
-		inline shared_ptr(THIS_TYPE&& r) _NETP_NOEXCEPT :
+		inline __shared_ptr_impl(THIS_TYPE&& r) _NETP_NOEXCEPT :
 			sp_ct(std::move(r.sp_ct))
 		{}
 
 		template <class _From>
-		inline shared_ptr(shared_ptr<_From> const& r, POINTER_TYPE) _NETP_NOEXCEPT:
+		inline __shared_ptr_impl(__shared_ptr_impl<_From, __counter_t> const& r, POINTER_TYPE) _NETP_NOEXCEPT:
 			sp_ct(r.sp_ct)
 		{ //for cast
 		}
@@ -333,7 +405,7 @@ namespace netp {
 #else
 		, class = typename std::enable_if<std::is_convertible<_Tp_rel*, POINTER_TYPE>::value>::type
 		>
-		inline shared_ptr( shared_ptr<_Tp_rel> const& r) _NETP_NOEXCEPT
+		inline __shared_ptr_impl(__shared_ptr_impl<_Tp_rel, __counter_t> const& r) _NETP_NOEXCEPT
 #endif
 			:sp_ct(r.sp_ct)
 		{
@@ -347,33 +419,33 @@ namespace netp {
 #else
 		, class = typename std::enable_if<std::is_convertible<_Tp_rel*, POINTER_TYPE>::value>::type
 		>
-		inline shared_ptr( shared_ptr<_Tp_rel>&& r) _NETP_NOEXCEPT
+		inline __shared_ptr_impl(__shared_ptr_impl<_Tp_rel, __counter_t>&& r) _NETP_NOEXCEPT
 #endif
 			: sp_ct(std::move(r.sp_ct))
 		{
 		}
 
-		inline shared_ptr& operator=(THIS_TYPE const& r) _NETP_NOEXCEPT
+		inline THIS_TYPE& operator=(THIS_TYPE const& r) _NETP_NOEXCEPT
 		{
 			THIS_TYPE(r).swap(*this);
 			return (*this);
 		}
 
-		inline shared_ptr& operator=(THIS_TYPE&& r) _NETP_NOEXCEPT
+		inline THIS_TYPE& operator=(THIS_TYPE&& r) _NETP_NOEXCEPT
 		{
 			sp_ct = std::move(r.sp_ct);
 			return (*this);
 		}
 
 		template <typename _Tp_rel>
-		inline shared_ptr& operator= ( shared_ptr<_Tp_rel> const& r ) _NETP_NOEXCEPT
+		inline THIS_TYPE& operator= (__shared_ptr_impl<_Tp_rel, __counter_t> const& r ) _NETP_NOEXCEPT
 		{
 			THIS_TYPE(r).swap(*this);
 			return (*this) ;
 		}
 
 		template <typename _Tp_rel>
-		inline shared_ptr& operator= (shared_ptr<_Tp_rel>&& r) _NETP_NOEXCEPT
+		inline THIS_TYPE& operator= (__shared_ptr_impl<_Tp_rel, __counter_t>&& r) _NETP_NOEXCEPT
 		{
 			sp_ct = std::move(r.sp_ct);
 			return (*this);
@@ -383,7 +455,7 @@ namespace netp {
 			std::swap( sp_ct, r.sp_ct );
 		}
 
-		inline shared_ptr(WEAK_POINTER_TYPE const& weak) _NETP_NOEXCEPT:
+		inline __shared_ptr_impl(WEAK_POINTER_TYPE const& weak) _NETP_NOEXCEPT:
 			sp_ct(weak.weak_ct)
 		{
 		}
@@ -432,14 +504,68 @@ namespace netp {
 
 		inline bool operator ==(POINTER_TYPE const& rp) const { return get() == rp; }
 		inline bool operator !=(POINTER_TYPE const& rp) const { return get() != rp; }
-
-	private:
-		template <class Y>
-		friend class shared_ptr;
 	};
 
-#ifdef _NETP_NO_CXX11_TEMPLATE_VARIADIC_ARGS
+	template <class T, class _counter_t>
+	class __weak_ptr_impl final {
+		friend class __shared_ptr_impl<T, _counter_t>;
 
+		typedef typename std::remove_reference<T>::type __ELEMENT_TYPE;
+		typedef __ELEMENT_TYPE* POINTER_TYPE;
+		typedef __weak_ptr_impl<T, _counter_t> THIS_TYPE;
+		typedef __shared_ptr_impl<T, _counter_t> SHARED_POINTER_TYPE;
+		
+		__sp_weak_counter<_counter_t> weak_ct;
+
+	public:
+		__weak_ptr_impl() :weak_ct() {}
+		explicit __weak_ptr_impl(SHARED_POINTER_TYPE const& auto_point) :
+			weak_ct(auto_point.sp_ct)
+		{
+		}
+		~__weak_ptr_impl() {}
+
+		__weak_ptr_impl(THIS_TYPE const& r) :
+			weak_ct(r.weak_ct)
+		{
+		}
+
+		void swap(THIS_TYPE& r) {
+			std::swap(r.weak_ct, weak_ct);
+		}
+
+		THIS_TYPE& operator = (THIS_TYPE const& r) {
+			weak_ptr(r).swap(*this);
+			return *this;
+		}
+
+		THIS_TYPE& operator = (SHARED_POINTER_TYPE const& r) {
+			weak_ptr(r).swap(*this);
+			return *this;
+		}
+
+		//return shared_ptr if lock succeed, otherwise return std::shared_ptr<T,_counter>(nullptr);
+		inline SHARED_POINTER_TYPE lock() const {
+			return SHARED_POINTER_TYPE(*this);
+		}
+
+		inline bool operator == (THIS_TYPE const& r) const { return weak_ct == r.weak_ct; }
+		inline bool operator != (THIS_TYPE const& r) const { return weak_ct != r.weak_ct; }
+	};
+
+	template<class T>
+	using shared_ptr = netp::__shared_ptr_impl<T, netp::__sp_atomic_counter_base>;
+
+	template <class T>
+	using weak_ptr = netp::__weak_ptr_impl<T, netp::__sp_atomic_counter_base>;
+
+	template<class T>
+	using non_atomic_shared_ptr = netp::__shared_ptr_impl<T, netp::__sp_non_atomic_counter_base>;
+
+	template <class T>
+	using non_atomic_weak_ptr = netp::__weak_ptr_impl<T, netp::__sp_non_atomic_counter_base>;
+
+#ifdef _NETP_NO_CXX11_TEMPLATE_VARIADIC_ARGS
 #define _ALLOCATE_MAKE_SHARED( \
 	TEMPLATE_LIST, PADDING_LIST, LIST, COMMA, X1, X2, X3, X4) \
 template<class _Ty COMMA LIST(_CLASS_TYPE)> inline \
@@ -453,13 +579,32 @@ template<class _Ty COMMA LIST(_CLASS_TYPE)> inline \
 _VARIADIC_EXPAND_0X(_ALLOCATE_MAKE_SHARED, , , , )
 #undef _ALLOCATE_MAKE_SHARED
 #else
+
+	template <class _counter_t>
+	struct __shared_maker_impl {
+		template <class _TTM, typename... _Args>
+		inline static __shared_ptr_impl<_TTM, _counter_t> make(_Args&&... args)
+		{
+			//@@pls note that , if we use ::new here, the operator new would be skiped
+			_TTM* t = new _TTM(std::forward<_Args>(args)...);
+			//NETP_ALLOC_CHECK(t,sizeof(_TTM));
+			return __shared_ptr_impl<_TTM, _counter_t>(t, construct_from_make_shared());
+		}
+	};
+
+	using atomic_shared = __shared_maker_impl<netp::__sp_atomic_counter_base>;
+	using non_atomic_shared = __shared_maker_impl<netp::__sp_non_atomic_counter_base>;
+
 	template <class _TTM, typename... _Args>
-	inline shared_ptr<_TTM> make_shared(_Args&&... args)
+	inline static shared_ptr<_TTM> make_shared(_Args&&... args)
 	{
-		//@@pls note that , if we use ::new here, the operator new would be skiped
-		_TTM* t = new _TTM(std::forward<_Args>(args)...);
-		//NETP_ALLOC_CHECK(t,sizeof(_TTM));
-		return shared_ptr<_TTM>(t, construct_from_make_shared());
+		return atomic_shared::make<_TTM>(std::forward<_Args>(args)...);
+	}
+
+	template <class _TTM, typename... _Args>
+	inline static non_atomic_shared_ptr<_TTM> make_non_atomic_shared(_Args&&... args)
+	{
+		return non_atomic_shared::make<_TTM>(std::forward<_Args>(args)...);
 	}
 #endif
 
@@ -551,58 +696,38 @@ _VARIADIC_EXPAND_0X(_ALLOCATE_MAKE_SHARED, , , , )
 		return shared_ptr<_To>(r,p);
 	}
 
-	template <class T>
-	class weak_ptr final {
-		friend class shared_ptr<T>;
-	private:
-		sp_weak_counter weak_ct;
+	template <class _To, class _From>
+	inline non_atomic_shared_ptr<_To> static_pointer_cast(non_atomic_shared_ptr<_From> const& r)
+	{
+		//check castable
+		typename non_atomic_shared_ptr<_To>::POINTER_TYPE p = static_cast<typename non_atomic_shared_ptr<_To>::POINTER_TYPE>(r.get());
+		return non_atomic_shared_ptr<_To>(r, p);
+	}
 
-		typedef typename std::remove_reference<T>::type __ELEMENT_TYPE;
-		typedef __ELEMENT_TYPE* POINTER_TYPE;
-		typedef weak_ptr<T> THIS_TYPE;
-		typedef shared_ptr<T> SHARED_POINTER_TYPE;
+	template <class _To, class _From>
+	inline non_atomic_shared_ptr<_To> dynamic_pointer_cast(non_atomic_shared_ptr<_From> const& r)
+	{
+		//check castable
+		typename non_atomic_shared_ptr<_To>::POINTER_TYPE p = dynamic_cast<typename non_atomic_shared_ptr<_To>::POINTER_TYPE>(r.get());
+		if (NETP_LIKELY(p)) return non_atomic_shared_ptr<_To>(r, p);
+		return non_atomic_shared_ptr<_To>();
+	}
 
-public:
-		weak_ptr():weak_ct() {}
-		explicit weak_ptr( SHARED_POINTER_TYPE const& auto_point ):
-			weak_ct(auto_point.sp_ct)
-		{
-		}
-		~weak_ptr() {}
-
-		weak_ptr( THIS_TYPE const& r ):
-			weak_ct(r.weak_ct)
-		{
-		}
-
-		void swap( THIS_TYPE& r ) {
-			std::swap(r.weak_ct,weak_ct);
-		}
-
-		THIS_TYPE& operator = (THIS_TYPE const& r) {
-			weak_ptr(r).swap(*this);
-			return *this;
-		}
-
-		THIS_TYPE& operator = (SHARED_POINTER_TYPE const& r) {
-			weak_ptr(r).swap(*this);
-			return *this;
-		}
-
-		//if lock failed, return a empty SharedPoint
-		inline SHARED_POINTER_TYPE lock() const {
-			return SHARED_POINTER_TYPE( *this );
-		}
-
-		inline bool operator == (THIS_TYPE const& r) const { return weak_ct == r.weak_ct; }
-		inline bool operator != (THIS_TYPE const& r) const { return weak_ct != r.weak_ct; }
-	};
+	template <class _To, class _From>
+	non_atomic_shared_ptr<_To> const_pointer_cast(non_atomic_shared_ptr<_From> const& r)
+	{
+		typename non_atomic_shared_ptr<_To>::POINTER_TYPE p = const_cast<typename non_atomic_shared_ptr<_To>::POINTER_TYPE>(r.get());
+		return non_atomic_shared_ptr<_To>(r, p);
+	}
 }
 
-//#define NETP_SHARED_PTR netp::shared_ptr
-//#define NETP_WEAK_PTR netp::weak_ptr
+
 #define NSP netp::shared_ptr
 #define NWP netp::weak_ptr
+
+#define NNASP netp::non_atomic_shared_ptr
+#define NNAWP netp::non_atomic_weak_ptr
+
 
 #include <type_traits>
 

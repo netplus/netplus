@@ -88,7 +88,7 @@ namespace netp {
 			if (-1 == m_epfd) {
 				NETP_THROW("create epoll handle failed");
 			}
-			NETP_DEBUG("[EPOLL]init write epoll handle ok");
+			NETP_VERBOSE("[EPOLL]init write epoll handle ok");
 			poller_interruptable_by_fd::init();
 		}
 

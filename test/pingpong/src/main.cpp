@@ -3,7 +3,7 @@
 class Pong :
 	public netp::channel_handler_abstract {
 public:
-	Pong() : 
+	Pong() :
 		channel_handler_abstract(netp::CH_INBOUND_READ)
 	{}
 	//for inbound
@@ -15,16 +15,16 @@ public:
 
 		//check the reply status once the write operation is done
 		write_promise->if_done([](int reply_rt) {
-			NETP_INFO("[PONG]reply PONG, rt: %d", reply_rt );
-		});
+			NETP_INFO("[PONG]reply PONG, rt: %d", reply_rt);
+			});
 	}
 };
 
-class Ping : 
+class Ping :
 	public netp::channel_handler_abstract {
 public:
-	Ping():
-		channel_handler_abstract(netp::CH_ACTIVITY_CONNECTED|netp::CH_INBOUND_READ)
+	Ping() :
+		channel_handler_abstract(netp::CH_ACTIVITY_CONNECTED | netp::CH_INBOUND_READ)
 	{}
 	void connected(netp::ref_ptr<netp::channel_handler_context> const& ctx) {
 		NETP_INFO("[PING]connected");
@@ -40,35 +40,43 @@ public:
 		netp::ref_ptr<netp::packet> message_ping = netp::make_ref<netp::packet>();
 		message_ping->write(ping.c_str(), ping.length());
 		netp::ref_ptr<netp::promise<int>> write_p = ctx->write(message_ping);
-		write_p->if_done([]( int rt ) {
-			NETP_INFO("[PING]write PING, rt: %d", rt );
-		});
+		write_p->if_done([](int rt) {
+			NETP_INFO("[PING]write PING, rt: %d", rt);
+			});
 	}
 };
 
 int main(int argc, char** argv) {
-
-	int li = sizeof(long);
 
 	//initialize a netplus app instance
 	netp::app app;
 	std::string host = "tcp://127.0.0.1:13103";
 
 	netp::ref_ptr<netp::channel_listen_promise> listenp = netp::listen_on(host, [](netp::ref_ptr<netp::channel>const& ch) {
-		ch->pipeline()->add_last( netp::make_ref<netp::handler::hlen>());
-		ch->pipeline()->add_last( netp::make_ref<Pong>() );
-	});
+
+		NRP<netp::handler::tls_context> tlsctx = netp::handler::default_tls_server_context(std::string("./fullchain2.pem"), std::string("./privkey2.pem"));
+		NRP<netp::handler::tls_server> _tls_server = netp::make_ref<netp::handler::tls_server>(tlsctx);
+		ch->pipeline()->add_last(_tls_server);
+
+		ch->pipeline()->add_last(netp::make_ref<netp::handler::hlen>());
+		ch->pipeline()->add_last(netp::make_ref<Pong>());
+		});
 	int listenrt = std::get<0>(listenp->get());
 	if (listenrt != netp::OK) {
 		NETP_INFO("listen on host: %s failed, fail code: %d", host.c_str(), listenrt);
 		return listenrt;
 	}
-//	app.run();
+	//	app.run();
 
-	netp::ref_ptr<netp::channel_dial_promise> dialp = netp::dial(host, [](netp::ref_ptr<netp::channel> const& ch ) {
-		ch->pipeline()->add_last( netp::make_ref<netp::handler::hlen>() );
-		ch->pipeline()->add_last( netp::make_ref<Ping>() );
-	});
+	netp::ref_ptr<netp::channel_dial_promise> dialp = netp::dial(host, [](netp::ref_ptr<netp::channel> const& ch) {
+
+		NRP<netp::handler::tls_context> tlsctx = netp::handler::default_tls_client_context("127.0.0.1", 13103);
+		NRP<netp::handler::tls_client> _tls_client = netp::make_ref<netp::handler::tls_client>(tlsctx);
+		ch->pipeline()->add_last(_tls_client);
+
+		ch->pipeline()->add_last(netp::make_ref<netp::handler::hlen>());
+		ch->pipeline()->add_last(netp::make_ref<Ping>());
+		});
 	int dialrt = std::get<0>(dialp->get());
 	if (dialrt != netp::OK) {
 		//close listen channel and return

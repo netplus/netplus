@@ -19,13 +19,13 @@ namespace netp {
 			m_kevts(0)
 		{}
 		void init() override {
-			NETP_DEBUG("CREATE KQUEUE");
+			NETP_VERBOSE("CREATE KQUEUE");
 			m_kq = kqueue();
 			if (m_kq == -1) {
 				NETP_ERR("[kqueue]create poller failed: %d", netp_last_errno() );
 				NETP_THROW("KQUEUE CREATE FAILED");
 			}
-			NETP_DEBUG("CREATE KQUEUE DONE");
+			NETP_VERBOSE("CREATE KQUEUE DONE");
 			m_kevts = (struct kevent*)netp::allocator<char>::malloc(sizeof(struct kevent) * NETP_KEVT_COUNT, NETP_DEFAULT_ALIGN);
 			NETP_ALLOC_CHECK(m_kevts, sizeof(struct kevent)* NETP_KEVT_COUNT);
 			poller_interruptable_by_fd::init();

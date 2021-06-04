@@ -95,6 +95,7 @@ namespace netp {
 		return atom->fetch_sub(1, order);
 	}
 
+	//return atom.load() +1, if atom.load() != val
 	template <typename T>
 	inline T atomic_incre_if_not_equal(std::atomic<T>* atom, T const& val,
 		std::memory_order success = std::memory_order_acq_rel,

@@ -6,7 +6,7 @@
 //#define ENABLE_TRACE_MUTEX
 #ifdef ENABLE_TRACE_MUTEX
 	#include <netp/log/logger_manager.hpp>
-	#define TRACE_MUTEX NETP_DEBUG
+	#define TRACE_MUTEX NETP_VERBOSE
 #else
 	#define TRACE_MUTEX(...)
 #endif

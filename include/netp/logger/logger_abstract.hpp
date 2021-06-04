@@ -10,20 +10,20 @@ namespace netp { namespace logger {
 		LOG_LEVEL_ERR	= 0,
 		LOG_LEVEL_WARN	= 1,
 		LOG_LEVEL_INFO	= 2,
-		LOG_LEVEL_DEBUG = 3,
+		LOG_LEVEL_VERBOSE = 3,
 		LOG_LEVEL_MAX	= 4
 	};
 
 	enum log_mask {
-		LOG_MASK_DEBUG = 0x01, //for netp debug
-		LOG_MASK_INFO = 0x02, //for generic debug
+		LOG_MASK_VERBOSE = 0x01, //for netp core log
+		LOG_MASK_INFO = 0x02, //for generic user log
 		LOG_MASK_WARN = 0x04, //warning, refuse client service
 		LOG_MASK_ERR = 0x08 //fatal issue, terminate client service
 	};
 
 	const static char __log_mask_char[9] = {
 		' ',
-		'D',
+		'V',
 		'I',
 		' ',
 		'W',
@@ -33,10 +33,10 @@ namespace netp { namespace logger {
 		'E'
 	};
 
-	#define LOG_LEVELS_ERR			( netp::logger::LOG_MASK_ERR)
-	#define LOG_LEVELS_WARN		( LOG_LEVELS_ERR | netp::logger::LOG_MASK_WARN )
-	#define LOG_LEVELS_INFO			( LOG_LEVELS_WARN | netp::logger::LOG_MASK_INFO )
-	#define LOG_LEVELS_DEBUG		( LOG_LEVELS_INFO | netp::logger::LOG_MASK_DEBUG )
+	#define LOG_LEVELS_ERR				( netp::logger::LOG_MASK_ERR)
+	#define LOG_LEVELS_WARN			( LOG_LEVELS_ERR | netp::logger::LOG_MASK_WARN )
+	#define LOG_LEVELS_INFO				( LOG_LEVELS_WARN | netp::logger::LOG_MASK_INFO )
+	#define LOG_LEVELS_VERBOSE		( LOG_LEVELS_INFO | netp::logger::LOG_MASK_VERBOSE )
 
 	class logger_abstract:
 		public netp::ref_base
@@ -56,7 +56,7 @@ namespace netp { namespace logger {
 				LOG_LEVELS_ERR,
 				LOG_LEVELS_WARN,
 				LOG_LEVELS_INFO,
-				LOG_LEVELS_DEBUG
+				LOG_LEVELS_VERBOSE
 			};
 			if (level_int < LOG_LEVEL_MAX) {
 				return log_level_mask_config[level_int];
@@ -81,8 +81,8 @@ namespace netp { namespace logger {
 
 		virtual void write( log_mask level, char const* log, netp::u32_t len ) = 0 ;
 
-		inline void debug( char const* log, netp::u32_t len ) {
-			write( LOG_MASK_DEBUG, log, len );
+		inline void verbose( char const* log, netp::u32_t len ) {
+			write( LOG_MASK_VERBOSE, log, len );
 		}
 		inline void info( char const* log, netp::u32_t len ) {
 			write( LOG_MASK_INFO, log, len );

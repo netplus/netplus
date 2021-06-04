@@ -13,7 +13,9 @@ namespace netp { namespace handler {
 		public:
 			tls_client(NRP<tls_context> const& tlsctx):
 			tls_handler(tlsctx)
-			{}
+			{
+				m_flag |= f_tls_is_client;
+			}
 			void connected(NRP<channel_handler_context> const& ctx) override;
 	};
 }}

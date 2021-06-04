@@ -32,7 +32,7 @@ namespace netp { namespace http {
 
 		if( m_reqs.size() == 0) {
 			NETP_ASSERT(m_mtmp == nullptr );
-//			NETP_DEBUG("[client]no request in queue, code: %d", code );
+//			NETP_VERBOSE("[client]no request in queue, code: %d", code );
 			return ;
 		}
 

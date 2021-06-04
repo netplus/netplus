@@ -23,21 +23,22 @@ namespace netp { namespace handler {
 	{
 		Botan::TLS::Protocol_Version tls_version;
 
-		NSP<Botan::RandomNumberGenerator> rng;
-		NSP<Botan::TLS::Session_Manager> session_mgr;
-		NSP<Botan::Credentials_Manager> credentials_mgr;
-		NSP<Botan::TLS::Policy> policy;
+		NNASP<Botan::RandomNumberGenerator> rng;
+		NNASP<Botan::TLS::Session_Manager> session_mgr;
+		NNASP<Botan::Credentials_Manager> credentials_mgr;
+		NNASP<Botan::TLS::Policy> policy;
 
-		NSP<Botan::TLS::Server_Information> server_info;
+		NNASP<Botan::TLS::Server_Information> server_info;
 		std::vector<std::string> next_protocols;
 	};
 
 	inline static NRP<tls_context> default_tls_context() {
 		NRP<tls_context> tlsctx = netp::make_ref<tls_context>();
 		tlsctx->tls_version = Botan::TLS::Protocol_Version::TLS_V12;
-		tlsctx->rng = netp::make_shared<Botan::AutoSeeded_RNG>();
-		tlsctx->session_mgr = netp::make_shared<Botan::TLS::Session_Manager_In_Memory>(*(tlsctx->rng));
-		tlsctx->policy = netp::make_shared<Botan::TLS::Default_Policy>();
+
+		tlsctx->rng = netp::non_atomic_shared::make<Botan::AutoSeeded_RNG>();
+		tlsctx->session_mgr = netp::non_atomic_shared::make<Botan::TLS::Session_Manager_In_Memory>(*(tlsctx->rng));
+		tlsctx->policy = netp::non_atomic_shared::make<Botan::TLS::Default_Policy>(); 
 
 		tlsctx->credentials_mgr = nullptr;
 		tlsctx->server_info = nullptr;
@@ -47,17 +48,16 @@ namespace netp { namespace handler {
 
 	inline static NRP<tls_context> default_tls_server_context(std::string const& ca_path, std::string const& privkey ) {
 		NRP<tls_context> tlsctx = default_tls_context();
-		tlsctx->credentials_mgr = netp::make_shared<netp::handler::Basic_Credentials_Manager>(*(tlsctx->rng), ca_path, privkey );
+		tlsctx->credentials_mgr = netp::non_atomic_shared::make<netp::handler::Basic_Credentials_Manager>(*(tlsctx->rng), ca_path, privkey);
 		return tlsctx;
 	}
 
 	inline static NRP<tls_context> default_tls_client_context(std::string const& host, netp::u16_t port) {
 		NRP<tls_context> _tlsctx = default_tls_context();
-		_tlsctx->credentials_mgr = netp::make_shared<netp::handler::Basic_Credentials_Manager>(true, "");
-		_tlsctx->server_info = netp::make_shared<Botan::TLS::Server_Information>(host, port);
+		_tlsctx->credentials_mgr = netp::non_atomic_shared::make<netp::handler::Basic_Credentials_Manager>(true, "");
+		_tlsctx->server_info = netp::non_atomic_shared::make<Botan::TLS::Server_Information>(host, port);
 		return _tlsctx;
 	}
-
 
 	enum tls_handler_flag {
 		f_tls_ch_handshake = 1 << 0,
@@ -65,13 +65,29 @@ namespace netp { namespace handler {
 		f_tls_ch_activated = 1 << 2,
 		f_tls_ch_write_idle = 1 << 3,
 		f_tls_ch_writing_user_data = 1<<4,
+		f_tls_ch_close_pending = 1<<5,
+		f_tls_ch_close_called = 1<<6,
+		f_tls_is_client = 1 << 7,
 
-		f_write_idle = 1<<5,
-		f_writing = 1<<6,
-		f_connected = 1<<7,
-		f_read_closed = 1<<8,
-		f_write_closed = 1 << 9,
-		f_closed = 1 <<10,
+		f_tls_client_hello_sent =1<<8,
+		f_tls_client_hello_received = 1<<9,
+		f_tls_server_hello_sent =1<<10,
+		f_tls_server_hello_received = 1<<11,
+
+		f_ch_write_idle = 1<<12,
+		f_ch_writing = 1<<13,
+		f_ch_connected = 1<<14,
+		f_ch_read_closed = 1<<15,
+		f_ch_write_closed = 1 << 16,
+		f_ch_closed = 1 <<17,
+
+		f_ch_close_called = 1<<18,
+		f_ch_close_write_called = 1<<19,
+		f_ch_close_pending = 1<<20,
+		f_ch_close_write_pending =1<<21,
+
+		f_ch_handler_close_called = 1<<22,
+		f_ch_handler_close_write_called = 1<<23
 	};
 
 	class tls_handler :
@@ -92,7 +108,7 @@ namespace netp { namespace handler {
 
 		int m_flag;
 
-		NSP<Botan::TLS::Channel> m_tls_channel;
+		NNASP<Botan::TLS::Channel> m_tls_channel;
 
 		typedef std::queue<tls_ch_outlet, std::deque<tls_ch_outlet, netp::allocator<tls_ch_outlet>>> tls_ch_outlet_queue_t;
 		typedef std::queue<socket_ch_outlet, std::deque<socket_ch_outlet, netp::allocator<socket_ch_outlet>>> socket_ch_outlets_queue_t;
@@ -103,10 +119,16 @@ namespace netp { namespace handler {
 		NRP<netp::channel_handler_context> m_ctx;
 
 		NRP<tls_context> m_tls_ctx;
+		std::string m_session_id;
+		std::string m_session_ticket;
+
+		NRP<promise<int>> m_close_p;
+		NRP<promise<int>> m_close_write_p;
+
 	public:
 		tls_handler( NRP<tls_context> const& tlsctx ) :
-			channel_handler_abstract(CH_ACTIVITY_CONNECTED | CH_ACTIVITY_CLOSED | CH_ACTIVITY_READ_CLOSED|CH_ACTIVITY_WRITE_CLOSED | CH_INBOUND_READ | CH_OUTBOUND_WRITE|CH_OUTBOUND_CLOSE),
-			m_flag(f_tls_ch_write_idle|f_closed| f_write_closed|f_read_closed),
+			channel_handler_abstract(CH_ACTIVITY_CONNECTED | CH_ACTIVITY_CLOSED | CH_ACTIVITY_READ_CLOSED|CH_ACTIVITY_WRITE_CLOSED | CH_INBOUND_READ | CH_OUTBOUND_WRITE|CH_OUTBOUND_CLOSE| CH_OUTBOUND_CLOSE_WRITE),
+			m_flag(f_tls_ch_write_idle|f_ch_closed| f_ch_write_closed|f_ch_read_closed),
 			m_ctx(nullptr),
 			m_tls_channel(nullptr),
 			m_tls_ctx(tlsctx)
@@ -120,11 +142,15 @@ namespace netp { namespace handler {
 		void _socket_ch_flush_done(int code);
 		void _try_socket_ch_flush();
 
+		void tls_inspect_handshake_msg(const Botan::TLS::Handshake_Message& message) override;
 		bool tls_session_established(const Botan::TLS::Session& session) override;
 		void tls_session_activated() override;
 		void tls_emit_data(const uint8_t buf[], size_t length) override;
 		void tls_alert(Botan::TLS::Alert alert) override;
 		void tls_record_received(uint64_t /*seq_no*/, const uint8_t buf[], size_t buf_size) override;
+
+		void tls_log_error(const char* err) override;
+		void tls_log_debug(const char* what) override;
 
 		void tls_verify_cert_chain(
 			const std::vector<Botan::X509_Certificate>& cert_chain,
@@ -145,6 +171,8 @@ namespace netp { namespace handler {
 		void read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income) override;
 		void write(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) override;
 		void close(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx) override;
+
+		void close_write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx) override;
 	};
 }}
 

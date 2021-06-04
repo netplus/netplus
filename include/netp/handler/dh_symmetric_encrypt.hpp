@@ -76,7 +76,7 @@ namespace netp { namespace handler {
 		{
 		case CS_XXTEA:
 		{
-			return netp::make_shared<netp::security::xxtea>();
+			return netp::atomic_shared::make<netp::security::xxtea>();
 		}
 		break;
 		default:

@@ -30,7 +30,7 @@ namespace netp { namespace handler {
 
 	void websocket::connected(NRP<channel_handler_context> const& ctx) {
 		m_income_prev = netp::make_ref<packet>();
-		m_tmp_frame = netp::make_shared<ws_frame>();
+		m_tmp_frame = netp::atomic_shared::make<ws_frame>();
 		m_tmp_frame->appdata = netp::make_ref<packet>();
 		m_tmp_frame->extdata = netp::make_ref<packet>();
 
@@ -300,7 +300,7 @@ _CHECK:
 				case OP_CLOSE:
 					{
 						//reply a CLOSE, then do ctx->close();
-						NETP_DEBUG("<<< op_close");
+						NETP_VERBOSE("<<< op_close");
 						m_state = state::S_FRAME_CLOSE_RECEIVED;
 						close(make_ref<promise<int>>(),ctx);
 					}
@@ -308,7 +308,7 @@ _CHECK:
 				case OP_PING:
 					{
 						//reply a PONG
-						NSP<ws_frame> _PONG = netp::make_shared<ws_frame>();
+						NSP<ws_frame> _PONG = netp::atomic_shared::make<ws_frame>();
 						_PONG->H.B1.Bit.fin = 0x1;
 						_PONG->H.B1.Bit.rsv1 = 0x0;
 						_PONG->H.B1.Bit.rsv2 = 0x0;
@@ -398,7 +398,7 @@ _CHECK:
 
 	void websocket::write(NRP<promise<int>> const& chp,NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) {
 
-		NSP<ws_frame> _frame = netp::make_shared<ws_frame>();
+		NSP<ws_frame> _frame = netp::atomic_shared::make<ws_frame>();
 		_frame->H.B1.Bit.fin = 0x1;
 		_frame->H.B1.Bit.rsv1 = 0x0;
 		_frame->H.B1.Bit.rsv2 = 0x0;
@@ -443,7 +443,7 @@ _CHECK:
 			return;
 		}
 
-		NSP<ws_frame> _CLOSE = netp::make_shared<ws_frame>();
+		NSP<ws_frame> _CLOSE = netp::atomic_shared::make<ws_frame>();
 		_CLOSE->H.B1.Bit.fin = 0x1;
 		_CLOSE->H.B1.Bit.rsv1 = 0x0;
 		_CLOSE->H.B1.Bit.rsv2 = 0x0;
@@ -467,7 +467,7 @@ _CHECK:
 	int websocket::http_on_headers_complete(NRP<netp::http::parser> const& p, NRP<netp::http::message> const& m) {
 		m_upgrade_req = m;
 		(void)p;
-		NETP_DEBUG(__FUNCTION__);
+		NETP_VERBOSE(__FUNCTION__);
 		return netp::OK;
 	}
 
@@ -475,7 +475,7 @@ _CHECK:
 		(void)p;
 		(void)data;
 		(void)len;
-		NETP_DEBUG("[%s]<<< %s", __FUNCTION__, std::string(data, len).c_str());
+		NETP_VERBOSE("[%s]<<< %s", __FUNCTION__, std::string(data, len).c_str());
 		return netp::OK;
 	}
 	int websocket::http_on_message_complete(NRP<netp::http::parser> const& p) {
@@ -485,7 +485,7 @@ _CHECK:
 		//m_upgrade_req->ver = {p->_p->http_major, p->_p->http_minor};
 		NRP<packet> m;
 		m_upgrade_req->encode(m);
-		NETP_DEBUG("[%s], req: %s", __FUNCTION__, std::string( (char*) m->head(), m->len() ).c_str() );
+		NETP_VERBOSE("[%s], req: %s", __FUNCTION__, std::string( (char*) m->head(), m->len() ).c_str() );
 
 		m_state = state::S_UPGRADE_REQ_MESSAGE_DONE;
 		return netp::OK;
@@ -493,13 +493,13 @@ _CHECK:
 
 	int websocket::http_on_chunk_header(NRP<netp::http::parser> const& p) {
 		(void)p;
-		NETP_DEBUG("[%s]", __FUNCTION__);
+		NETP_VERBOSE("[%s]", __FUNCTION__);
 		return netp::OK;
 	}
 
 	int websocket::http_on_chunk_complete(NRP<netp::http::parser> const& p) {
 		(void)p;
-		NETP_DEBUG("[%s]", __FUNCTION__);
+		NETP_VERBOSE("[%s]", __FUNCTION__);
 		return netp::OK;
 	}
 }}

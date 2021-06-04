@@ -115,7 +115,7 @@ namespace netp {
 			throw;
 		}
 		{
-			NETP_DEBUG("[io_event_loop]exiting run");
+			NETP_VERBOSE("[io_event_loop]exiting run");
 			// EDGE check
 			// scenario 1:
 			// 1) do schedule, 2) set L -> null
@@ -137,7 +137,7 @@ namespace netp {
 		if (m_io_ctx_count == m_io_ctx_count_before_running) {
 			__do_enter_terminated();
 		}
-	//	NETP_DEBUG("[io_event_loop]__do_notify_terminating done");
+	//	NETP_VERBOSE("[io_event_loop]__do_notify_terminating done");
 	}
 
 	void io_event_loop::__do_enter_terminated() {
@@ -174,13 +174,13 @@ namespace netp {
 		}
 
 		void io_event_loop::__terminate() {
-			NETP_DEBUG("[io_event_loop][%u]__terminate begin", m_type );
+			NETP_VERBOSE("[io_event_loop][%u]__terminate begin", m_type );
 			while (m_state.load(std::memory_order_acquire) != u8_t(loop_state::S_TERMINATED)) {
 				netp::this_thread::sleep(1);
 			}
 			u8_t terminated = u8_t(loop_state::S_TERMINATED);
 			if (m_state.compare_exchange_strong(terminated, u8_t(loop_state::S_EXIT), std::memory_order_acq_rel, std::memory_order_acquire)) {
-				NETP_DEBUG("[io_event_loop][%u]enter S_EXIT, last interrupt if needed", m_type);
+				NETP_VERBOSE("[io_event_loop][%u]enter S_EXIT, last interrupt if needed", m_type);
 				m_poller->interrupt_wait();
 				//@NOTE:
 				//1, we don't interrupt these kinds of thread, cuz we want all the tasks be finished one by one
@@ -208,7 +208,7 @@ namespace netp {
 		}
 
 		void io_event_loop_group::launch_loop(io_poller_type t, int count, event_loop_cfg const& cfg, fn_event_loop_maker_t const& fn_maker ) {
-			NETP_DEBUG("[io_event_loop_group]alloc poller: %u, count: %u, ch_buf_size: %u", t, count, cfg.ch_buf_size );
+			NETP_VERBOSE("[io_event_loop_group]alloc poller: %u, count: %u, ch_buf_size: %u", t, count, cfg.ch_buf_size );
 			lock_guard<shared_mutex> lg(m_loop_mtx[t]);
 			m_curr_loop_idx[t] = 0;
 			while (count-- > 0) {
@@ -250,7 +250,7 @@ namespace netp {
 				while( it != m_loop[t].end() ) {
 					//ref_count == internal_ref_count means no other ref for this LOOP, we must deattach it from our pool
 					if((*it).ref_count() == (*it)->internal_ref_count() ) {
-						NETP_DEBUG("[io_event_loop][%u]__dealloc_poller, dattached one event loop", t);
+						NETP_VERBOSE("[io_event_loop][%u]__dealloc_poller, dattached one event loop", t);
 
 						to_deattach.push_back(*it);
 						m_loop[t].erase(it);

@@ -16,4 +16,7 @@
     <LocalDebuggerCommandArguments>-t 1 -c 1 -l 64 -n 200000</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
+  <PropertyGroup>
+    <ShowAllFiles>false</ShowAllFiles>
+  </PropertyGroup>
 </Project>

@@ -100,7 +100,7 @@ namespace netp {
 					} else {
 						status = NETP_NEGATIVE(status);
 					}
-					NETP_DEBUG("[select]socket getsockopt failed, fd: %d, errno: %d", ctx->fd, status);
+					NETP_VERBOSE("[select]socket getsockopt failed, fd: %d, errno: %d", ctx->fd, status);
 					NETP_ASSERT(status != netp::OK);
 				}
 				if (FD_ISSET(ctx->fd, &m_fds[fds_r])) {

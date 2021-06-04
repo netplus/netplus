@@ -160,7 +160,7 @@ namespace netp {
 
 			std::vector<ipv4_t, netp::allocator<ipv4_t>> const& ipv4s = std::get<1>(tupdns);
 			if (ipv4s.size() == 0) {
-				NETP_WARN("[socket]no ipv4 record for :%s", host);
+				NETP_WARN("[socket]no ipv4 record for :%s", host.c_str() );
 				ch_dialf->set(std::make_tuple(netp::E_SOCKET_NO_AVAILABLE_ADDR, nullptr));
 				return;
 			}

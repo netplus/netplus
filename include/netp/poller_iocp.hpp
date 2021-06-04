@@ -259,7 +259,7 @@ namespace netp {
 				ec = netp::OK;
 				if (FALSE == ::WSAGetOverlappedResult(olctx->fd, ol, &dwTrans, FALSE, &dwFlags)) {
 					ec = netp_socket_get_last_errno();
-					NETP_DEBUG("[#%d]dwTrans: %d, dwFlags: %d, update ec: %d", olctx->fd, dwTrans, dwFlags, ec);
+					NETP_VERBOSE("[#%d]dwTrans: %d, dwFlags: %d, update ec: %d", olctx->fd, dwTrans, dwFlags, ec);
 				}
 
 				if (olctx->action_status & AS_CH_END) {
@@ -282,7 +282,7 @@ namespace netp {
 			if (NETP_UNLIKELY(getOk == FALSE)) {
 				ec = netp_socket_get_last_errno();
 				if (ec == netp::E_WAIT_TIMEOUT) {
-					NETP_DEBUG("[iocp]GetQueuedCompletionStatus return: %d", ec);
+					NETP_VERBOSE("[iocp]GetQueuedCompletionStatus return: %d", ec);
 					return;
 				}
 
@@ -294,7 +294,7 @@ namespace netp {
 			}
 			//did not dequeue a completion packet from the completion port
 			if (ol == 0) {
-				NETP_DEBUG("[iocp]GetQueuedCompletionStatus return: %d, no packet dequeue", ec);
+				NETP_VERBOSE("[iocp]GetQueuedCompletionStatus return: %d, no packet dequeue", ec);
 				return;
 			}
 			ol_ctx* olctx=(CONTAINING_RECORD(ol, ol_ctx, ol));
@@ -303,7 +303,7 @@ namespace netp {
 			DWORD dwFlags = 0;
 			if (FALSE == ::WSAGetOverlappedResult(olctx->fd, ol, &dwTrans, FALSE, &dwFlags)) {
 				ec = netp_socket_get_last_errno();
-				NETP_DEBUG("[#%d]dwTrans: %d, dwFlags: %d, update ec: %d", ckey, dwTrans, dwFlags, ec);
+				NETP_VERBOSE("[#%d]dwTrans: %d, dwFlags: %d, update ec: %d", ckey, dwTrans, dwFlags, ec);
 			}
 			NETP_ASSERT(dwTrans == dwTrans_);
 

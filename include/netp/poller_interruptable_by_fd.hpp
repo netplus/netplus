@@ -196,7 +196,7 @@ namespace netp {
 			break;
 			case io_action::NOTIFY_TERMINATING:
 			{
-				NETP_DEBUG("[io_event_loop]notify terminating...");
+				NETP_VERBOSE("[io_event_loop]notify terminating...");
 				io_ctx* _ctx, * _ctx_n;
 				for (_ctx = (m_io_ctx_list.next), _ctx_n = _ctx->next; _ctx != &(m_io_ctx_list); _ctx = _ctx_n, _ctx_n = _ctx->next) {
 					if (_ctx->fd == m_fd_monitor_r->fd) {
@@ -208,7 +208,7 @@ namespace netp {
 
 					_ctx->iom->io_notify_terminating(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
 				}
-				NETP_DEBUG("[io_event_loop]notify terminating done");
+				NETP_VERBOSE("[io_event_loop]notify terminating done");
 			}
 			break;
 			case io_action::READ_WRITE:

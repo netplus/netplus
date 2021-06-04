@@ -60,7 +60,7 @@ namespace netp {  namespace handler {
                 try
                 {
                     cert.certs.push_back(Botan::X509_Certificate(in));
-                    NETP_DEBUG("[tls_credentials]add cert: %s", server_crt.c_str() );
+                    //NETP_VERBOSE("[tls_credentials]add cert: %s", server_crt.c_str() );
                 } catch (std::exception&) {
                 }
             }

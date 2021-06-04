@@ -117,7 +117,7 @@ namespace netp {
 		}
 
 		virtual void deinit() {
-			NETP_DEBUG("[io_event_loop]deinit begin");
+			NETP_VERBOSE("[io_event_loop]deinit begin");
 			NETP_ASSERT(in_event_loop());
 			NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_EXIT), "event loop deinit state check failed");
 
@@ -131,7 +131,7 @@ namespace netp {
 			m_tb = nullptr;
 
 			m_poller->deinit();
-			NETP_DEBUG("[io_event_loop]deinit done");
+			NETP_VERBOSE("[io_event_loop]deinit done");
 		}
 
 		void __run();
