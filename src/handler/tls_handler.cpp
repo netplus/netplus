@@ -340,8 +340,10 @@ namespace netp { namespace handler {
 			NETP_ASSERT((m_flag&f_ch_close_called) ==0);
 			m_flag &= ~(f_ch_close_pending|f_ch_close_write_pending);
 			m_flag |= f_ch_close_called;
-			m_ctx->close(m_close_p);
+
+			NRP<netp::promise<int>> __p = m_close_p; //avoid nest set
 			m_close_p = nullptr;
+			m_ctx->close(__p);
 			return;
 		}
 
@@ -351,8 +353,10 @@ namespace netp { namespace handler {
 			NETP_ASSERT((m_flag & (f_ch_close_called|f_ch_close_write_called)) == 0);
 			m_flag &= ~f_ch_close_write_pending;
 			m_flag |= f_ch_close_write_called;
-			m_ctx->close_write(m_close_write_p);
+
+			NRP<netp::promise<int>> __p = m_close_write_p; //avoid nest set
 			m_close_write_p = nullptr;
+			m_ctx->close_write(__p);
 			return;
 		}
 
