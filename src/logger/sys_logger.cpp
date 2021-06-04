@@ -37,7 +37,7 @@ namespace netp { namespace logger {
 		_log[total_length] = '\0';
 
 		switch( mask ) {
-			case netp::logger::LOG_MASK_DEBUG:
+			case netp::logger::LOG_MASK_VERBOSE:
 				{
 					sys_logger::Syslog( LOG_DEBUG,  _log, total_length );
 				}

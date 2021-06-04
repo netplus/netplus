@@ -338,11 +338,11 @@ namespace netp {
 	class __shared_ptr_impl final {
 
 		friend class __weak_ptr_impl<T,__counter_t>;
+		friend struct __shared_maker_impl<__counter_t>;
 
-		template <class Y, class __counter_t>
+		//___counter_ should be __counter_t, but c++ do not support nested class specialize
+		template <class Y, class ___counter_t>
 		friend class __shared_ptr_impl;
-
-		friend __shared_maker_impl<__counter_t>;
 
 		typedef typename std::remove_reference<T>::type __ELEMENT_TYPE;
 		typedef __ELEMENT_TYPE* POINTER_TYPE;
