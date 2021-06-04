@@ -65,29 +65,30 @@ namespace netp { namespace handler {
 		f_tls_ch_activated = 1 << 2,
 		f_tls_ch_write_idle = 1 << 3,
 		f_tls_ch_writing_user_data = 1<<4,
-		f_tls_ch_close_pending = 1<<5,
-		f_tls_ch_close_called = 1<<6,
-		f_tls_is_client = 1 << 7,
+		f_tls_ch_writing_barrier = 1 << 5,
+		f_tls_ch_close_pending = 1<<6,
+		f_tls_ch_close_called = 1<<7,
+		f_tls_is_client = 1 << 8,
 
-		f_tls_client_hello_sent =1<<8,
-		f_tls_client_hello_received = 1<<9,
-		f_tls_server_hello_sent =1<<10,
-		f_tls_server_hello_received = 1<<11,
+		f_tls_client_hello_sent =1<<10,
+		f_tls_client_hello_received = 1<<11,
+		f_tls_server_hello_sent =1<<12,
+		f_tls_server_hello_received = 1<<13,
 
-		f_ch_write_idle = 1<<12,
-		f_ch_writing = 1<<13,
-		f_ch_connected = 1<<14,
-		f_ch_read_closed = 1<<15,
-		f_ch_write_closed = 1 << 16,
-		f_ch_closed = 1 <<17,
+		f_ch_write_idle = 1<<14,
+		f_ch_writing = 1<<15,
+		f_ch_connected = 1<<16,
+		f_ch_read_closed = 1<<17,
+		f_ch_write_closed = 1 << 18,
+		f_ch_closed = 1 <<19,
 
-		f_ch_close_called = 1<<18,
-		f_ch_close_write_called = 1<<19,
-		f_ch_close_pending = 1<<20,
-		f_ch_close_write_pending =1<<21,
+		f_ch_close_called = 1<<20,
+		f_ch_close_write_called = 1<<21,
+		f_ch_close_pending = 1<<22,
+		f_ch_close_write_pending =1<<23,
 
-		f_ch_handler_close_called = 1<<22,
-		f_ch_handler_close_write_called = 1<<23
+		f_ch_handler_close_called = 1<<24,
+		f_ch_handler_close_write_called = 1<<25
 	};
 
 	class tls_handler :
@@ -99,6 +100,7 @@ namespace netp { namespace handler {
 		struct tls_ch_outlet {
 			NRP<netp::packet> data;
 			NRP<netp::promise<int>> write_p;
+			int record_count;
 		};
 
 		struct socket_ch_outlet {

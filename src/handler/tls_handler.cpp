@@ -26,13 +26,8 @@ namespace netp { namespace handler {
 			ctx->fire_closed();
 		}
 
-		if (m_flag & f_tls_ch_handshake) {
-			NETP_WARN("[tls_handler]session: %s, closed in handshake state", m_session_id.c_str() );
-			return;
-		}
-
 		if ((m_flag & f_tls_ch_activated) ) {
-			NETP_WARN("[tls_handler]session: %s, closed in !f_tls_ch_activated state", m_session_id.c_str());
+			NETP_INFO("[tls_handler]session: %s, closed in !f_tls_ch_activated state", m_session_id.c_str());
 			return;
 		}
 	}
@@ -92,16 +87,22 @@ namespace netp { namespace handler {
 			m_flag |= (f_tls_ch_writing_user_data);
 
 			NETP_ASSERT((m_flag & f_ch_write_closed) == 0);
+			NETP_ASSERT((m_flag & f_tls_ch_writing_barrier) == 0);
 			NETP_ASSERT(m_outlets_to_tls_ch.size());
 			tls_ch_outlet& outlet = m_outlets_to_tls_ch.front();
 			NETP_ASSERT(m_tls_channel != nullptr);
 			NNASP<Botan::TLS::Channel> tlsch = m_tls_channel;
 			try {
+				//send would result in multi tls_emit_data call
+				m_flag |= f_tls_ch_writing_barrier;
 				tlsch->send((uint8_t*)outlet.data->head(), outlet.data->len());
+				m_flag &= ~f_tls_ch_writing_barrier;
+
+				_try_socket_ch_flush();
 			} catch (std::exception& e) {
 				NETP_ERR("[tls]tls record write failed: %s", e.what());
 				tlsch->close();
-				m_flag &= ~(f_tls_ch_writing_user_data);
+				m_flag &= ~(f_tls_ch_writing_user_data| f_tls_ch_writing_barrier);
 			}
 		}
 	}
@@ -114,6 +115,11 @@ namespace netp { namespace handler {
 		NETP_ASSERT(m_outlets_to_tls_ch.size());
 		tls_ch_outlet& outlet = m_outlets_to_tls_ch.front();
 		NETP_ASSERT(outlet.write_p != nullptr);
+
+		if (--(outlet.record_count) > 0) {
+			return;
+		}
+
 		outlet.write_p->set(netp::OK);
 		m_outlets_to_tls_ch.pop();
 		m_flag |= f_tls_ch_write_idle;
@@ -149,7 +155,7 @@ namespace netp { namespace handler {
 			return;
 		}
 
-		m_outlets_to_tls_ch.push({ outlet, chp });
+		m_outlets_to_tls_ch.push({ outlet, chp, 0 });
 		_try_tls_ch_flush();
 	}
 
@@ -399,17 +405,24 @@ namespace netp { namespace handler {
 		}
 	}
 
-	void tls_handler::tls_emit_data(const uint8_t buf[], size_t length) 
-	{
+	void tls_handler::tls_emit_data(const uint8_t buf[], size_t length) {
 		if (m_flag&(f_ch_write_closed|f_ch_closed)) {
 			NETP_WARN("[tls]handler shutdown already, ignore write, nbytes: %u", length);
+			NETP_ASSERT(!(m_flag&f_tls_ch_writing_barrier));
 			NETP_ASSERT((m_flag & (f_tls_ch_writing_user_data)) != (f_tls_ch_writing_user_data));
 			return;
 		}
 
 		NETP_ASSERT(m_ctx != nullptr);
-		m_outlets_to_socket_ch.push({ netp::make_ref<netp::packet>(buf, length) , (m_flag&f_tls_ch_writing_user_data)!=0 });
-		_try_socket_ch_flush();
+		if ((m_flag&f_tls_ch_writing_barrier)) {
+			NETP_ASSERT( m_outlets_to_tls_ch.size() );
+			tls_ch_outlet& front_ = m_outlets_to_tls_ch.front();
+			++front_.record_count;
+			m_outlets_to_socket_ch.push({ netp::make_ref<netp::packet>(buf, length) , true });
+		} else {
+			m_outlets_to_socket_ch.push({ netp::make_ref<netp::packet>(buf, length) , false });
+			_try_socket_ch_flush();
+		}
 	}
 
 	void tls_handler::tls_alert(Botan::TLS::Alert alert)
