@@ -106,6 +106,26 @@ namespace netp {
 			wsabuf_size(64*1024),
 			ch_maker(nullptr)
 		{}
+
+		NRP<socket_cfg> clone() const {
+			NRP<socket_cfg> _cfg = netp::make_ref<socket_cfg>();
+			_cfg->L = L;
+			_cfg->fd = fd;
+			_cfg->family = family; 
+			_cfg->type = type;
+			_cfg->proto = proto;
+			_cfg->option = option; 
+			_cfg->laddr = laddr;
+			_cfg->raddr = raddr;
+			_cfg->kvals = kvals;
+			_cfg->sock_buf = sock_buf;
+			_cfg->bdlimit = bdlimit;
+			_cfg->wsabuf_size = wsabuf_size;
+			_cfg->ch_maker = ch_maker;
+
+			return _cfg;
+		}
+
 	};
 
 	struct socket_outbound_entry final {

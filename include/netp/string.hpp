@@ -482,8 +482,8 @@ namespace netp {
 		goto begin;
 	}
 
-	template <class _string_t>
-	inline void split(_string_t const& string, _string_t const& delimiter, std::vector<_string_t>& result ) {
+	template <class _string_t, class _allocator_t= netp::allocator<_string_t>>
+	inline void split(_string_t const& string, _string_t const& delimiter, std::vector<_string_t, _allocator_t>& result ) {
 
 		NETP_ASSERT( result.size() == 0 );
 		char const* check_cstr = string.c_str();
@@ -511,8 +511,8 @@ namespace netp {
 		}
 	}
 
-	template <class _string_t>
-	inline void join(std::vector<_string_t> const& strings, _string_t const& delimiter, _string_t& result) {
+	template <class _string_t, class _allocator_t = netp::allocator<_string_t>>
+	inline void join(std::vector<_string_t, _allocator_t> const& strings, _string_t const& delimiter, _string_t& result) {
 		if (strings.size() == 0)
 		{
 			return;

@@ -11,6 +11,18 @@ namespace netp {
 	static_assert(sizeof(port_t) == 2, "port_t size assert failed");
 
 	typedef std::vector<ipv4_t, netp::allocator<ipv4_t>> vector_ipv4_t;
+
+#pragma pack(push,1)
+	union ipv4_c4 {
+		ipv4_t nipv4;
+		struct __ipv4_c4 {
+			unsigned char c1;
+			unsigned char c2;
+			unsigned char c3;
+			unsigned char c4;
+		} c4;
+	};
+#pragma pack(pop)
 }
 
 #endif

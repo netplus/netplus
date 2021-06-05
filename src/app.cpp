@@ -541,6 +541,20 @@ namespace netp {
 		}
 	}
 
+	void app_test_unit::test_generic_check() {
+		const char* loopback[] = {
+			"127.0.0.1",
+			"10.0.0.0",
+			"172.16.0.1",
+			"192.168.0.0"
+		};
+
+		for (int i = 0; i < sizeof(loopback) / sizeof(loopback[0]); ++i) {
+			ipv4_t v4 = netp::dotiptonip(loopback[i]);
+			NETP_ASSERT(is_internal(v4));
+		}
+	}
+
 	void app_test_unit::benchmark_hash() {
 		int total = 100000;
 		NRP<netp::packet> p = netp::make_ref<netp::packet>();
@@ -576,6 +590,7 @@ namespace netp {
 
 		test_netp_allocator(loop);
 		test_std_allocator(loop);
+		test_generic_check();
 
 #ifdef _NETP_DEBUG
 		benchmark_hash();

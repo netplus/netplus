@@ -80,6 +80,37 @@ namespace netp {
 			;
 	}
 
+
+	//::1 - IPv6  loopback
+	//127.0.0.0 - 127.255.255.255  (127 / 8 prefix)
+	inline bool is_loopback(ipv4_t v4_/*nip*/) {
+		ipv4_c4 _ipv4_c4 = { v4_ };
+		return _ipv4_c4.c4.c1 == 127;
+	}
+
+	/* An IP should be considered as internal when
+	10.0.0.0     -   10.255.255.255  (10/8 prefix)
+	172.16.0.0   -   172.31.255.255  (172.16/12 prefix)
+	192.168.0.0  -   192.168.255.255 (192.168/16 prefix)
+	*/
+	inline bool is_rfc1918(ipv4_t v4_/*nip*/) {
+		ipv4_c4 _ipv4_c4 = { v4_ };
+		switch (_ipv4_c4.c4.c1) {
+		case 10:
+			return true;
+		case 172:
+			return _ipv4_c4.c4.c2 >= 16 && _ipv4_c4.c4.c2 < 32;
+		case 192:
+			return _ipv4_c4.c4.c2 == 168;
+		default:
+			return false;
+		}
+	}
+
+	inline bool is_internal(ipv4_t v4_ /*nip*/) {
+		return is_loopback(v4_) || is_rfc1918(v4_);
+	}
+
 	struct address final :
 		public netp::ref_base
 	{
@@ -92,6 +123,24 @@ namespace netp {
 		address(const struct sockaddr_in6* sockaddr_in6_, size_t slen);
 
 		~address();
+
+		inline bool is_loopback() {
+			if (m_in.sin_family != NETP_AF_UNSPEC) {
+				return netp::is_loopback( m_in.sin_addr.s_addr );
+			}
+			NETP_TODO("IPV6");
+		}
+
+		inline bool is_rfc1918() {
+			if (m_in.sin_family != NETP_AF_UNSPEC) {
+				return netp::is_internal(m_in.sin_addr.s_addr);
+			}
+			NETP_TODO("IPV6");
+		}
+
+		inline bool is_internal() {
+			return is_loopback() || is_rfc1918();
+		}
 
 		struct sockaddr* sockaddr_v4() {
 			return (struct sockaddr*)(&m_in);
@@ -107,7 +156,6 @@ namespace netp {
 			std::memcpy(&(a->m_in6), &m_in6, sizeof(sockaddr_in6));
 			return a;
 		}
-
 
 		//@deprecated
 		inline bool is_null() const { return is_empty(); }

@@ -189,10 +189,10 @@ namespace netp {
 		int rval = ::inet_pton(AF_INET, cstr, &inaddr);
 		if (rval == 0) return false;
 
-		std::vector<string_t> vectors;
-		netp::split<string_t>(string_t(cstr), ".", vectors);
+		std::vector<netp::string_t, netp::allocator<netp::string_t>> vectors;
+		netp::split<netp::string_t>(netp::string_t(cstr), netp::string_t("."), vectors);
 
-		if (vectors.size() != 4) return false;
+		if (vectors.size() != 4) { return false; }
 
 		char _tmp[32] = { 0 };
 		snprintf(_tmp, 32, "%u.%u.%u.%u", netp::to_u32(vectors[0].c_str()), netp::to_u32(vectors[1].c_str()), netp::to_u32(vectors[2].c_str()), netp::to_u32(vectors[3].c_str()));

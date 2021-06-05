@@ -132,7 +132,7 @@ namespace netp {
 		do_dial(_dp, addrs[idx], initializer, cfg);
 	}
 
-	void do_dial(NRP<channel_dial_promise> const& ch_dialf, const char* dialurl, size_t len, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
+	void do_dial(NRP<channel_dial_promise> const& ch_dialf, const char* dialurl, size_t len, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg_ ) {
 		socket_url_parse_info info;
 		int rt = parse_socket_url(dialurl, len, info);
 		if (rt != netp::OK) {
@@ -140,19 +140,20 @@ namespace netp {
 			return;
 		}
 
-		std::tie(rt, cfg->family, cfg->type, cfg->proto) = inspect_address_info_from_dial_str(info.proto.c_str());
+		NRP<socket_cfg> _dcfg = cfg_->clone();
+		std::tie(rt, _dcfg->family, _dcfg->type, _dcfg->proto) = inspect_address_info_from_dial_str(info.proto.c_str());
 		if (rt != netp::OK) {
 			ch_dialf->set(std::make_tuple(rt, nullptr));
 			return;
 		}
 
 		if (netp::is_dotipv4_decimal_notation(info.host.c_str())) {
-			do_dial(ch_dialf, netp::make_ref<address>(info.host.c_str(), info.port, cfg->family), initializer, cfg);
+			do_dial(ch_dialf, netp::make_ref<address>(info.host.c_str(), info.port, _dcfg->family), initializer, _dcfg);
 			return;
 		}
 
 		NRP<dns_query_promise> dnsp = netp::dns_resolver::instance()->resolve(info.host);
-		dnsp->if_done([host=info.host,port = info.port, initializer, ch_dialf, cfg](std::tuple<int, std::vector<ipv4_t, netp::allocator<ipv4_t>>> const& tupdns) {
+		dnsp->if_done([host=info.host,port = info.port, initializer, ch_dialf, _dcfg](std::tuple<int, std::vector<ipv4_t, netp::allocator<ipv4_t>>> const& tupdns) {
 			if (std::get<0>(tupdns) != netp::OK) {
 				ch_dialf->set(std::make_tuple(std::get<0>(tupdns), nullptr));
 				return;
@@ -170,11 +171,11 @@ namespace netp {
 				NRP<address > __a = netp::make_ref<address>();
 				__a->setipv4(ipv4s[i]);
 				__a->setport(port);
-				__a->setfamily(cfg->family);
+				__a->setfamily(_dcfg->family);
 				dialaddrs.push_back(__a);
 			}
 
-			do_dial(ch_dialf, 0, dialaddrs, initializer, cfg);
+			do_dial(ch_dialf, 0, dialaddrs, initializer, _dcfg);
 		});
 	}
 

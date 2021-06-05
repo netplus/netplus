@@ -285,14 +285,16 @@ int socket_base::get_left_snd_queue() const {
 		}
 
 		NETP_ASSERT(rt == netp::OK);
-		listener_cfg->family = m_family;
-		listener_cfg->type = m_type;
-		listener_cfg->proto = m_protocol;
 
-		ch_io_begin([intp, fn_accepted_initializer, listener_cfg, ch = NRP<socket_channel>(this)]( int status, io_ctx*){
+		NRP<socket_cfg> _lcfg = listener_cfg->clone();
+		_lcfg->family = m_family;
+		_lcfg->type = m_type;
+		_lcfg->proto = m_protocol;
+
+		ch_io_begin([intp, fn_accepted_initializer, _lcfg, ch = NRP<socket_channel>(this)]( int status, io_ctx*){
 			intp->set(status);
 			if(status == netp::OK) {
-				ch->ch_io_accept(fn_accepted_initializer, listener_cfg);
+				ch->ch_io_accept(fn_accepted_initializer, _lcfg);
 			}
 		});
 	}
