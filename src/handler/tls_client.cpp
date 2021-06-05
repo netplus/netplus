@@ -10,8 +10,6 @@ namespace netp { namespace handler {
 		m_flag |= f_tls_is_client;
 	}
 
-	tls_client::~tls_client() {}
-
 	void tls_client::connected(NRP<channel_handler_context> const& ctx)  {
 		NETP_ASSERT(m_ctx == nullptr);
 		NETP_ASSERT(m_tls_ctx != nullptr);
