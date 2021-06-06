@@ -108,8 +108,8 @@ namespace netp { namespace traffic {
 
 		const string_t dialurl =
 			(m_dst_address_type == address_type::T_IPV4) ?
-			"tcp://" + ipv4todotip(m_dst_ipv4) + ":" + netp::to_string(m_dst_port) :
-			"tcp://" + (m_dst_domain)+":" + netp::to_string(m_dst_port);
+			"tcp://" + ipv4todotip(m_dst_ipv4) + ":" + netp::to_string((m_dst_port)) :
+			"tcp://" + (m_dst_domain)+":" + netp::to_string((m_dst_port));
 
 		NRP<netp::channel_dial_promise> dial_p = netp::make_ref<netp::channel_dial_promise>();
 		dial_p->if_done([dialurl,L=m_loop, F=NRP<forwarder_iptcp_payload>(this)]( std::tuple<int, NRP<channel>> const& tupc) {

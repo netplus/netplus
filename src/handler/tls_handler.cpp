@@ -37,7 +37,7 @@ namespace netp { namespace handler {
 		}
 
 		if ((m_flag & f_tls_ch_activated) ) {
-			NETP_INFO("[tls_handler]session: %s, closed in !f_tls_ch_activated state", m_session_id.c_str());
+			NETP_VERBOSE("[tls_handler]session: %s, closed in !f_tls_ch_activated state", m_session_id.c_str());
 			return;
 		}
 	}

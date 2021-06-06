@@ -414,7 +414,7 @@ namespace netp {
 	}
 
 	int dns_resolver::__ares_socket_create_cb(ares_socket_t socket_fd, int type) {
-		NETP_VERBOSE("[dns_resolver]__ares_socket_create_cb, fd: %d, type: %d", socket_fd, type);
+		//NETP_VERBOSE("[dns_resolver]__ares_socket_create_cb, fd: %d, type: %d", socket_fd, type);
 		NETP_ASSERT(L != nullptr);
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT((m_flag & dns_resolver_flag::f_running));
@@ -431,7 +431,7 @@ namespace netp {
 	}
 
 	void dns_resolver::__ares_socket_state_cb(ares_socket_t socket_fd, int readable, int writable) {
-		NETP_VERBOSE("[dns_resolver]__ares_state_cb, fd: %d, readable: %d, writeable: %d", socket_fd, readable, writable);
+		//NETP_VERBOSE("[dns_resolver]__ares_state_cb, fd: %d, readable: %d, writeable: %d", socket_fd, readable, writable);
 
 		if ((m_flag & dns_resolver_flag::f_running) ==0) { return; }
 		ares_fd_monitor_map_t::iterator it = m_ares_fd_monitor_map.find(socket_fd);

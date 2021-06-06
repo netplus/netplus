@@ -84,8 +84,8 @@ namespace netp {
 	//::1 - IPv6  loopback
 	//127.0.0.0 - 127.255.255.255  (127 / 8 prefix)
 	inline bool is_loopback(ipv4_t v4_/*nip*/) {
-		ipv4_c4 _ipv4_c4 = { v4_ };
-		return _ipv4_c4.c4.c1 == 127;
+		ipv4_u4 _ipv4_u4 = { v4_ };
+		return _ipv4_u4.u4.u1 == 127;
 	}
 
 	/* An IP should be considered as internal when
@@ -94,14 +94,14 @@ namespace netp {
 	192.168.0.0  -   192.168.255.255 (192.168/16 prefix)
 	*/
 	inline bool is_rfc1918(ipv4_t v4_/*nip*/) {
-		ipv4_c4 _ipv4_c4 = { v4_ };
-		switch (_ipv4_c4.c4.c1) {
+		ipv4_u4 _ipv4_u4 = { v4_ };
+		switch (_ipv4_u4.u4.u1) {
 		case 10:
 			return true;
 		case 172:
-			return _ipv4_c4.c4.c2 >= 16 && _ipv4_c4.c4.c2 < 32;
+			return _ipv4_u4.u4.u2 >= 16 && _ipv4_u4.u4.u2 < 32;
 		case 192:
-			return _ipv4_c4.c4.c2 == 168;
+			return _ipv4_u4.u4.u2 == 168;
 		default:
 			return false;
 		}
