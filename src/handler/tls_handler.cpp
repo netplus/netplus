@@ -36,10 +36,10 @@ namespace netp { namespace handler {
 			ctx->fire_closed();
 		}
 
-		if ((m_flag & f_tls_ch_activated) ) {
-			NETP_VERBOSE("[tls_handler]session: %s, closed in !f_tls_ch_activated state", m_session_id.c_str());
-			return;
-		}
+		//if ((m_flag & f_tls_ch_activated) ) {
+			//NETP_VERBOSE("[tls_handler]session: %s, closed in !f_tls_ch_activated state", m_session_id.c_str());
+			//return;
+		//}
 	}
 
 	void tls_handler::write_closed(NRP<channel_handler_context> const& ctx) {
@@ -316,7 +316,7 @@ namespace netp { namespace handler {
 		{
 			m_session_ticket = Botan::hex_encode(session.session_ticket());
 		}
-		NETP_VERBOSE("[tls_handler]tls_session_established, session_id: %s, ticket: %s, ver: %s, using: %s", m_session_id.c_str(), m_session_ticket.c_str(), session.version().to_string().c_str(), session.ciphersuite().to_string().c_str());
+		//NETP_VERBOSE("[tls_handler]tls_session_established, session_id: %s, ticket: %s, ver: %s, using: %s", m_session_id.c_str(), m_session_ticket.c_str(), session.version().to_string().c_str(), session.ciphersuite().to_string().c_str());
 
 		//if (flag_set("print-certs"))
 		{
@@ -357,8 +357,8 @@ namespace netp { namespace handler {
 		m_outlets_to_socket_ch.pop();
 
 		if (code != netp::OK) {
-			NETP_INFO("[tls]write failed: %d", code);
-			//the under-layer would trigger write_closed , just return
+			NETP_VERBOSE("[tls]write failed: %d", code);
+			//the under-layer would trigger write_closed automatically , just return
 			return;
 		}
 
@@ -471,6 +471,7 @@ namespace netp { namespace handler {
 		NETP_ASSERT(m_ctx != nullptr);
 		//NETP_VERBOSE("received bytes: %d", buf_size);
 		if (buf_size > 0) {
+			NETP_ASSERT( (m_flag&f_ch_read_closed)==0 );
 			m_ctx->fire_read(netp::make_ref<netp::packet>(buf, buf_size));
 		}
 	}

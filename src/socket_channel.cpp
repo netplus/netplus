@@ -342,6 +342,7 @@ int socket_base::get_left_snd_queue() const {
 			m_chflag |= int(channel_flag::F_WRITE_ERROR);
 			m_cherrno = status;
 			ch_io_end_connect();
+			ch_close_impl(netp::make_ref<netp::promise<int>>());
 			NETP_ERR("[socket][%s]socket dial error: %d", ch_info().c_str(), status);
 			dialp->set(status);
 			return;
@@ -386,6 +387,11 @@ int socket_base::get_left_snd_queue() const {
 			if (NETP_LIKELY(fn_initializer != nullptr)) {
 				fn_initializer(NRP<channel>(this));
 			}
+
+			ch_set_connected();
+			ch_io_end_connect();
+			dialp->set(netp::OK);
+			ch_fire_connected();
 		} catch(netp::exception const& e) {
 			NETP_ASSERT(e.code() != netp::OK );
 			status = e.code();
@@ -408,13 +414,7 @@ int socket_base::get_left_snd_queue() const {
 
 		NETP_TRACE_SOCKET("[socket][%s]async connected", ch_info().c_str());
 		NETP_ASSERT( m_chflag& (int(channel_flag::F_CONNECTING)|int(channel_flag::F_CONNECTED)) );
-		
-		ch_set_connected();
-		ch_io_end_connect();
 
-		dialp->set(netp::OK);
-
-		ch_fire_connected();
 		ch_io_read();
 	}
 
@@ -521,11 +521,11 @@ int socket_base::get_left_snd_queue() const {
 			if (m_chflag&int(channel_flag::F_WRITE_ERROR)) {
 				NETP_ASSERT(m_outbound_entry_q.size() != 0);
 				NETP_ASSERT(ch_errno() != netp::OK);
-				NETP_WARN("[socket][%s]__do_io_write(), but socket error already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
+				NETP_VERBOSE("[socket][%s]__do_io_write(), but socket error already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
 				return ;
 			} else if (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWN))) {
 				NETP_ASSERT( m_outbound_entry_q.size() == 0);
-				NETP_WARN("[socket][%s]__do_io_write(), but socket write closed already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
+				NETP_VERBOSE("[socket][%s]__do_io_write(), but socket write closed already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
 				return;
 			} else {
 				m_chflag |= int(channel_flag::F_WRITING);

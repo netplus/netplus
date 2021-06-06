@@ -670,33 +670,34 @@ namespace netp {
 					if (NETP_LIKELY(ch_initializer != nullptr)) {
 						ch_initializer(ch);
 					}
+					ch->ch_set_connected();
+					ch->ch_fire_connected();
 				} catch (netp::exception const& e) {
 					NETP_ASSERT(e.code() != netp::OK);
 					status = e.code();
+					NETP_ERR("[socket][%s]accept netp::exception: %d, what: %s", ch->ch_info().c_str(), status, e.what());
 				} catch (std::exception const& e) {
 					status = netp_socket_get_last_errno();
 					if (status == netp::OK) {
 						status = netp::E_UNKNOWN;
 					}
-					NETP_ERR("[socket]accept failed: %d:%s", status, e.what());
+					NETP_ERR("[socket][%s]accept std::exception: %d, what: %s", ch->ch_info().c_str(), status, e.what() );
 				} catch (...) {
 					status = netp_socket_get_last_errno();
 					if (status == netp::OK) {
 						status = netp::E_UNKNOWN;
 					}
-					NETP_ERR("[socket]accept failed, %d: unknown", status);
+					NETP_ERR("[socket]accept failed, %d: unknown exception", status);
 				}
 
 				if (status != netp::OK) {
 					ch->ch_errno() = status;
 					ch->ch_flag() |= int(channel_flag::F_READ_ERROR);
 					ch->ch_close_impl(nullptr);
-					NETP_ERR("[socket][%s]accept failed: %d", ch->ch_info().c_str(), status);
+//					NETP_ERR("[socket][%s]accept failed: %d", ch->ch_info().c_str(), status);
 					return;
 				}
 
-				ch->ch_set_connected();
-				ch->ch_fire_connected();
 				ch->ch_io_read();
 			});
 		}
@@ -725,7 +726,7 @@ namespace netp {
 				m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
 				ch_errno() = (status);
 				ch_close_impl(nullptr);
-				NETP_WARN("[socket][%s]___do_io_read_done, _ch_do_close_read_write, read error: %d, close, flag: %u", ch_info().c_str(), status, m_chflag);
+				NETP_VERBOSE("[socket][%s]___do_io_read_done, _ch_do_close_read_write, read error: %d, close, flag: %u", ch_info().c_str(), status, m_chflag);
 			}
 			}
 		}
@@ -778,7 +779,7 @@ namespace netp {
 				m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
 				ch_errno() = (status);
 				ch_close_impl(nullptr);
-				NETP_WARN("[socket][%s]__do_io_write, call_ch_do_close_read_write, write error: %d, m_chflag: %u", ch_info().c_str(), status, m_chflag);
+				NETP_VERBOSE("[socket][%s]__do_io_write, call_ch_do_close_read_write, write error: %d, m_chflag: %u", ch_info().c_str(), status, m_chflag);
 			}
 			break;
 			}
