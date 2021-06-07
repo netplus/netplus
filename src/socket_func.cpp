@@ -121,7 +121,7 @@ namespace netp {
 			}
 
 			if ((idx+1) == addrs.size()) {
-				NETP_WARN("[socket]dail failed after try count: %u, last dialrt: %d", idx, dialrt);
+				NETP_WARN("[socket]dail failed after try count: %u, last dialrt: %d", (idx+1), dialrt);
 				ch_dialf->set(std::make_tuple(dialrt, nullptr));
 				return;
 			}
