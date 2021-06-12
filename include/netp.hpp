@@ -1,7 +1,6 @@
 #ifndef _NETP_HPP_
 #define _NETP_HPP_
 
-
 #include "../3rd/nlohmann/include/nlohmann/json.hpp"
 
 #include <netp/core.hpp>
