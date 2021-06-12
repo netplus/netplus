@@ -97,7 +97,6 @@
     <ClInclude Include="..\..\include\netp\event_broker.hpp" />
     <ClInclude Include="..\..\include\netp\exception.hpp" />
     <ClInclude Include="..\..\include\netp\funcs.hpp" />
-    <ClInclude Include="..\..\include\netp\handler\dh_symmetric_encrypt.hpp" />
     <ClInclude Include="..\..\include\netp\handler\dump_in_len.hpp" />
     <ClInclude Include="..\..\include\netp\handler\dump_in_text.hpp" />
     <ClInclude Include="..\..\include\netp\handler\dump_out_len.hpp" />
@@ -106,7 +105,6 @@
     <ClInclude Include="..\..\include\netp\handler\fragment.hpp" />
     <ClInclude Include="..\..\include\netp\handler\hlen.hpp" />
     <ClInclude Include="..\..\include\netp\handler\http.hpp" />
-    <ClInclude Include="..\..\include\netp\handler\mux.hpp" />
     <ClInclude Include="..\..\include\netp\handler\symmetric_encrypt.hpp" />
     <ClInclude Include="..\..\include\netp\handler\tls_client.hpp" />
     <ClInclude Include="..\..\include\netp\handler\tls_credentials.hpp" />
@@ -147,7 +145,6 @@
     <ClInclude Include="..\..\include\netp\security\fletcher.hpp" />
     <ClInclude Include="..\..\include\netp\security\formula.hpp" />
     <ClInclude Include="..\..\include\netp\security\murmurhash.hpp" />
-    <ClInclude Include="..\..\include\netp\security\obfuscate.hpp" />
     <ClInclude Include="..\..\include\netp\security\xxtea.hpp" />
     <ClInclude Include="..\..\include\netp\poller_select.hpp" />
     <ClInclude Include="..\..\include\netp\signal_broker.hpp" />
@@ -168,13 +165,6 @@
     <ClInclude Include="..\..\include\netp\thread_impl\spin_mutex.hpp" />
     <ClInclude Include="..\..\include\netp\timer.hpp" />
     <ClInclude Include="..\..\include\netp\tls.hpp" />
-    <ClInclude Include="..\..\include\netp\traffic\forwarder_detector.hpp" />
-    <ClInclude Include="..\..\include\netp\traffic\forwarder_iptcp.hpp" />
-    <ClInclude Include="..\..\include\netp\traffic\forwarder_iptcp_payload.hpp" />
-    <ClInclude Include="..\..\include\netp\traffic\forwarder_ipudp.hpp" />
-    <ClInclude Include="..\..\include\netp\traffic\forwarder_ipudp_payload.hpp" />
-    <ClInclude Include="..\..\include\netp\traffic\forwarder_l2.hpp" />
-    <ClInclude Include="..\..\include\netp\traffic\repeater.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\3rd\c-ares\c-ares-1.17.1\src\lib\ares_android.c" />
@@ -247,10 +237,8 @@
     <ClCompile Include="..\..\src\dns_resolver.cpp" />
     <ClCompile Include="..\..\src\exception.cpp" />
     <ClCompile Include="..\..\src\funcs.cpp" />
-    <ClCompile Include="..\..\src\handler\dh_symmetric_encrypt.cpp" />
     <ClCompile Include="..\..\src\handler\hlen.cpp" />
     <ClCompile Include="..\..\src\handler\http.cpp" />
-    <ClCompile Include="..\..\src\handler\mux.cpp" />
     <ClCompile Include="..\..\src\handler\tls_client.cpp" />
     <ClCompile Include="..\..\src\handler\tls_handler.cpp" />
     <ClCompile Include="..\..\src\handler\tls_server.cpp" />
@@ -281,12 +269,6 @@
     <ClCompile Include="..\..\src\thread.cpp" />
     <ClCompile Include="..\..\src\thread_impl\mutex.cpp" />
     <ClCompile Include="..\..\src\timer.cpp" />
-    <ClCompile Include="..\..\src\traffic\forwarder_detector.cpp" />
-    <ClCompile Include="..\..\src\traffic\forwarder_iptcp.cpp" />
-    <ClCompile Include="..\..\src\traffic\forwarder_iptcp_payload.cpp" />
-    <ClCompile Include="..\..\src\traffic\forwarder_ipudp.cpp" />
-    <ClCompile Include="..\..\src\traffic\forwarder_ipudp_payload.cpp" />
-    <ClCompile Include="..\..\src\traffic\forwarder_l2.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -331,15 +313,15 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="vsprops_local\common.props" />
     <Import Project="vsprops_local\debug.props" />
-    <Import Project="with_botan.props" />
     <Import Project="vsprops_local\c-ares.props" />
+    <Import Project="..\..\..\netplus_deps\with_botan.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="vsprops_local\common.props" />
     <Import Project="vsprops_local\release.props" />
-    <Import Project="with_botan.props" />
     <Import Project="vsprops_local\c-ares.props" />
+    <Import Project="..\..\..\netplus_deps\with_botan.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -347,6 +329,7 @@
     <Import Project="vsprops_local\debug.props" />
     <Import Project="with_botan.props" />
     <Import Project="vsprops_local\c-ares.props" />
+    <Import Project="..\..\..\netplus_deps\with_botan.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -354,6 +337,7 @@
     <Import Project="vsprops_local\release.props" />
     <Import Project="with_botan.props" />
     <Import Project="vsprops_local\c-ares.props" />
+    <Import Project="..\..\..\netplus_deps\with_botan.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -375,6 +359,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ProgramDataBaseFileName>$(OutDir)$(TargetName).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -392,6 +377,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <ProgramDataBaseFileName>$(OutDir)$(TargetName).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -408,6 +394,7 @@
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ProgramDataBaseFileName>$(OutDir)$(TargetName).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -425,6 +412,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <ProgramDataBaseFileName>$(OutDir)$(TargetName).pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
       <SubSystem>

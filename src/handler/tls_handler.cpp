@@ -1,4 +1,5 @@
 #include <netp/handler/tls_handler.hpp>
+#include <netp/socket_channel.hpp>
 
 #ifdef NETP_WITH_BOTAN
 #include <botan/hex.h>
@@ -79,7 +80,8 @@ namespace netp { namespace handler {
 				ctx->close();
 			}
 		} catch (std::exception& e) {
-			NETP_ERR("[tls_handler]tls excepton, err: %s", e.what());
+			NRP<netp::socket_channel> ch_ = netp::static_pointer_cast<netp::socket_channel>( ctx->ch );
+			NETP_ERR("[tls_handler]tls excepton, err: %s, from: %s", e.what(), ch_->remote_addr()->dotip().c_str() );
 			if (!(m_flag & f_ch_close_called)) {
 				ctx->close();
 			}

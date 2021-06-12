@@ -52,7 +52,6 @@
 #include <netp/handler/hlen.hpp>
 #include <netp/handler/fragment.hpp>
 #include <netp/handler/symmetric_encrypt.hpp>
-#include <netp/handler/dh_symmetric_encrypt.hpp>
 #include <netp/handler/http.hpp>
 
 #ifdef NETP_WITH_BOTAN
@@ -67,12 +66,6 @@
 #include <netp/handler/dump_in_len.hpp>
 #include <netp/handler/dump_out_len.hpp>
 
-#include <netp/handler/mux.hpp>
-
-#include <netp/traffic/repeater.hpp>
-#include <netp/traffic/forwarder_detector.hpp>
-#include <netp/traffic/forwarder_iptcp_payload.hpp>
-
 #include <netp/dns_resolver.hpp>
 #include <netp/http/message.hpp>
 #include <netp/http/parser.hpp>
@@ -83,8 +76,6 @@
 #include <netp/signal_broker.hpp>
 #include <netp/app.hpp>
 
-
 #include <netp/benchmark.hpp>
 #include <netp/test.hpp>
-
 #endif

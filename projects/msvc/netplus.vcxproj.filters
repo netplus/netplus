@@ -37,9 +37,6 @@
     <Filter Include="Source Files\src\thread_impl">
       <UniqueIdentifier>{6acd9098-6d91-4353-a02a-44ebb1959640}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\src\traffic">
-      <UniqueIdentifier>{c2835b47-8d63-4a66-9407-1b73f58fcc24}</UniqueIdentifier>
-    </Filter>
     <Filter Include="3rd\getopt">
       <UniqueIdentifier>{dafd47e5-7252-40de-8a44-b1002cd7d889}</UniqueIdentifier>
     </Filter>
@@ -66,9 +63,6 @@
     </Filter>
     <Filter Include="Header Files\netp\thread_impl">
       <UniqueIdentifier>{f758b800-0e63-4783-9108-51bc57433e48}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\netp\traffic">
-      <UniqueIdentifier>{976f2edd-e1dd-4768-9676-588dc24c3f85}</UniqueIdentifier>
     </Filter>
     <Filter Include="Header Files\netp\core\compiler">
       <UniqueIdentifier>{d8f6d7f0-c520-4a23-a1b8-7a9ef810b5be}</UniqueIdentifier>
@@ -150,9 +144,6 @@
     <ClInclude Include="..\..\include\netp\core\platform\win_x86_.hpp">
       <Filter>Header Files\netp\core\platform</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\netp\handler\dh_symmetric_encrypt.hpp">
-      <Filter>Header Files\netp\handler</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\netp\handler\dump_in_len.hpp">
       <Filter>Header Files\netp\handler</Filter>
     </ClInclude>
@@ -175,9 +166,6 @@
       <Filter>Header Files\netp\handler</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\netp\handler\http.hpp">
-      <Filter>Header Files\netp\handler</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\netp\handler\mux.hpp">
       <Filter>Header Files\netp\handler</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\netp\handler\symmetric_encrypt.hpp">
@@ -219,27 +207,6 @@
     <ClInclude Include="..\..\include\netp\logger\sys_logger.hpp">
       <Filter>Header Files\netp\logger</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\netp\traffic\forwarder_detector.hpp">
-      <Filter>Header Files\netp\traffic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\netp\traffic\forwarder_iptcp.hpp">
-      <Filter>Header Files\netp\traffic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\netp\traffic\forwarder_iptcp_payload.hpp">
-      <Filter>Header Files\netp\traffic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\netp\traffic\forwarder_ipudp.hpp">
-      <Filter>Header Files\netp\traffic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\netp\traffic\forwarder_ipudp_payload.hpp">
-      <Filter>Header Files\netp\traffic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\netp\traffic\forwarder_l2.hpp">
-      <Filter>Header Files\netp\traffic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\netp\traffic\repeater.hpp">
-      <Filter>Header Files\netp\traffic</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\netp\thread_impl\condition.hpp">
       <Filter>Header Files\netp\thread_impl</Filter>
     </ClInclude>
@@ -268,9 +235,6 @@
       <Filter>Header Files\netp\security</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\netp\security\murmurhash.hpp">
-      <Filter>Header Files\netp\security</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\netp\security\obfuscate.hpp">
       <Filter>Header Files\netp\security</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\netp\security\xxtea.hpp">
@@ -617,16 +581,10 @@
     <ClCompile Include="..\..\3rd\stack_walker\StackWalker.cpp">
       <Filter>3rd\stack_walker</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\handler\dh_symmetric_encrypt.cpp">
-      <Filter>Source Files\src\handler</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\handler\hlen.cpp">
       <Filter>Source Files\src\handler</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\handler\http.cpp">
-      <Filter>Source Files\src\handler</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\handler\mux.cpp">
       <Filter>Source Files\src\handler</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\handler\tls_client.cpp">
@@ -658,24 +616,6 @@
     </ClCompile>
     <ClCompile Include="..\..\src\logger\sys_logger.cpp">
       <Filter>Source Files\src\logger</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\traffic\forwarder_detector.cpp">
-      <Filter>Source Files\src\traffic</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\traffic\forwarder_iptcp.cpp">
-      <Filter>Source Files\src\traffic</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\traffic\forwarder_iptcp_payload.cpp">
-      <Filter>Source Files\src\traffic</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\traffic\forwarder_ipudp.cpp">
-      <Filter>Source Files\src\traffic</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\traffic\forwarder_ipudp_payload.cpp">
-      <Filter>Source Files\src\traffic</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\traffic\forwarder_l2.cpp">
-      <Filter>Source Files\src\traffic</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\thread_impl\mutex.cpp">
       <Filter>Source Files\src\thread_impl</Filter>
