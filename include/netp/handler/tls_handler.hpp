@@ -39,38 +39,18 @@ namespace netp { namespace handler {
 	};
 
 	inline static NRP<tls_context> tls_context_with_tlsconfig( NRP<tls_config> const& tlsconfig ) {
-		NRP<tls_context> tlsctx = netp::make_ref<tls_context>();
-		tlsctx->tlsconfig = tlsconfig;
+		NRP<tls_context> _tlsctx = netp::make_ref<tls_context>();
+		_tlsctx->tlsconfig = tlsconfig;
 
-		tlsctx->tls_version = Botan::TLS::Protocol_Version::TLS_V12;
+		_tlsctx->tls_version = Botan::TLS::Protocol_Version::TLS_V12;
 
-		tlsctx->rng = netp::non_atomic_shared::make<Botan::AutoSeeded_RNG>();
-		tlsctx->session_mgr = netp::non_atomic_shared::make<Botan::TLS::Session_Manager_In_Memory>(*(tlsctx->rng));
-		tlsctx->policy = netp::non_atomic_shared::make<tls_policy>(tlsctx->tlsconfig);
+		_tlsctx->rng = netp::non_atomic_shared::make<Botan::AutoSeeded_RNG>();
+		_tlsctx->session_mgr = netp::non_atomic_shared::make<Botan::TLS::Session_Manager_In_Memory>(*(_tlsctx->rng));
+		_tlsctx->policy = netp::non_atomic_shared::make<netp::handler::tls_policy>(_tlsctx->tlsconfig);
 
-		tlsctx->credentials_mgr = nullptr;
-		tlsctx->server_info = nullptr;
-		tlsctx->next_protocols = {};
-		return tlsctx;
-	}
-
-	inline static NRP<tls_context> tls_server_context_with_cert_privkey(NRP<tls_config> const& tlsconfig, std::string const& cert_path, std::string const& privkey ) {
-		NRP<tls_context> _tlsctx = tls_context_with_tlsconfig(tlsconfig);
-		_tlsctx->credentials_mgr = netp::non_atomic_shared::make<netp::handler::Basic_Credentials_Manager>(*(_tlsctx->rng), cert_path, privkey);
-		return _tlsctx;
-	}
-
-	inline static NRP<tls_context> tls_client_context_with_ca_store_path(NRP<tls_config> const& tlsconfig, std::string const& host, netp::u16_t port, std::string const& ca_store_path) {
-		NRP<tls_context> _tlsctx = tls_context_with_tlsconfig(tlsconfig);
-		_tlsctx->credentials_mgr = netp::non_atomic_shared::make<netp::handler::Basic_Credentials_Manager>(true, ca_store_path);
-		_tlsctx->server_info = netp::non_atomic_shared::make<Botan::TLS::Server_Information>(host, port);
-		return _tlsctx;
-	}
-
-	inline static NRP<tls_context> tls_client_context_with_ca_store_path_cert_privkey(NRP<tls_config> const& tlsconfig, std::string const& host, netp::u16_t port, std::string const& ca_store_path, std::string const& cert_path, std::string const& privkey ) {
-		NRP<tls_context> _tlsctx = tls_context_with_tlsconfig(tlsconfig);
-		_tlsctx->credentials_mgr = netp::non_atomic_shared::make<netp::handler::Basic_Credentials_Manager>(true, ca_store_path, *(_tlsctx->rng), cert_path, privkey);
-		_tlsctx->server_info = netp::non_atomic_shared::make<Botan::TLS::Server_Information>(host, port);
+		_tlsctx->credentials_mgr = netp::non_atomic_shared::make<netp::handler::Basic_Credentials_Manager>(true, tlsconfig->ca_path, *(_tlsctx->rng), tlsconfig->cert,tlsconfig->privkey);
+		_tlsctx->server_info = netp::non_atomic_shared::make<Botan::TLS::Server_Information>(tlsconfig->host, tlsconfig->port);
+		_tlsctx->next_protocols = {};
 		return _tlsctx;
 	}
 

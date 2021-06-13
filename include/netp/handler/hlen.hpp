@@ -28,6 +28,7 @@ namespace netp { namespace handler {
 			m_tmp(nullptr),
 			m_read_closed(true)
 		{}
+
 		virtual ~hlen() {}
 		void connected(NRP<channel_handler_context> const& ctx) override;
 		void read_closed(NRP<channel_handler_context> const& ctx) override;

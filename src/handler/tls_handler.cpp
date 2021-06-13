@@ -369,8 +369,7 @@ namespace netp { namespace handler {
 			const std::vector<Botan::X509_Certificate>& certs = session.peer_certs();
 			for (size_t i = 0; i != certs.size(); ++i)
 			{
-				NETP_VERBOSE("Certificate: %d/%d\n: %s\n%s", i + 1, certs.size()
-				, certs[i].to_string().c_str(), certs[i].PEM_encode().c_str());
+				//NETP_VERBOSE("Certificate: %d/%d\n: %s\n%s", i + 1, certs.size(), certs[i].to_string().c_str(), certs[i].PEM_encode().c_str());
 			}
 		}
 		return true;

@@ -5,9 +5,11 @@ namespace netp { namespace handler {
 
 	void hlen::connected(NRP<channel_handler_context> const& ctx) {
 		m_read_closed = false;
+		ctx->fire_connected();
 	}
 	void hlen::read_closed(NRP<channel_handler_context> const& ctx) {
 		m_read_closed = true;
+		ctx->fire_read_closed();
 	}
 
 	void hlen::read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income) {

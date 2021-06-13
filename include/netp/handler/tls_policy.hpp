@@ -21,6 +21,32 @@ namespace netp { namespace handler {
 		virtual bool require_client_certificate_authentication() const override {
 			return m_tlsconfig->client_cert_auth_required;
 		}
+
+        /*
+		std::vector<std::string> allowed_ciphers() const override {
+            return {
+                //"AES-256/OCB(12)",
+                //"AES-128/OCB(12)",
+                //"ChaCha20Poly1305",
+                //"AES-256/GCM",
+                "AES-128/GCM",
+                //"AES-256/CCM",
+                //"AES-128/CCM",
+                //"AES-256/CCM(8)",
+                //"AES-128/CCM(8)",
+                //"Camellia-256/GCM",
+                //"Camellia-128/GCM",
+                //"ARIA-256/GCM",
+                //"ARIA-128/GCM",
+                //"AES-256",
+                //"AES-128",
+                //"Camellia-256",
+                //"Camellia-128",
+                //"SEED",
+                //"3DES",
+            };
+		}
+        */
 	};
 }}
 
