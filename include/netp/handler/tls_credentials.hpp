@@ -8,6 +8,7 @@
 #include <botan/certstor_system.h>
 #include <botan/pkcs8.h>
 #include <botan/data_src.h>
+
 namespace netp {  namespace handler {
 
 	inline bool value_exists(const std::vector<std::string>& vec,
@@ -25,11 +26,18 @@ namespace netp {  namespace handler {
 
     class Basic_Credentials_Manager : public Botan::Credentials_Manager
     {
-
         void __load_system_cert_store(bool use_system_store ) {
 #if defined(BOTAN_HAS_CERTSTOR_SYSTEM)
             if (use_system_store) {
-                m_certstores.push_back(std::make_shared<Botan::System_Certificate_Store>());
+                try {
+                    m_certstores.push_back(std::make_shared<Botan::System_Certificate_Store>());
+                } catch (Botan::Exception& e) {
+                    NETP_ERR("[tls_credential]load system store ca failed, %d: %s", e.error_code(), e.what() );
+                } catch (std::exception& e) {
+                    NETP_ERR("[tls_credential]load system store ca failed, %s", e.what());
+                } catch (...) {
+                    NETP_ERR("[tls_credential]load system store ca failed, unknown error");
+                }
             }
 #else
             BOTAN_UNUSED(use_system_store);

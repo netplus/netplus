@@ -9,6 +9,7 @@ namespace netp { namespace handler {
 	struct tls_config:
 		public netp::ref_base 
 	{
+		bool use_system_store;
 		bool client_cert_auth_required;
 		bool cert_verify_required;
 
@@ -20,6 +21,7 @@ namespace netp { namespace handler {
 		u16_t port;
 
 		tls_config():
+			use_system_store(true),
 			client_cert_auth_required(false),
 			cert_verify_required(false),
 			ca_path(),
