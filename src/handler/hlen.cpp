@@ -3,6 +3,13 @@
 
 namespace netp { namespace handler {
 
+	void hlen::connected(NRP<channel_handler_context> const& ctx) {
+		m_read_closed = false;
+	}
+	void hlen::read_closed(NRP<channel_handler_context> const& ctx) {
+		m_read_closed = true;
+	}
+
 	void hlen::read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income) {
 		NETP_ASSERT(income != nullptr);
 
@@ -20,7 +27,7 @@ namespace netp { namespace handler {
 		}
 
 		bool bExit = false;
-		do {
+		while (!bExit && !m_read_closed) {
 			switch (m_state) {
 			case parse_state::S_READ_LEN:
 			{
@@ -49,7 +56,7 @@ namespace netp { namespace handler {
 			}
 			break;
 			}
-		} while (!bExit);
+		}
 	}
 
 	void hlen::write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) {

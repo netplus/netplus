@@ -51,7 +51,7 @@ namespace netp { namespace handler {
 			ocsp_timeout,
 			ocsp);
 
-		NETP_VERBOSE("[tls_handler]Certificate validation status: ", result.result_string().c_str());
+		NETP_VERBOSE("[tls_handler]Certificate validation status: %s", result.result_string().c_str());
 		if (result.successful_validation())
 		{
 			auto status = result.all_statuses();
@@ -59,6 +59,9 @@ namespace netp { namespace handler {
 			{
 				NETP_VERBOSE("Valid OCSP response for this server");
 			}
+		} else {
+			throw Botan::TLS::TLS_Exception(Botan::TLS::Alert::BAD_CERTIFICATE,
+				"Certificate validation failure: " + result.result_string());
 		}
 	}
 
@@ -79,12 +82,9 @@ namespace netp { namespace handler {
 		_do_clean();
 		if (m_flag & f_ch_connected) {
 			ctx->fire_closed();
+		} else {
+			ctx->fire_error(netp::E_TLS_HANDSHAKE_FAILED);
 		}
-
-		//if ((m_flag & f_tls_ch_activated) ) {
-			//NETP_VERBOSE("[tls_handler]session: %s, closed in !f_tls_ch_activated state", m_session_id.c_str());
-			//return;
-		//}
 	}
 
 	void tls_handler::write_closed(NRP<channel_handler_context> const& ctx) {

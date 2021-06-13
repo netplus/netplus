@@ -480,6 +480,8 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_DH_HANDSHAKE_MESSAGE_CHECK_FAILED = -22011;
 	const int E_DH_HANDSHAKE_FAILED		= -22012;
 
+	const int E_TLS_HANDSHAKE_FAILED = -22013;
+
 	const int E_IO_EVENT_LOOP_NOTIFY_TERMINATING = -25001;
 	const int E_IO_EVENT_LOOP_TERMINATED = -25002;
 	const int E_IO_EVENT_LOOP_BYE_DO_NOTHING = -25003;
