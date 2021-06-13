@@ -8,6 +8,11 @@
 #include <netp/channel_handler_context.hpp>
 
 #ifdef NETP_WITH_BOTAN
+#include <netp/handler/tls_config.hpp>
+#include <netp/handler/tls_policy.hpp>
+
+#include <botan/x509path.h>
+#include <botan/ocsp.h>
 #include <botan/tls_alert.h>
 #include <botan/tls_callbacks.h>
 #include <botan/tls_policy.h>
@@ -21,24 +26,27 @@ namespace netp { namespace handler {
 	struct tls_context final :
 		public ref_base
 	{
+		NRP<netp::handler::tls_config> tlsconfig;
 		Botan::TLS::Protocol_Version tls_version;
 
 		NNASP<Botan::RandomNumberGenerator> rng;
 		NNASP<Botan::TLS::Session_Manager> session_mgr;
 		NNASP<Botan::Credentials_Manager> credentials_mgr;
-		NNASP<Botan::TLS::Policy> policy;
+		NNASP<netp::handler::tls_policy> policy;
 
-		NNASP<Botan::TLS::Server_Information> server_info;
+		NNASP<Botan::TLS::Server_Information> server_info;//requried for verify, but we've to hack it for server verify cuz there is no 
 		std::vector<std::string> next_protocols;
 	};
 
-	inline static NRP<tls_context> default_tls_context() {
+	inline static NRP<tls_context> tls_context_with_tlsconfig( NRP<tls_config> const& tlsconfig ) {
 		NRP<tls_context> tlsctx = netp::make_ref<tls_context>();
+		tlsctx->tlsconfig = tlsconfig;
+
 		tlsctx->tls_version = Botan::TLS::Protocol_Version::TLS_V12;
 
 		tlsctx->rng = netp::non_atomic_shared::make<Botan::AutoSeeded_RNG>();
 		tlsctx->session_mgr = netp::non_atomic_shared::make<Botan::TLS::Session_Manager_In_Memory>(*(tlsctx->rng));
-		tlsctx->policy = netp::non_atomic_shared::make<Botan::TLS::Default_Policy>(); 
+		tlsctx->policy = netp::non_atomic_shared::make<tls_policy>(tlsctx->tlsconfig);
 
 		tlsctx->credentials_mgr = nullptr;
 		tlsctx->server_info = nullptr;
@@ -46,15 +54,22 @@ namespace netp { namespace handler {
 		return tlsctx;
 	}
 
-	inline static NRP<tls_context> default_tls_server_context(std::string const& ca_path, std::string const& privkey ) {
-		NRP<tls_context> tlsctx = default_tls_context();
-		tlsctx->credentials_mgr = netp::non_atomic_shared::make<netp::handler::Basic_Credentials_Manager>(*(tlsctx->rng), ca_path, privkey);
-		return tlsctx;
+	inline static NRP<tls_context> tls_server_context_with_cert_privkey(NRP<tls_config> const& tlsconfig, std::string const& cert_path, std::string const& privkey ) {
+		NRP<tls_context> _tlsctx = tls_context_with_tlsconfig(tlsconfig);
+		_tlsctx->credentials_mgr = netp::non_atomic_shared::make<netp::handler::Basic_Credentials_Manager>(*(_tlsctx->rng), cert_path, privkey);
+		return _tlsctx;
 	}
 
-	inline static NRP<tls_context> default_tls_client_context(std::string const& host, netp::u16_t port) {
-		NRP<tls_context> _tlsctx = default_tls_context();
-		_tlsctx->credentials_mgr = netp::non_atomic_shared::make<netp::handler::Basic_Credentials_Manager>(true, "");
+	inline static NRP<tls_context> tls_client_context_with_ca_store_path(NRP<tls_config> const& tlsconfig, std::string const& host, netp::u16_t port, std::string const& ca_store_path) {
+		NRP<tls_context> _tlsctx = tls_context_with_tlsconfig(tlsconfig);
+		_tlsctx->credentials_mgr = netp::non_atomic_shared::make<netp::handler::Basic_Credentials_Manager>(true, ca_store_path);
+		_tlsctx->server_info = netp::non_atomic_shared::make<Botan::TLS::Server_Information>(host, port);
+		return _tlsctx;
+	}
+
+	inline static NRP<tls_context> tls_client_context_with_ca_store_path_cert_privkey(NRP<tls_config> const& tlsconfig, std::string const& host, netp::u16_t port, std::string const& ca_store_path, std::string const& cert_path, std::string const& privkey ) {
+		NRP<tls_context> _tlsctx = tls_context_with_tlsconfig(tlsconfig);
+		_tlsctx->credentials_mgr = netp::non_atomic_shared::make<netp::handler::Basic_Credentials_Manager>(true, ca_store_path, *(_tlsctx->rng), cert_path, privkey);
 		_tlsctx->server_info = netp::non_atomic_shared::make<Botan::TLS::Server_Information>(host, port);
 		return _tlsctx;
 	}
@@ -155,9 +170,7 @@ namespace netp { namespace handler {
 			const std::vector<Botan::Certificate_Store*>& trusted_roots,
 			Botan::Usage_Type usage,
 			const std::string& hostname,
-			const Botan::TLS::Policy& policy) override
-		{
-		}
+			const Botan::TLS::Policy& policy) override;
 
 		void connected(NRP<channel_handler_context> const& ctx) override {};
 		void closed(NRP<channel_handler_context> const& ctx) override;

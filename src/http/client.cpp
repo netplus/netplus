@@ -230,7 +230,7 @@ namespace netp { namespace http {
 
 		if (is_https && __dialcfg.tls.tlsctx == nullptr) {
 #ifdef NETP_WITH_BOTAN
-			NRP<netp::handler::tls_context> tlsctx = netp::handler::default_tls_client_context(std::string(fields.host.c_str(), fields.host.length()), fields.port);
+			NRP<netp::handler::tls_context> tlsctx = netp::handler::tls_client_context_with_ca_store_path(netp::make_ref<netp::handler::tls_config>(), std::string(fields.host.c_str(), fields.host.length()), fields.port, "");
 			__dialcfg.tls.tlsctx = tlsctx;
 #else
 			NETP_ASSERT(!"do not supported yet");

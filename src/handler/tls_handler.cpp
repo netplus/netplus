@@ -18,6 +18,50 @@ namespace netp { namespace handler {
 
 	tls_handler::~tls_handler() {}
 
+	void tls_handler::tls_verify_cert_chain(
+		const std::vector<Botan::X509_Certificate>& cert_chain,
+		const std::vector<std::shared_ptr<const Botan::OCSP::Response>>& ocsp,
+		const std::vector<Botan::Certificate_Store*>& trusted_roots,
+		Botan::Usage_Type usage,
+		const std::string& hostname,
+		const Botan::TLS::Policy& policy) 
+	{
+		if (!m_tls_ctx->tlsconfig->cert_verify_required) {
+			return;
+		}
+
+		if (cert_chain.empty())
+		{
+			throw Botan::Invalid_Argument("Certificate chain was empty");
+		}
+
+		Botan::Path_Validation_Restrictions restrictions(
+			policy.require_cert_revocation_info(),
+			policy.minimum_signature_strength());
+
+		auto ocsp_timeout = std::chrono::milliseconds(1000);
+
+		Botan::Path_Validation_Result result = Botan::x509_path_validate(
+			cert_chain,
+			restrictions,
+			trusted_roots,
+			hostname,
+			usage,
+			std::chrono::system_clock::now(),
+			ocsp_timeout,
+			ocsp);
+
+		NETP_VERBOSE("[tls_handler]Certificate validation status: ", result.result_string().c_str());
+		if (result.successful_validation())
+		{
+			auto status = result.all_statuses();
+			if (status.size() > 0 && status[0].count(Botan::Certificate_Status_Code::OCSP_RESPONSE_GOOD))
+			{
+				NETP_VERBOSE("Valid OCSP response for this server");
+			}
+		}
+	}
+
 	void tls_handler::closed(NRP<channel_handler_context> const& ctx) {
 		NETP_ASSERT(m_ctx != nullptr);
 		m_ctx = nullptr;

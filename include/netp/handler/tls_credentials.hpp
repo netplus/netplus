@@ -25,18 +25,10 @@ namespace netp {  namespace handler {
 
     class Basic_Credentials_Manager : public Botan::Credentials_Manager
     {
-    public:
-        Basic_Credentials_Manager(bool use_system_store,
-            const std::string& ca_path)
-        {
-            if (ca_path.empty() == false)
-            {
-                m_certstores.push_back(std::make_shared<Botan::Certificate_Store_In_Memory>(ca_path));
-            }
 
+        void __load_system_cert_store(bool use_system_store ) {
 #if defined(BOTAN_HAS_CERTSTOR_SYSTEM)
-            if (use_system_store)
-            {
+            if (use_system_store) {
                 m_certstores.push_back(std::make_shared<Botan::System_Certificate_Store>());
             }
 #else
@@ -44,14 +36,35 @@ namespace netp {  namespace handler {
 #endif
         }
 
-        Basic_Credentials_Manager(Botan::RandomNumberGenerator& rng,
+        void __load_cert_by_path(const std::string& ca_path) {
+            if (ca_path.empty() == false)
+            {
+                m_certstores.push_back(std::make_shared<Botan::Certificate_Store_In_Memory>(ca_path));
+            }
+        }
+
+    public:
+        Basic_Credentials_Manager(bool use_system_store, const std::string& ca_path)
+        {
+            __load_system_cert_store(use_system_store);
+            __load_cert_by_path(ca_path);
+        }
+
+        Basic_Credentials_Manager(bool use_system_store, const std::string& ca_path, Botan::RandomNumberGenerator& rng, const std::string& cert, const std::string& priv_key) {
+            __load_system_cert_store(use_system_store);
+            __load_cert_by_path(ca_path);
+            __load_cert(rng, cert, priv_key);
+        }
+
+        void __load_cert(Botan::RandomNumberGenerator& rng,
             const std::string& server_crt,
-            const std::string& server_key)
+            const std::string& server_key) 
         {
             Certificate_Info cert;
             try {
                 cert.key.reset(Botan::PKCS8::load_key(server_key, rng));
-            } catch (std::exception&) {
+            }
+            catch (std::exception&) {
             }
 
             Botan::DataSource_Stream in(server_crt);
@@ -61,13 +74,21 @@ namespace netp {  namespace handler {
                 {
                     cert.certs.push_back(Botan::X509_Certificate(in));
                     //NETP_VERBOSE("[tls_credentials]add cert: %s", server_crt.c_str() );
-                } catch (std::exception&) {
+                }
+                catch (std::exception&) {
                 }
             }
 
             // TODO: attempt to validate chain ourselves
 
             m_creds.push_back(cert);
+        }
+
+        Basic_Credentials_Manager(Botan::RandomNumberGenerator& rng,
+            const std::string& server_crt,
+            const std::string& server_key)
+        {
+            __load_cert(rng, server_crt, server_key);
         }
 
         std::vector<Botan::Certificate_Store*>
