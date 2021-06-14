@@ -11,223 +11,271 @@ namespace netp { namespace impl {
 	{
 		NETP_DECLARE_NONCOPYABLE(shared_mutex)
 
-		enum exclusive {
-			NO = 0,
-			YES = 1
-		};
-
 		//the idea borrowed from boost
-		class state_data {
-		public:
-			enum UpgradeState {
-				S_UP_SET = 1,
-				S_UP_UPING,
-				S_UP_NOSET
-			};
-
-			netp::u32_t shared_count;
-			netp::u8_t upgrade;
-			netp::u8_t exclu;
+		//Note, the upgradeable lock is not exclusive (other shared locks can be held) just that it has special privileges to increase its strength.
+		//Unfortunately, multiple upgradeable threads are not allowed at the same time.
+		struct state_data {
+			int shared_count;
+			bool exclusive;
+			bool upgrade;
+			bool exclusive_waiting_blocked;
 
 			state_data() :
 				shared_count(0),
-				upgrade(S_UP_NOSET),
-				exclu(exclusive::NO)
+				exclusive(false),
+				upgrade(false),
+				exclusive_waiting_blocked(false)
 			{}
 
+			inline void assert_free() const
+			{
+				NETP_ASSERT(!exclusive);
+				NETP_ASSERT(!upgrade);
+				NETP_ASSERT(shared_count == 0);
+			}
+
+			inline void assert_locked() const
+			{
+				NETP_ASSERT(exclusive);
+				NETP_ASSERT(shared_count == 0);
+				NETP_ASSERT(!upgrade);
+			}
+
+			inline void assert_lock_shared() const
+			{
+				NETP_ASSERT(!exclusive);
+				NETP_ASSERT(shared_count > 0);
+			}
+
+			inline void assert_lock_upgraded() const
+			{
+				NETP_ASSERT(!exclusive);
+				NETP_ASSERT(upgrade);
+				NETP_ASSERT(shared_count > 0);
+			}
+
+			inline void assert_lock_not_upgraded() const
+			{
+				NETP_ASSERT(!upgrade);
+			}
+
 			inline bool can_lock() const {
-				return !(shared_count || exclu == exclusive::YES);
+				return !(shared_count || exclusive);
 			}
 			inline void lock() {
-				exclu = exclusive::YES;
+				exclusive = true;
 			}
 			inline void unlock() {
-				exclu = exclusive::NO;
+				exclusive = false;
+				exclusive_waiting_blocked = false;
 			}
 			inline bool can_lock_shared() const {
-				return !(exclu || upgrade != S_UP_NOSET);
+				return !(exclusive || exclusive_waiting_blocked);
 			}
 			inline bool has_more_shared() const {
 				return shared_count > 0;
 			}
-			inline u32_t get_shared_count() const {
-				return shared_count;
+			inline bool no_shared() const
+			{
+				return shared_count == 0;
+			}
+			inline bool one_shared() const
+			{
+				return shared_count == 1;
 			}
 			inline void lock_shared() {
-				(++shared_count);
-//				return shared_count;
+				++shared_count;
 			}
 			inline void unlock_shared() {
-				NETP_ASSERT(!exclu);
-				NETP_ASSERT(shared_count > 0);
 				--shared_count;
 			}
-
 			inline bool can_lock_upgrade() const {
-				return !(exclu || upgrade != S_UP_NOSET);
+				return !(exclusive || exclusive_waiting_blocked || upgrade);
 			}
 			inline void lock_upgrade() {
-				NETP_ASSERT(!is_upgrade_set());
 				++shared_count;
-				upgrade = S_UP_SET;
+				upgrade = true;
 			}
 			inline void unlock_upgrade() {
-				NETP_ASSERT(upgrade == S_UP_SET);
-				upgrade = S_UP_NOSET;
-				NETP_ASSERT(shared_count > 0);
+				upgrade = false;
 				--shared_count;
-			}
-			inline bool is_upgrade_set() const {
-				return upgrade == S_UP_SET;
-			}
-			inline void unlock_upgrade_and_up() {
-				NETP_ASSERT(upgrade == S_UP_SET);
-				upgrade = S_UP_UPING;
-				NETP_ASSERT(shared_count > 0);
-				--shared_count;
-			}
-			inline void lock_upgrade_up_done() {
-				NETP_ASSERT(upgrade == S_UP_UPING);
-				upgrade = S_UP_NOSET;
 			}
 		};
 
-		//shared -> upgrade -> lock
+		//shared <->  lock
+		//upgrade <-> lock
+		state_data state;
+		spin_mutex state_mutex;
+		netp::condition_any shared_cond;
+		netp::condition_any exclusive_cond;
+		netp::condition_any upgrade_cond;
 
-		state_data m_state;
-		spin_mutex m_state_mutex;
-
-		netp::condition_any m_shared_cond;
-		netp::condition_any m_exclusive_cond;
-		netp::condition_any m_upgrade_cond;
-
-		inline void _notify_waiters() {
-			m_exclusive_cond.notify_one();
-			m_shared_cond.notify_all();
+		inline void release_waiters() {
+			exclusive_cond.notify_one();
+			shared_cond.notify_all();
 		}
 
 	public:
 		shared_mutex() :
-			m_state(),
-			m_state_mutex(),
-			m_shared_cond(),
-			m_exclusive_cond(),
-			m_upgrade_cond()
+			state(),
+			state_mutex(),
+			shared_cond(),
+			exclusive_cond(),
+			upgrade_cond()
 		{}
 		~shared_mutex() {}
 
 		void lock_shared() {
-			netp::lock_guard<spin_mutex> state_lg(m_state_mutex);
-			while (!m_state.can_lock_shared()) {
-				m_shared_cond.wait(m_state_mutex);
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			while (!state.can_lock_shared()) {
+				shared_cond.wait(state_mutex);
 			}
-			m_state.lock_shared();
+			state.lock_shared();
+		}
+
+		bool try_lock_shared() {
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			if (!state.can_lock_shared()) {
+				return false;
+			}
+			state.lock_shared();
+			return true;
 		}
 		void unlock_shared() {
-			netp::lock_guard<spin_mutex> state_lg(m_state_mutex);
-			NETP_ASSERT(m_state.has_more_shared());
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			state.assert_lock_shared();
 
-			m_state.unlock_shared();
-			if (!m_state.has_more_shared()) {
-				if (m_state.is_upgrade_set()) {
+			state.unlock_shared();
+			if (state.no_shared()) {
+				if (state.upgrade) {
 					//notify upgrade thread
-					m_upgrade_cond.notify_one();
+					// state.upgrade = false;
+					//act as a lock barrier
+					state.exclusive = true;
+					upgrade_cond.notify_one();
 				} else {
-					_notify_waiters();
+					state.exclusive_waiting_blocked = false;
+					release_waiters();
 				}
 			}
 		}
+
 		void unlock_shared_and_lock() {
-			netp::lock_guard<spin_mutex> state_lg(m_state_mutex);
-			NETP_ASSERT(m_state.has_more_shared());
-			NETP_ASSERT(m_state.exclu == exclusive::NO);
-			m_state.unlock_shared();
-			while (m_state.has_more_shared() || m_state.exclu == exclusive::YES ) {
-				m_exclusive_cond.wait(m_state_mutex);
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			state.assert_lock_shared();
+			state.unlock_shared();
+			state.exclusive_waiting_blocked = true;
+			while ( !state.can_lock() ) {
+				exclusive_cond.wait(state_mutex);
 			}
-			NETP_ASSERT(!m_state.has_more_shared());
-			NETP_ASSERT(m_state.exclu == exclusive::NO);
-			m_state.exclu = exclusive::YES;
+			state.exclusive = true;
 		}
 
 		void lock() {
-			netp::lock_guard<spin_mutex> state_lg(m_state_mutex);
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
 			//upgrade count on has_more_shared
-			while (m_state.has_more_shared() || m_state.exclu) {
-				m_exclusive_cond.wait(m_state_mutex);
+			state.exclusive_waiting_blocked = true;
+			while ( !state.can_lock() ) {
+				exclusive_cond.wait(state_mutex);
 			}
-			NETP_ASSERT(!m_state.has_more_shared());
-			NETP_ASSERT(m_state.exclu == exclusive::NO);
-			m_state.exclu = exclusive::YES;
-		}
-
-		void unlock() {
-			netp::lock_guard<spin_mutex> state_lg(m_state_mutex);
-			NETP_ASSERT(!m_state.has_more_shared());
-			NETP_ASSERT(m_state.exclu == exclusive::YES);
-
-			m_state.exclu = exclusive::NO;
-			_notify_waiters();
-		}
-
-		void unlock_and_lock_shared() {
-			netp::lock_guard<spin_mutex> state_lg(m_state_mutex);
-			NETP_ASSERT(!m_state.has_more_shared());
-			NETP_ASSERT(m_state.exclu == exclusive::YES);
-
-			m_state.exclu = false;
-			NETP_ASSERT(m_state.can_lock_shared());
-			m_state.lock_shared();
+			state.exclusive = true;
 		}
 
 		bool try_lock() {
-			netp::lock_guard<spin_mutex> state_lg(m_state_mutex);
-			if (m_state.has_more_shared() || m_state.exclu) {
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			if (!state.can_lock()) {
 				return false;
 			}
-
-			m_state.exclu = true;
+			state.exclusive = true;
 			return true;
 		}
-		bool try_lock_shared() {
-			netp::lock_guard<spin_mutex> state_lg(m_state_mutex);
-			if (!m_state.can_lock_shared()) {
-				return false;
-			}
-			m_state.lock_shared();
-			return true;
+
+		void unlock() {
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			state.assert_locked();
+			state.exclusive = false;
+			state.exclusive_waiting_blocked = false;
+			state.assert_free();
+			release_waiters();
+		}
+
+		// Shared <-> Exclusive
+		void unlock_and_lock_shared() {
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			state.assert_locked();
+			state.exclusive = false;
+			state.lock_shared();
+			state.exclusive_waiting_blocked = false;
+			release_waiters();
 		}
 
 		void lock_upgrade() {
-			netp::lock_guard<spin_mutex> state_lg(m_state_mutex);
-			while (!m_state.can_lock_upgrade()) {
-				m_shared_cond.wait(m_state_mutex);
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			while (!state.can_lock_upgrade()) {
+				shared_cond.wait(state_mutex);
 			}
-			m_state.lock_upgrade();
+			state.lock_upgrade();
+		}
+
+		bool try_lock_upgrade() {
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			if (!state.can_lock_upgrade()) {
+				return false;
+			}
+
+			state.lock_upgrade();
+			state.assert_lock_upgraded();
+			return true;
 		}
 
 		void unlock_upgrade() {
-			netp::lock_guard<spin_mutex> state_lg(m_state_mutex);
-			m_state.unlock_upgrade();
-			if (m_state.has_more_shared()) {
-				m_shared_cond.notify_all();
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			state.unlock_upgrade();
+			if (state.no_shared()) {
+				state.exclusive_waiting_blocked = false;
+				release_waiters();
 			} else {
-				_notify_waiters();
+				shared_cond.notify_all();
 			}
 		}
 
+		// Upgrade <-> Exclusive
 		void unlock_upgrade_and_lock() {
-			netp::lock_guard<spin_mutex> state_lg(m_state_mutex);
-			m_state.unlock_upgrade_and_up();
-			while (m_state.has_more_shared() || m_state.exclu == exclusive::YES) {
-				m_upgrade_cond.wait(m_state_mutex);
-			}
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			state.assert_lock_upgraded();
+			state.unlock_shared();
 
-			NETP_ASSERT(!m_state.has_more_shared());
-			NETP_ASSERT(m_state.exclu == exclusive::NO);
-			m_state.exclu = exclusive::YES;
-			m_state.lock_upgrade_up_done();
+			//if we have shared, no exclusive lock would succeed, 
+			//when no_shared match, upgrade_cond have the highest priority
+			while (!state.no_shared() ) {
+				upgrade_cond.wait(state_mutex);
+			}
+			NETP_ASSERT( state.upgrade == true );
+			NETP_ASSERT( state.exclusive == true );
+			state.upgrade = false;
+			state.assert_locked();
 		}
+		/*
+		bool try_unlock_upgrade_and_lock() {
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			state.assert_lock_upgraded();
+			if (
+				!state.exclusive
+				&& !state.exclusive_waiting_blocked
+				&& state.upgrade
+				&& state.shared_count == 1
+				) 
+			{
+				state.shared_count = 0;
+				state.upgrade = false;
+				state.exclusive = true;
+				state.assert_locked();
+				return true;
+			}
+			return false;
+		}
+		*/
+
 	};
 }//end of ns impl
 

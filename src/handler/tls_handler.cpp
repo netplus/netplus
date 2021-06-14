@@ -513,10 +513,12 @@ namespace netp { namespace handler {
 
 	void tls_handler::tls_record_received(uint64_t /*seq_no*/, const uint8_t buf[], size_t buf_size)
 	{
+		if (m_flag & f_ch_read_closed) {
+			NETP_WARN("[tls_handler]received bytes after read closed, bytes: %d", buf_size);
+			return;
+		}
 		NETP_ASSERT(m_ctx != nullptr);
-		//NETP_VERBOSE("received bytes: %d", buf_size);
 		if (buf_size > 0) {
-			NETP_ASSERT( (m_flag&f_ch_read_closed)==0 );
 			m_ctx->fire_read(netp::make_ref<netp::packet>(buf, buf_size));
 		}
 	}
