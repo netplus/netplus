@@ -251,7 +251,7 @@ namespace netp { namespace impl {
 				upgrade_cond.wait(state_mutex);
 			}
 			NETP_ASSERT( state.upgrade == true );
-			NETP_ASSERT( state.exclusive == true );
+			state.exclusive = true;
 			state.upgrade = false;
 			state.assert_locked();
 		}
@@ -334,6 +334,9 @@ namespace _mutex_detail {
 			_MUTEX_DEBUG_CHECK_FOR_LOCK_
 				m_impl.lock_upgrade();
 			_MUTEX_DEBUG_LOCK_
+		}
+		inline bool try_lock_upgrade() {
+			return m_impl.try_lock_upgrade();
 		}
 		inline void unlock_upgrade() {
 			_MUTEX_DEBUG_CHECK_FOR_UNLOCK_
