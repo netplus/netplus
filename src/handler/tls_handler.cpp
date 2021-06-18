@@ -66,12 +66,13 @@ namespace netp { namespace handler {
 	}
 
 	void tls_handler::closed(NRP<channel_handler_context> const& ctx) {
+
+		m_flag |= f_ch_closed;
 		NETP_ASSERT(m_ctx != nullptr);
 		m_ctx = nullptr;
 
 		NETP_ASSERT(m_tls_channel != nullptr);
 		m_tls_channel = nullptr;
-		m_flag |= f_ch_closed;
 
 		if (m_close_p != nullptr) {
 			m_close_p->set(netp::OK);
@@ -83,6 +84,7 @@ namespace netp { namespace handler {
 		if (m_flag & f_ch_connected) {
 			ctx->fire_closed();
 		} else {
+			NETP_ERR("[tls_handler][#%s]tls handshake failed", ctx->ch->ch_info().c_str());
 			ctx->fire_error(netp::E_TLS_HANDSHAKE_FAILED);
 		}
 	}
@@ -119,18 +121,18 @@ namespace netp { namespace handler {
 		try {
 			tls_ch->received_data((uint8_t*)income->head(), income->len());
 		} catch (Botan::TLS::TLS_Exception& e) {
-			NETP_ERR("[tls_handler]tls excepton, code: %d, err: %s", e.error_code(), e.what());
+			NETP_ERR("[tls_handler][#%s]tls excepton, code: %d, err: %s", ctx->ch->ch_info().c_str(), e.error_code(), e.what());
 			if (!(m_flag & f_ch_close_called)) {
 				ctx->close();
 			}
 		} catch (std::exception& e) {
 			NRP<netp::socket_channel> ch_ = netp::static_pointer_cast<netp::socket_channel>( ctx->ch );
-			NETP_ERR("[tls_handler]tls excepton, err: %s, from: %s", e.what(), ch_->remote_addr()->dotip().c_str() );
+			NETP_ERR("[tls_handler][#%s]tls excepton, err: %s", ctx->ch->ch_info().c_str(), e.what() );
 			if (!(m_flag & f_ch_close_called)) {
 				ctx->close();
 			}
 		} catch (...) {
-			NETP_ERR("[tls_handler]unknown tls exception" );
+			NETP_ERR("[tls_handler][#%s]unknown tls exception", ctx->ch->ch_info().c_str() );
 			if (!(m_flag & f_ch_close_called)) {
 				ctx->close();
 			}
@@ -487,7 +489,12 @@ namespace netp { namespace handler {
 		//no_renegotiation alert that it is not willing to accept), it SHOULD
 		//send a fatal alert to terminate the connection
 
-		NETP_VERBOSE("Alert: %s", alert.type_string().c_str());
+		//NETP_VERBOSE("Alert: %s", alert.type_string().c_str());
+		if (m_flag & f_ch_closed) {
+			NETP_ASSERT(m_ctx == nullptr);
+			return;
+		}
+
 		Botan::TLS::Alert::Type t = alert.type();
 		switch (t) {
 		case Botan::TLS::Alert::Type::CLOSE_NOTIFY:
@@ -498,7 +505,7 @@ namespace netp { namespace handler {
 		break;
 		default:
 		{
-			NETP_INFO("Alert: %s", alert.type_string().c_str());
+			NETP_INFO("Alert: %s", alert.type_string().c_str() );
 
 			if (alert.is_fatal()) {
 				//https://datatracker.ietf.org/doc/html/rfc5246#section-7.2.2, upon fatal alert, both side close transport immediately

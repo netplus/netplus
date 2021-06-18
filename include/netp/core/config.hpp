@@ -3,7 +3,7 @@
 
 #ifndef __NETP_VER
 	#define __NETP_VER 100
-	#define __NETP_VER_STR "netplus v1.00"
+	#define __NETP_VER_STR "netplus v1.0.0"
 #endif
 
 #include <netp/core/compiler.hpp>

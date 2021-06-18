@@ -110,43 +110,43 @@ namespace netp {
 	}
 
 	void channel_handler_tail::connected(NRP<channel_handler_context> const& ctx) {
-		NETP_TRACE_CHANNEL("[#%d][tail]channel connected, no action", ctx->ch->ch_id() );
+		NETP_TRACE_CHANNEL("[#%s][tail]channel connected, no action", ctx->ch->ch_info().c_str() );
 		(void)ctx;
 	}
 	void channel_handler_tail::closed(NRP<channel_handler_context > const& ctx) {
 		//NETP_ASSERT(ctx->ch != nullptr);
-		NETP_TRACE_CHANNEL("[#%d][tail]channel closed, no action", ctx->ch->ch_id());
+		NETP_TRACE_CHANNEL("[#%s][tail]channel closed, no action", ctx->ch->ch_info().c_str() );
 		(void)ctx;
 	}
 	void channel_handler_tail::error(NRP<channel_handler_context > const& ctx, int err) {
 		//NETP_ASSERT(ctx->ch != nullptr);
-		NETP_ERR("[#%d][tail]channel error, no action, err: %d", ctx->ch->ch_id(), err);
+		NETP_ERR("[#%s][tail]channel error, no action, err: %d", ctx->ch->ch_info().c_str(), err);
 		(void)err;
 		(void)ctx;
 	}
 	void channel_handler_tail::read_closed(NRP<channel_handler_context> const& ctx) {
 		//NETP_ASSERT(ctx->ch != nullptr);
-		NETP_TRACE_CHANNEL("[#%d][tail]channel read_closed, close write", ctx->ch->ch_id());
+		NETP_TRACE_CHANNEL("[#%s][tail]channel read_closed, close write", ctx->ch->ch_info().c_str() );
 		ctx->ch->ch_close_write();
 		(void)ctx;
 	}
 	void channel_handler_tail::write_closed(NRP<channel_handler_context> const& ctx) {
 		//NETP_ASSERT(ctx->ch != nullptr);
-		NETP_TRACE_CHANNEL("[#%d][tail]channel write_closed, close read", ctx->ch->ch_id());
+		NETP_TRACE_CHANNEL("[#%s][tail]channel write_closed, close read", ctx->ch->ch_info().c_str() );
 		ctx->ch->ch_close_read();
 		(void)ctx;
 	}
 
 	void channel_handler_tail::read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income) {
 		//NETP_ASSERT(ctx->ch != nullptr);
-		NETP_ERR("[#%d][tail]channel read, we reach the end of the pipeline , please check your pipeline configure, no action", ctx->ch->ch_id() );
+		NETP_ERR("[#%s][tail]channel read, we reach the end of the pipeline , please check your pipeline configure, no action", ctx->ch->ch_info().c_str() );
 		(void)ctx;
 		(void)income;
 	}
 
 	void channel_handler_tail::readfrom(NRP<channel_handler_context> const& ctx, NRP<packet> const& income, NRP<address> const& from) {
 		//NETP_ASSERT(ctx->ch != nullptr);
-		NETP_ERR("[#%d][tail]channel readfrom, we reach the end of the pipeline , please check your pipeline configure, no action, from: %s", ctx->ch->ch_id(), from->to_string().c_str() );
+		NETP_ERR("[#%s][tail]channel readfrom, we reach the end of the pipeline , please check your pipeline configure, no action, from: %s", ctx->ch->ch_info().c_str(), from->to_string().c_str() );
 		(void)ctx;
 		(void)income;
 	}
