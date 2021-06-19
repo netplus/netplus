@@ -91,6 +91,7 @@ namespace netp { namespace handler {
 
 	void tls_handler::write_closed(NRP<channel_handler_context> const& ctx) {
 		NETP_ASSERT(m_ctx != nullptr);
+		NETP_ASSERT(m_ctx == ctx);
 		m_flag |= f_ch_write_closed;
 		if (m_close_write_p != nullptr) {
 			m_close_write_p->set(netp::OK);
@@ -104,6 +105,7 @@ namespace netp { namespace handler {
 
 	void tls_handler::read_closed(NRP<channel_handler_context> const& ctx) {
 		NETP_ASSERT(m_ctx != nullptr);
+		NETP_ASSERT(m_ctx == ctx);
 		m_flag |= f_ch_read_closed;
 		if (m_flag & f_ch_connected) {
 			m_ctx->fire_read_closed();
@@ -202,7 +204,6 @@ namespace netp { namespace handler {
 	}
 
 	void tls_handler::write(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) {
-		NETP_ASSERT(ctx == m_ctx);
 		if ( !(m_flag& f_tls_ch_activated)) {
 			chp->set(netp::E_CHANNEL_INVALID_STATE);
 			return;
@@ -213,6 +214,7 @@ namespace netp { namespace handler {
 			return;
 		}
 
+		NETP_ASSERT(ctx == m_ctx);
 		m_outlets_to_tls_ch.push({ outlet, chp, 0 });
 		_try_tls_ch_flush();
 	}
@@ -475,9 +477,9 @@ namespace netp { namespace handler {
 			NETP_ASSERT( m_outlets_to_tls_ch.size() );
 			tls_ch_outlet& front_ = m_outlets_to_tls_ch.front();
 			++front_.record_count;
-			m_outlets_to_socket_ch.push({ netp::make_ref<netp::packet>(buf, length) , true });
+			m_outlets_to_socket_ch.push({ netp::make_ref<netp::packet>(buf, netp::u32_t(length)) , true });
 		} else {
-			m_outlets_to_socket_ch.push({ netp::make_ref<netp::packet>(buf, length) , false });
+			m_outlets_to_socket_ch.push({ netp::make_ref<netp::packet>(buf, netp::u32_t(length)) , false });
 			_try_socket_ch_flush();
 		}
 	}

@@ -30,7 +30,7 @@ namespace netp { namespace http {
 		VALUE
 	};
 
-#define NETP_HTTP_IS_PARSE_ERROR( ec ) ( !(ec == HPE_OK || ec == HPE_PAUSED_UPGRADE) )
+#define NETP_HTTP_IS_PARSE_ERROR( ec ) ( !(ec == HPE_OK || ec == HPE_PAUSED_UPGRADE || ec == HPE_PAUSED) )
 
 	struct parser final :
 		public netp::non_atomic_ref_base
@@ -67,8 +67,9 @@ namespace netp { namespace http {
 
 		//it makes no sense to have this function here
 		// (1) resume do not have a return value to tell the resume result
-		// (2) we could use error_pos to resume llhttp_execute call to make progress anyway
-		//void resume();
+		// (2) we could use error_pos to resume llhttp_execute call to make progress anyway, in this case we have to make a new http parser
+		
+		void resume();
 		
 		//int resume_after_upgrade();
 		int get_errno();

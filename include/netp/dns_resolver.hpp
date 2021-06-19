@@ -71,7 +71,8 @@ namespace netp {
 			f_timeout_timer = 1,
 			f_stop_called = 1<<1,
 			f_launching = 1<<2,
-			f_running = 1<<3
+			f_running = 1<<3,
+			f_restarting = 1<<4
 		};
 
 		NRP<io_event_loop> L;
@@ -129,7 +130,9 @@ namespace netp {
 		NRP<netp::promise<int>> start();
 
 		void _do_stop(NRP<netp::promise<int>> const& p);
+
 		NRP<netp::promise<int>> stop();
+		void restart();
 
 		void cb_dns_timeout(NRP<netp::timer> const& t);
 #ifdef _NETP_USE_UDNS
@@ -141,6 +144,8 @@ namespace netp {
 		dns_resolver();
 		NRP<netp::promise<int>> add_name_server(std::vector<std::string> const& ns);
 		NRP<dns_query_promise> resolve(string_t const& domain);
+
+		static void __ares_gethostbyname_cb(void* arg, int status, int timeouts, struct hostent* hostent);
 	};
 }
 

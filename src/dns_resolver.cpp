@@ -297,6 +297,20 @@ namespace netp {
 		p->set(netp::OK);
 	}
 
+	void dns_resolver::restart() {
+		NETP_ASSERT( L->in_event_loop() );
+		if ((m_flag & dns_resolver_flag::f_restarting) == 0) {
+			return;
+		}
+		m_flag |= dns_resolver_flag::f_restarting;
+		NRP<netp::promise<int>> p_stop = netp::make_ref<netp::promise<int>>();
+		_do_stop(p_stop);
+
+		NRP<netp::promise<int>> p_start = netp::make_ref<netp::promise<int>>();
+		_do_start(p_start);
+		m_flag &= ~dns_resolver_flag::f_restarting;
+	}
+
 	NRP<netp::promise<int>> dns_resolver::stop() {
 		NRP<netp::promise<int>> p = netp::make_ref<netp::promise<int>>();
 		L->execute([dnsr=this,p]() {
@@ -470,7 +484,7 @@ namespace netp {
 		}
 	}
 
-	static void __ares_gethostbyname_cb(void* arg, int status, int timeouts, struct hostent* hostent)
+	void dns_resolver::__ares_gethostbyname_cb(void* arg, int status, int timeouts, struct hostent* hostent)
 	{
 		async_dns_query* adq = (async_dns_query*)arg;
 		adq->dnsr->__ares_done();
@@ -506,6 +520,11 @@ namespace netp {
 			}
 		} else {
 			adq->dnsquery_p->set(std::make_tuple( NETP_NEGATIVE(status), std::vector<netp::ipv4_t, netp::allocator<netp::ipv4_t>>()));
+		}
+		if (status == 11) {
+			adq->dnsr->L->schedule([dnsr=adq->dnsr]() {
+				dnsr->restart();
+			});
 		}
 
 		netp::allocator<async_dns_query>::trash(adq);
