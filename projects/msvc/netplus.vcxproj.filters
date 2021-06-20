@@ -531,6 +531,9 @@
     <ClInclude Include="..\..\include\netp\handler\tls_config.hpp">
       <Filter>Header Files\netp\handler</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\http\chunk_encoder.hpp">
+      <Filter>Header Files\netp\http</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">

@@ -79,7 +79,7 @@ namespace netp {
 
 	class rpc;
 	struct rpc_req_message final :
-		netp::ref_base
+		netp::non_atomic_ref_base
 	{
 		rpc_req_message_state state;
 		NRP<netp::rpc_message> m;

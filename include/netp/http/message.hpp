@@ -21,6 +21,7 @@
 namespace netp { namespace http {
 
 	enum message_type {
+		T_UNKNOWN,
 		T_REQ,
 		T_RESP
 	};
@@ -170,21 +171,23 @@ namespace netp { namespace http {
 		}
 
 		void encode(NRP<packet>& packet_o) const {
-			NRP<packet> _out = netp::make_ref<packet>();
+			if (packet_o == nullptr) {
+				packet_o = netp::make_ref<packet>();
+			}
+
 			std::for_each(keys_order.rbegin(), keys_order.rend(), [&](string_t const& key) {
 				header_map::const_iterator&& it = map.find(H_key(key));
 				NETP_ASSERT(it != map.end());
 				const char* value_cstr = it->second.value.c_str();
 				mul_header_filed_with_same_name_pos_list_t::const_iterator&& it_hf_pos = it->second.mul_hf_pos_list.begin();
 				while (it_hf_pos != it->second.mul_hf_pos_list.end()) {
-					_out->write((netp::byte_t*)key.c_str(), (netp::u32_t)key.length());
-					_out->write((netp::byte_t*)NETP_HTTP_COLON_SP, 2);
-					_out->write((netp::byte_t*)(value_cstr + it_hf_pos->begin), u32_t(it_hf_pos->len) );
-					_out->write((netp::byte_t*)NETP_HTTP_CRLF, (netp::u32_t)netp::strlen(NETP_HTTP_CRLF));
+					packet_o->write((netp::byte_t*)key.c_str(), (netp::u32_t)key.length());
+					packet_o->write((netp::byte_t*)NETP_HTTP_COLON_SP, 2);
+					packet_o->write((netp::byte_t*)(value_cstr + it_hf_pos->begin), u32_t(it_hf_pos->len) );
+					packet_o->write((netp::byte_t*)NETP_HTTP_CRLF, (netp::u32_t)netp::strlen(NETP_HTTP_CRLF));
 					++it_hf_pos;
 				}
 			});
-			packet_o = std::move(_out);
 		}
 	};
 

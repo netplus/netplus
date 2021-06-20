@@ -61,7 +61,7 @@ namespace netp { namespace http {
 	};
 
 	struct http_request_ctx:
-		netp::ref_base
+		netp::non_atomic_ref_base
 	{
 		http_request_state state;
 		NRP<netp::http::request_promise> reqp;

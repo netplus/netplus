@@ -298,6 +298,16 @@ namespace netp { namespace http {
 		llhttp_resume(_llp);
 	}
 
+	void parser::resume_after_upgrade(){
+		NETP_ASSERT(_llp != nullptr);
+		llhttp_resume_after_upgrade(_llp);
+	}
+
+	int parser::get_errno() {
+		NETP_ASSERT(_llp != nullptr);
+		return llhttp_get_errno(_llp);
+	}
+
 	const char* parser::get_error_pos() {
 		NETP_ASSERT( _llp != nullptr );
 		return _llp->error_pos;
@@ -308,6 +318,5 @@ namespace netp { namespace http {
 		NETP_ASSERT( _llp->error_pos >= begin, "error_pos: %p, begin: %p", _llp->error_pos, begin );
 		return _llp->error_pos - begin;
 	}
-
 
 }}

@@ -7,6 +7,7 @@
 #include "./../../../3rd/llhttp/llhttp.h"
 
 #include <netp/core.hpp>
+#include <netp/http/chunk_encoder.hpp>
 #include <netp/http/message.hpp>
 
 namespace netp { namespace http {
@@ -70,8 +71,8 @@ namespace netp { namespace http {
 		// (2) we could use error_pos to resume llhttp_execute call to make progress anyway, in this case we have to make a new http parser
 		
 		void resume();
-		
-		//int resume_after_upgrade();
+		void resume_after_upgrade();
+
 		int get_errno();
 		const char* get_error_pos();
 		u32_t calc_parsed_bytes(const char* begin);
