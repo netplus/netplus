@@ -72,7 +72,6 @@ namespace netp {
 	void io_event_loop::__run() {
 		//NETP_ASSERT(!"CHECK EXCEPTION STACK");
 		init();
-
 		//record a snapshot, used by update state
 		m_io_ctx_count_before_running = m_io_ctx_count;
 		u8_t _SL = u8_t(loop_state::S_LAUNCHING);
@@ -170,6 +169,8 @@ namespace netp {
 			while (m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_LAUNCHING)) {
 				netp::this_thread::yield(++k);
 			}
+			NETP_VERBOSE("[io_event_loop][%u]__launch done", m_type);
+			
 			return netp::OK;
 		}
 
