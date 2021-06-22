@@ -293,6 +293,11 @@ namespace netp { namespace http {
 		return int(llhttp_finish(_llp));
 	}
 
+	void parser::	reset() {
+		NETP_ASSERT(_llp != nullptr);
+		llhttp_reset(_llp);
+	}
+
 	void parser::resume() {
 		NETP_ASSERT(_llp != nullptr);
 		llhttp_resume(_llp);

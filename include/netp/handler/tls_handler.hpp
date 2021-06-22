@@ -152,7 +152,7 @@ namespace netp { namespace handler {
 			const std::string& hostname,
 			const Botan::TLS::Policy& policy) override;
 
-		void connected(NRP<channel_handler_context> const& ctx) override {};
+		void connected(NRP<channel_handler_context> const& ctx) override { (void)ctx; };
 		void closed(NRP<channel_handler_context> const& ctx) override;
 
 		void write_closed(NRP<channel_handler_context> const& ctx)override;

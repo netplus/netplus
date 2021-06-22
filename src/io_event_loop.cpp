@@ -169,7 +169,7 @@ namespace netp {
 			while (m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_LAUNCHING)) {
 				netp::this_thread::yield(++k);
 			}
-			NETP_VERBOSE("[io_event_loop][%u]__launch done", m_type);
+			//NETP_VERBOSE("[io_event_loop][%u]__launch done", m_type);
 			
 			return netp::OK;
 		}

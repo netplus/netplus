@@ -13,7 +13,7 @@
 #include <netp/dns_resolver.hpp>
 
 //@NOTE: turn on this option would result in about 20% performance boost for EPOLL
-#define NETP_ENABLE_FAST_WRITE
+//#define NETP_ENABLE_FAST_WRITE
 
 //in milliseconds
 #define NETP_SOCKET_BDLIMIT_TIMER_DELAY_DUR (250)
@@ -761,7 +761,7 @@ namespace netp {
 				NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER) | int(channel_flag::F_WATCH_WRITE)));
 				ch_io_write();
 #else
-				NETP_ASSERT(m_chflag & int(channel_flag::F_WATCH_WRITE));
+				NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER) | int(channel_flag::F_WATCH_WRITE)));
 #endif
 				//NETP_TRACE_SOCKET("[socket][%s]__do_io_write, write block", info().c_str());
 			}

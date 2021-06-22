@@ -69,7 +69,8 @@ namespace netp { namespace http {
 		//it makes no sense to have this function here
 		// (1) resume do not have a return value to tell the resume result
 		// (2) we could use error_pos to resume llhttp_execute call to make progress anyway, in this case we have to make a new http parser
-		
+
+		void reset();
 		void resume();
 		void resume_after_upgrade();
 

@@ -50,6 +50,7 @@ namespace netp { namespace handler {
 			m_http_parser->cb_reset();
 			m_http_parser = nullptr;
 		}
+		(void)ctx;
 	}
 
 	void websocket::read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income)
@@ -457,7 +458,7 @@ _CHECK:
 		outp_CLOSE->write<u8_t>( _CLOSE->H.B1.B );
 		outp_CLOSE->write<u8_t>( _CLOSE->H.B2.B );
 
-		chp->if_done([ctx](int const& rt) {
+		chp->if_done([ctx](int const&) {
 			ctx->close();
 		});
 		ctx->write(chp, outp_CLOSE);
