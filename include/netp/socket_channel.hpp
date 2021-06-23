@@ -20,36 +20,6 @@
 #define NETP_DEFAULT_LISTEN_BACKLOG 256
 
 
-#define _FIRE_ACTION_CLOSE_AND_RETURN_IF_EXCEPTION( _ACTION, _CH, _ACT_NAME ) \
-		do { \
-				int __fire_act_status__ = 0; \
-				try { \
-					_ACTION; \
-				} catch (netp::exception const& e) { \
-					__fire_act_status__ = e.code(); \
-					NETP_ASSERT(__fire_act_status__ != netp::OK); \
-					NETP_ERR("[socket][%s][%s]netp::exception: %d, what: %s", _CH->ch_info().c_str(), _ACT_NAME, __fire_act_status__, e.what()); \
-				} catch (std::exception const& e) { \
-					__fire_act_status__ = netp_socket_get_last_errno(); \
-					if (__fire_act_status__ == netp::OK) { \
-						__fire_act_status__ = netp::E_UNKNOWN; \
-					}\
-					NETP_ERR("[socket][%s][%s]std::exception: %d, what: %s", _CH->ch_info().c_str(), _ACT_NAME, __fire_act_status__, e.what());\
-				} catch (...) { \
-					__fire_act_status__ = netp_socket_get_last_errno(); \
-					if (__fire_act_status__ == netp::OK) { \
-						__fire_act_status__ = netp::E_UNKNOWN; \
-					} \
-					NETP_ERR("[socket][%s][%s]unknown exception, %d",_CH->ch_info().c_str(), _ACT_NAME, __fire_act_status__ ); \
-				} \
-				if(__fire_act_status__!= netp::OK) { \
-					_CH->ch_errno() = __fire_act_status__; \
-					_CH->ch_flag() |= int(channel_flag::F_FIRE_ACT_EXCEPTION); \
-					_CH->ch_close_impl(nullptr); \
-					return; \
-				} \
-		} while (0);\
-
 namespace netp {
 
 	enum socket_option {
@@ -653,8 +623,8 @@ namespace netp {
 			socket_shutdown_impl(SHUT_RD);
 			ch_fire_read_closed();
 			NETP_TRACE_SOCKET("[socket][%s]ch_do_close_read end, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
-			m_chflag &= ~int(channel_flag::F_READ_SHUTDOWNING);
 			m_chflag |= int(channel_flag::F_READ_SHUTDOWN);
+			m_chflag &= ~int(channel_flag::F_READ_SHUTDOWNING);
 
 			ch_rdwr_shutdown_check();
 		}
@@ -683,8 +653,8 @@ namespace netp {
 			//unset boundary
 			ch_fire_write_closed();
 			NETP_TRACE_SOCKET("[socket][%s]ch_do_close_write end, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
-			m_chflag &= ~int(channel_flag::F_WRITE_SHUTDOWNING);
 			m_chflag |= int(channel_flag::F_WRITE_SHUTDOWN);
+			m_chflag &= ~int(channel_flag::F_WRITE_SHUTDOWNING);
 			ch_rdwr_shutdown_check();
 		}
 
@@ -697,12 +667,11 @@ namespace netp {
 					NETP_ASSERT(ch->ch_flag() & int(channel_flag::F_CLOSED));
 					return;
 				}
+
 				try {
 					if (NETP_LIKELY(ch_initializer != nullptr)) {
 						ch_initializer(ch);
 					}
-					ch->ch_set_connected();
-					ch->ch_fire_connected();
 				} catch (netp::exception const& e) {
 					NETP_ASSERT(e.code() != netp::OK);
 					status = e.code();
@@ -728,6 +697,8 @@ namespace netp {
 					return;
 				}
 
+				ch->ch_set_connected();
+				_CH_FIRE_ACTION_CLOSE_AND_RETURN_IF_EXCEPTION(ch->ch_fire_connected(), ch, "ch_fire_connected");
 				ch->ch_io_read();
 			});
 		}
@@ -773,12 +744,10 @@ namespace netp {
 				if (m_chflag & int(channel_flag::F_CLOSE_PENDING)) {
 					_ch_do_close_read_write();
 					NETP_TRACE_SOCKET("[socket][%s]IO_WRITE, end F_CLOSE_PENDING, _ch_do_close_read_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
-				}
-				else if (m_chflag & int(channel_flag::F_WRITE_SHUTDOWN_PENDING)) {
+				} else if (m_chflag & int(channel_flag::F_WRITE_SHUTDOWN_PENDING)) {
 					_ch_do_close_write();
 					NETP_TRACE_SOCKET("[socket][%s]IO_WRITE, end F_WRITE_SHUTDOWN_PENDING, ch_close_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
-				}
-				else {
+				} else {
 					std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>().swap(m_outbound_entry_q);
 					ch_io_end_write();
 				}
@@ -806,7 +775,6 @@ namespace netp {
 			{
 				ch_io_end_write();
 				m_chflag |= int(channel_flag::F_WRITE_ERROR);
-				m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
 				ch_errno() = (status);
 				ch_close_impl(nullptr);
 				NETP_VERBOSE("[socket][%s]__do_io_write, call_ch_do_close_read_write, write error: %d, m_chflag: %u", ch_info().c_str(), status, m_chflag);

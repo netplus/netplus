@@ -3,7 +3,7 @@ LIBS_PATH := ./../../../../..
 LIB_ARCH_BUILD				:= $(ARCH_BUILD_NAME)
 
 LIB_NETP_PATH				:= $(LIBS_PATH)/netplus
-LIB_NETP_MAKEFILE_PATH		:= $(LIB_NETP_PATH)/projects/linux
+LIB_NETP_MAKEFILE_PATH		:= $(LIB_NETP_PATH)/projects/makefile
 LIB_NETP_CONFIG_PATH		:= $(LIB_NETP_PATH)/../netplus_config
 LIB_NETP_BIN_PATH			:= $(LIB_NETP_PATH)/bin/$(LIB_ARCH_BUILD)/libnetplus.a
 LIB_NETP_INCLUDE_PATH		:= $(LIB_NETP_PATH)/include $(LIB_NETP_CONFIG_PATH)

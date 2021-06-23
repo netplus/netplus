@@ -15,6 +15,36 @@
 //1, dialing and pipeline initialize stage, we'll get a future notifIcation for any failure in this stage
 //2, protocol handshake stage, we'll fire a error to all pipe if we failed 
 //3, connected until closed stage, we can do read, write during these stages, no error would be fired
+
+#define _CH_FIRE_ACTION_CLOSE_AND_RETURN_IF_EXCEPTION( _ACTION, _CH, _ACT_NAME ) \
+		do { \
+				int __fire_act_status__ = 0; \
+				try { \
+					_ACTION; \
+				} catch (netp::exception const& e) { \
+					__fire_act_status__ = e.code(); \
+					NETP_ASSERT(__fire_act_status__ != netp::OK); \
+					NETP_ERR("[channel][%s][%s]netp::exception: %d, what: %s", _CH->ch_info().c_str(), _ACT_NAME, __fire_act_status__, e.what()); \
+				} catch (std::exception const& e) { \
+					__fire_act_status__ = netp_socket_get_last_errno(); \
+					if (__fire_act_status__ == netp::OK) { \
+						__fire_act_status__ = netp::E_UNKNOWN; \
+					}\
+					NETP_ERR("[channel][%s][%s]std::exception: %d, what: %s", _CH->ch_info().c_str(), _ACT_NAME, __fire_act_status__, e.what());\
+				} catch (...) { \
+					__fire_act_status__ = netp_socket_get_last_errno(); \
+					if (__fire_act_status__ == netp::OK) { \
+						__fire_act_status__ = netp::E_UNKNOWN; \
+					} \
+					NETP_ERR("[channel][%s][%s]unknown exception, %d",_CH->ch_info().c_str(), _ACT_NAME, __fire_act_status__ ); \
+				} \
+				if(__fire_act_status__!= netp::OK) { \
+					_CH->ch_errno() = __fire_act_status__; \
+					_CH->ch_flag() |= int(channel_flag::F_FIRE_ACT_EXCEPTION); \
+					_CH->ch_close_impl(nullptr); \
+					return; \
+				} \
+		} while (0);\
  
 namespace netp {
 
@@ -156,6 +186,7 @@ namespace netp {
 				NETP_ASSERT(L->in_event_loop());
 				if ( ((m_chflag&(int(channel_flag::F_CLOSED)|int(channel_flag::F_CLOSING)))==0) && ((m_chflag & (int(channel_flag::F_READWRITE_SHUTDOWN))) == int(channel_flag::F_READWRITE_SHUTDOWN)) ) {
 					NETP_TRACE_CHANNEL("[channel][%s]ch_rdwr_shutdown_check trigger ch_close_impl()", ch_info().c_str() );
+					NETP_ASSERT( 0 == (m_chflag& (int(channel_flag::F_READ_SHUTDOWNING)|int(channel_flag::F_WRITE_SHUTDOWNING) )) );
 					m_chflag |= int(channel_flag::F_CLOSED);
 					ch_io_end();
 				}

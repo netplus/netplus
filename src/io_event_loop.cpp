@@ -265,7 +265,7 @@ namespace netp {
 				to_deattach.back()->__terminate();
 				to_deattach.pop_back();
 			}
-			netp::this_thread::sleep(1);
+			netp::this_thread::no_interrupt_sleep(1);
 			goto __dealloc_begin;
 		}
 
@@ -318,7 +318,7 @@ namespace netp {
 				m_bye_event_loop->__notify_terminating();
 				while ( m_bye_event_loop.ref_count() != m_bye_ref_count) {
 					//NETP_INFO("l.ref_count: %ld, ref_count: %ld", m_bye_event_loop.ref_count(), m_bye_ref_count.load(std::memory_order_acquire) );
-					netp::this_thread::sleep(1);
+					netp::this_thread::no_interrupt_sleep(1);
 				}
 				m_bye_event_loop->__terminate();
 				m_bye_event_loop = nullptr;
