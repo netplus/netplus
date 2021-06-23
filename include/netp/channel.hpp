@@ -31,12 +31,13 @@ namespace netp {
 
 		F_READWRITE_SHUTDOWN = (int(channel_flag::F_READ_SHUTDOWN) | int(channel_flag::F_WRITE_SHUTDOWN)),
 
-		F_WRITE_BARRIER = 1<<8,
-		F_WRITING = 1<<9, //directly write flag, used by mux_stream and direct socket write
-		F_WRITE_SHUTDOWN_PENDING = 1<<10,
-		F_CONNECTING = 1 << 11,
-		F_CONNECTED = 1 << 12,
+		F_WRITE_BARRIER = 1<<8, //
+		//F_WRITING = 1<<9, //directly write flag, used by mux_stream and direct socket write
+		F_WRITE_SHUTDOWN_PENDING = 1<<9,
+		F_CONNECTING = 1 << 10,
+		F_CONNECTED = 1 << 11,
 
+		F_FIRE_ACT_EXCEPTION = 1<<12,
 		F_CLOSE_PENDING = 1<<13, //for transport, update close state
 		F_CLOSING = 1 << 14,
 		F_CLOSED = 1 << 15,

@@ -19,6 +19,37 @@
 #define NETP_SOCKET_BDLIMIT_TIMER_DELAY_DUR (250)
 #define NETP_DEFAULT_LISTEN_BACKLOG 256
 
+
+#define _FIRE_ACTION_CLOSE_AND_RETURN_IF_EXCEPTION( _ACTION, _CH, _ACT_NAME ) \
+		do { \
+				int __fire_act_status__ = 0; \
+				try { \
+					_ACTION; \
+				} catch (netp::exception const& e) { \
+					__fire_act_status__ = e.code(); \
+					NETP_ASSERT(__fire_act_status__ != netp::OK); \
+					NETP_ERR("[socket][%s][%s]netp::exception: %d, what: %s", _CH->ch_info().c_str(), _ACT_NAME, __fire_act_status__, e.what()); \
+				} catch (std::exception const& e) { \
+					__fire_act_status__ = netp_socket_get_last_errno(); \
+					if (__fire_act_status__ == netp::OK) { \
+						__fire_act_status__ = netp::E_UNKNOWN; \
+					}\
+					NETP_ERR("[socket][%s][%s]std::exception: %d, what: %s", _CH->ch_info().c_str(), _ACT_NAME, __fire_act_status__, e.what());\
+				} catch (...) { \
+					__fire_act_status__ = netp_socket_get_last_errno(); \
+					if (__fire_act_status__ == netp::OK) { \
+						__fire_act_status__ = netp::E_UNKNOWN; \
+					} \
+					NETP_ERR("[socket][%s][%s]unknown exception, %d",_CH->ch_info().c_str(), _ACT_NAME, __fire_act_status__ ); \
+				} \
+				if(__fire_act_status__!= netp::OK) { \
+					_CH->ch_errno() = __fire_act_status__; \
+					_CH->ch_flag() |= int(channel_flag::F_FIRE_ACT_EXCEPTION); \
+					_CH->ch_close_impl(nullptr); \
+					return; \
+				} \
+		} while (0);\
+
 namespace netp {
 
 	enum socket_option {
@@ -687,14 +718,13 @@ namespace netp {
 					if (status == netp::OK) {
 						status = netp::E_UNKNOWN;
 					}
-					NETP_ERR("[socket]accept failed, %d: unknown exception", status);
+					NETP_ERR("[socket]accept unknown exception: %d", status);
 				}
 
 				if (status != netp::OK) {
 					ch->ch_errno() = status;
 					ch->ch_flag() |= int(channel_flag::F_READ_ERROR);
 					ch->ch_close_impl(nullptr);
-//					NETP_ERR("[socket][%s]accept failed: %d", ch->ch_info().c_str(), status);
 					return;
 				}
 
