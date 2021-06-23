@@ -13,7 +13,7 @@
 #include <netp/dns_resolver.hpp>
 
 //@NOTE: turn on this option would result in about 20% performance boost for EPOLL
-//#define NETP_ENABLE_FAST_WRITE
+#define NETP_ENABLE_FAST_WRITE
 
 //in milliseconds
 #define NETP_SOCKET_BDLIMIT_TIMER_DELAY_DUR (250)
@@ -724,7 +724,6 @@ namespace netp {
 				NETP_ASSERT(status < 0);
 				ch_io_end_read();
 				m_chflag |= int(channel_flag::F_READ_ERROR);
-				m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
 				ch_errno() = (status);
 				ch_close_impl(nullptr);
 				NETP_VERBOSE("[socket][%s]___do_io_read_done, _ch_do_close_read_write, read error: %d, close, flag: %u", ch_info().c_str(), status, m_chflag);
@@ -803,21 +802,7 @@ namespace netp {
 		void ch_write_impl(NRP<promise<int>> const& intp, NRP<packet> const& outlet) override;
 		void ch_write_to_impl(NRP<promise<int>> const& intp, NRP<packet> const& outlet, NRP<netp::address> const& to) override;
 
-		void ch_close_read_impl(NRP<promise<int>> const& closep) override
-		{
-			NETP_ASSERT(L->in_event_loop());
-			NETP_TRACE_SOCKET("[socket][%s]ch_close_read_impl, _ch_do_close_read, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
-			int prt = netp::OK;
-			if (m_chflag & (int(channel_flag::F_READ_SHUTDOWNING) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING))) {
-				prt = (netp::E_OP_INPROCESS);
-			} else if ((m_chflag & int(channel_flag::F_READ_SHUTDOWN)) != 0) {
-				prt = (netp::E_CHANNEL_WRITE_CLOSED);
-			} else {
-				_ch_do_close_read();
-			}
-			if (closep) { closep->set(prt); }
-		}
-
+		void ch_close_read_impl(NRP<promise<int>> const& closep) override;
 		void ch_close_write_impl(NRP<promise<int>> const& chp) override;
 		void ch_close_impl(NRP<promise<int>> const& chp) override;
 

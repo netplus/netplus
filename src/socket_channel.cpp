@@ -641,6 +641,22 @@ int socket_base::get_left_snd_queue() const {
 		ch_rdwr_shutdown_check();
 	}
 
+	void socket_channel::ch_close_read_impl(NRP<promise<int>> const& closep) {
+		NETP_ASSERT(L->in_event_loop());
+		NETP_TRACE_SOCKET("[socket][%s]ch_close_read_impl, _ch_do_close_read, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
+		int prt = netp::OK;
+		if ((m_chflag & int(channel_flag::F_READ_SHUTDOWN)) != 0) {
+			prt = (netp::E_CHANNEL_WRITE_CLOSED);
+		}
+		else if (m_chflag & (int(channel_flag::F_READ_SHUTDOWNING) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING))) {
+			prt = (netp::E_OP_INPROCESS);
+		}
+		else {
+			_ch_do_close_read();
+		}
+		if (closep) { closep->set(prt); }
+	}
+
 	//write would be cancelled only by write error
 	void socket_channel::ch_close_write_impl(NRP<promise<int>> const& closep) {
 		NETP_ASSERT(L->in_event_loop());
@@ -648,22 +664,23 @@ int socket_base::get_left_snd_queue() const {
 		int prt = netp::OK;
 		if (m_chflag & int(channel_flag::F_WRITE_SHUTDOWN)) {
 			prt = (netp::E_CHANNEL_WRITE_CLOSED);
-		} else if (m_chflag & (int(channel_flag::F_WRITE_SHUTDOWNING)|int(channel_flag::F_CLOSING)| int(channel_flag::F_CLOSE_PENDING)) ) {
+		} else if (m_chflag & (int(channel_flag::F_WRITE_SHUTDOWNING)|int(channel_flag::F_CLOSING)) ) {
 			prt = (netp::E_OP_INPROCESS);
-		} else if (m_chflag&int(channel_flag::F_WRITE_SHUTDOWN_PENDING)) {
+		} else if (m_chflag&(int(channel_flag::F_CLOSE_PENDING)|int(channel_flag::F_WRITE_SHUTDOWN_PENDING))) {
+			//if we have a write_error, a immediate ch_close_impl would be take out
 			NETP_ASSERT((m_chflag&int(channel_flag::F_WRITE_ERROR)) == 0);
 			NETP_ASSERT(m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)) );
 			NETP_ASSERT(m_outbound_entry_q.size());
 			prt = (netp::E_CHANNEL_WRITE_SHUTDOWNING);
 		} else if (m_chflag & (int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)|int(channel_flag::F_BDLIMIT)) ) {
-			//write set ok might trigger ch_close_write|ch_close
+			//write set ok might result in ch_close_write|ch_close
 			//the pending action would be scheduled right in _do_write_done() which is right after every _io_do_write action
-			//if a user defined write function is used, user have to 
+			//if a user defined write function is used, user have to take care of it by user self
 			NETP_ASSERT(m_outbound_entry_q.size());
 			m_chflag |= int(channel_flag::F_WRITE_SHUTDOWN_PENDING);
 			prt = (netp::E_CHANNEL_WRITE_SHUTDOWNING);
 		} else {
-
+			//connecting channel would only be closed by ch_close_impl
 			NETP_ASSERT( (m_chflag&int(channel_flag::F_CONNECTING)) ==0 );
 			NETP_ASSERT(((m_chflag&(int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED))) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED))) ?
 				m_outbound_entry_q.size():
@@ -692,6 +709,7 @@ int socket_base::get_left_snd_queue() const {
 
 			goto __act_label_close_read_write;
 		} else if (m_chflag & (int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING))) {
+			NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER) | int(channel_flag::F_WATCH_WRITE)));
 			prt = (netp::E_OP_INPROCESS);
 		} else if (m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)|int(channel_flag::F_BDLIMIT)) ) {
 			//wait for write done event, we might in a write barrier
