@@ -584,22 +584,25 @@ namespace netp {
 			if (m_fd == NETP_INVALID_SOCKET) {
 				rt = open();
 				if (rt != netp::OK) {
-					ch_errno() = rt;
 					m_chflag |= int(channel_flag::F_READ_ERROR);
+					ch_errno() = rt;
+					ch_close_impl(nullptr);
 				}
 				NETP_RETURN_V_IF_MATCH(rt, rt != netp::OK);
 			}
 
 			rt = _cfg_option(opt, kvals);
 			if (rt != netp::OK) {
-				ch_errno() = rt;
 				m_chflag |= int(channel_flag::F_READ_ERROR);
+				ch_errno() = rt;
+				ch_close_impl(nullptr);
 				return rt;
 			}
 			rt = _cfg_buffer(cbc);
 			if (rt != netp::OK) {
-				ch_errno() = rt;
 				m_chflag |= int(channel_flag::F_READ_ERROR);
+				ch_errno() = rt;
+				ch_close_impl(nullptr);
 				return rt;
 			}
 			return netp::OK;
@@ -915,9 +918,10 @@ namespace netp {
 		NETP_ASSERT(so != nullptr);
 		int rt = so->ch_init(cfg->option, cfg->kvals, cfg->sock_buf);
 		if (rt != netp::OK) {
-			so->ch_close();
 			return std::make_tuple(rt, nullptr);
 		}
+
+		NETP_ASSERT( so->ch_errno() == netp::OK );
 		return std::make_tuple(netp::OK, so);
 	}
 }

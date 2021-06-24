@@ -146,10 +146,12 @@ namespace netp {
 				}
 
 				NRP<io_monitor>& iom = ctx->iom;
-				if ( (events&EPOLLIN) || ((ec != netp::OK) && (ctx->flag&u8_t(io_flag::IO_READ)) ) ) {
+				if ( ((events&EPOLLIN) || (ec != netp::OK)) && (ctx->flag&u8_t(io_flag::IO_READ)) ) {
 					iom->io_notify_read(ec, ctx);
 				}
-				if ( (events&EPOLLOUT) || ((ec != netp::OK) && (ctx->flag&u8_t(io_flag::IO_WRITE)) ) ) {
+
+				//read error might result in write act be cancelled, just cancel it 
+				if ( ((events&EPOLLOUT) || (ec != netp::OK)) && (ctx->flag&u8_t(io_flag::IO_WRITE)) ) {
 					iom->io_notify_write(ec, ctx);
 				}
 				events &= ~(EPOLLOUT|EPOLLIN);

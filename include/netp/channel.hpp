@@ -169,6 +169,7 @@ namespace netp {
 			}
 
 			inline void ch_deinit() {
+				NETP_ASSERT((m_chflag & int(channel_flag::F_CLOSED)));
 				NETP_ASSERT(m_pipeline != nullptr);
 				m_pipeline->deinit();
 				m_pipeline = nullptr;

@@ -827,7 +827,7 @@ __act_label_close_read_write:
 	}
 
 	void socket_channel::io_notify_read(int status, io_ctx* ctx) {
-		NETP_ASSERT(m_chflag & int(channel_flag::F_WATCH_READ));
+		NETP_ASSERT(m_chflag & int(channel_flag::F_WATCH_READ), "[socket][%s]", ch_info().c_str() );
 		if (m_chflag & int(channel_flag::F_USE_DEFAULT_READ)) {
 			!is_udp() ? __do_io_read(status, ctx): __do_io_read_from(status, ctx);
 			return;
@@ -837,7 +837,7 @@ __act_label_close_read_write:
 	}
 
 	void socket_channel::io_notify_write(int status, io_ctx* ctx) {
-		NETP_ASSERT( m_chflag&int(channel_flag::F_WATCH_WRITE) );
+		NETP_ASSERT( m_chflag&int(channel_flag::F_WATCH_WRITE), "[socket][%s]", ch_info().c_str() );
 		if (m_chflag & int(channel_flag::F_USE_DEFAULT_WRITE)) {
 			m_chflag |= int(channel_flag::F_WRITE_BARRIER);
 			__do_io_write(status, ctx);

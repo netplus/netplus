@@ -65,8 +65,7 @@ namespace netp {
 						NETP_ASSERT(ctx->flag&io_flag::IO_READ);
 						iom->io_notify_read(ec);
 					}
-					if (e->filter==EVFILT_WRITE) {
-						NETP_ASSERT(ctx->flag & io_flag::IO_WRITE);
+					if ( (e->filter==EVFILT_WRITE) && (ctx->flag & io_flag::IO_WRITE)) {
 						iom->io_notify_write(ec);
 					}
 				}
