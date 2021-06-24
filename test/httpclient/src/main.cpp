@@ -28,10 +28,7 @@ int main(int argc, char** argv) {
 	}
 	*/
 
-
-	netp::logger_broker::instance()->init();
 	std::string url = "https://www.163.com/";
-
 	NRP<netp::http::request_promise> rp = netp::http::get(url);
 
 	int request_result;

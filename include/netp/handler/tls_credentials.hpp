@@ -68,6 +68,10 @@ namespace netp {  namespace handler {
             const std::string& server_crt,
             const std::string& server_key) 
         {
+            if (server_crt.empty() || server_key.empty()) {
+                return;
+            }
+
             Certificate_Info cert;
             try {
                 cert.key.reset(Botan::PKCS8::load_key(server_key, rng));

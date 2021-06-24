@@ -230,7 +230,8 @@ namespace netp {
 
 		inline void ch_set_active() { m_chflag |= int(channel_flag::F_ACTIVE); }
 		inline void ch_set_connected() {
-			m_chflag &= ~(int(channel_flag::F_CLOSED)|int(channel_flag::F_CONNECTING));
+			NETP_ASSERT( (m_chflag&int(channel_flag::F_CLOSED)) ==0 );
+			m_chflag &= ~int(channel_flag::F_CONNECTING);
 			m_chflag |= int(channel_flag::F_CONNECTED);
 		}
 		
