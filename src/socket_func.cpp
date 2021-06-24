@@ -95,13 +95,13 @@ namespace netp {
 		NRP<promise<int>> so_dialp = netp::make_ref<promise<int>>();
 		NRP<socket_channel> so = std::get<1>(tupc);
 		so_dialp->if_done([ch_dialf, so](int const& rt) {
+			NETP_ASSERT( so->L->in_event_loop() );
 			if (rt == netp::OK) {
 				ch_dialf->set(std::make_tuple(rt, so));
 			} else {
 				ch_dialf->set(std::make_tuple(rt, nullptr));
-				so->ch_errno() = rt;
-				so->ch_flag() |= int(channel_flag::F_WRITE_ERROR);
-				so->ch_close_impl(nullptr);
+				NETP_ASSERT( so->ch_errno() != netp::OK );
+				NETP_ASSERT( so->ch_flag() & int(channel_flag::F_CLOSED) );
 			}
 		});
 
@@ -199,8 +199,8 @@ namespace netp {
 				listenp->set(std::make_tuple(netp::OK, so));
 			} else {
 				listenp->set(std::make_tuple(rt, nullptr));
-				so->ch_errno() = rt;
-				so->ch_close_impl(nullptr);
+				NETP_ASSERT(so->ch_errno() != netp::OK);
+				NETP_ASSERT(so->ch_flag() & int(channel_flag::F_CLOSED));
 			}
 		});
 		so->do_listen_on(listen_f, laddr, initializer, cfg, backlog);

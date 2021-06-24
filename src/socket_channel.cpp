@@ -270,16 +270,20 @@ int socket_base::get_left_snd_queue() const {
 		//int rt = -10043;
 		int rt = socket_channel::bind(addr);
 		if (rt != netp::OK) {
+			NETP_WARN("[socket]socket::bind(): %d, addr: %s", rt, addr->to_string().c_str());
 			m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
-			NETP_WARN("[socket]socket::bind(): %d, addr: %s", rt, addr->to_string().c_str() );
+			ch_errno() = rt;
+			ch_close_impl(nullptr);
 			intp->set(rt);
 			return;
 		}
 
 		rt = socket_channel::listen(backlog);
 		if (rt != netp::OK) {
+			NETP_WARN("[socket]socket::listen(%u): %d, addr: %s", backlog, rt, addr->to_string().c_str());
 			m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
-			NETP_WARN("[socket]socket::listen(%u): %d, addr: %s",backlog, rt, addr->to_string().c_str());
+			ch_errno() = rt;
+			ch_close_impl(nullptr);
 			intp->set(rt);
 			return;
 		}
@@ -647,17 +651,16 @@ int socket_base::get_left_snd_queue() const {
 		int prt = netp::OK;
 		if ((m_chflag & int(channel_flag::F_READ_SHUTDOWN)) != 0) {
 			prt = (netp::E_CHANNEL_WRITE_CLOSED);
-		}
-		else if (m_chflag & (int(channel_flag::F_READ_SHUTDOWNING) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING))) {
+		} else if (m_chflag & (int(channel_flag::F_READ_SHUTDOWNING) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING))) {
 			prt = (netp::E_OP_INPROCESS);
-		}
-		else {
+		} else {
 			_ch_do_close_read();
 		}
 		if (closep) { closep->set(prt); }
 	}
 
-	//write would be cancelled only by write error
+	//if there is a error, we'll always do ch_close_impl
+	//if there is no erorr, just pending shutdown
 	void socket_channel::ch_close_write_impl(NRP<promise<int>> const& closep) {
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(!ch_is_listener());
@@ -669,7 +672,7 @@ int socket_base::get_left_snd_queue() const {
 		} else if (m_chflag&(int(channel_flag::F_CLOSE_PENDING)|int(channel_flag::F_WRITE_SHUTDOWN_PENDING))) {
 			//if we have a write_error, a immediate ch_close_impl would be take out
 			NETP_ASSERT((m_chflag&int(channel_flag::F_WRITE_ERROR)) == 0);
-			NETP_ASSERT(m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)) );
+			NETP_ASSERT(m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)|int(channel_flag::F_BDLIMIT)) );
 			NETP_ASSERT(m_outbound_entry_q.size());
 			prt = (netp::E_CHANNEL_WRITE_SHUTDOWNING);
 		} else if (m_chflag & (int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)|int(channel_flag::F_BDLIMIT)) ) {
@@ -815,7 +818,6 @@ __act_label_close_read_write:
 		
 		//notify terminating is not a error
 		//m_cherrno = netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING;
-		//m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_BDLIMIT));
 		if (m_chflag & int(channel_flag::F_CONNECTING)) {
 			//cancel connect
 			m_cherrno = netp::E_IO_EVENT_LOOP_NOTIFY_TERMINATING;
@@ -869,8 +871,8 @@ __act_label_close_read_write:
 
 		m_io_ctx = L->io_begin(m_fd, NRP<io_monitor>(this));
 		if (m_io_ctx == 0) {
-			ch_errno() = netp::E_IO_BEGIN_FAILED;
 			m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
+			ch_errno() = netp::E_IO_BEGIN_FAILED;
 			ch_close(nullptr);
 			fn_begin_done(netp::E_IO_BEGIN_FAILED, 0);
 			return;
@@ -926,8 +928,8 @@ __act_label_close_read_write:
 			}
 			int rt = L->io_do(io_action::READ, m_io_ctx);
 			if (NETP_UNLIKELY(rt != netp::OK)) {
-				ch_errno() = rt;
 				m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
+				ch_errno() = rt;
 				ch_close(nullptr);
 				if(fn_read != nullptr) fn_read(rt, nullptr);
 				return;

@@ -527,8 +527,8 @@ namespace netp { namespace handler {
 			return;
 		}
 		NETP_ASSERT(m_ctx != nullptr);
-		if (buf_size > 0) {
-			m_ctx->fire_read(netp::make_ref<netp::packet>(buf, buf_size));
+		if (netp::u32_t(buf_size) > 0) {
+			m_ctx->fire_read(netp::make_ref<netp::packet>(buf, netp::u32_t(buf_size)));
 		}
 	}
 

@@ -638,7 +638,7 @@ namespace netp {
 			ch_io_end_write();
 
 			while (m_outbound_entry_q.size()) {
-				NETP_ASSERT((ch_errno() != 0) && (m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_READ_ERROR) )) );
+				NETP_ASSERT( (ch_errno() != 0) && (m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_READ_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))) );
 				socket_outbound_entry& entry = m_outbound_entry_q.front();
 				NETP_WARN("[socket][%s]cancel outbound, nbytes:%u, errno: %d", ch_info().c_str(), entry.data->len(), ch_errno());
 				//hold a copy before we do pop it from queue
@@ -691,8 +691,8 @@ namespace netp {
 				}
 
 				if (status != netp::OK) {
-					ch->ch_errno() = status;
 					ch->ch_flag() |= int(channel_flag::F_READ_ERROR);
+					ch->ch_errno() = status;
 					ch->ch_close_impl(nullptr);
 					return;
 				}
@@ -722,7 +722,6 @@ namespace netp {
 			default:
 			{
 				NETP_ASSERT(status < 0);
-				ch_io_end_read();
 				m_chflag |= int(channel_flag::F_READ_ERROR);
 				ch_errno() = (status);
 				ch_close_impl(nullptr);
@@ -756,10 +755,10 @@ namespace netp {
 			{
 				NETP_ASSERT(m_outbound_entry_q.size() > 0);
 #ifdef NETP_ENABLE_FAST_WRITE
-				NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER) | int(channel_flag::F_WATCH_WRITE)));
+				NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER)) );
 				ch_io_write();
 #else
-				NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER) | int(channel_flag::F_WATCH_WRITE)));
+				NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER) | int(channel_flag::F_WATCH_WRITE)) == (int(channel_flag::F_WRITE_BARRIER) | int(channel_flag::F_WATCH_WRITE))  );
 #endif
 				//NETP_TRACE_SOCKET("[socket][%s]__do_io_write, write block", info().c_str());
 			}
@@ -772,7 +771,6 @@ namespace netp {
 			break;
 			default:
 			{
-				ch_io_end_write();
 				m_chflag |= int(channel_flag::F_WRITE_ERROR);
 				ch_errno() = (status);
 				ch_close_impl(nullptr);
