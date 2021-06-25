@@ -651,9 +651,10 @@ int socket_base::get_left_snd_queue() const {
 		int prt = netp::OK;
 		if ((m_chflag & int(channel_flag::F_READ_SHUTDOWN)) != 0) {
 			prt = (netp::E_CHANNEL_WRITE_CLOSED);
-		} else if (m_chflag & (int(channel_flag::F_READ_SHUTDOWNING) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING))) {
+		} else if (m_chflag & (int(channel_flag::F_READ_SHUTDOWNING) | int(channel_flag::F_CLOSING))) {
 			prt = (netp::E_OP_INPROCESS);
 		} else {
+			//if(m_chflag | int(channel_flag::F_CLOSE_PENDING))
 			_ch_do_close_read();
 		}
 		if (closep) { closep->set(prt); }
@@ -701,6 +702,8 @@ int socket_base::get_left_snd_queue() const {
 		int prt = netp::OK;
 		if (m_chflag&int(channel_flag::F_CLOSED)) {
 			prt = (netp::E_CHANNEL_CLOSED);
+		} else if (m_chflag & int(channel_flag::F_CLOSING)) {
+			prt = (netp::E_OP_INPROCESS);
 		} else if (ch_is_listener()) {
 			_ch_do_close_listener();
 		} else if (m_chflag & (int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))) {
@@ -711,8 +714,9 @@ int socket_base::get_left_snd_queue() const {
 				true);
 
 			goto __act_label_close_read_write;
-		} else if (m_chflag & (int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING))) {
-			NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER) | int(channel_flag::F_WATCH_WRITE)));
+		} else if ( m_chflag & (int(channel_flag::F_CLOSE_PENDING)| int(channel_flag::F_WRITE_SHUTDOWN_PENDING)) ) {
+			NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER) | int(channel_flag::F_WATCH_WRITE) | int(channel_flag::F_BDLIMIT)));
+			NETP_ASSERT(m_outbound_entry_q.size());
 			prt = (netp::E_OP_INPROCESS);
 		} else if (m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)|int(channel_flag::F_BDLIMIT)) ) {
 			//wait for write done event, we might in a write barrier

@@ -445,7 +445,6 @@ namespace netp {
 		NRP<packet>* pn = netp::allocator<NRP<packet>>::make_array(10);
 		netp::allocator<NRP<packet>>::trash_array(pn,10);
 
-		
 		u8_t* u8ptr = netp::allocator<u8_t>::malloc(14, 16);
 		netp::allocator<u8_t>::free(u8ptr);
 	}
@@ -454,12 +453,12 @@ namespace netp {
 
 		{
 			NRP<netp::packet> p = netp::make_ref<netp::packet>();
-			for (size_t i = 0; i <= 1024 * 1024*2; ++i) {
+			for (size_t i = 0; i <= 1024*1024*2; ++i) {
 				p->write<u8_t>(u8_t(1));
 			}
 
 			NRP<netp::packet> p2 = netp::make_ref<netp::packet>();
-			for (size_t i = 0; i <= 1024 * 1024*2; ++i) {
+			for (size_t i = 0; i <= 1024*1024*2; ++i) {
 				p2->write_left<u8_t>(u8_t(1));
 			}
 
@@ -580,7 +579,10 @@ namespace netp {
 	}
 
 	bool app_test_unit::run() {
+#ifdef _NETP_DEBUG
 		test_memory();
+#endif
+
 		test_packet();
 
 		size_t loop = 2;
@@ -590,12 +592,12 @@ namespace netp {
 
 		test_netp_allocator(loop);
 		test_std_allocator(loop);
-		test_generic_check();
 
 #ifdef _NETP_DEBUG
+		test_generic_check();
 		benchmark_hash();
 #endif
+
 		return true;
 	}
-
 }
