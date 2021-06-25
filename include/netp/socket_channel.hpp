@@ -702,6 +702,7 @@ namespace netp {
 
 				ch->ch_set_connected();
 				_CH_FIRE_ACTION_CLOSE_AND_RETURN_IF_EXCEPTION(ch->ch_fire_connected(), ch, "ch_fire_connected");
+
 				ch->ch_io_read();
 			});
 		}

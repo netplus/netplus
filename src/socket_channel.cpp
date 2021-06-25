@@ -84,7 +84,7 @@ namespace netp {
 	int socket_channel::set_snd_buffer_size(u32_t size) {
 		NETP_ASSERT(m_fd > 0);
 
-		if (size == 0) {
+		if (size == 0) {//0 for default
 			return netp::OK;
 		} else if (size < u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE)) {
 			size = u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE);
@@ -137,7 +137,7 @@ int socket_base::get_left_snd_queue() const {
 	int socket_channel::set_rcv_buffer_size(u32_t size) {
 		NETP_ASSERT(m_fd != NETP_INVALID_SOCKET);
 
-		if (size == 0) {
+		if (size == 0) {//0 for default
 			return netp::OK;
 		} else if (size < u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE)) {
 			size = u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE);
@@ -419,6 +419,7 @@ int socket_base::get_left_snd_queue() const {
 		_CH_FIRE_ACTION_CLOSE_AND_RETURN_IF_EXCEPTION(ch_fire_connected(), this, "ch_fire_connected");
 
 		NETP_TRACE_SOCKET("[socket][%s]async connected", ch_info().c_str());
+		//it's safe to close read in connected() callback
 		ch_io_read();
 	}
 
@@ -913,6 +914,8 @@ __act_label_close_read_write:
 		}
 
 		void socket_channel::ch_io_read(fn_io_event_t const& fn_read) {
+			//it's safe to call close read in an connected() callback
+
 			if (!L->in_event_loop()) {
 				L->schedule([s = NRP<socket_channel>(this), fn_read]()->void {
 					s->ch_io_read(fn_read);
