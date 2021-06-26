@@ -188,6 +188,9 @@ namespace netp {
 			m_fn_write(nullptr)
 		{
 			NETP_ASSERT(cfg->L != nullptr);
+			if (cfg->fd != NETP_INVALID_SOCKET) {
+				m_chflag &= ~int(channel_flag::F_CLOSED);
+			}
 		}
 
 		~socket_channel()
@@ -574,14 +577,15 @@ namespace netp {
 
 		int ch_init(u16_t opt, keep_alive_vals const& kvals, channel_buf_cfg const& cbc) {
 			NETP_ASSERT(L->in_event_loop());
-			NETP_ASSERT(m_chflag&int(channel_flag::F_CLOSED));
+			//NETP_ASSERT(ch_id() == NETP_INVALID_SOCKET ? (m_chflag & int(channel_flag::F_CLOSED)) : true);
+
 			channel::ch_init();
 			//@note: F_CLOSED SHOULD ALWAYS BE CLEARED ONCE channel::ch_init done
 			//cuz we use this flag to check rdwr check ,rdwr -> ch_io_end -> ch_deinit()
-			m_chflag &= ~int(channel_flag::F_CLOSED);
 
 			int rt = netp::OK;
 			if (m_fd == NETP_INVALID_SOCKET) {
+				NETP_ASSERT(m_chflag & int(channel_flag::F_CLOSED));
 				rt = open();
 				if (rt != netp::OK) {
 					m_chflag |= int(channel_flag::F_READ_ERROR);
@@ -591,6 +595,7 @@ namespace netp {
 				NETP_RETURN_V_IF_MATCH(rt, rt != netp::OK);
 			}
 
+			NETP_ASSERT( (m_chflag & int(channel_flag::F_CLOSED))==0);
 			rt = _cfg_option(opt, kvals);
 			if (rt != netp::OK) {
 				m_chflag |= int(channel_flag::F_READ_ERROR);
@@ -703,6 +708,7 @@ namespace netp {
 				ch->ch_set_connected();
 				_CH_FIRE_ACTION_CLOSE_AND_RETURN_IF_EXCEPTION(ch->ch_fire_connected(), ch, "ch_fire_connected");
 
+				//it's safe to close read in connected() callback
 				ch->ch_io_read();
 			});
 		}

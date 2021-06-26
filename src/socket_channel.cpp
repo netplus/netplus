@@ -5,9 +5,11 @@
 namespace netp {
 
 	int socket_channel::open() {
+		NETP_ASSERT(m_chflag & int(channel_flag::F_CLOSED));
 		NETP_ASSERT(m_fd == NETP_INVALID_SOCKET);
 		int rt = socket_open_impl();
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+		m_chflag &= ~int(channel_flag::F_CLOSED);
 		return netp::OK;
 	}
 
@@ -53,19 +55,7 @@ namespace netp {
 		NETP_ASSERT((m_chflag & int(channel_flag::F_ACTIVE)) == 0);
 		m_raddr = addr->clone();
 		channel::ch_set_active();
-		int rt= socket_connect_impl(addr);
-		if (rt == netp::OK) {
-			m_chflag |= int(channel_flag::F_CONNECTED);
-			return netp::OK;
-		}
-
-		rt = netp_socket_get_last_errno();
-		if (netp::E_EINPROGRESS==(rt)) {
-			m_chflag |= int(channel_flag::F_CONNECTING);
-		} else {
-			ch_errno() = rt;
-		}
-		return rt;
+		return socket_connect_impl(addr);
 	}
 
 	int socket_channel::listen(int backlog) {
@@ -311,16 +301,26 @@ int socket_base::get_left_snd_queue() const {
 				dialp->set(status);
 				return;
 			}
+
 			int rt = so->connect(addr);
 			if (rt == netp::OK) {
 				NETP_TRACE_SOCKET("[socket][%s]socket connected directly", so->ch_info().c_str());
 				so->__do_io_dial_done(fn_initializer, dialp, netp::OK, so->m_io_ctx);
 				return;
-			} else if (netp::E_EINPROGRESS==(rt)) {
+			}
+
+			rt = netp_socket_get_last_errno();
+			if (netp::E_EINPROGRESS==(rt)) {
+				so->ch_flag() |= int(channel_flag::F_CONNECTING);
 				auto fn_connect_done = std::bind(&socket_channel::__do_io_dial_done, so, fn_initializer, dialp, std::placeholders::_1, std::placeholders::_2);
 				so->ch_io_connect(fn_connect_done);
 				return;
 			}
+
+			NETP_ASSERT( (so->ch_flag() &( int(channel_flag::F_CONNECTING)|int(channel_flag::F_CONNECTED) )) ==0 );
+			so->ch_flag() |= int(channel_flag::F_WRITE_ERROR);
+			so->ch_errno() = rt;
+			so->ch_close_impl(nullptr);
 			dialp->set(rt);
 		});
 	}

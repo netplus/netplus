@@ -203,7 +203,7 @@ namespace netp { namespace http {
 		(void)ctx_;
 	}
 
-	void do_dial( NRP<client_dial_promise> const& dp, const char* host, size_t len,dial_cfg const& dcfg) {
+	void do_dial( NRP<client_dial_promise> const& dp, const char* host, size_t len, dial_cfg const& dcfg) {
 		if(host == 0 || len == 0) {
 			dp->set(std::make_tuple(netp::E_HTTP_INVALID_HOST, nullptr));
 			return ;
@@ -333,7 +333,7 @@ namespace netp { namespace http {
 #endif
 
 		NRP<client_dial_promise> dp = netp::http::dial(url, dcfg);
-
+		
 		dp->if_done([url, reqp,H,body, timeout](std::tuple<int, NRP<client>> const& tupc) {
 			int dialrt = std::get<0>(tupc);
 			if (dialrt != netp::OK) {

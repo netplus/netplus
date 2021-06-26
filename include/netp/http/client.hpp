@@ -28,6 +28,8 @@ namespace netp { namespace handler {
 #endif
 
 namespace netp { namespace http {
+
+	//@todo, implement a http write stream feature
 	
 	//when message end, notify a nullptr data with len of -1
 	typedef std::function<void(char* data, u32_t len)> fn_notify_body_t;
@@ -74,7 +76,6 @@ namespace netp { namespace http {
 
 	struct tls_cfg {
 		NRP<netp::handler::tls_context> tlsctx;
-//		std::string cert;
 	};
 
 	struct dial_cfg {
