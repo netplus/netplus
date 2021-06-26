@@ -78,7 +78,8 @@ namespace netp { namespace http {
 		NRP<netp::handler::tls_context> tlsctx;
 	};
 
-	struct dial_cfg {
+	struct http_cfg {
+		bool close_on_response_done;
 		bool dump_in;
 		bool dump_out;
 		tls_cfg tls;
@@ -87,6 +88,10 @@ namespace netp { namespace http {
 
 	class client;
 	typedef netp::promise<std::tuple<int, NRP<client>>> client_dial_promise;
+
+	enum http_client_flag {
+		f_close_on_response_done = 1
+	};
 
 	class client final:
 		public netp::ref_base,
@@ -103,6 +108,8 @@ namespace netp { namespace http {
 		NRP<netp::io_event_loop> m_loop;
 		NRP<netp::channel_handler_context> m_ctx;
 		NRP<netp::promise<int>> m_close_f;
+
+		int m_flag;
 		http_write_state m_wstate;
 		string_t m_host;
 
@@ -113,17 +120,11 @@ namespace netp { namespace http {
 		void _do_close(NRP<netp::promise<int>> const& close_f);
 
 	public:
-		client( std::string const& host, NRP<io_event_loop> const& L = nullptr ) :
+		client( netp::string_t const& host, http_cfg const& http_cfg_, NRP<io_event_loop> const& L = nullptr ) :
 			m_loop(L != nullptr ?L: io_event_loop_group::instance()->next()),
+			m_flag(http_cfg_.close_on_response_done ? f_close_on_response_done : 0),
 			m_wstate(http_write_state::S_WRITE_CLOSED),
-			m_host(string_t(host.c_str(), host.length()))
-		{
-		}
-
-		client(const char* host, size_t len, NRP<io_event_loop> const& L = nullptr) :
-			m_loop(L != nullptr ? L : io_event_loop_group::instance()->next()),
-			m_wstate(http_write_state::S_WRITE_CLOSED),
-			m_host(string_t(host, len))
+			m_host(host)
 		{
 		}
 
@@ -204,10 +205,10 @@ namespace netp { namespace http {
 		NRP<netp::promise<int>> close();
 	};
 
-	extern void do_dial(NRP<client_dial_promise> const& dp, const char* host, size_t len, dial_cfg const& cfg = { true,true,{}, netp::make_ref<netp::socket_cfg>() });
+	extern void do_dial(NRP<client_dial_promise> const& dp, const char* host, size_t len, http_cfg const& cfg = { false, false,false,{}, netp::make_ref<netp::socket_cfg>() });
 
-	extern NRP<client_dial_promise> dial(const char* host, size_t len, dial_cfg const& cfg = { false,false,{nullptr},netp::make_ref<netp::socket_cfg>() });
-	extern NRP<client_dial_promise> dial(std::string const& host, dial_cfg const& cfg = { false,false,{nullptr},netp::make_ref<netp::socket_cfg>() });
+	extern NRP<client_dial_promise> dial(const char* host, size_t len, http_cfg const& cfg = { false, false,false,{nullptr},netp::make_ref<netp::socket_cfg>() });
+	extern NRP<client_dial_promise> dial(std::string const& host, http_cfg const& cfg = { false,false,false,{nullptr},netp::make_ref<netp::socket_cfg>() });
 
 	extern void do_get(NRP<netp::http::request_promise> const& reqp, std::string const& url, std::chrono::seconds timeout = std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT));
 	extern NRP<netp::http::request_promise> get(std::string const& url , std::chrono::seconds timeout = std::chrono::seconds(DEFAULT_HTTP_REQUEST_TIMEOUT) );

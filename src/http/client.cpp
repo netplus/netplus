@@ -27,12 +27,13 @@ namespace netp { namespace http {
 		return closef;
 	}
 
+
+	//nested reqeust should be ok, but not tested yet 
 	void client::_do_request_done(int code, NRP<netp::http::message> const& r) {
 		NETP_ASSERT(m_loop->in_event_loop());
 
 		if( m_reqs.size() == 0) {
 			NETP_ASSERT(m_mtmp == nullptr );
-//			NETP_VERBOSE("[client]no request in queue, code: %d", code );
 			return ;
 		}
 
@@ -46,6 +47,10 @@ namespace netp { namespace http {
 			rctx->reqp->fn_body(nullptr, -1);
 		}
 		rctx->reqp->set(std::make_tuple(code, r ));
+
+		if ( (m_flag&f_close_on_response_done) && m_reqs.size() == 0 ) {
+			_do_close(nullptr);
+		}
 	}
 
 	void client::do_request(NRP<netp::http::request_promise> const& reqp, NRP<netp::http::message> const& m, std::chrono::seconds timeout) {
@@ -132,7 +137,7 @@ namespace netp { namespace http {
 
 	void client::http_cb_closed(NRP<netp::channel_handler_context> const& ctx_) {
 		NETP_ASSERT(m_loop->in_event_loop());
-		_do_request_done(netp::E_HTTP_REQ_TIMEOUT, m_mtmp);
+		_do_request_done(netp::E_HTTP_REQ_TIMEOUT, (m_mtmp));
 		m_mtmp = nullptr;
 		m_ctx = nullptr;
 		m_close_f->set( netp::OK );
@@ -151,10 +156,6 @@ namespace netp { namespace http {
 		event_broker_any::unbind(act_connected);
 		event_broker_any::unbind(act_error);
 	}
-
-	//void client::http_cb_parse_error(NRP<netp::channel_handler_context> const& ctx_, int err) {
-	//	NETP_ASSERT(!"parse erorr");
-	//}
 
 	void client::http_cb_message_header(NRP<netp::channel_handler_context> const& ctx_, NRP<netp::http::message> const& m) {
 		NETP_ASSERT(m_loop->in_event_loop());
@@ -198,12 +199,13 @@ namespace netp { namespace http {
 
 	void client::http_cb_message_end(NRP<netp::channel_handler_context> const& ctx_) {
 		NETP_ASSERT(m_loop->in_event_loop());
-		_do_request_done(netp::OK, m_mtmp);
-		m_mtmp = nullptr;
+		NRP<message> mm = std::move(m_mtmp);
+		NETP_ASSERT(m_mtmp == nullptr);
+		_do_request_done(netp::OK, mm);
 		(void)ctx_;
 	}
 
-	void do_dial( NRP<client_dial_promise> const& dp, const char* host, size_t len, dial_cfg const& dcfg) {
+	void do_dial( NRP<client_dial_promise> const& dp, const char* host, size_t len, http_cfg const& httpcfg) {
 		if(host == 0 || len == 0) {
 			dp->set(std::make_tuple(netp::E_HTTP_INVALID_HOST, nullptr));
 			return ;
@@ -226,16 +228,16 @@ namespace netp { namespace http {
 			}
 		});
 
-		dial_cfg __dialcfg = dcfg;
+		http_cfg __http_dialcfg = httpcfg;
 
-		if (is_https && __dialcfg.tls.tlsctx == nullptr) {
+		if (is_https && __http_dialcfg.tls.tlsctx == nullptr) {
 #ifdef NETP_WITH_BOTAN
 			NRP<netp::handler::tls_config> tlsconfig = netp::make_ref<netp::handler::tls_config>();
 			tlsconfig->host = std::string(fields.host.c_str(), fields.host.length());
 			tlsconfig->port = fields.port;
 
 			NRP<netp::handler::tls_context> tlsctx = netp::handler::tls_context_with_tlsconfig(tlsconfig);
-			__dialcfg.tls.tlsctx = tlsctx;
+			__http_dialcfg.tls.tlsctx = tlsctx;
 #else
 			NETP_ASSERT(!"do not supported yet");
 #endif
@@ -248,24 +250,24 @@ namespace netp { namespace http {
 			dp->set(std::make_tuple(err, nullptr));
 		};
 
-		auto fn_initializer = [fn_connected, fn_dial_error, is_https, __dialcfg, http_host, fields](NRP<channel> const& ch) {
-			if (is_https && __dialcfg.tls.tlsctx) {
+		auto fn_initializer = [fn_connected, fn_dial_error, is_https, __http_dialcfg, http_host, fields](NRP<channel> const& ch) {
+			if (is_https && __http_dialcfg.tls.tlsctx) {
 #ifdef NETP_WITH_BOTAN
-				ch->pipeline()->add_last(netp::make_ref<netp::handler::tls_client>(__dialcfg.tls.tlsctx));
+				ch->pipeline()->add_last(netp::make_ref<netp::handler::tls_client>(__http_dialcfg.tls.tlsctx));
 #else
 				NETP_ASSERT(!"do not supported yet");
 #endif
 			}
-			if (__dialcfg.dump_in) {
+			if (__http_dialcfg.dump_in) {
 				ch->pipeline()->add_last(netp::make_ref<netp::handler::dump_in_text>());
 			}
 
-			if (__dialcfg.dump_out) {
+			if (__http_dialcfg.dump_out) {
 				ch->pipeline()->add_last(netp::make_ref<netp::handler::dump_out_text>());
 			}
 
 			NRP<netp::handler::http> httph = netp::make_ref<netp::handler::http>();
-			NRP<netp::http::client> c = netp::make_ref<client>(http_host.c_str(), http_host.length(), ch->L);
+			NRP<netp::http::client> c = netp::make_ref<client>(http_host, __http_dialcfg, ch->L);
 
 			c->bind<fn_http_client_activity_connected_t>(act_connected, fn_connected);
 			c->bind<fn_http_client_activity_err_t>(act_error, fn_dial_error);
@@ -282,25 +284,25 @@ namespace netp { namespace http {
 			ch->pipeline()->add_last(httph);
 		};
 
-		netp::do_dial(ch_dp, dial_url.c_str(), dial_url.length(), fn_initializer, dcfg.cfg);
+		netp::do_dial(ch_dp, dial_url.c_str(), dial_url.length(), fn_initializer, __http_dialcfg.cfg);
 	}
-	void do_dial(std::string const& host, NRP<client_dial_promise> const& dp, dial_cfg const& dcfg) {
-		do_dial( dp, host.c_str(), host.length(),dcfg);
+	void do_dial(std::string const& host, NRP<client_dial_promise> const& dp, http_cfg const& httpcfg) {
+		do_dial( dp, host.c_str(), host.length(), httpcfg);
 	}
 
-	NRP<client_dial_promise> dial(const char* host, size_t len, dial_cfg const& dcfg) {
+	NRP<client_dial_promise> dial(const char* host, size_t len, http_cfg const& httpcfg) {
 		NRP<client_dial_promise> dp = netp::make_ref<client_dial_promise>();
-		do_dial(dp, host,len,dcfg );
+		do_dial(dp, host,len, httpcfg);
 		return dp;
 	}
 
-	NRP<client_dial_promise> dial(std::string const& host, dial_cfg const& dcfg) {
-		return dial(host.c_str(), host.length(), dcfg);
+	NRP<client_dial_promise> dial(std::string const& host, http_cfg const& httpcfg) {
+		return dial(host.c_str(), host.length(), httpcfg);
 	}
 
 	void do_get(NRP<netp::http::request_promise> const& reqp, std::string const& url, std::chrono::seconds timeout) {
 		
-		dial_cfg dcfg = { false, false, {nullptr}, netp::make_ref<netp::socket_cfg>() };
+		http_cfg dcfg = { true, false, false, {nullptr}, netp::make_ref<netp::socket_cfg>() };
 #ifdef _NETP_DEBUG
 		dcfg.dump_in = true;
 		dcfg.dump_out = true;
@@ -326,7 +328,7 @@ namespace netp { namespace http {
 
 	void do_post(NRP<netp::http::request_promise> const& reqp, std::string const& url, NRP<header> const& H, NRP<netp::packet> const& body, std::chrono::seconds timeout) {
 
-		dial_cfg dcfg = { false, false, {nullptr}, netp::make_ref<netp::socket_cfg>() };
+		http_cfg dcfg = { true, false, false, {nullptr}, netp::make_ref<netp::socket_cfg>() };
 #ifdef _NETP_DEBUG
 		dcfg.dump_in = true;
 		dcfg.dump_out = true;
