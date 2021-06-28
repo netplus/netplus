@@ -21,6 +21,8 @@
 #include <netp/bytes_ringbuffer.hpp>
 #include <netp/heap.hpp>
 
+#include <netp/helper.hpp>
+
 #include <netp/mutex.hpp>
 #include <netp/condition.hpp>
 #include <netp/thread.hpp>

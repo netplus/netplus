@@ -182,6 +182,7 @@ namespace netp {
 			}
 		}
 
+		//delete all node that equal to evt_id
 		inline void unbind(int evt_id) {
 			if (m_handlers.size() == 0) {
 				return;
@@ -194,7 +195,8 @@ namespace netp {
 			evt_node_list* evt_hl = it->second;
 			evt_node_list* cur, *nxt;
 			
-			//@WARN can not just flag, then delete it in the nxt invoke, if no invoke happens, we might got memory leak if the broker and event handler has ABBA relation
+			//@WARN can not just do flag option
+			//then wish it to be deleted in the nxt invoke, if no invoke happens, we might got memory leak if the broker and event handler has ABBA relation
 			NETP_LIST_SAFE_FOR(cur, nxt, evt_hl) {
 				if (evt_hl->flag & evt_node_flag::f_invoking) {
 					cur->flag |= evt_node_flag::f_delete_pending;
@@ -208,6 +210,7 @@ namespace netp {
 			}
 		}
 
+		//only delete the specific node that exactly equal to handler_id
 		inline void unbind_by_handle_id(i64_t handler_id) {
 			if (m_handlers.size() == 0) {
 				return;

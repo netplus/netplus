@@ -459,7 +459,6 @@ __fast_path:
 		return newptr;
 	}
 
-	
 	global_pool_aligned_allocator::global_pool_aligned_allocator():
 		pool_aligned_allocator(false)
 	{

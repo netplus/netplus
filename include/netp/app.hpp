@@ -45,11 +45,9 @@ namespace netp {
 			for (size_t i = 0; i < T_POLLER_MAX; ++i) {
 				if (i == NETP_DEFAULT_POLLER_TYPE) {
 					poller_count[i] = int(std::ceil(corecount)*1.5f);
-				}
-				else {
+				} else {
 					poller_count[i] = 0;
 				}
-
 				event_loop_cfgs[i].ch_buf_size = (128*1024);
 			}
 		}
@@ -67,6 +65,12 @@ namespace netp {
 			}
 			poller_count[t] = c;
 		}
+
+		void cfg_poller_count_check_max(io_poller_type t, int max) {
+			if (poller_count[t] > max) {
+				poller_count[t] = max;
+			}
+		}
 		
 		void cfg_channel_rcv_buf(io_poller_type t, int buf_in_kbytes) {
 			event_loop_cfgs[t].ch_buf_size = buf_in_kbytes*(1024);
@@ -79,6 +83,14 @@ namespace netp {
 		void cfg_log_filepathname(std::string const& logfilepathname_) {
 			logfilepathname = logfilepathname_;
 		}
+	};
+
+	class app_thread_init :
+		public netp::singleton<app_thread_init>
+	{
+	public:
+		app_thread_init();
+		~app_thread_init();
 	};
 
 	class app {

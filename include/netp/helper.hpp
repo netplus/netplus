@@ -2,10 +2,11 @@
 #define _NETP_FILE_HELPER_HPP
 
 #include <netp/core.hpp>
+#include <netp/string.hpp>
 #include <netp/packet.hpp>
 
-namespace netp { namespace file {
-	extern NRP<netp::packet> file_get_content(std::string const& filepath);
-} }
+namespace netp {
+	extern NRP<netp::packet> file_get_content(netp::string_t const& filepath);
+}
 
 #endif

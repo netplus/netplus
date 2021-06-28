@@ -54,7 +54,55 @@ namespace netp {
 
 	void signal_unregister(int signo, i64_t handle_id) {
 		::signal(signo, &signal_void);
-		g_sigbroker->unbind(handle_id);
+		g_sigbroker->unbind_by_handle_id(handle_id);
+	}
+
+	app_thread_init::app_thread_init() 
+	{
+		static_assert(sizeof(netp::i8_t) == 1, "assert sizeof(i8_t) failed");
+		static_assert(sizeof(netp::u8_t) == 1, "assert sizeof(u8_t) failed");
+		static_assert(sizeof(netp::i16_t) == 2, "assert sizeof(i16_t) failed");
+		static_assert(sizeof(netp::u16_t) == 2, "assert sizeof(u16_t) failed");
+		static_assert(sizeof(netp::i32_t) == 4, "assert sizeof(i32_t) failed");
+		static_assert(sizeof(netp::u32_t) == 4, "assert sizeof(u32_t) failed");
+		static_assert(sizeof(netp::i64_t) == 8, "assert sizeof(i64_t) failed");
+		static_assert(sizeof(netp::u64_t) == 8, "assert sizeof(u64_t) failed");
+
+#if __NETP_IS_BIG_ENDIAN
+		static_assert(netp::is_big_endian())
+#endif
+
+#ifdef _NETP_WIN
+			//CPU ia-64 is big endian, but windows run on a little endian mode on ia-64
+			static_assert(!(__NETP_IS_BIG_ENDIAN), "windows always run on little endian");
+		NETP_ASSERT(netp::is_little_endian());
+#endif
+
+		netp::random_init_seed();
+		netp::tls_create<netp::impl::thread_data>();
+
+#ifdef NETP_MEMORY_USE_TLS_POOL
+		netp::global_pool_aligned_allocator::instance();
+		netp::tls_create<netp::pool_aligned_allocator_t>();
+#endif
+
+#if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
+		//for mutex/lock deubg
+		netp::tls_create<netp::mutex_set_t>();
+#endif
+	}
+
+	app_thread_init::~app_thread_init()
+	{
+#if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
+		tls_destroy<mutex_set_t>();
+#endif
+		netp::tls_destroy<netp::impl::thread_data>();
+
+#ifdef NETP_MEMORY_USE_TLS_POOL
+		netp::tls_destroy<netp::pool_aligned_allocator_t>();
+		netp::global_pool_aligned_allocator::instance()->destroy_instance();
+#endif
 	}
 
 	app::app(app_cfg const& cfg) :
@@ -69,6 +117,7 @@ namespace netp {
 		m_app_event_loop_deinit_prev(cfg.app_event_loop_deinit_prev),
 		m_app_event_loop_deinit_post(cfg.app_event_loop_deinit_post)
 	{
+		app_thread_init::instance();
 		if (m_app_startup_prev) {
 			m_app_startup_prev();
 		}
@@ -77,7 +126,6 @@ namespace netp {
 			m_app_startup_post();
 		}
 	}
-
 
 	app::~app()
 	{
@@ -88,9 +136,11 @@ namespace netp {
 		if (m_app_exit_post ) {
 			 m_app_exit_post();
 		}
+		//quick destroy
+		app_thread_init::instance()->destroy_instance();
 	}
 
-	void app::_init() {
+	void app::_startup() {
 		__log_init();
 
 #ifdef _NETP_DEBUG
@@ -111,7 +161,7 @@ namespace netp {
 		__net_init();
 	}
 
-	void app::_deinit() {
+	void app::_exit() {
 		__net_deinit();
 		__signal_deinit();
 		__log_deinit();
@@ -141,55 +191,6 @@ namespace netp {
 	}
 	void app::__log_deinit() {
 		netp::logger_broker::instance()->deinit();
-	}
-
-	void app::_startup() {
-		static_assert(sizeof(netp::i8_t) == 1, "assert sizeof(i8_t) failed");
-		static_assert(sizeof(netp::u8_t) == 1, "assert sizeof(u8_t) failed");
-		static_assert(sizeof(netp::i16_t) == 2, "assert sizeof(i16_t) failed");
-		static_assert(sizeof(netp::u16_t) == 2, "assert sizeof(u16_t) failed");
-		static_assert(sizeof(netp::i32_t) == 4, "assert sizeof(i32_t) failed");
-		static_assert(sizeof(netp::u32_t) == 4, "assert sizeof(u32_t) failed");
-		static_assert(sizeof(netp::i64_t) == 8, "assert sizeof(i64_t) failed");
-		static_assert(sizeof(netp::u64_t) == 8, "assert sizeof(u64_t) failed");
-
-#if __NETP_IS_BIG_ENDIAN
-		static_assert(netp::is_big_endian())
-#endif
-
-#ifdef _NETP_WIN
-			//CPU ia-64 is big endian, but windows run on a little endian mode on ia-64
-		static_assert(!(__NETP_IS_BIG_ENDIAN), "windows always run on little endian");
-		NETP_ASSERT(netp::is_little_endian());
-#endif
-
-		netp::random_init_seed();
-		netp::tls_create<netp::impl::thread_data>();
-
-#ifdef NETP_MEMORY_USE_TLS_POOL
-		netp::global_pool_aligned_allocator::instance();
-		netp::tls_create<netp::pool_aligned_allocator_t>();
-#endif
-
-#if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
-		//for mutex/lock deubg
-		netp::tls_create<netp::mutex_set_t>();
-#endif
-
-		_init();
-	}
-
-	void app::_exit() {
-		_deinit();
-#if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
-		tls_destroy<mutex_set_t>();
-#endif
-		netp::tls_destroy<netp::impl::thread_data>();
-
-#ifdef NETP_MEMORY_USE_TLS_POOL
-		netp::tls_destroy<netp::pool_aligned_allocator_t>();
-		netp::global_pool_aligned_allocator::instance()->destroy_instance();
-#endif
 	}
 
 	void app::dump_arch_info() {
@@ -307,14 +308,14 @@ namespace netp {
 		signal_register(SIGPIPE, nullptr);
 #endif
 
-		i64_t id_int =signal_register(SIGINT, std::bind(&app::handle_signal, this, std::placeholders::_1));
-		if (id_int > 0) {
-			m_signo_tuple_vec.push_back(std::make_tuple(SIGINT, id_int));
+		i64_t handle_id_int =signal_register(SIGINT, std::bind(&app::handle_signal, this, std::placeholders::_1));
+		if (handle_id_int > 0) {
+			m_signo_tuple_vec.push_back(std::make_tuple(SIGINT, handle_id_int));
 		}
 
-		i64_t id_term = signal_register(SIGTERM, std::bind(&app::handle_signal, this, std::placeholders::_1));
-		if (id_term > 0) {
-			m_signo_tuple_vec.push_back(std::make_tuple(SIGTERM, id_term));
+		i64_t handle_id_term = signal_register(SIGTERM, std::bind(&app::handle_signal, this, std::placeholders::_1));
+		if (handle_id_term > 0) {
+			m_signo_tuple_vec.push_back(std::make_tuple(SIGTERM, handle_id_term));
 		}
 	}
 
@@ -368,12 +369,12 @@ namespace netp {
 		netp::io_event_loop_group::instance()->_init(m_cfg.poller_count, m_cfg.event_loop_cfgs);
 		NETP_INFO("[app]init loop done");
 
-		if (NETP_DEFAULT_POLLER_TYPE == io_poller_type::T_IOCP) {
-			io_event_loop_group::instance()->launch_loop(io_poller_type::T_SELECT, 1, m_cfg.event_loop_cfgs[NETP_DEFAULT_POLLER_TYPE]);
-			netp::dns_resolver::instance()->reset(io_event_loop_group::instance()->internal_next(io_poller_type::T_SELECT));
-		} else {
-			netp::dns_resolver::instance()->reset(io_event_loop_group::instance()->internal_next());
-		}
+#if defined(NETP_DEFAULT_POLLER_TYPE_IOCP)
+		io_event_loop_group::instance()->launch_loop(io_poller_type::T_SELECT, 1, m_cfg.event_loop_cfgs[NETP_DEFAULT_POLLER_TYPE]);
+		netp::dns_resolver::instance()->reset(io_event_loop_group::instance()->internal_next(io_poller_type::T_SELECT));
+#else
+		netp::dns_resolver::instance()->reset(io_event_loop_group::instance()->internal_next());
+#endif
 
 #if defined(_NETP_WIN) && defined(_NETP_USE_UDNS)
 		if (m_cfg.dnsnses.size() == 0) {

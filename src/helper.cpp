@@ -1,9 +1,13 @@
 #include <netp/helper.hpp>
 
-namespace netp { namespace file {
+namespace netp {
 
-	NRP<netp::packet> file_get_content(std::string const& filepath) {
+	NRP<netp::packet> file_get_content(netp::string_t const& filepath) {
 		std::FILE* fp = std::fopen(filepath.c_str(), "rb");
+
+		if (fp == 0) {
+			return nullptr;
+		}
 
 		std::fseek(fp, 0, SEEK_END);
 		std::size_t fsize = std::ftell(fp);
@@ -16,4 +20,4 @@ namespace netp { namespace file {
 		data->incre_write_idx(u32_t(fsize));
 		return data;
 	}
-}}
+}

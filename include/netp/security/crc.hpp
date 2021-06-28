@@ -6,7 +6,7 @@
 namespace netp { namespace security {
 
 	//it's faster than f16
-	inline netp::u16_t crc16(netp::byte_t* dataptr, netp::u16_t len)
+	inline netp::u16_t crc16(netp::byte_t* dataptr, netp::u32_t len)
 	{
 		netp::u32_t sum = 0;
 		u16_t* data16 = (u16_t*)dataptr;

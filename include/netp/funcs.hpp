@@ -232,7 +232,6 @@ namespace netp {
 
 	}
 
-
 	inline void to_localtime_str(struct timeval const& tv, std::string& lcstr) {
 		char buf[] = "1970-01-01 00:00:00.000000"; //our time format
 

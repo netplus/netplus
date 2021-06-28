@@ -22,6 +22,7 @@
 #define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_KQUEUE
 #elif defined(NETP_HAS_POLLER_IOCP)
 #define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_IOCP
+#define NETP_DEFAULT_POLLER_TYPE_IOCP
 #else
 #error "unknown poller type"
 #endif
