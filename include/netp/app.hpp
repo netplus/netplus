@@ -29,6 +29,31 @@ namespace netp {
 		fn_app_hook_t app_event_loop_deinit_post;
 
 	public:
+		app_cfg(int argc, char** argv) :
+			logfilepathname(""),
+			dnsnses(std::vector<std::string>()),
+			app_startup_prev(nullptr),
+			app_startup_post(nullptr),
+			app_exit_prev(nullptr),
+			app_exit_post(nullptr),
+			app_event_loop_init_prev(nullptr),
+			app_event_loop_init_post(nullptr),
+			app_event_loop_deinit_prev(nullptr),
+			app_event_loop_deinit_post(nullptr)
+		{
+			(void)argc;
+			(void)argv;
+			const int corecount = std::thread::hardware_concurrency();
+			for (size_t i = 0; i < T_POLLER_MAX; ++i) {
+				if (i == NETP_DEFAULT_POLLER_TYPE) {
+					poller_count[i] = int(std::ceil(corecount)*1.5f);
+				} else {
+					poller_count[i] = 0;
+				}
+				event_loop_cfgs[i].ch_buf_size = (128*1024);
+			}
+		}
+
 		app_cfg() :
 			logfilepathname(""),
 			dnsnses(std::vector<std::string>()),
@@ -44,11 +69,12 @@ namespace netp {
 			const int corecount = std::thread::hardware_concurrency();
 			for (size_t i = 0; i < T_POLLER_MAX; ++i) {
 				if (i == NETP_DEFAULT_POLLER_TYPE) {
-					poller_count[i] = int(std::ceil(corecount)*1.5f);
-				} else {
+					poller_count[i] = int(std::ceil(corecount) * 1.5f);
+				}
+				else {
 					poller_count[i] = 0;
 				}
-				event_loop_cfgs[i].ch_buf_size = (128*1024);
+				event_loop_cfgs[i].ch_buf_size = (128 * 1024);
 			}
 		}
 
@@ -97,8 +123,8 @@ namespace netp {
 
 	private:
 		bool m_should_exit;
-
 		netp::mutex m_mutex;
+
 		netp::condition m_cond;
 		std::vector<std::tuple<int,i64_t>> m_signo_tuple_vec;
 		app_cfg m_cfg;
@@ -115,7 +141,9 @@ namespace netp {
 
 	public:
 		//@warn: if we do need to create app on heap, we should always use new/delete, or std::shared_ptr
-		app(app_cfg const& cfg = {});
+		app(app_cfg const& cfg);
+		app();
+
 		~app();
 
 		void _startup();

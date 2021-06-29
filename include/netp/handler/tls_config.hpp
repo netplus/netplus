@@ -15,7 +15,7 @@ namespace netp { namespace handler {
 
 		std::string ca_path;
 		std::string cert;
-		std::string privkey;
+		std::string cert_privkey;
 
 		std::string host;
 		u16_t port;
@@ -26,7 +26,7 @@ namespace netp { namespace handler {
 			cert_verify_required(false),
 			ca_path(),
 			cert(),
-			privkey(),
+			cert_privkey(),
 			host(),
 			port(0)
 		{}

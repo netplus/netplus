@@ -90,7 +90,8 @@ namespace netp { namespace http {
 	typedef netp::promise<std::tuple<int, NRP<client>>> client_dial_promise;
 
 	enum http_client_flag {
-		f_close_on_response_done = 1
+		f_closed =1,
+		f_close_on_response_done = 1<<1
 	};
 
 	class client final:
@@ -122,7 +123,7 @@ namespace netp { namespace http {
 	public:
 		client( netp::string_t const& host, http_cfg const& http_cfg_, NRP<io_event_loop> const& L = nullptr ) :
 			m_loop(L != nullptr ?L: io_event_loop_group::instance()->next()),
-			m_flag(http_cfg_.close_on_response_done ? f_close_on_response_done : 0),
+			m_flag(http_cfg_.close_on_response_done ? (f_closed|f_close_on_response_done) : f_closed),
 			m_wstate(http_write_state::S_WRITE_CLOSED),
 			m_host(host)
 		{

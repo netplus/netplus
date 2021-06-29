@@ -121,12 +121,15 @@ namespace netp { namespace http {
 
 	void client::_do_close(NRP<netp::promise<int>> const& close_f) {
 		NETP_ASSERT(m_loop->in_event_loop());
-		m_ctx->close(close_f);
+		if ((m_flag & f_closed) ==0) {
+			m_ctx->close(close_f);
+		}
 	}
 
 	void client::http_cb_connected(NRP<netp::channel_handler_context> const& ctx_) {
 		NETP_ASSERT(m_loop->in_event_loop());
 		NETP_ASSERT(m_ctx == nullptr);
+		m_flag &= ~f_closed;
 		m_ctx = ctx_;
 		m_wstate = http_write_state::S_WRITE_IDLE;
 		m_close_f = netp::make_ref<promise<int>>();
@@ -137,6 +140,8 @@ namespace netp { namespace http {
 
 	void client::http_cb_closed(NRP<netp::channel_handler_context> const& ctx_) {
 		NETP_ASSERT(m_loop->in_event_loop());
+		m_flag |= f_closed;
+
 		_do_request_done(netp::E_HTTP_REQ_TIMEOUT, (m_mtmp));
 		m_mtmp = nullptr;
 		m_ctx = nullptr;

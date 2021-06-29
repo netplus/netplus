@@ -107,6 +107,7 @@ namespace netp {  namespace handler {
             trusted_certificate_authorities(const std::string& type,
                 const std::string& /*hostname*/) override
         {
+            (void)type;
             std::vector<Botan::Certificate_Store*> v;
             //NETP_VERBOSE("[tls_credentials]load trusted_certificate_authorities for : %s", type.c_str() );
             // don't ask for client certs

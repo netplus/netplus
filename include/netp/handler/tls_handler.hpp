@@ -48,7 +48,7 @@ namespace netp { namespace handler {
 		_tlsctx->session_mgr = netp::non_atomic_shared::make<Botan::TLS::Session_Manager_In_Memory>(*(_tlsctx->rng));
 		_tlsctx->policy = netp::non_atomic_shared::make<netp::handler::tls_policy>(_tlsctx->tlsconfig);
 
-		_tlsctx->credentials_mgr = netp::non_atomic_shared::make<netp::handler::Basic_Credentials_Manager>(tlsconfig->use_system_store, tlsconfig->ca_path, *(_tlsctx->rng), tlsconfig->cert,tlsconfig->privkey);
+		_tlsctx->credentials_mgr = netp::non_atomic_shared::make<netp::handler::Basic_Credentials_Manager>(tlsconfig->use_system_store, tlsconfig->ca_path, *(_tlsctx->rng), tlsconfig->cert,tlsconfig->cert_privkey);
 		_tlsctx->server_info = netp::non_atomic_shared::make<Botan::TLS::Server_Information>(tlsconfig->host, tlsconfig->port);
 		_tlsctx->next_protocols = {};
 		return _tlsctx;

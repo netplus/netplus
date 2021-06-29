@@ -105,7 +105,7 @@ namespace netp {
 #endif
 	}
 
-	app::app(app_cfg const& cfg) :
+	app::app(app_cfg const& cfg = app_cfg() ) :
 		m_should_exit(false),
 		m_cfg(cfg),
 		m_app_startup_prev(cfg.app_startup_prev),
@@ -137,7 +137,7 @@ namespace netp {
 			 m_app_exit_post();
 		}
 		//quick destroy
-		app_thread_init::instance()->destroy_instance();
+		//app_thread_init::instance()->destroy_instance();
 	}
 
 	void app::_startup() {
