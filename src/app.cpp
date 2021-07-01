@@ -1,3 +1,7 @@
+#include <fstream>
+
+#include "../../../../3rd/nlohmann/include/nlohmann/json.hpp"
+
 #include <signal.h>
 
 #include <netp/CPUID.hpp>
@@ -103,6 +107,53 @@ namespace netp {
 		netp::tls_destroy<netp::pool_aligned_allocator_t>();
 		netp::global_pool_aligned_allocator::instance()->destroy_instance();
 #endif
+	}
+
+	void app_cfg::__init_from_cfg_json(const char* jsonfile) {
+		std::ifstream ifs(jsonfile, std::ifstream::in);
+		if (!ifs.good()) {
+			return;
+		}
+		nlohmann::json cfg_json = nlohmann::json::parse(ifs, nullptr, false);
+		ifs.close();
+
+		if (cfg_json.is_discarded()) {
+			return;
+		}
+
+		if (cfg_json.find("log") != cfg_json.end() && cfg_json["log"].is_string()) {
+			cfg_log_filepathname(cfg_json["log"].get<std::string>());
+		}
+
+		if (cfg_json.find("def_loop_max_count") != cfg_json.end()) {
+			cfg_poller_max(NETP_DEFAULT_POLLER_TYPE, cfg_json["def_loop_max_count"].get<int>());
+		}
+
+		if (cfg_json.find("def_loop_channel_buf") != cfg_json.end()) {
+			cfg_channel_buf(NETP_DEFAULT_POLLER_TYPE, cfg_json["def_loop_channel_buf"].get<int>());
+		}
+	}
+
+	void app_cfg::__parse_cfg(int argc, char** argv) {
+	
+		struct ::option long_options[] = {
+			{"netp-cfg", optional_argument, 0, 1},
+			{0,0,0,0}
+		};
+
+		::optind = 1;
+		const char* optstring = "H:h::";
+		int opt;
+		int opt_idx;
+		while ((opt = getopt_long(argc, argv, optstring, long_options, &opt_idx)) != -1) {
+			switch (opt) {
+			case 1:
+			{
+				__init_from_cfg_json(optarg);
+			}
+			break;
+			}
+		}
 	}
 
 	app::app(app_cfg const& cfg = app_cfg() ) :

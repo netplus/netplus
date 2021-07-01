@@ -15,6 +15,7 @@ namespace netp {
 
 		std::string logfilepathname;
 		std::vector<std::string> dnsnses; //dotip
+		int poller_max[T_POLLER_MAX];
 		int poller_count[T_POLLER_MAX];
 		event_loop_cfg event_loop_cfgs[T_POLLER_MAX];
 
@@ -28,78 +29,89 @@ namespace netp {
 		fn_app_hook_t app_event_loop_deinit_prev;
 		fn_app_hook_t app_event_loop_deinit_post;
 
-	public:
-		app_cfg(int argc, char** argv) :
-			logfilepathname(""),
-			dnsnses(std::vector<std::string>()),
-			app_startup_prev(nullptr),
-			app_startup_post(nullptr),
-			app_exit_prev(nullptr),
-			app_exit_post(nullptr),
-			app_event_loop_init_prev(nullptr),
-			app_event_loop_init_post(nullptr),
-			app_event_loop_deinit_prev(nullptr),
-			app_event_loop_deinit_post(nullptr)
-		{
-			(void)argc;
-			(void)argv;
-			const int corecount = std::thread::hardware_concurrency();
-			for (size_t i = 0; i < T_POLLER_MAX; ++i) {
-				if (i == NETP_DEFAULT_POLLER_TYPE) {
-					poller_count[i] = int(std::ceil(corecount)*1.5f);
-				} else {
-					poller_count[i] = 0;
-				}
-				event_loop_cfgs[i].ch_buf_size = (128*1024);
-			}
-		}
+		void __init_from_cfg_json(const char* jsonfile);
+		void __parse_cfg(int argc, char** argv);
 
-		app_cfg() :
-			logfilepathname(""),
-			dnsnses(std::vector<std::string>()),
-			app_startup_prev(nullptr),
-			app_startup_post(nullptr),
-			app_exit_prev(nullptr),
-			app_exit_post(nullptr),
-			app_event_loop_init_prev(nullptr),
-			app_event_loop_init_post(nullptr),
-			app_event_loop_deinit_prev(nullptr),
-			app_event_loop_deinit_post(nullptr)
-		{
+		void __cfg_default_loop_cfg() {
 			const int corecount = std::thread::hardware_concurrency();
 			for (size_t i = 0; i < T_POLLER_MAX; ++i) {
+				poller_max[i] = (corecount << 1); //0 means default
 				if (i == NETP_DEFAULT_POLLER_TYPE) {
-					poller_count[i] = int(std::ceil(corecount) * 1.5f);
-				}
-				else {
-					poller_count[i] = 0;
+					cfg_poller_count(io_poller_type(i), int(std::ceil(corecount) * 1.5f));
+				} else {
+					cfg_poller_count(io_poller_type(i), 0);
 				}
 				event_loop_cfgs[i].ch_buf_size = (128 * 1024);
 			}
 		}
+	public:
+		app_cfg(int argc, char** argv) :
+			logfilepathname(),
+			dnsnses(std::vector<std::string>()),
+			app_startup_prev(nullptr),
+			app_startup_post(nullptr),
+			app_exit_prev(nullptr),
+			app_exit_post(nullptr),
+			app_event_loop_init_prev(nullptr),
+			app_event_loop_init_post(nullptr),
+			app_event_loop_deinit_prev(nullptr),
+			app_event_loop_deinit_post(nullptr)
+		{
+			NETP_ASSERT( argc>=1 );
+			__cfg_default_loop_cfg();
+			std::string data=netp::curr_local_data_str();
+			std::string data_;
+			netp::replace(data, std::string("-"), std::string("_"), data_);
+			cfg_log_filepathname(std::string(argv[0]) + std::string(".") + data_ + ".log");
+			__parse_cfg(argc, argv);
+		}
 
-		void cfg_poller_cfg(io_poller_type t, event_loop_cfg const& cfg) {
-			event_loop_cfgs[t] = cfg;
+		app_cfg() :
+			logfilepathname(),
+			dnsnses(std::vector<std::string>()),
+			app_startup_prev(nullptr),
+			app_startup_post(nullptr),
+			app_exit_prev(nullptr),
+			app_exit_post(nullptr),
+			app_event_loop_init_prev(nullptr),
+			app_event_loop_init_post(nullptr),
+			app_event_loop_deinit_prev(nullptr),
+			app_event_loop_deinit_post(nullptr)
+		{
+			__cfg_default_loop_cfg();
+			std::string data = netp::curr_local_data_str();
+			std::string data_;
+			netp::replace(data, std::string("-"), std::string("_"), data_);
+			cfg_log_filepathname("netp_" + data_ + ".log");
+		}
+
+		void cfg_poller_max(io_poller_type t, int c) {
+			if (c > 0) {
+				const int max = (std::thread::hardware_concurrency() << 1);
+				if (c > max) {
+					c = max;
+				}
+				else if (c < 1) {
+					c = 1;
+				}
+				poller_max[t] = c;
+			}
 		}
 
 		void cfg_poller_count(io_poller_type t, int c) {
 			const int corecount = std::thread::hardware_concurrency();
-			if (c > (corecount << 1)) {
-				c = (corecount << 1);
+			if (c > poller_max[t]) {
+				c = poller_max[t];
 			} else if (c < 1) {
 				c = 1;
 			}
-			poller_count[t] = c;
+			poller_count[t] = c ;
 		}
 
-		void cfg_poller_count_check_max(io_poller_type t, int max) {
-			if (poller_count[t] > max) {
-				poller_count[t] = max;
+		void cfg_channel_buf(io_poller_type t, int buf_in_kbytes) {
+			if (buf_in_kbytes > 0) {
+				event_loop_cfgs[t].ch_buf_size = buf_in_kbytes * (1024);
 			}
-		}
-		
-		void cfg_channel_rcv_buf(io_poller_type t, int buf_in_kbytes) {
-			event_loop_cfgs[t].ch_buf_size = buf_in_kbytes*(1024);
 		}
 
 		void cfg_add_dns(std::string const& dns_ns) {
@@ -107,6 +119,7 @@ namespace netp {
 		}
 
 		void cfg_log_filepathname(std::string const& logfilepathname_) {
+			if (logfilepathname_.length() == 0) { return; }
 			logfilepathname = logfilepathname_;
 		}
 	};

@@ -79,10 +79,9 @@ namespace netp {
 			NETP_ASSERT(m_loggers[i] != nullptr);
 
 			char log_buffer[LOG_BUFFER_SIZE_MAX] = { 0 };
-			std::string local_time_str;
-			netp::curr_localtime_str(local_time_str);
+			netp::curr_local_datatime_str();
 			int idx_tid = 0;
-			int snwrite = snprintf(log_buffer + idx_tid, LOG_BUFFER_SIZE_MAX - idx_tid, "[%s][%c][%llu]", local_time_str.c_str(), logger::__log_mask_char[mask], tid);
+			int snwrite = snprintf(log_buffer + idx_tid, LOG_BUFFER_SIZE_MAX - idx_tid, "[%s][%c][%llu]", netp::curr_local_datatime_str().c_str(), logger::__log_mask_char[mask], tid);
 			if (snwrite == -1) {
 				NETP_THROW("snprintf failed for loggerManager::write");
 			}

@@ -4,11 +4,9 @@ namespace netp {
 
 	NRP<netp::packet> file_get_content(netp::string_t const& filepath) {
 		std::FILE* fp = std::fopen(filepath.c_str(), "rb");
-
 		if (fp == 0) {
 			return nullptr;
 		}
-
 		std::fseek(fp, 0, SEEK_END);
 		std::size_t fsize = std::ftell(fp);
 		std::fseek(fp, 0, SEEK_SET);

@@ -232,7 +232,31 @@ namespace netp {
 
 	}
 
-	inline void to_localtime_str(struct timeval const& tv, std::string& lcstr) {
+	inline std::string to_local_data_str(struct timeval const& tv) {
+		char buf[] = "1970-01-01"; //our time format
+
+		const static char* _fmt_seconds = "%Y-%m-%d";
+		const static char* _fmt_mseconds = "%03d";
+
+		time_t long_time = (time_t)tv.tv_sec;
+		struct tm timeinfo;
+
+#ifdef _NETP_WIN
+		localtime_s(&timeinfo, &long_time);
+#else
+		localtime_r(&long_time, &timeinfo);
+#endif
+		strftime(buf, sizeof(buf), _fmt_seconds, &timeinfo);
+		return std::string(buf, 10);
+	}
+
+	inline std::string curr_local_data_str() {
+		struct timeval tv;
+		time_of_day(tv, nullptr);
+		return to_local_data_str(tv);
+	}
+
+	inline std::string to_local_datatime_str(struct timeval const& tv) {
 		char buf[] = "1970-01-01 00:00:00.000000"; //our time format
 
 		const static char* _fmt_seconds = "%Y-%m-%d %H:%M:%S.000";
@@ -253,13 +277,13 @@ namespace netp {
 		(void)rt;
 		NETP_ASSERT(rt == 3);
 		NETP_ASSERT(strlen(buf) == 23);
-		lcstr = std::string(buf, 23);
+		return std::string(buf, 23);
 	}
 
-	inline void curr_localtime_str(std::string& str) {
+	inline std::string curr_local_datatime_str() {
 		struct timeval tv;
 		time_of_day(tv, nullptr);
-		to_localtime_str(tv, str);
+		return to_local_datatime_str(tv);
 	}
 }
 #endif
