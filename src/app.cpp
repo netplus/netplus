@@ -1,6 +1,6 @@
 #include <fstream>
 
-#include "../../../../3rd/nlohmann/include/nlohmann/json.hpp"
+#include "../3rd/nlohmann/include/nlohmann/json.hpp"
 
 #include <signal.h>
 

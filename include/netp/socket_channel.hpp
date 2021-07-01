@@ -88,7 +88,7 @@ namespace netp {
 
 		keep_alive_vals kvals;
 		channel_buf_cfg sock_buf;
-		u32_t bdlimit; //in bit (1kb == 1024b), 0 means no limit
+		u32_t bdlimit; //in Byte (1kb == 1024Byte), 0 means no limit
 		u32_t wsabuf_size;
 
 		fn_socket_channel_maker_t ch_maker;

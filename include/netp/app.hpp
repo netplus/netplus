@@ -102,8 +102,12 @@ namespace netp {
 			const int corecount = std::thread::hardware_concurrency();
 			if (c > poller_max[t]) {
 				c = poller_max[t];
-			} else if (c < 1) {
-				c = 1;
+			} else if (c <= 0) {
+				c = 0;
+
+				if (t == NETP_DEFAULT_POLLER_TYPE) {
+					c = 1;
+				}
 			}
 			poller_count[t] = c ;
 		}
