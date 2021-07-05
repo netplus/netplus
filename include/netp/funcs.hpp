@@ -236,7 +236,6 @@ namespace netp {
 		char buf[] = "1970-01-01"; //our time format
 
 		const static char* _fmt_seconds = "%Y-%m-%d";
-		const static char* _fmt_mseconds = "%03d";
 
 		time_t long_time = (time_t)tv.tv_sec;
 		struct tm timeinfo;
