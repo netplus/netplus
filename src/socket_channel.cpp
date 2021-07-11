@@ -530,12 +530,12 @@ int socket_base::get_left_snd_queue() const {
 		if (status == netp::OK) {
 #ifdef NETP_ENABLE_FAST_WRITE
 			if (m_chflag&int(channel_flag::F_WRITE_ERROR)) {//bdlimit cb, if fast_write enabled
-				NETP_ASSERT( (m_chflag&int(channel_flag::F_USE_DEFAULT_WRITE)) ? m_outbound_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
+				NETP_ASSERT( (m_fn_write == nullptr) ? m_outbound_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 				NETP_ASSERT(ch_errno() != netp::OK);
 				NETP_VERBOSE("[socket][%s]__do_io_write(), but socket error already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
 				return ;
 			} else if (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWN))) {//bdlimit cb, if fast_write enabled
-				NETP_ASSERT((m_chflag & int(channel_flag::F_USE_DEFAULT_WRITE)) ? m_outbound_entry_q.size() == 0 : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
+				NETP_ASSERT((m_fn_write == nullptr) ? m_outbound_entry_q.size() == 0 : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 				NETP_VERBOSE("[socket][%s]__do_io_write(), but socket write closed already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
 				return;
 			} else {
@@ -554,7 +554,6 @@ int socket_base::get_left_snd_queue() const {
 	//this api would be called right after a check of writeable of the current socket
 	int socket_channel::___do_io_write() {
 
-		NETP_ASSERT(m_chflag&int(channel_flag::F_USE_DEFAULT_WRITE));
 		NETP_ASSERT(m_outbound_entry_q.size(), "%s, flag: %u", ch_info().c_str(), m_chflag);
 		NETP_ASSERT( m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)) );
 		NETP_ASSERT( (m_chflag&int(channel_flag::F_BDLIMIT)) ==0);
@@ -602,7 +601,6 @@ int socket_base::get_left_snd_queue() const {
 
 	int socket_channel::___do_io_write_to() {
 
-		NETP_ASSERT(m_chflag&(int(channel_flag::F_USE_DEFAULT_WRITE)));
 		NETP_ASSERT(m_outbound_entry_q.size(), "%s, flag: %u", ch_info().c_str(), m_chflag);
 		NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)));
 
@@ -686,19 +684,19 @@ int socket_base::get_left_snd_queue() const {
 			//if we have a write_error, a immediate ch_close_impl would be take out
 			NETP_ASSERT((m_chflag&int(channel_flag::F_WRITE_ERROR)) == 0);
 			NETP_ASSERT(m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)|int(channel_flag::F_BDLIMIT)) );
-			NETP_ASSERT((m_chflag & int(channel_flag::F_USE_DEFAULT_WRITE)) ? m_outbound_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
+			NETP_ASSERT((m_fn_write == nullptr) ? m_outbound_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 			prt = (netp::E_CHANNEL_WRITE_SHUTDOWNING);
 		} else if (m_chflag & (int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)|int(channel_flag::F_BDLIMIT)) ) {
 			//write set ok might result in ch_close_write|ch_close
 			//the pending action would be scheduled right in _do_write_done() which is right after every _io_do_write action
 			//if a user defined write function is used, user have to take care of it by user self
-			NETP_ASSERT((m_chflag & int(channel_flag::F_USE_DEFAULT_WRITE)) ? m_outbound_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno );
+			NETP_ASSERT((m_fn_write==nullptr) ? m_outbound_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno );
 			m_chflag |= int(channel_flag::F_WRITE_SHUTDOWN_PENDING);
 			prt = (netp::E_CHANNEL_WRITE_SHUTDOWNING);
 		} else {
 			//connecting channel would only be closed by ch_close_impl
 			NETP_ASSERT( (m_chflag&int(channel_flag::F_CONNECTING)) ==0 );
-			NETP_ASSERT(((m_chflag&(int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_USE_DEFAULT_WRITE) )) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) |int(channel_flag::F_USE_DEFAULT_WRITE) )) ?
+			NETP_ASSERT(((m_chflag&(int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) )) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) )) && (m_fn_write == nullptr) ?
 				m_outbound_entry_q.size():
 				true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 
@@ -721,19 +719,19 @@ int socket_base::get_left_snd_queue() const {
 		} else if (m_chflag & (int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))) {
 			NETP_ASSERT( ch_errno() != netp::OK );
 			NETP_ASSERT(m_chflag & (int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR) | (int(channel_flag::F_FIRE_ACT_EXCEPTION))));
-			NETP_ASSERT(((m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_USE_DEFAULT_WRITE))) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_USE_DEFAULT_WRITE) )) ?
+			NETP_ASSERT(((m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED))) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) )) && (m_fn_write == nullptr) ?
 				m_outbound_entry_q.size() :
 				true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 
 			goto __act_label_close_read_write;
 		} else if ( m_chflag & (int(channel_flag::F_CLOSE_PENDING)| int(channel_flag::F_WRITE_SHUTDOWN_PENDING)) ) {
 			NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER) | int(channel_flag::F_WATCH_WRITE) | int(channel_flag::F_BDLIMIT)));
-			NETP_ASSERT((m_chflag & int(channel_flag::F_USE_DEFAULT_WRITE)) ? m_outbound_entry_q.size() : true, "[#%s]chflag: %d, cherrno: %d", ch_info().c_str(), m_chflag, m_cherrno);
+			NETP_ASSERT( (m_fn_write == nullptr) ? m_outbound_entry_q.size() : true, "[#%s]chflag: %d, cherrno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 			prt = (netp::E_OP_INPROCESS);
 		} else if (m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)|int(channel_flag::F_BDLIMIT)) ) {
 			//wait for write done event, we might in a write barrier
 			//for a non-error close, do grace shutdown
-			NETP_ASSERT((m_chflag & int(channel_flag::F_USE_DEFAULT_WRITE)) ? m_outbound_entry_q.size() : true, "[#%s]chflag: %d, cherrno: %d", ch_info().c_str(),  m_chflag, m_cherrno);
+			NETP_ASSERT((m_fn_write == nullptr) ? m_outbound_entry_q.size() : true, "[#%s]chflag: %d, cherrno: %d", ch_info().c_str(),  m_chflag, m_cherrno);
 			m_chflag |= int(channel_flag::F_CLOSE_PENDING);
 			prt = (netp::E_CHANNEL_CLOSING);
 		} else {
