@@ -748,7 +748,7 @@ namespace netp {
 			case netp::OK:
 			{
 				NETP_ASSERT((m_chflag & int(channel_flag::F_BDLIMIT)) == 0);
-				NETP_ASSERT(m_outbound_entry_q.size() == 0);
+				NETP_ASSERT(m_outbound_entry_q.size() == 0, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 				if (m_chflag & int(channel_flag::F_CLOSE_PENDING)) {
 					_ch_do_close_read_write();
 					NETP_TRACE_SOCKET("[socket][%s]IO_WRITE, end F_CLOSE_PENDING, _ch_do_close_read_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
@@ -759,11 +759,13 @@ namespace netp {
 					std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>().swap(m_outbound_entry_q);
 					ch_io_end_write();
 				}
+
+				NETP_ASSERT( (m_chflag & (int(channel_flag::F_WATCH_WRITE))) == 0);
 			}
 			break;
 			case netp::E_EWOULDBLOCK:
 			{
-				NETP_ASSERT(m_outbound_entry_q.size() > 0);
+				NETP_ASSERT(m_outbound_entry_q.size(), "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 #ifdef NETP_ENABLE_FAST_WRITE
 				NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER)) );
 				ch_io_write();

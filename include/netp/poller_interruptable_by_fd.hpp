@@ -23,14 +23,15 @@ namespace netp {
 		}
 		virtual void io_notify_read(int status, io_ctx*) override {
 			if (status == netp::OK) {
-				byte_t tmp[1];
+				byte_t tmp[8] = {0};
 				int ec = netp::OK;
 				do {
-					u32_t c = netp::recv(ctx->fd, tmp, 1, ec, 0);
-					if (c == 1) {
-						NETP_ASSERT(ec == netp::OK);
-						NETP_ASSERT(tmp[0] == 'i', "c: %d", tmp[0]);
-					}
+					u32_t c = netp::recv(ctx->fd, tmp, 8, ec, 0);
+					//if (c == 1) {
+					//	NETP_ASSERT(ec == netp::OK);
+					//	NETP_ASSERT(tmp[0] == 'i', "c: %d", tmp[0]);
+					//}
+					(void)c;
 				} while (ec == netp::OK);
 			}
 		}

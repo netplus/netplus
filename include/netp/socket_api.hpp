@@ -332,7 +332,8 @@ sendto:
 		const int nbytes = ::sendto(fd, reinterpret_cast<const char*>(buf), (int)len, flag, reinterpret_cast<struct sockaddr*>(&addr_in), sizeof(addr_in));
 
 		if (NETP_LIKELY(nbytes > 0)) {
-			NETP_ASSERT((u32_t)nbytes == len);
+			//sometimes, we got nbytes != len (happens on rpi )
+			//NETP_ASSERT((u32_t)nbytes == len);
 			ec_o = netp::OK;
 			NETP_TRACE_SOCKET_API("[netp::sendto][#%d]sendto() == %d", fd, nbytes);
 			return nbytes;

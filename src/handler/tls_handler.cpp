@@ -537,6 +537,7 @@ namespace netp { namespace handler {
 	}
 	void tls_handler::tls_log_debug(const char* what) {
 		NETP_VERBOSE("[tls_handler]session: %s, tls debug: %s", m_session_id.c_str(), what);
+		(void)what;
 	}
 }}
 
