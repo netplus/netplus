@@ -73,13 +73,14 @@ namespace netp {
 		static_assert(sizeof(netp::u64_t) == 8, "assert sizeof(u64_t) failed");
 
 #if __NETP_IS_BIG_ENDIAN
-		static_assert(netp::is_big_endian())
+		NETP_ASSERT(netp::is_big_endian());
+#else
+		NETP_ASSERT(netp::is_little_endian());
 #endif
 
 #ifdef _NETP_WIN
-			//CPU ia-64 is big endian, but windows run on a little endian mode on ia-64
-			static_assert(!(__NETP_IS_BIG_ENDIAN), "windows always run on little endian");
-		NETP_ASSERT(netp::is_little_endian());
+		//CPU ia-64 is big endian, but windows run on a little endian mode on ia-64
+		static_assert(!(__NETP_IS_BIG_ENDIAN), "windows always run on little endian");
 #endif
 
 		netp::random_init_seed();
@@ -245,8 +246,16 @@ namespace netp {
 	}
 
 	void app::dump_arch_info() {
+		const char bob[2] = { 0x01, 0x02 };
+		const u16_t bob_u16 = *((u16_t*)(&bob[0]));
+#if __NETP_IS_BIG_ENDIAN
+		std::string arch_info = "endian: big_endian\n" ;
+		NETP_ASSERT(bob_u16 == (0x02<<8)|0x01);
+#else
+		std::string arch_info = "endian: little_endian\n";
+		NETP_ASSERT(bob_u16 == (0x01<<8)|0x02);
+#endif
 
-		std::string arch_info = "";
 		arch_info += "vender: " + netp::CPUID::Vendor() + "\n";
 		arch_info += "brand: " + netp::CPUID::Brand() + "\n";
 		arch_info += "instructions:";

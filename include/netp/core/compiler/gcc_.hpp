@@ -14,17 +14,21 @@
 	#endif
 #else
 	#include <endian.h>
-	#if __NETP_IS_BIG_ENDIAN
-	#define htonll(val) (val)
-	#define ntohll(val) (val)
-	#else
-	#define htonll(val) __bswap_64(val)
-	#define ntohll(val) __bswap_64(val)
-	#endif
+	#define __NETP_NO_NTOH_LL_HTON_LL
 #endif
 
 #define __NETP_IS_BIG_ENDIAN (__BYTE_ORDER == __BIG_ENDIAN)
 #define __NETP_IS_LITTLE_ENDIAN (!__NETP_IS_BIG_ENDIAN)
+
+#ifdef __NETP_NO_NTOH_LL_HTON_LL
+	#if __NETP_IS_BIG_ENDIAN
+		#define htonll(val) (val)
+		#define ntohll(val) (val)
+	#else
+		#define htonll(val) __bswap_64(val)
+		#define ntohll(val) __bswap_64(val)
+	#endif
+#endif
 
 #define __NETP_TLS thread_local
 #define __NETP_NOEXCEPT noexcept

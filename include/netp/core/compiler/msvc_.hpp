@@ -16,7 +16,6 @@ MSVC++ 5.0  _MSC_VER == 1100
 
 #include <BaseTsd.h>
 
-
 #define __NETP_IS_BIG_ENDIAN (0)
 #define __NETP_IS_LITTLE_ENDIAN (!__NETP_IS_BIG_ENDIAN)
 

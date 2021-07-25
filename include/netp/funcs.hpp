@@ -49,8 +49,9 @@ namespace netp {
 	extern u32_t random(u32_t max);
 
 	inline bool is_big_endian() {
-		const unsigned int x = 1;
-		return 0 == *(unsigned char*)(&x);
+		unsigned int x = 1;
+		//return 0 == *(unsigned char*)(&x);
+		return 0 == *(reinterpret_cast<unsigned char*>(&x));
 	}
 
 	inline bool is_little_endian() {

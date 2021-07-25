@@ -111,7 +111,7 @@ _CHECK:
 				if (!m_upgrade_req->H->have(_H_Upgrade) || netp::strcmp("websocket", m_upgrade_req->H->get(_H_Upgrade).c_str() ) != 0 ) {
 					NETP_WARN("[websocket]missing %s, or not websocket, force close", _H_Upgrade);
 					NRP<packet> out = netp::make_ref<packet>();
-					out->write((byte_t*)WEBSOCKET_UPGRADE_REPLY_400, netp::strlen(WEBSOCKET_UPGRADE_REPLY_400));
+					out->write((byte_t*)WEBSOCKET_UPGRADE_REPLY_400, u32_t(netp::strlen(WEBSOCKET_UPGRADE_REPLY_400)));
 					ctx->write(out);
 					ctx->close();
 					return ;
