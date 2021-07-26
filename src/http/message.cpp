@@ -31,10 +31,10 @@ namespace netp { namespace http {
 
 			outp->write((netp::byte_t*)option_name[(int)opt], (netp::u32_t)netp::strlen(option_name[(int)opt]) );
 			outp->write<u8_t>(' ');
-			outp->write((netp::byte_t*)urlfields.path.c_str(), urlfields.path.length());
+			outp->write((netp::byte_t*)urlfields.path.c_str(), u32_t(urlfields.path.length()));
 			if (urlfields.query.length()) {
 				outp->write<u8_t>('?');
-				outp->write((netp::byte_t*)urlfields.query.c_str(), urlfields.query.length());
+				outp->write((netp::byte_t*)urlfields.query.c_str(), u32_t(urlfields.query.length()));
 			}
 			n = snprintf(tmp, 256, " HTTP/%d.%d\r\n", ver.major, ver.minor);
 			NETP_ASSERT(n > 0 && n < 256);
