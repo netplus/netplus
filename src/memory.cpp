@@ -118,89 +118,33 @@ namespace netp {
 		return new_ptr;
 	}
 	*/
-/*
-*  Tn = T(n-1) + (slot+1) * (1<<(n+4))
-* 
-const static size_t TABLE_1[T0] = {
-	16 * 1,
-	16 * 2,
-	16 * ...,
-	16 * 8,
-	//end: 128 16*8
-	//slot size: (slot+1)*(1<<(0+4))
-};
-
-const static size_t TABLE_2[T1] = {
-	16 * 8 + 32 * 1,
-	16 * 8 + 32 * 2,
-	16 * 8 + 32 * ...,
-	16 * 8 + 32 * 8,
-	//end: 128+256=384
-	//slot size: TABLE_UPBOUND[T0] + (1<<(1+4))*(slot+1)
-};
-
-const static size_t TABLE_3[T2] = {
-	16 * 8 + 32 * 8 + 64 * 1,
-	16 * 8 + 32 * 8 + 64 * 2,
-	16 * 8 + 32 * 8 + 64 * ..,
-	16 * 8 + 32 * 8 + 64 * 8
-	//end: 128+256+512=896
-	//size slot: TABLE_UPBOUND[T1] + (1<<(2+4))*((slot+1))
-};
-const static size_t TABLE_4[T3] = {
-	16 * 8 + 32 * 8 + 64 * 8 + 128*1,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*2,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*...,
-	16 * 8 + 32 * 8 + 64 * 8 + 128*8
-	//end for 128+256+512+1024=1920
-	//size slot: TABLE_UPBOUND[T2] + (1<<(4+2))*((slot+1))
-};
-*/
 
 #define ___FACTOR (1)
-
 #ifdef _NETP_AM64
 #define __NETP_MEMORY_POOL_INIT_FACTOR (___FACTOR)
 #else
 #define __NETP_MEMORY_POOL_INIT_FACTOR (___FACTOR)
 #endif
 
-#define NETP_ALIGNED_ALLOCATOR_16_SLOT_EDGE_T size_t(T5)
+#define NETP_ALIGNED_ALLOCATOR_16_SLOT_EDGE_T size_t(T3)
 #define NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t) ( (t < NETP_ALIGNED_ALLOCATOR_16_SLOT_EDGE_T) ? 16 : 8)
-	const static u8_t TABLE_SLOT[TABLE::T_COUNT] = {
-		16,
-		16,
-		16,
-		16,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-//		8,
-	};
 
 //object pool does not suit for large memory gap objects
 	const static u32_t TABLE_SLOT_ENTRIES_INIT_LIMIT[TABLE::T_COUNT] = {
 		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2048, //0--128 /16 Byte
-		(__NETP_MEMORY_POOL_INIT_FACTOR) * 1024, //128--128+256 /16 Byte
-		(__NETP_MEMORY_POOL_INIT_FACTOR) * 1024,//128+256--128+256+512 /16
-		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2048,//128+256+512--128+256+512+1024 [zzz] /16
-		(__NETP_MEMORY_POOL_INIT_FACTOR) * 512,//128+256+512+1024--128+256+512+1024+2048 /8
-		(__NETP_MEMORY_POOL_INIT_FACTOR) * 128,//
-		(__NETP_MEMORY_POOL_INIT_FACTOR) * 64,//
-		(__NETP_MEMORY_POOL_INIT_FACTOR) * 32,//
-		(__NETP_MEMORY_POOL_INIT_FACTOR) * 16,//
-		(__NETP_MEMORY_POOL_INIT_FACTOR) * 8,//
-		(__NETP_MEMORY_POOL_INIT_FACTOR) * 4,//
-		(__NETP_MEMORY_POOL_INIT_FACTOR) * 4,//
-		(__NETP_MEMORY_POOL_INIT_FACTOR) * 4,//
-		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2, //2M
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2048, //128--128+256 /16 Byte
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2048,//128+256--128+256+512 /16
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 4096,//128+256+512--128+256+512+1024 [zzz] /16
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 1024,//128+256+512+1024--128+256+512+1024+2048 /8
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 512,//4--8K /8
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 256,//8-16K
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 64,//16-32K
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 32,//32-64K
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 16,//64-128K
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 8,//128-256K
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 4,//256-512K
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 4,//512-1M
+		(__NETP_MEMORY_POOL_INIT_FACTOR) * 2, //1M-2M
 //		(__NETP_MEMORY_POOL_INIT_FACTOR) * 1 //
 	};
 
