@@ -120,7 +120,7 @@ _CHECK:
 				if (!m_upgrade_req->H->have(_H_Connection) || netp::strpos(m_upgrade_req->H->get(_H_Connection).c_str(), "Upgrade" ) == -1 ) {
 					NETP_WARN("[websocket]missing %s, or not Upgrade, force close", _H_Connection);
 					NRP<packet> out = netp::make_ref<packet>();
-					out->write((byte_t*)WEBSOCKET_UPGRADE_REPLY_400, netp::strlen(WEBSOCKET_UPGRADE_REPLY_400));
+					out->write((byte_t*)WEBSOCKET_UPGRADE_REPLY_400, u32_t(netp::strlen(WEBSOCKET_UPGRADE_REPLY_400)));
 					ctx->write(out);
 					ctx->close();
 					return;
@@ -129,7 +129,7 @@ _CHECK:
 				if (!m_upgrade_req->H->have(_H_SEC_WEBSOCKET_VERSION)) {
 					NETP_WARN("[websocket]missing Sec-WebSocket-Key, force close");
 					NRP<packet> out = netp::make_ref<packet>();
-					out->write((byte_t*) WEBSOCKET_UPGRADE_REPLY_400, netp::strlen(WEBSOCKET_UPGRADE_REPLY_400) );
+					out->write((byte_t*) WEBSOCKET_UPGRADE_REPLY_400, u32_t(netp::strlen(WEBSOCKET_UPGRADE_REPLY_400)) );
 					ctx->write(out);
 					ctx->close();
 					return;
@@ -138,7 +138,7 @@ _CHECK:
 				if (!m_upgrade_req->H->have(_H_SEC_WEBSOCKET_KEY)) {
 					NETP_WARN("[websocket]missing Sec-WebSocket-Version, force close");
 					NRP<packet> out = netp::make_ref<packet>();
-					out->write((byte_t*)WEBSOCKET_UPGRADE_REPLY_400, netp::strlen(WEBSOCKET_UPGRADE_REPLY_400));
+					out->write((byte_t*)WEBSOCKET_UPGRADE_REPLY_400, u32_t(netp::strlen(WEBSOCKET_UPGRADE_REPLY_400)));
 					ctx->write(out);
 					ctx->close();
 					return;
@@ -268,7 +268,7 @@ _CHECK:
 			break;
 		case state::S_FRAME_READ_PAYLOAD:
 			{
-				const u64_t left_to_fill = m_tmp_frame->payload_len - m_tmp_frame->appdata->len();
+				const u32_t left_to_fill = (m_tmp_frame->payload_len - m_tmp_frame->appdata->len());
 				if (income->len() < left_to_fill) {
 					m_income_prev = income;
 					return;

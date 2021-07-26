@@ -44,7 +44,7 @@ namespace netp { namespace http {
 		rctx->state = http_request_state::S_DONE;
 		if ((rctx->reqp->nbytes_notified>0)) {
 			NETP_ASSERT(r == nullptr);
-			rctx->reqp->fn_body(nullptr, -1);
+			rctx->reqp->fn_body(nullptr, u32_t(-1));
 		}
 		rctx->reqp->set(std::make_tuple(code, r ));
 

@@ -250,10 +250,10 @@ namespace netp {
 		const u16_t bob_u16 = *((u16_t*)(&bob[0]));
 #if __NETP_IS_BIG_ENDIAN
 		std::string arch_info = "endian: big_endian\n" ;
-		NETP_ASSERT(bob_u16 == (0x02<<8)|0x01);
+		NETP_ASSERT(bob_u16 == ((0x01<<8)|0x02));
 #else
 		std::string arch_info = "endian: little_endian\n";
-		NETP_ASSERT(bob_u16 == (0x01<<8)|0x02);
+		NETP_ASSERT(bob_u16 == ((0x02<<8)|0x01));
 #endif
 
 		arch_info += "vender: " + netp::CPUID::Vendor() + "\n";
