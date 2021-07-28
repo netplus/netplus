@@ -15,10 +15,9 @@
 //@NOTE: turn on this option would result in about 20% performance boost for EPOLL
 #define NETP_ENABLE_FAST_WRITE
 
-//in milliseconds
-#define NETP_SOCKET_BDLIMIT_TIMER_DELAY_DUR (250)
+//in milliseconds, small clock would result in a more accurate control
+#define NETP_SOCKET_BDLIMIT_TIMER_DELAY_DUR (50)
 #define NETP_DEFAULT_LISTEN_BACKLOG 256
-
 
 namespace netp {
 
