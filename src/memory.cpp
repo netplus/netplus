@@ -27,7 +27,7 @@ namespace netp {
 	__NETP_FORCE_INLINE static u8_t __AH_UPDATE_OFFSET__(aligned_hdr* a_hdr, size_t alignment) {
 		//@note: pls refer to https://en.wikipedia.org/wiki/Data_structure_alignment 
 		const u8_t offset = u8_t(sizeof(aligned_hdr)) + ((alignment == alignof(std::max_align_t)) ? 0 : u8_t((~(std::size_t(a_hdr) + sizeof(aligned_hdr) - 1)) & ((alignment)-1)));
-		NETP_ASSERT(alignment<=32 && offset < 32 && offset>=sizeof(aligned_hdr));
+		NETP_ASSERT(alignment<=32 && offset <= 32 && offset>=sizeof(aligned_hdr));
 		
 		a_hdr->hdr.AH_4_7.alignment = u8_t(alignment);
 		a_hdr->hdr.AH_4_7.offset = (offset);

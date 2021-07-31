@@ -4,13 +4,15 @@ UNAME_S 			:= $(shell uname -s)
 OS_NAME				:= $(shell hostnamectl status| grep -i 'Operating System' | awk '{print $$3}')
 PRJ_BUILD			:= release
 PRJ_ARCH			:= x86_64
-PRJ_SIMD			:= 
 PRJ_BUILD_SUFFIX 	:= 
 PRJ_DEFS			:= 
+PRJ_COMM			:=NO
+
+
 #
 # usage
-# make build=debug arch=x86_32 simd=ssse3
-# make build=release arch=x86_64 simd=ssse3
+# make build=debug arch=x86_32 comm=yes
+# make build=release arch=x86_64 comm=yes
 #
 
 #build_config could be [release|debug]
@@ -23,8 +25,8 @@ ifdef arch
 	PRJ_ARCH :=$(arch)
 endif
 
-ifdef simd
-	PRJ_SIMD := $(simd)
+ifdef comm
+	PRJ_COMM := $(comm)
 endif
 
 
@@ -127,24 +129,19 @@ SIMD_DEFINES :=
 #for x86_64, sse2 is on by default for both x32&x64 gcc compiler
 #for x86_32, sse2 is off by default for a x32 gcc compiler
 ifeq ($(PRJ_ARCH), $(findstring $(PRJ_ARCH),$(X86_X86_X86) ))
-	ifeq ($(PRJ_SIMD),$(findstring $(PRJ_SIMD),avx2))
-		CC_SIMD := -msse2 -mssse3 -msse4.1 -mavx -mavx2
-		SIMD_DEFINES := BFR_ENABLE_SSE2 BFR_ENABLE_SSSE3 BFR_ENABLE_SSE4_1 BFR_ENABLE_AVX BFR_ENABLE_AVX2
-	else ifeq ($(PRJ_SIMD),ssse3)
-		CC_SIMD := -msse2 -mssse3
-		SIMD_DEFINES := BFR_ENABLE_SSE2 BFR_ENABLE_SSSE3
-	else 
-		ifeq ($(PRJ_ARCH),x86_32)
-			CC_SIMD := -msse2
-			SIMD_DEFINES := BFR_ENABLE_SSE2
-		else
-			CC_SIMD :=
-		endif
-	endif
-else ifeq ($(PRJ_ARCH),armv7a)
-	CC_SIMD := -mcpu=cortex-a7 -mfloat-abi=hard -mfpu=neon -fno-tree-vectorize
+	
+		SIMD_DEFINES 	:= NETP_ENABLE_SSE2 NETP_ENABLE_SSE3 NETP_ENABLE_SSSE3 NETP_ENABLE_SSE4_1 NETP_ENABLE_AVX NETP_ENABLE_AVX2 NETP_ENABLE_BMI
+		CC_SIMD_SSE2 	:= 	-msse2
+		CC_SIMD_SSSE3 	:= 	$(CC_SIMD_SSE2) -msse3 -mssse3
+		CC_SIMD_SSE4_1 	:= 	$(CC_SIMD_SSSE3) -msse4.1
+		CC_SIMD_AVX 	:= 	$(CC_SIMD_SSE4_1) -mavx
+		CC_SIMD_AVX2 	:= 	$(CC_SIMD_AVX) -mavx2 -mbmi
 
-	SIMD_DEFINES := BFR_ENABLE_NEON
+	
+else ifeq ($(PRJ_ARCH),armv7a)
+	CC_SIMD_NEON := -mcpu=cortex-a7 -mfloat-abi=hard -mfpu=neon -fno-tree-vectorize
+
+	SIMD_DEFINES := NETP_ENABLE_NEON
 	ARCH_IS_X86 := NO
 	ARCH_IS_ARMV7A := YES
 else 
