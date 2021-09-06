@@ -24,7 +24,7 @@ LIB_O_FILES		:= $(addprefix $(LIB_BUILD_DIR)/,$(LIB_O_FILES))
 CC_INC 			:= $(LIB_INCLUDE_DIR) $(CC_INC)
 
 
-LIB_3RD_FILES_DIR		:= $(LIB_3RD_DIR)/llhttp $(LIB_3RD_DIR)/c-ares/c-ares-1.17.1/src/lib
+LIB_3RD_FILES_DIR		:= $(LIB_3RD_DIR)/llhttp $(LIB_3RD_DIR)/c-ares/c-ares-1.17.2/src/lib
 
 
 LIB_3RD_CPP_BUILD_DIR	:= $(LIB_3RD_DIR)/build/cpp/$(LIB_ARCH_BUILD)
@@ -37,7 +37,7 @@ LIB_3RD_CPP_O_FILES		:= $(foreach path,$(LIB_3RD_CPP_O_FILES), $(subst $(LIB_3RD
 LIB_3RD_CPP_O_FILES 	:= $(addprefix $(LIB_3RD_CPP_BUILD_DIR)/,$(LIB_3RD_CPP_O_FILES))
 
 
-LIB_3RD_CPP_FILES_INCLUDES := $(LIB_3RD_DIR)/c-ares/c-ares-1.17.1/src/lib $(LIB_3RD_DIR)/c-ares/c-ares-1.17.1/include
+LIB_3RD_CPP_FILES_INCLUDES := $(LIB_3RD_DIR)/c-ares/c-ares-1.17.2/src/lib $(LIB_3RD_DIR)/c-ares/c-ares-1.17.2/include
 
 C_3RD_INCLUDES := \
 	$(foreach include,$(LIB_3RD_CPP_FILES_INCLUDES), -I"$(include)")
