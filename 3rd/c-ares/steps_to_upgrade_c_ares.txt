@@ -1,0 +1,4 @@
+1, download c-ares source code from github
+2, unzip tar
+3, cd root && ./configure
+4, revert ./include/ares_build.h
