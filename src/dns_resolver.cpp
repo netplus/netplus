@@ -299,9 +299,10 @@ namespace netp {
 
 	void dns_resolver::restart() {
 		NETP_ASSERT( L->in_event_loop() );
-		if ((m_flag & dns_resolver_flag::f_restarting) == 0) {
+		if ((m_flag & dns_resolver_flag::f_restarting)) {
 			return;
 		}
+
 		m_flag |= dns_resolver_flag::f_restarting;
 		NRP<netp::promise<int>> p_stop = netp::make_ref<netp::promise<int>>();
 		_do_stop(p_stop);
@@ -447,7 +448,7 @@ namespace netp {
 	void dns_resolver::__ares_socket_state_cb(ares_socket_t socket_fd, int readable, int writable) {
 		//NETP_VERBOSE("[dns_resolver]__ares_state_cb, fd: %d, readable: %d, writeable: %d", socket_fd, readable, writable);
 
-		if ((m_flag & dns_resolver_flag::f_running) ==0) { return; }
+		//if ((m_flag & dns_resolver_flag::f_running) ==0) { return; }
 		ares_fd_monitor_map_t::iterator it = m_ares_fd_monitor_map.find(socket_fd);
 		//BOTH READ|WRITE would trigger erase
 		if (it == m_ares_fd_monitor_map.end()) { return; }
@@ -521,7 +522,7 @@ namespace netp {
 		} else {
 			adq->dnsquery_p->set(std::make_tuple( NETP_NEGATIVE(status), std::vector<netp::ipv4_t, netp::allocator<netp::ipv4_t>>()));
 		}
-		if (status == 11) {
+		if (status == ARES_ECONNREFUSED) {
 			adq->dnsr->L->schedule([dnsr=adq->dnsr]() {
 				dnsr->restart();
 			});
