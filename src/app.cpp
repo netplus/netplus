@@ -162,7 +162,7 @@ namespace netp {
 		}
 	}
 
-	app::app(app_cfg const& cfg = app_cfg() ) :
+	app::app(app_cfg const& cfg ) :
 		m_should_exit(false),
 		m_cfg(cfg),
 		m_app_startup_prev(cfg.app_startup_prev),
