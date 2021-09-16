@@ -237,14 +237,7 @@ namespace netp {
 	{
 	public:
 		bool run();
-
-		void test_memory();
-		void test_packet();
-		void test_netp_allocator(size_t loop);
-		void test_std_allocator(size_t loop);
-
 		void test_generic_check();
-
 		void benchmark_hash();
 	};
 }

@@ -534,6 +534,9 @@
     <ClInclude Include="..\..\3rd\c-ares\c-ares-1.17.2\src\lib\setup_once.h">
       <Filter>3rd\c-ares\src</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\memory_unit_test.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">
@@ -841,6 +844,9 @@
     </ClCompile>
     <ClCompile Include="..\..\3rd\c-ares\c-ares-1.17.2\src\lib\windows_port.c">
       <Filter>3rd\c-ares\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\memory_unit_test.cpp">
+      <Filter>Source Files\src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

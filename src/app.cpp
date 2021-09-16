@@ -24,6 +24,7 @@
 #endif
 
 #include <netp/app.hpp>
+#include <netp/memory_unit_test.hpp>
 
 namespace netp {
 	NRP<netp::signal_broker> g_sigbroker;
@@ -86,7 +87,7 @@ namespace netp {
 		netp::random_init_seed();
 		netp::tls_create<netp::impl::thread_data>();
 
-#ifdef NETP_MEMORY_USE_TLS_POOL
+#ifdef NETP_MEMORY_USE_ALLOCATOR_POOL
 		netp::global_pool_aligned_allocator::instance();
 		netp::tls_create<netp::pool_aligned_allocator_t>();
 #endif
@@ -104,7 +105,7 @@ namespace netp {
 #endif
 		netp::tls_destroy<netp::impl::thread_data>();
 
-#ifdef NETP_MEMORY_USE_TLS_POOL
+#ifdef NETP_MEMORY_USE_ALLOCATOR_POOL
 		netp::tls_destroy<netp::pool_aligned_allocator_t>();
 		netp::global_pool_aligned_allocator::instance()->destroy_instance();
 #endif
@@ -132,6 +133,10 @@ namespace netp {
 
 		if (cfg_json.find("def_loop_channel_buf") != cfg_json.end()) {
 			cfg_channel_buf(NETP_DEFAULT_POLLER_TYPE, cfg_json["def_loop_channel_buf"].get<int>());
+		}
+
+		if (cfg_json.find("memory_pool_slot_entries_size_level") != cfg_json.end() && cfg_json["memory_pool_slot_entries_size_level"].is_number()) {
+			set_memory_pool_slot_entries_size_level(cfg_json["memory_pool_slot_entries_size_level"].get<int>());
 		}
 	}
 
@@ -499,108 +504,6 @@ namespace netp {
 		return m_should_exit;
 	}
 
-	void app_test_unit::test_memory() {	
-		NRP<packet>* p = netp::allocator<NRP<packet>>::make();
-		netp::allocator<NRP<packet>>::trash(p);
-
-		NRP<packet>* pn = netp::allocator<NRP<packet>>::make_array(10);
-		netp::allocator<NRP<packet>>::trash_array(pn,10);
-
-		u8_t* u8ptr = netp::allocator<u8_t>::malloc(14, 16);
-		netp::allocator<u8_t>::free(u8ptr);
-	}
-
-	void app_test_unit::test_packet() {
-
-		{
-			NRP<netp::packet> p = netp::make_ref<netp::packet>();
-			for (size_t i = 0; i <= 1024*1024*2; ++i) {
-				p->write<u8_t>(u8_t(1));
-			}
-
-			NRP<netp::packet> p2 = netp::make_ref<netp::packet>();
-			for (size_t i = 0; i <= 1024*1024*2; ++i) {
-				p2->write_left<u8_t>(u8_t(1));
-			}
-
-			NETP_ASSERT(*p == *p2);
-		}
-
-		NRP<netp::packet> tmp = netp::make_ref<netp::packet>(1024 * 1024);
-	}
-
-#ifdef _NETP_DEBUG
-	#define POOL_CACHE_MAX_SIZE (16*1024)
-#else
-	#define POOL_CACHE_MAX_SIZE (64*1024)
-#endif
-
-	template <class vec_T, size_t size_max>
-	void test_vector_pushback(size_t loop) {
-		for (size_t k = 0; k < loop; ++k) {
-			vec_T vector_int;
-			for (size_t i = 0; i < size_max; ++i) {
-				//NETP_INFO("vec.capacity(): %u", vector_int.capacity());
-				vector_int.push_back(i);
-			}
-		}
-	}
-
-	struct __nonpod :
-		public netp::non_atomic_ref_base
-	{};
-
-	template <class vec_T, size_t size_max>
-	void test_vector_pushback_nonpod(size_t loop) {
-		for (size_t k = 0; k < loop; ++k) {
-			vec_T vector_int;
-			for (size_t i = 0; i < size_max; ++i) {
-				//NETP_INFO("vec.capacity(): %u", vector_int.capacity());
-				vector_int.push_back(netp::make_ref<__nonpod>());
-			}
-		}
-	}
-
-	void app_test_unit::test_netp_allocator(size_t loop) {
-		{
-			netp::benchmark mk("std::vector<size_t,netp::allocator<size_t>");
-			test_vector_pushback<std::vector<size_t,netp::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
-		}
-		{
-			netp::benchmark mk("std::vector<size_t,netp::allocator<size_t>");
-			test_vector_pushback<std::vector<size_t,netp::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
-		}
-
-		{
-			netp::benchmark mk("std::vector<NRP<__nonpod>,netp::allocator<NRP<__nonpod>>");
-			test_vector_pushback_nonpod<std::vector<NRP<__nonpod>, netp::allocator<NRP<__nonpod>>>, POOL_CACHE_MAX_SIZE>(loop);
-		}
-		{
-			netp::benchmark mk("std::vector<NRP<__nonpod>,netp::allocator<NRP<__nonpod>>");
-			test_vector_pushback_nonpod<std::vector<NRP<__nonpod>, netp::allocator<NRP<__nonpod>>>, POOL_CACHE_MAX_SIZE>(loop);
-		}
-	}
-
-	void app_test_unit::test_std_allocator(size_t loop) {
-		{
-			netp::benchmark mk("std::vector<size_t,std::allocator<size_t>");
-			test_vector_pushback<std::vector<size_t, std::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
-		}
-		{
-			netp::benchmark mk("std::vector<size_t,std::allocator<size_t>");
-			test_vector_pushback<std::vector<size_t, std::allocator<size_t>>, POOL_CACHE_MAX_SIZE>(loop);
-		}
-
-		{
-			netp::benchmark mk("std::vector<NRP<__nonpod>,std::allocator<NRP<__nonpod>>");
-			test_vector_pushback_nonpod<std::vector<NRP<__nonpod>, std::allocator<NRP<__nonpod>>>, POOL_CACHE_MAX_SIZE>(loop);
-		}
-		{
-			netp::benchmark mk("std::vector<NRP<__nonpod>,std::allocator<NRP<__nonpod>>");
-			test_vector_pushback_nonpod<std::vector<NRP<__nonpod>, std::allocator<NRP<__nonpod>>>, POOL_CACHE_MAX_SIZE>(loop);
-		}
-	}
-
 	void app_test_unit::test_generic_check() {
 		const char* loopback[] = {
 			"127.0.0.1",
@@ -640,19 +543,8 @@ namespace netp {
 	}
 
 	bool app_test_unit::run() {
-#ifdef _NETP_DEBUG
-		test_memory();
-#endif
 
-		test_packet();
-
-		size_t loop = 2;
-#ifdef _NETP_DEBUG
-		loop = 1;
-#endif
-
-		test_netp_allocator(loop);
-		test_std_allocator(loop);
+		netp::run_test<memory_test_unit>();
 
 #ifdef _NETP_DEBUG
 		test_generic_check();

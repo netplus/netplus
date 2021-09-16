@@ -95,6 +95,7 @@
     <ClInclude Include="..\..\include\netp\http\chunk_encoder.hpp" />
     <ClInclude Include="..\..\include\netp\http\url_parser.hpp" />
     <ClInclude Include="..\..\include\netp\list.hpp" />
+    <ClInclude Include="..\..\include\netp\memory_unit_test.hpp" />
     <ClInclude Include="..\..\include\netp\poller_abstract.hpp" />
     <ClInclude Include="..\..\include\netp\poller_epoll.hpp" />
     <ClInclude Include="..\..\include\netp\event_broker.hpp" />
@@ -259,6 +260,7 @@
     <ClCompile Include="..\..\src\logger\sys_logger.cpp" />
     <ClCompile Include="..\..\src\logger_broker.cpp" />
     <ClCompile Include="..\..\src\memory.cpp" />
+    <ClCompile Include="..\..\src\memory_unit_test.cpp" />
     <ClCompile Include="..\..\src\os\api_wrapper_android.cpp" />
     <ClCompile Include="..\..\src\os\api_wrapper_gnulinux.cpp" />
     <ClCompile Include="..\..\src\os\api_wrapper_win.cpp" />

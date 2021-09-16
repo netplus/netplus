@@ -16,11 +16,14 @@
 #include <netp/thread_impl/spin_mutex.hpp>
 #include <netp/singleton.hpp>
 
-#define NETP_MEMORY_USE_TLS_POOL 1
-//#define NETP_MEMORY_USE_ALIGN_MALLOC 1
-//#define NETP_MEMORY_USE_STD_MALLOC
+
+
+#define NETP_MEMORY_USE_ALLOCATOR_POOL 1
+//#define NETP_MEMORY_USE_ALLOCATOR_STD
 
 namespace netp {
+
+	extern void set_memory_pool_slot_entries_size_level(int l);
 
 	enum TABLE {
 		T0 = 0,
@@ -35,11 +38,13 @@ namespace netp {
 		T9,
 		T10,
 		T11,
-		T12,
-		T13,
+//		T12,
+//		T13,
 		//T14,
 		T_COUNT
 	};
+
+	extern const u32_t TABLE_BOUND[TABLE::T_COUNT + 1];
 
 	//be careful, ptr should better aligned to 8bytes
 	struct table_slot_t {
@@ -49,7 +54,7 @@ namespace netp {
 		u8_t** ptr; //
 
 		//if count == slot_max, we move half of count into global
-		//if count ==0, we borrow half of slot_max from global 
+		//if count ==0, we borrow half of slot_max from global
 	};
 
 #define TABLE_SLOT_COUNT(tst) (tst->count)
@@ -463,10 +468,8 @@ namespace netp {
 	};
 
 	template<class T>
-#ifdef NETP_MEMORY_USE_TLS_POOL
+#ifdef NETP_MEMORY_USE_ALLOCATOR_POOL
 	using allocator = netp::allocator_pool<T>;
-#elif defined(NETP_MEMORY_USE_ALIGN_MALLOC)
-	using allocator = netp::allocator_align_malloc<T>;
 #else
 	using allocator = netp::allocator_std_malloc<T>;
 #endif
