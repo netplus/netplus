@@ -335,7 +335,7 @@ __fast_path:
 				 return (u8_t*)a_hdr + __AH_UPDATE_OFFSET__(a_hdr, alignment);
 			}
 			//borrow
-			size_t c = global_pool_aligned_allocator::instance()->borrow(t, s, tst);
+			size_t c = global_pool_aligned_allocator::instance()->borrow(t, s, tst, (tst->max) >> 1);
 			NETP_ASSERT(c == tst->count);
 			if (c != 0) {
 				goto __fast_path;	
@@ -374,7 +374,7 @@ __fast_path:
 			if ((tst->count < tst->max)) {
 				tst->ptr[tst->count++] = (u8_t*)a_hdr;
 				if (tst->count == tst->max) {
-					global_pool_aligned_allocator::instance()->commit(t, s, tst);
+					global_pool_aligned_allocator::instance()->commit(t, s, tst, (tst->max) >> 1);
 				}
 				return;
 			}
@@ -463,25 +463,25 @@ __fast_path:
 		}
 	}
 
-	u32_t global_pool_aligned_allocator::commit(u8_t t, u8_t s, table_slot_t* tst) {
+	u32_t global_pool_aligned_allocator::commit(u8_t t, u8_t s, table_slot_t* tst, u32_t commit_count) {
 		lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
 		u32_t& _gcount = m_tables[t][s]->count;
 		u32_t& _tcount = tst->count;
 		u32_t tt = 0;
-		if ( (_gcount < (m_tables[t][s]->max - 1)) && ( _tcount > ( (tst->max)>>1) ) ) {
+		if ( (_gcount < (m_tables[t][s]->max)) && ( _tcount > commit_count) ) {
 			m_tables[t][s]->ptr[_gcount++] = tst->ptr[--_tcount];
 			++tt;
 		}
 		return tt;
 	}
 
-	u32_t global_pool_aligned_allocator::borrow(u8_t t, u8_t s, table_slot_t* tst) {
+	u32_t global_pool_aligned_allocator::borrow(u8_t t, u8_t s, table_slot_t* tst, u32_t borrow_count) {
 		NETP_ASSERT( tst->count ==0 );
 		NETP_ASSERT(tst->max > 0);
 		lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
 		u32_t& _gcount = m_tables[t][s]->count;
 		u32_t& _tcount = tst->count;
-		while ((_gcount > 0) && (_tcount < ((tst->max) >> 1))) {
+		while ((_gcount > 0) && (_tcount < borrow_count)) {
 			tst->ptr[_tcount++] = m_tables[t][s]->ptr[--_gcount];
 		}
 		return _tcount;

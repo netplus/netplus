@@ -89,8 +89,8 @@ namespace netp {
 		virtual ~global_pool_aligned_allocator();
 		void incre_thread_count();
 		void decre_thread_count();
-		u32_t commit(u8_t t, u8_t slot, table_slot_t* tst);
-		u32_t borrow(u8_t t, u8_t slot, table_slot_t* tst);
+		u32_t commit(u8_t t, u8_t slot, table_slot_t* tst, u32_t count);
+		u32_t borrow(u8_t t, u8_t slot, table_slot_t* tst, u32_t count);
 	};
 
 	using pool_aligned_allocator_t = pool_aligned_allocator;
