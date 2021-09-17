@@ -190,6 +190,8 @@ namespace netp {
 
 		m_flag &= ~dns_resolver_flag::f_launching;
 		m_flag |= dns_resolver_flag::f_running;
+
+		NETP_INFO("[dns_resolver]launched");
 		p->set(netp::OK);
 #endif
 		
@@ -294,7 +296,7 @@ namespace netp {
 		NETP_ASSERT(m_tm_dnstimeout != nullptr);
 		m_tm_dnstimeout = nullptr;
 
-		NETP_INFO("[dns_resolver]exit");
+		NETP_INFO("[dns_resolver]stoped");
 		p->set(netp::OK);
 	}
 

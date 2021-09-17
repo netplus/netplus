@@ -16,9 +16,7 @@
 #include <netp/thread_impl/spin_mutex.hpp>
 #include <netp/singleton.hpp>
 
-
-
-//#define NETP_MEMORY_USE_ALLOCATOR_POOL 1
+#define NETP_MEMORY_USE_ALLOCATOR_POOL 1
 //#define NETP_MEMORY_USE_ALLOCATOR_STD
 
 namespace netp {
@@ -100,9 +98,9 @@ namespace netp {
 
 	using pool_aligned_allocator_t = pool_aligned_allocator;
 
-	struct tag_allocator_std_malloc {};
-	struct tag_allocator_default_new {};
 	struct tag_allocator_tls_pool {};
+	struct tag_allocator_std_malloc {};
+//	struct tag_allocator_default_new {};
 
 	//std::allocator<T> AA;
 	template<class allocator_t>
@@ -124,10 +122,12 @@ namespace netp {
 	struct allocator_wrapper<tag_allocator_std_malloc> {
 		__NETP_FORCE_INLINE static void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 			(void)alignment;
+			NETP_ASSERT(alignment<= sizeof(std::max_align_t));
 			return std::malloc(n);
 		}
 		__NETP_FORCE_INLINE static void* calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 			(void)alignment;
+			NETP_ASSERT(alignment <= sizeof(std::max_align_t));
 			return std::calloc(1,n);
 		}
 		__NETP_FORCE_INLINE static void free(void* p) {
@@ -135,10 +135,12 @@ namespace netp {
 		}
 		__NETP_FORCE_INLINE static void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
 			(void)(alignment);
+			NETP_ASSERT(alignment <= sizeof(std::max_align_t));
 			return std::realloc(ptr, size);
 		}
 	};
 
+	/*
 	template<>
 	struct allocator_wrapper<tag_allocator_default_new> {
 		__NETP_FORCE_INLINE static void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
@@ -160,6 +162,7 @@ namespace netp {
 			throw std::bad_alloc();
 		}
 	};
+	*/
 
 	template<>
 	struct allocator_wrapper<tag_allocator_tls_pool> {
@@ -384,6 +387,8 @@ namespace netp {
 	};
 
 	//thread safe
+	//@deprecated
+	/*
 	template <class T>
 	struct allocator_default_new:
 		public allocator_base<T, allocator_wrapper<tag_allocator_default_new>>
@@ -424,7 +429,7 @@ namespace netp {
 		{
 		}
 	};
-
+	*/
 	//thread safe
 	template <class T>
 	struct allocator_pool :
