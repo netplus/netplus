@@ -523,8 +523,11 @@ __fast_path:
 	void global_pool_aligned_allocator::incre_thread_count() {
 		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
 			for (size_t s = 0; s < NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t); ++s) {
-				//NETP_ASSERT(TABLE_SLOT_ENTRIES_INIT_LIMIT[t][s] > 0);
 				lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s] );
+				if (TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s] == 0) {
+					NETP_ASSERT(m_tables[t][s]->max == 0);
+					continue;
+				}
 				u32_t max_n = m_tables[t][s]->max + TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s];
 				u8_t* __ptr = (u8_t*)(std::realloc(m_tables[t][s], sizeof(table_slot_t) + sizeof(u8_t*) * max_n));
 				m_tables[t][s] = (table_slot_t*)__ptr;
@@ -539,6 +542,11 @@ __fast_path:
 			for (size_t s = 0; s < NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t); ++s) {
 				//NETP_ASSERT(TABLE_SLOT_ENTRIES_INIT_LIMIT[t][s] > 0);
 				lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
+				if (TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s] == 0) {
+					NETP_ASSERT(m_tables[t][s]->max == 0);
+					continue;
+				}
+
 				NETP_ASSERT(m_tables[t][s]->max >= TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]);
 				u32_t max_n = m_tables[t][s]->max - TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s];
 				u32_t& _gcount = m_tables[t][s]->count;
