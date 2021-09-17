@@ -421,17 +421,17 @@ __fast_path:
 				 return (u8_t*)a_hdr + __AH_UPDATE_OFFSET__(a_hdr, alignment);
 			}
 
-			if (tst->max > 0) {
+			if (tst->max) {
 				//tst->max ==0 means no pool object allowed in this slot
 				//borrow
 				size_t c = global_pool_aligned_allocator::instance()->borrow(t, s, tst, (tst->max) >> 1);
 				NETP_ASSERT(c == tst->count);
-				if (tst->count > 0) {
+				if (c != 0) {
 					goto __fast_path;
 				}
 			}
 
-			//for tst->max >0 size must be apply to t,s
+			//for tst->max>0 size must be apply to t,s
 			slot_size = calc_SIZE_by_TABLE_SLOT(t,f,s);
 		}
 
@@ -443,7 +443,7 @@ __fast_path:
 			return 0;
 		}
 
-		//size used by realloc
+		//size is used by realloc
 		__AH_UPDATE_SIZE(a_hdr, size);
 		a_hdr->hdr.AH_4_7.t = t;
 		a_hdr->hdr.AH_4_7.s = s;
