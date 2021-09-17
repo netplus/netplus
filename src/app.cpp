@@ -122,6 +122,8 @@ namespace netp {
 		if (cfg_json.is_discarded()) {
 			return;
 		}
+		if (__cfg_json_checked) { return; }
+		__cfg_json_checked = true;
 
 		if (cfg_json.find("log") != cfg_json.end() && cfg_json["log"].is_string()) {
 			cfg_log_filepathname(cfg_json["log"].get<std::string>());

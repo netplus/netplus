@@ -29,6 +29,7 @@ namespace netp {
 		fn_app_hook_t app_event_loop_deinit_prev;
 		fn_app_hook_t app_event_loop_deinit_post;
 
+		bool __cfg_json_checked;
 		void __init_from_cfg_json(const char* jsonfile);
 		void __parse_cfg(int argc, char** argv);
 
@@ -55,7 +56,8 @@ namespace netp {
 			app_event_loop_init_prev(nullptr),
 			app_event_loop_init_post(nullptr),
 			app_event_loop_deinit_prev(nullptr),
-			app_event_loop_deinit_post(nullptr)
+			app_event_loop_deinit_post(nullptr),
+			__cfg_json_checked(false)
 		{
 			NETP_ASSERT( argc>=1 );
 			__cfg_default_loop_cfg();
@@ -64,6 +66,10 @@ namespace netp {
 			netp::replace(data, std::string("-"), std::string("_"), data_);
 			cfg_log_filepathname(std::string(argv[0]) + std::string(".") + data_ + ".log");
 			__parse_cfg(argc, argv);
+
+			if (!__cfg_json_checked) {
+				__init_from_cfg_json("./netp.cfg.json");
+			}
 		}
 
 		app_cfg() :
@@ -83,6 +89,7 @@ namespace netp {
 			std::string data_;
 			netp::replace(data, std::string("-"), std::string("_"), data_);
 			cfg_log_filepathname("netp_" + data_ + ".log");
+			__init_from_cfg_json("./netp.cfg.json");
 		}
 
 		void cfg_poller_max(io_poller_type t, int c) {
