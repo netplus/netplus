@@ -18,7 +18,7 @@
 
 
 
-#define NETP_MEMORY_USE_ALLOCATOR_POOL 1
+//#define NETP_MEMORY_USE_ALLOCATOR_POOL 1
 //#define NETP_MEMORY_USE_ALLOCATOR_STD
 
 namespace netp {
