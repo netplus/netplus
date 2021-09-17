@@ -140,6 +140,7 @@ namespace netp {
 #ifdef _NETP_USE_C_ARES
 		int ares_init_rt = ares_library_init(ARES_LIB_INIT_ALL);
 		if (ares_init_rt != ARES_SUCCESS) {
+			m_flag &= ~dns_resolver_flag::f_launching;
 			p->set(ares_init_rt);
 			return;
 		}
@@ -155,11 +156,11 @@ namespace netp {
 		
 		ares_init_rt = ares_init_options(&m_ares_channel, &ares_opt, ares_flag);
 		if (ares_init_rt != ARES_SUCCESS) {
+			m_flag &= ~dns_resolver_flag::f_launching;
 			p->set(ares_init_rt);
 			return;
 		}
 
-		
 		ares_addr_node* ns;
 		int read_server_rt = ares_get_servers(m_ares_channel, &ns);
 		NETP_ASSERT(read_server_rt == ARES_SUCCESS);
@@ -180,8 +181,8 @@ namespace netp {
 			break;
 			}
 		}
-		ares_free_data(ns);
 
+		ares_free_data(ns);
 		ares_set_socket_callback(m_ares_channel, ___ares_socket_create_cb, this);
 
 		NETP_ASSERT(m_tm_dnstimeout == nullptr);
