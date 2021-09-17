@@ -137,8 +137,8 @@ namespace netp {
 		if (l < L_EXTREM_LOW) {
 			l = L_EXTREM_LOW;
 		}
-		else if (l > L_LARGE) {
-			l = L_LARGE;
+		else if (l > L_EXTREM_LARGE) {
+			l = L_EXTREM_LARGE;
 		}
 		g_memory_pool_slot_entries_size_level = SLOT_ENTRIES_SIZE_LEVEL(l);
 	}
@@ -266,7 +266,7 @@ namespace netp {
 	}while(false);\
 
 #define calc_TABLE(size,t) do { \
-	const size_t div128 = (size>>7); \
+	size_t div128 = (size>>7); \
 	switch (div128) { \
 	case 0: \
 	{ \
@@ -393,12 +393,12 @@ namespace netp {
 		aligned_hdr* a_hdr;
 
 		//assume that the std::malloc always return address aligned to alignof(std::max_align_t)
-		size = (alignment == alignof(std::max_align_t)) ? size : (size +alignment);
-		calc_TABLE(size,t);
+		size_t slot_size = (alignment == alignof(std::max_align_t)) ? size : (size +alignment);
+		calc_TABLE(slot_size,t);
 
 		if (NETP_LIKELY(t<T_COUNT) ) {
 
-			const size_t slot_size = (size - TABLE_BOUND[t]);
+			slot_size -= TABLE_BOUND[t];
 			u8_t f = calc_F_by_slot(t);
 			s = u8_t(slot_size >> (t + f));
 			(slot_size % ((1ULL << (t + f)))) == 0 ? --s : 0;
@@ -411,6 +411,7 @@ namespace netp {
 			if (tst->count) {
 __fast_path:
 	#ifdef _NETP_DEBUG
+				NETP_ASSERT(TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]>0);
 				NETP_ASSERT(tst->ptr[tst->count-1] != 0);
 	#endif
 				 a_hdr = (aligned_hdr*) (tst->ptr[--tst->count]);
@@ -428,20 +429,21 @@ __fast_path:
 				if (tst->count > 0) {
 					goto __fast_path;
 				}
-
-				//for tst->max >0 size must be apply to t,s
-				size = calc_SIZE_by_TABLE_SLOT(t, f, s);
 			}
+
+			//for tst->max >0 size must be apply to t,s
+			slot_size = calc_SIZE_by_TABLE_SLOT(t,f,s);
 		}
 
 		//std::malloc alwasy return ptr aligned to alignof(std::max_align_t), so ,we do not need to worry about the hdr access
-		a_hdr = (aligned_hdr*)std::malloc(sizeof(aligned_hdr)+ size );
+		a_hdr = (aligned_hdr*)std::malloc(sizeof(aligned_hdr)+ slot_size );
 		NETP_ASSERT(std::size_t(a_hdr) % alignof(std::max_align_t) == 0);
 
 		if (NETP_UNLIKELY(a_hdr == 0)) {
 			return 0;
 		}
 
+		//size used by realloc
 		__AH_UPDATE_SIZE(a_hdr, size);
 		a_hdr->hdr.AH_4_7.t = t;
 		a_hdr->hdr.AH_4_7.s = s;
@@ -459,7 +461,7 @@ __fast_path:
 		table_slot_t*& tst = (m_tables[t][s]);
 
 		//if tst->max == tst->count ==0, skiped
-		if (NETP_LIKELY((t < T_COUNT) && (tst->count<tst->max) ) ) {
+		if ((t < T_COUNT) && (tst->count<tst->max) ) {
 			tst->ptr[tst->count++] = (u8_t*)a_hdr;
 			if (tst->count == tst->max) {
 				global_pool_aligned_allocator::instance()->commit(t, s, tst, (tst->max) >> 1);
