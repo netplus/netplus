@@ -19,12 +19,12 @@ namespace netp {
 	public:
 		poller_epoll():
 			poller_interruptable_by_fd(),
-			m_epfd(-1)
+			m_epfd(NETP_INVALID_SOCKET)
 		{
 		}
 
 		~poller_epoll() {
-			NETP_ASSERT( m_epfd == -1 );
+			NETP_ASSERT( m_epfd == NETP_INVALID_SOCKET);
 		}
 
 		int watch(u8_t flag, io_ctx* ctx) override {
@@ -99,7 +99,7 @@ namespace netp {
 			if (-1 == rt) {
 				NETP_THROW("EPOLL::deinit epoll handle failed");
 			}
-			m_epfd = -1;
+			m_epfd = NETP_INVALID_SOCKET;
 			NETP_TRACE_IOE("[EPOLL] EPOLL::deinit() done");
 		}
 
