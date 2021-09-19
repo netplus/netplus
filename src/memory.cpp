@@ -387,6 +387,7 @@ namespace netp {
 
 	void* pool_aligned_allocator::malloc(size_t size, size_t alignment) {
 		NETP_ASSERT( size < _NETP_ALIGN_MALLOC_SIZE_MAX );
+		NETP_ASSERT( (alignment%alignof(std::max_align_t)) == 0 && alignment >= alignof(std::max_align_t) );
 		u8_t t = T_COUNT;
 		u8_t s = u8_t(-1);
 
@@ -413,6 +414,7 @@ __fast_path:
 	#ifdef _NETP_DEBUG
 				NETP_ASSERT(TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]>0);
 				NETP_ASSERT(tst->ptr[tst->count-1] != 0);
+				NETP_ASSERT(calc_SIZE_by_TABLE_SLOT(t, f, s) >= slot_size);
 	#endif
 				 a_hdr = (aligned_hdr*) (tst->ptr[--tst->count]);
 
@@ -431,14 +433,12 @@ __fast_path:
 				}
 			}
 
-			//for tst->max>0 size must be apply to t,s
+			//apply to upper edge of that slot
 			slot_size = calc_SIZE_by_TABLE_SLOT(t,f,s);
 		}
 
 		//std::malloc alwasy return ptr aligned to alignof(std::max_align_t), so ,we do not need to worry about the hdr access
 		a_hdr = (aligned_hdr*)std::malloc(sizeof(aligned_hdr)+ slot_size );
-		NETP_ASSERT(std::size_t(a_hdr) % alignof(std::max_align_t) == 0);
-
 		if (NETP_UNLIKELY(a_hdr == 0)) {
 			return 0;
 		}
@@ -477,16 +477,15 @@ __fast_path:
 		//align_alloc first
 		if (old_ptr == 0) { return pool_aligned_allocator::malloc(size, alignment); }
 
+		u8_t* newptr = (u8_t*)pool_aligned_allocator::malloc(size, alignment);
+		//we would never get old ptr, cuz old ptr have not yet been returned
+		NETP_ASSERT(newptr != old_ptr);
+
 		u8_t old_offset = *(reinterpret_cast<u8_t*>(old_ptr) - 1);
 		aligned_hdr* old_a_hdr = (aligned_hdr*)((u8_t*)old_ptr - old_offset);
 		NETP_ASSERT(old_a_hdr->hdr.AH_4_7.offset == old_offset);
 
 		size_t old_size = __AH_SIZE(old_a_hdr);
-
-		u8_t* newptr = (u8_t*)pool_aligned_allocator::malloc(size, alignment);
-		//we would never get old ptr, cuz old ptr have not yet been returned
-		NETP_ASSERT(newptr != old_ptr);
-
 		//do copy
 		std::memcpy(newptr, old_ptr, NETP_MIN(size, old_size));
 
