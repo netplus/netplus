@@ -103,6 +103,10 @@ namespace netp {
 				}
 			}
 
+			if (c == 0 && t == NETP_DEFAULT_POLLER_TYPE) {
+				c = 1;
+			}
+
 			if (c != poller_max[t]) {
 				poller_max[t]= c;
 				//update poller max
@@ -111,7 +115,6 @@ namespace netp {
 		}
 
 		void cfg_poller_count(io_poller_type t, int c) {
-			const int corecount = std::thread::hardware_concurrency();
 			if (c > poller_max[t]) {
 				c = poller_max[t];
 			} else if (c <= 0) {
