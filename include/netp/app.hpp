@@ -82,7 +82,8 @@ namespace netp {
 			app_event_loop_init_prev(nullptr),
 			app_event_loop_init_post(nullptr),
 			app_event_loop_deinit_prev(nullptr),
-			app_event_loop_deinit_post(nullptr)
+			app_event_loop_deinit_post(nullptr),
+			__cfg_json_checked(false)
 		{
 			__cfg_default_loop_cfg();
 			std::string data = netp::curr_local_data_str();
@@ -93,15 +94,19 @@ namespace netp {
 		}
 
 		void cfg_poller_max(io_poller_type t, int c) {
-			if (c > 0) {
+			if (c < 0) {
+				c = 0;
+			} else {
 				const int max = (std::thread::hardware_concurrency() << 1);
 				if (c > max) {
 					c = max;
 				}
-				else if (c < 1) {
-					c = 1;
-				}
-				poller_max[t] = c;
+			}
+
+			if (c != poller_max[t]) {
+				poller_max[t]= c;
+				//update poller max
+				cfg_poller_count(t, poller_count[t]);
 			}
 		}
 

@@ -195,8 +195,8 @@ namespace netp {
 		if (m_app_exit_post ) {
 			 m_app_exit_post();
 		}
-		//quick destroy
-		//app_thread_init::instance()->destroy_instance();
+
+		app_thread_init::instance()->destroy_instance();
 	}
 
 	void app::_startup() {

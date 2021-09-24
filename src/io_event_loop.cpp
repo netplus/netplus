@@ -230,6 +230,7 @@ namespace netp {
 			{
 				lock_guard<shared_mutex> lg(m_loop_mtx[t]);
 				if (m_loop[t].size() == 0) {
+					io_event_loop_vector().swap(m_loop[t]);
 					//NETP_INFO("[io_event_loop][%u]__dealloc_poller end, all event loop dattached", t);
 					return;//exit
 				}
