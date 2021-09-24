@@ -88,19 +88,20 @@ namespace netp {
 			if (-1 == m_epfd) {
 				NETP_THROW("create epoll handle failed");
 			}
-			NETP_VERBOSE("[EPOLL]init write epoll handle ok");
+			NETP_VERBOSE("[EPOLL][##%u]init epoll handle ok", m_epfd);
 			poller_interruptable_by_fd::init();
 		}
 
 		void deinit() override {
 			poller_interruptable_by_fd::deinit();
 			NETP_ASSERT(m_epfd != NETP_INVALID_SOCKET);
+			NETP_VERBOSE("[EPOLL][##%u]EPOLL::deinit() begin", m_epfd);
 			int rt = ::close(m_epfd);
 			if (-1 == rt) {
 				NETP_THROW("EPOLL::deinit epoll handle failed");
 			}
 			m_epfd = NETP_INVALID_SOCKET;
-			NETP_TRACE_IOE("[EPOLL] EPOLL::deinit() done");
+			NETP_VERBOSE("[EPOLL][##%u]EPOLL::deinit() done", m_epfd );
 		}
 
 		void poll(i64_t wait_in_nano, std::atomic<bool>& W) override {

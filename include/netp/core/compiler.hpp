@@ -83,6 +83,7 @@
 
 
 #define NETP_DEFAULT_ALIGN (alignof(std::max_align_t))
+#define NETP_IS_DEFAULT_ALIGN(alignment) (alignof(std::max_align_t) == alignment)
 
 #define _NETP_OVERRIDE		override
 #define _NETP_NOEXCEPT		noexcept

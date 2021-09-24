@@ -55,9 +55,11 @@ namespace netp {
 		//if count ==0, we borrow half of slot_max from global
 	};
 
-#define TABLE_SLOT_COUNT(tst) (tst->count)
-#define TABLE_SLOT_POP(tst) ( tst->ptr + sizeof(u8_t*) * (--tst->count)))
-#define TABLE_SLOT_PUSH(tst,ptr) (tst->ptr + sizeof(u8_t*) * (tst->count++)))
+	static_assert((alignof(std::max_align_t) % alignof(table_slot_t)) == 0, "check table_slot_t alignment");
+
+//#define TABLE_SLOT_COUNT(tst) (tst->count)
+//#define TABLE_SLOT_POP(tst) ( tst->ptr + sizeof(u8_t*) * (--tst->count)))
+//#define TABLE_SLOT_PUSH(tst,ptr) (tst->ptr + sizeof(u8_t*) * (tst->count++)))
 
 	//NOTE: if want to share address with different alignment in the same pool, we need to check alignment and do a re-align if necessary
 	class pool_aligned_allocator {
