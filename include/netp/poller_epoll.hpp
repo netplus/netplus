@@ -100,8 +100,8 @@ namespace netp {
 			if (-1 == rt) {
 				NETP_THROW("EPOLL::deinit epoll handle failed");
 			}
-			m_epfd = NETP_INVALID_SOCKET;
 			NETP_VERBOSE("[EPOLL][##%u]EPOLL::deinit() done", m_epfd );
+			m_epfd = NETP_INVALID_SOCKET;
 		}
 
 		void poll(i64_t wait_in_nano, std::atomic<bool>& W) override {
