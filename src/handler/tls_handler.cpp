@@ -221,7 +221,7 @@ namespace netp { namespace handler {
 
 	void tls_handler::close(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx) {
 		if(m_flag&(f_ch_handler_close_called|f_ch_closed)) {
-			chp->set(netp::E_INVALID_STATE) ;
+			chp->set(netp::E_CHANNEL_HANDLER_INVALID_STATE) ;
 			return;
 		}
 		m_flag |= f_ch_handler_close_called;
@@ -272,7 +272,7 @@ namespace netp { namespace handler {
 	void tls_handler::close_write(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx) {
 		//flush all pending data before do ctx->close_write();
 		if (m_flag & (f_ch_handler_close_write_called|f_ch_write_closed)) {
-			chp->set(netp::E_INVALID_STATE);
+			chp->set(netp::E_CHANNEL_HANDLER_INVALID_STATE);
 			return;
 		}
 		m_flag |= f_ch_handler_close_write_called;

@@ -467,7 +467,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_BAD_CAST										= -20015;
 	const int E_OP_INPROCESS								= -20016;
 	const int E_OP_ABORT									= -20017;
-	const int E_OP_TIMEOUT								= -20018;
+	const int E_OP_TIMEOUT								= -20018;	
 	const int E_OP_ALREADY = -20019;
 
 	const int E_EVENT_BROKER_BINDED_ALREADY = -21001;
@@ -523,6 +523,8 @@ const int  E_ERANGE = -34;         /* Result too large */
 
 	const int E_CHANNEL_OVERLAPPED_OP_TRY = -34017;
 	const int E_CHANNEL_MISSING_MAKER = -34018;//custom socket channel must have its own maker
+	const int E_CHANNEL_HANDLER_INVALID_STATE = -34019;
+
 	const int E_FORWARDER_DOMAIN_LEN_EXCEED	= -35001;
 	const int E_FORWARDER_INVALID_IPV4					= -35002;
 	const int E_FORWARDER_DIAL_DST_FAILED			= -35003;
@@ -535,6 +537,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_DNS_NOMEM									= -36006;
 	const int E_DNS_BADQUERY								= -36007;
 	const int E_DNS_SERVER_SHUTDOWN				= -36008;
+	const int E_DNS_INVALID_STATE						= -36009;
 
 	const int E_MUX_STREAM_TRANSPORT_CLOSED = -37001;
 	const int E_MUX_STREAM_RST = -37002;

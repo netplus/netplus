@@ -132,7 +132,7 @@ namespace netp {
 		NETP_ASSERT(L->in_event_loop());
 
 		if ( m_flag &( u8_t(dns_resolver_flag::f_launching|dns_resolver_flag::f_running|dns_resolver_flag::f_stop_called)) ) {
-			p->set(netp::E_INVALID_STATE);
+			p->set(netp::E_DNS_INVALID_STATE);
 			return;
 		}
 
@@ -269,7 +269,7 @@ namespace netp {
 	void dns_resolver::_do_stop(NRP<netp::promise<int>> const& p) {
 		NETP_ASSERT(L->in_event_loop());
 		if ((m_flag& dns_resolver_flag::f_running) == 0) {
-			p->set(netp::E_INVALID_STATE);
+			p->set(netp::E_DNS_INVALID_STATE);
 			return;
 		}
 		m_flag &= ~dns_resolver_flag::f_running;
@@ -538,7 +538,7 @@ namespace netp {
 	void dns_resolver::_do_resolve(string_t const& domain, NRP<dns_query_promise> const& p) {
 		NETP_ASSERT(L->in_event_loop());
 		if ( (m_flag& dns_resolver_flag::f_running) == 0) {
-			p->set(std::make_tuple(netp::E_INVALID_STATE,std::vector<ipv4_t,netp::allocator<ipv4_t>>()));
+			p->set(std::make_tuple(netp::E_DNS_INVALID_STATE,std::vector<ipv4_t,netp::allocator<ipv4_t>>()));
 			return;
 		}
 
