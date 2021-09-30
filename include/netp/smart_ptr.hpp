@@ -816,13 +816,13 @@ namespace netp {
 
 			//note: std::atomic_signal_fence(std::memory_order_acq_rel) + __atomic_p_t::fetch_add(1, std::memory_order_relaxed) == __atomic_p_t::fetch_add(1, std::memory_order_acq_rel);
 			//std::atomic_signal_fence(std::memory_order_acq_rel);
-			NETP_ASSERT(0 < __atomic_p_t::load(std::memory_order_relaxed));
+			NETP_ASSERT(0 < __atomic_p_t::load(std::memory_order_acquire));
 			//__atomic_p_t::fetch_add(1, std::memory_order_relaxed);
 			__atomic_p_t::fetch_add(1, std::memory_order_acq_rel);
 		}
 
 		__NETP_FORCE_INLINE bool __ref_drop() {
-			NETP_ASSERT(0 < __atomic_p_t::load(std::memory_order_relaxed));
+			NETP_ASSERT(0 < __atomic_p_t::load(std::memory_order_acquire));
 			//@acq_rel guard delete operation,
 			//@it make sure all modification happens before delete be synchronized to other cpu, and make sure there is no compiler reorder across decre
 			return (__atomic_p_t::fetch_sub(1, std::memory_order_acq_rel) == 1);
