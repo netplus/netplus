@@ -549,8 +549,8 @@ namespace netp {
 		netp::run_test<memory_test_unit>();
 
 #ifdef _NETP_DEBUG
-		test_generic_check();
-		benchmark_hash();
+//		test_generic_check();
+//		benchmark_hash();
 #endif
 
 		return true;
