@@ -10,7 +10,7 @@
 
 #include <netp/socket_api.hpp>
 #include <netp/channel.hpp>
-#include <netp/dns_resolver.hpp>
+#include <netp/app.hpp>
 
 //@NOTE: turn on this option would result in about 20% performance boost for EPOLL
 #define NETP_ENABLE_FAST_WRITE

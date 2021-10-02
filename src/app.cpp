@@ -5,9 +5,6 @@
 #include <signal.h>
 
 #include <netp/CPUID.hpp>
-#include <netp/logger_broker.hpp>
-#include <netp/io_event_loop.hpp>
-#include <netp/dns_resolver.hpp>
 #include <netp/socket.hpp>
 #include <netp/logger/console_logger.hpp>
 #include <netp/logger/file_logger.hpp>
@@ -62,7 +59,125 @@ namespace netp {
 		g_sigbroker->unbind_by_handle_id(handle_id);
 	}
 
-	app_thread_init::app_thread_init() 
+
+	void app_cfg::__cfg_default_loop_cfg() {
+		const int hcore = std::thread::hardware_concurrency();
+		for (size_t i = 0; i < T_POLLER_MAX; ++i) {
+			cfg_poller_max(io_poller_type(i), hcore << 1);
+			if (i == NETP_DEFAULT_POLLER_TYPE) {
+				cfg_poller_count(io_poller_type(i), int(std::ceil(hcore) * 1.5f));
+			}
+			else {
+				//0 means disabled
+				cfg_poller_count(io_poller_type(i), -1);
+			}
+			event_loop_cfgs[i].ch_buf_size = (128 * 1024);
+		}
+	}
+	app_cfg::app_cfg(int argc, char** argv) :
+		logfilepathname(),
+		dnsnses(std::vector<std::string>()),
+		app_startup_prev(nullptr),
+		app_startup_post(nullptr),
+		app_exit_prev(nullptr),
+		app_exit_post(nullptr),
+		app_event_loop_init_prev(nullptr),
+		app_event_loop_init_post(nullptr),
+		app_event_loop_deinit_prev(nullptr),
+		app_event_loop_deinit_post(nullptr),
+		__cfg_json_checked(false)
+	{
+		NETP_ASSERT(argc >= 1);
+		__cfg_default_loop_cfg();
+		std::string data = netp::curr_local_data_str();
+		std::string data_;
+		netp::replace(data, std::string("-"), std::string("_"), data_);
+		cfg_log_filepathname(std::string(argv[0]) + std::string(".") + data_ + ".log");
+		__parse_cfg(argc, argv);
+
+		if (!__cfg_json_checked) {
+			__init_from_cfg_json("./netp.cfg.json");
+		}
+	}
+
+	app_cfg::app_cfg() :
+		logfilepathname(),
+		dnsnses(std::vector<std::string>()),
+		app_startup_prev(nullptr),
+		app_startup_post(nullptr),
+		app_exit_prev(nullptr),
+		app_exit_post(nullptr),
+		app_event_loop_init_prev(nullptr),
+		app_event_loop_init_post(nullptr),
+		app_event_loop_deinit_prev(nullptr),
+		app_event_loop_deinit_post(nullptr),
+		__cfg_json_checked(false)
+	{
+		__cfg_default_loop_cfg();
+		std::string data = netp::curr_local_data_str();
+		std::string data_;
+		netp::replace(data, std::string("-"), std::string("_"), data_);
+		cfg_log_filepathname("netp_" + data_ + ".log");
+		__init_from_cfg_json("./netp.cfg.json");
+	}
+
+	//<0, disable
+	//=0, std::thread::hardware_concurrency()
+	//<std::thread::hardware_concurrency()<<1, accepted
+	//max std::thread::hardware_concurrency()<<1
+	void app_cfg::cfg_poller_max(io_poller_type t, int c) {
+		const int hcore = std::thread::hardware_concurrency();
+		if (c < hcore) {
+			poller_max[t] = hcore;
+		}
+		else if ((c) > (hcore << 1)) {
+			poller_max[t] = (hcore << 1);
+		}
+		else {
+			poller_max[t] = c;
+		}
+		//update poller max
+		cfg_poller_count(t, poller_count[t]);
+	}
+
+	void app_cfg::cfg_poller_count(io_poller_type t, int c) {
+		u32_t hcore = std::thread::hardware_concurrency();
+		NETP_ASSERT(poller_max[t] >= hcore);
+		if (c < 0) {
+			poller_count[t] = 0;
+			if (t == NETP_DEFAULT_POLLER_TYPE) {
+				poller_count[t] = 1;
+			}
+		}
+		else if (c == 0) {
+			poller_count[t] = hcore;
+		}
+		else if (u32_t(c) > poller_max[t]) {
+			poller_count[t] = poller_max[t];
+		}
+		else if (c <= 0) {//accepted
+			poller_count[t] = c;
+		}
+	}
+
+	void app_cfg::cfg_channel_buf(io_poller_type t, int buf_in_kbytes) {
+		if (buf_in_kbytes > 0) {
+			event_loop_cfgs[t].ch_buf_size = buf_in_kbytes * (1024);
+		}
+	}
+
+	void app_cfg::cfg_add_dns(std::string const& dns_ns) {
+		dnsnses.push_back(dns_ns);
+	}
+
+	void app_cfg::cfg_log_filepathname(std::string const& logfilepathname_) {
+		if (logfilepathname_.length() == 0) { return; }
+		logfilepathname = logfilepathname_;
+	}
+
+
+
+	void app::app_thread_init() 
 	{
 		static_assert(sizeof(netp::i8_t) == 1, "assert sizeof(i8_t) failed");
 		static_assert(sizeof(netp::u8_t) == 1, "assert sizeof(u8_t) failed");
@@ -98,7 +213,7 @@ namespace netp {
 #endif
 	}
 
-	app_thread_init::~app_thread_init()
+	void app::app_thread_deinit()
 	{
 #if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
 		tls_destroy<mutex_set_t>();
@@ -129,14 +244,15 @@ namespace netp {
 			cfg_log_filepathname(cfg_json["log"].get<std::string>());
 		}
 
-		if (cfg_json.find("def_loop_max_count") != cfg_json.end()) {
-			cfg_poller_max(NETP_DEFAULT_POLLER_TYPE, cfg_json["def_loop_max_count"].get<int>());
+		if (cfg_json.find("def_loop_count_max") != cfg_json.end() && cfg_json["def_loop_count_max"].is_number()) {
+			cfg_poller_max(NETP_DEFAULT_POLLER_TYPE, cfg_json["def_loop_count_max"].get<int>());
 		}
-
-		if (cfg_json.find("def_loop_channel_buf") != cfg_json.end()) {
+		if (cfg_json.find("def_loop_count") != cfg_json.end() && cfg_json["def_loop_count"].is_number()) {
+			cfg_poller_count(NETP_DEFAULT_POLLER_TYPE, cfg_json["def_loop_count"]);
+		}
+		if (cfg_json.find("def_loop_channel_buf") != cfg_json.end() && cfg_json["def_loop_channel_buf"].is_number()) {
 			cfg_channel_buf(NETP_DEFAULT_POLLER_TYPE, cfg_json["def_loop_channel_buf"].get<int>());
 		}
-
 		if (cfg_json.find("memory_pool_slot_entries_size_level") != cfg_json.end() && cfg_json["memory_pool_slot_entries_size_level"].is_number()) {
 			set_memory_pool_slot_entries_size_level(cfg_json["memory_pool_slot_entries_size_level"].get<int>());
 		}
@@ -164,26 +280,19 @@ namespace netp {
 		}
 	}
 
-	app::app(app_cfg const& cfg ) :
+	app::app() :
 		m_should_exit(false),
-		m_cfg(cfg),
-		m_app_startup_prev(cfg.app_startup_prev),
-		m_app_startup_post(cfg.app_startup_post),
-		m_app_exit_prev(cfg.app_exit_prev),
-		m_app_exit_post(cfg.app_exit_post),
-		m_app_event_loop_init_prev(cfg.app_event_loop_init_prev),
-		m_app_event_loop_init_post(cfg.app_event_loop_init_post),
-		m_app_event_loop_deinit_prev(cfg.app_event_loop_deinit_prev),
-		m_app_event_loop_deinit_post(cfg.app_event_loop_deinit_post)
+		m_cfg(),
+		m_app_startup_prev(nullptr),
+		m_app_startup_post(nullptr),
+		m_app_exit_prev(nullptr),
+		m_app_exit_post(nullptr),
+		m_app_event_loop_init_prev(nullptr),
+		m_app_event_loop_init_post(nullptr),
+		m_app_event_loop_deinit_prev(nullptr),
+		m_app_event_loop_deinit_post(nullptr)
 	{
-		app_thread_init::instance();
-		if (m_app_startup_prev) {
-			m_app_startup_prev();
-		}
-		_startup();
-		if (m_app_startup_post ) {
-			m_app_startup_post();
-		}
+		app_thread_init();
 	}
 
 	app::~app()
@@ -195,8 +304,27 @@ namespace netp {
 		if (m_app_exit_post ) {
 			 m_app_exit_post();
 		}
+		app_thread_deinit();
+	}
 
-		app_thread_init::instance()->destroy_instance();
+	int app::startup(app_cfg const& cfg) {
+		m_cfg = cfg;
+		m_app_startup_prev = (cfg.app_startup_prev);
+		m_app_startup_post = (cfg.app_startup_post);
+		m_app_exit_prev=(cfg.app_exit_prev);
+		m_app_exit_post = (cfg.app_exit_post);
+		m_app_event_loop_init_prev = (cfg.app_event_loop_init_prev);
+		m_app_event_loop_init_post = (cfg.app_event_loop_init_post);
+		m_app_event_loop_deinit_prev = (cfg.app_event_loop_deinit_prev);
+		m_app_event_loop_deinit_post = (cfg.app_event_loop_deinit_post);
+		if (m_app_startup_prev) {
+			m_app_startup_prev();
+		}
+		_startup();
+		if (m_app_startup_post) {
+			m_app_startup_post();
+		}
+		return netp::OK;
 	}
 
 	void app::_startup() {
@@ -227,19 +355,23 @@ namespace netp {
 	}
 
 	void app::__log_init() {
-		netp::logger_broker::instance()->init();
+		NETP_ASSERT( m_logger_broker == nullptr ) ;
+		m_logger_broker = netp::make_ref<logger_broker>();
+		m_logger_broker->init();
+
 #ifdef NETP_ENABLE_CONSOLE_LOGGER
 		NRP<logger::console_logger> clg = netp::make_ref <logger::console_logger>();
 		clg->set_mask_by_level(NETP_CONSOLE_LOGGER_LEVEL);
-		netp::logger_broker::instance()->add(clg);
+		m_logger_broker->add(clg);
 #endif
+
 		string_t logfilepath = "./netp.log";
 		if (m_cfg.logfilepathname.length()) {
 			logfilepath = netp::string_t(m_cfg.logfilepathname.c_str());
 		}
 		NRP<logger::file_logger> filelogger = netp::make_ref<netp::logger::file_logger>(logfilepath);
 		filelogger->set_mask_by_level(NETP_FILE_LOGGER_LEVEL);
-		netp::logger_broker::instance()->add(filelogger);
+		m_logger_broker->add(filelogger);
 
 #ifdef NETP_ENABLE_ANDROID_LOG
 		NRP<android_log_print> alp = netp::make_ref<android_log_print>();
@@ -248,8 +380,10 @@ namespace netp {
 		netp::logger_broker::instance()->add(alp);
 #endif
 	}
+
 	void app::__log_deinit() {
-		netp::logger_broker::instance()->deinit();
+		m_logger_broker->deinit();
+		m_logger_broker = nullptr;
 	}
 
 	void app::dump_arch_info() {
@@ -405,7 +539,7 @@ namespace netp {
 
 		if (m_app_event_loop_init_prev) {
 			m_app_event_loop_init_prev();
-		}	
+		}
 		___event_loop_init();
 		if (m_app_event_loop_init_post) {
 			m_app_event_loop_init_post();
@@ -416,8 +550,8 @@ namespace netp {
 
 	void app::__net_deinit() {
 		NETP_INFO("net deinit begin");
-		netp::io_event_loop_group::instance()->_notify_terminating_all();
-		netp::dns_resolver::instance()->stop();
+		m_io_evt_group->_notify_terminating_all();
+		m_dns_resolver->stop();
 		if (m_app_event_loop_deinit_prev) {
 			m_app_event_loop_deinit_prev();
 		}
@@ -433,14 +567,19 @@ namespace netp {
 	}
 
 	void app::___event_loop_init() {
-		netp::io_event_loop_group::instance()->_init(m_cfg.poller_count, m_cfg.event_loop_cfgs);
+		NETP_ASSERT(m_io_evt_group == nullptr);
+		m_io_evt_group = netp::make_ref<netp::io_event_loop_group>();
+		m_io_evt_group ->_init(m_cfg.poller_count, m_cfg.event_loop_cfgs);
 		NETP_INFO("[app]init loop done");
 
+		NETP_ASSERT(m_dns_resolver == nullptr);
+		m_dns_resolver = netp::make_ref<netp::dns_resolver>();
+
 #if defined(NETP_DEFAULT_POLLER_TYPE_IOCP)
-		io_event_loop_group::instance()->launch_loop(io_poller_type::T_SELECT, 1, m_cfg.event_loop_cfgs[NETP_DEFAULT_POLLER_TYPE]);
-		netp::dns_resolver::instance()->reset(io_event_loop_group::instance()->internal_next(io_poller_type::T_SELECT));
+		m_io_evt_group->launch_loop(io_poller_type::T_SELECT, 1, m_cfg.event_loop_cfgs[NETP_DEFAULT_POLLER_TYPE]);
+		m_dns_resolver->reset(io_event_loop_group::instance()->internal_next(io_poller_type::T_SELECT));
 #else
-		netp::dns_resolver::instance()->reset(io_event_loop_group::instance()->internal_next());
+		m_dns_resolver->reset(m_io_evt_group->internal_next());
 #endif
 
 #if defined(_NETP_WIN) && defined(_NETP_USE_UDNS)
@@ -459,10 +598,10 @@ namespace netp {
 #endif
 		
 		if (m_cfg.dnsnses.size()) {
-			netp::dns_resolver::instance()->add_name_server(m_cfg.dnsnses);
+			m_dns_resolver->add_name_server(m_cfg.dnsnses);
 		}
 
-		NRP<netp::promise<int>> dnsp = netp::dns_resolver::instance()->start();
+		NRP<netp::promise<int>> dnsp = m_dns_resolver->start();
 		if (dnsp->get() != netp::OK) {
 			NETP_ERR("[app]start dnsresolver failed: %d, exit", dnsp->get());
 			_exit();
@@ -474,9 +613,11 @@ namespace netp {
 
 	void app::___event_loop_wait() {
 		//reset loop after all loop reference dattached from business code
-		netp::io_event_loop_group::instance()->_wait_all();
-		netp::dns_resolver::instance()->reset(nullptr);
-		netp::dns_resolver::destroy_instance();
+		m_io_evt_group->_wait_all();
+		m_io_evt_group = nullptr;
+
+		m_dns_resolver->reset(nullptr);
+		m_dns_resolver = nullptr;
 	}
 
 	//ISSUE: if the waken thread is main thread, we would get stuck here

@@ -3,9 +3,9 @@
 
 #include <netp/core.hpp>
 #include <netp/packet.hpp>
+#include <netp/app.hpp>
 #include <netp/channel_handler.hpp>
 
-#include <netp/logger_broker.hpp>
 
 namespace netp {namespace handler {
 

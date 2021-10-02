@@ -1,4 +1,7 @@
 #include <netp/core.hpp>
+#include <netp/app.hpp>
+#include <netp/timer.hpp>
+#include <netp/thread.hpp>
 #include <netp/io_event_loop.hpp>
 
 #if defined(NETP_HAS_POLLER_EPOLL)
@@ -66,6 +69,32 @@ namespace netp {
 
 		NETP_ASSERT(poller != nullptr);
 		return netp::make_ref<io_event_loop>(t,poller, cfg);
+	}
+
+	void io_event_loop::init() {
+		m_channel_rcv_buf = netp::make_ref<netp::packet>(m_cfg.ch_buf_size);
+		m_tid = std::this_thread::get_id();
+		m_tb = netp::make_ref<timer_broker>();
+
+		m_poller->init();
+	}
+
+	void io_event_loop::deinit() {
+		NETP_VERBOSE("[io_event_loop]deinit begin");
+		NETP_ASSERT(in_event_loop());
+		NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_EXIT), "event loop deinit state check failed");
+
+		{
+			lock_guard<spin_mutex> lg(m_tq_mutex);
+			NETP_ASSERT(m_tq_standby.empty());
+		}
+
+		NETP_ASSERT(m_tq.empty());
+		NETP_ASSERT(m_tb->size() == 0);
+		m_tb = nullptr;
+
+		m_poller->deinit();
+		NETP_VERBOSE("[io_event_loop]deinit done");
 	}
 
 	//@NOTE: promise to execute all task already in tq or tq_standby
@@ -192,6 +221,22 @@ namespace netp {
 			NETP_INFO("[io_event_loop][%u]__terminate end", m_type);
 		}
 
+		io_event_loop::io_event_loop(io_poller_type t, NRP<poller_abstract> const& poller, event_loop_cfg const& cfg) :
+			m_waiting(false),
+			m_state(u8_t(loop_state::S_IDLE)),
+			m_type(t),
+			m_io_ctx_count(0),
+			m_io_ctx_count_before_running(0),
+			m_poller(poller),
+			m_internal_ref_count(0),
+			m_cfg(cfg)
+		{}
+
+		io_event_loop::~io_event_loop() {
+			NETP_ASSERT(m_tb == nullptr);
+			NETP_ASSERT(m_th == nullptr);
+		}
+
 		io_event_loop_group::io_event_loop_group():
 			m_bye_ref_count(0),
 			m_bye_state(bye_event_loop_state::S_IDLE)
@@ -208,7 +253,7 @@ namespace netp {
 			}
 		}
 
-		void io_event_loop_group::launch_loop(io_poller_type t, int count, event_loop_cfg const& cfg, fn_event_loop_maker_t const& fn_maker ) {
+		void io_event_loop_group::launch_loop(io_poller_type t, u32_t count, event_loop_cfg const& cfg, fn_event_loop_maker_t const& fn_maker ) {
 			NETP_VERBOSE("[io_event_loop_group]alloc poller: %u, count: %u, ch_buf_size: %u", t, count, cfg.ch_buf_size );
 			lock_guard<shared_mutex> lg(m_loop_mtx[t]);
 			m_curr_loop_idx[t] = 0;
@@ -270,8 +315,8 @@ namespace netp {
 			goto __dealloc_begin;
 		}
 
-		void io_event_loop_group::_init(int count[io_poller_type::T_POLLER_MAX], event_loop_cfg cfgs[io_poller_type::T_POLLER_MAX]) {
-			for (int i = 0; i < T_POLLER_MAX; ++i) {
+		void io_event_loop_group::_init(u32_t count[io_poller_type::T_POLLER_MAX], event_loop_cfg cfgs[io_poller_type::T_POLLER_MAX]) {
+			for (u32_t i = 0; i < T_POLLER_MAX; ++i) {
 				if (count[i] > 0) {
 					launch_loop(io_poller_type(i),count[i], cfgs[i]);
 				}

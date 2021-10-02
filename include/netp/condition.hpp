@@ -4,8 +4,9 @@
 #include <condition_variable>
 
 #include <netp/core.hpp>
+#include <netp/thread_impl/thread_basic.hpp>
 #include <netp/thread_impl/mutex.hpp>
-#include <netp/thread.hpp>
+#include <netp/thread_impl/condition.hpp>
 
 namespace netp {
 

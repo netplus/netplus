@@ -1,8 +1,8 @@
 #include <netp/core.hpp>
+#include <netp/app.hpp>
 
 #include <netp/dns_resolver.hpp>
 #include <netp/socket_api.hpp>
-#include <netp/io_event_loop.hpp>
 
 namespace netp {
 
@@ -69,7 +69,6 @@ namespace netp {
 	}
 
 	void dns_resolver::reset( NRP<io_event_loop> const& L_ ) {
-
 		NETP_ASSERT( L_== nullptr || (L_->poller_type() != io_poller_type::T_IOCP && L_->poller_type() != io_poller_type::T_POLLER_CUSTOM_1 && L_->poller_type() != io_poller_type::T_POLLER_CUSTOM_2));
 		
 		L = L_;
@@ -94,6 +93,9 @@ namespace netp {
 #ifdef _NETP_USE_UDNS
 		dns_init(m_dns_ctx, 0);
 #endif
+	}
+
+	dns_resolver::~dns_resolver() {
 	}
 
 	void dns_resolver::_do_add_name_server() {

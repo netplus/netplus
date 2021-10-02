@@ -16,6 +16,7 @@
 
 #include <netp/http/message.hpp>
 #include <netp/http/parser.hpp>
+#include <netp/app.hpp>
 
 
 #define DEFAULT_HTTP_REQUEST_TIMEOUT (60)
@@ -122,7 +123,7 @@ namespace netp { namespace http {
 
 	public:
 		client( netp::string_t const& host, http_cfg const& http_cfg_, NRP<io_event_loop> const& L = nullptr ) :
-			m_loop(L != nullptr ?L: io_event_loop_group::instance()->next()),
+			m_loop(L != nullptr ?L: app::instance()->loop_group()->next()),
 			m_flag(http_cfg_.close_on_response_done ? (f_closed|f_close_on_response_done) : f_closed),
 			m_wstate(http_write_state::S_WRITE_CLOSED),
 			m_host(host)

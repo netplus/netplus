@@ -31,7 +31,6 @@
 #include <netp/event_broker.hpp>
 #include <netp/timer.hpp>
 
-#include <netp/logger_broker.hpp>
 #ifdef __ANDROID__
 	#include <netp/log/android_log_print.hpp>
 #endif

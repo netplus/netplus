@@ -1,6 +1,7 @@
 #include <netp/core.hpp>
-#include <netp/logger_broker.hpp>
+#include <netp/app.hpp>
 #include <netp/socket_channel.hpp>
+#include <netp/app.hpp>
 
 namespace netp {
 
@@ -450,7 +451,7 @@ int socket_base::get_left_snd_queue() const {
 				}
 			}
 			
-			NRP<io_event_loop> LL = io_event_loop_group::instance()->next(L->poller_type());
+			NRP<io_event_loop> LL = netp::app::instance()->loop_group()->next(L->poller_type());
 			LL->execute([LL,fn_initializer,nfd, laddr, raddr, listener_cfg]() {
 				NRP<socket_cfg> cfg_ = netp::make_ref<socket_cfg>();
 				cfg_->fd = nfd;

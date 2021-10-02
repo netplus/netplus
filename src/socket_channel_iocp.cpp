@@ -1,5 +1,5 @@
 #include <netp/core.hpp>
-#include <netp/logger_broker.hpp>
+#include <netp/app.hpp>
 #include <netp/socket_channel_iocp.hpp>
 
 #ifdef NETP_HAS_POLLER_IOCP

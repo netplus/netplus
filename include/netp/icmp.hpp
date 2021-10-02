@@ -4,6 +4,7 @@
 #include <netp/core.hpp>
 #include <netp/os/api_wrapper.hpp>
 #include <netp/socket.hpp>
+#include <netp/app.hpp>
 
 namespace netp {
 
@@ -183,7 +184,7 @@ namespace netp {
 				NRP<socket_cfg> cfg = netp::make_ref<socket_cfg>();
 				cfg->type = NETP_SOCK_RAW;
 				cfg->proto = NETP_PROTOCOL_ICMP;
-				cfg->L = io_event_loop_group::instance()->next();
+				cfg->L = app::instance()->loop_group()->next();
 				std::tie(creatert, m_so) = netp::create_socket_channel(cfg);
 				return creatert;
 			}

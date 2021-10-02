@@ -7,12 +7,7 @@
 
 #include <netp/core.hpp>
 #include <netp/smart_ptr.hpp>
-#include <netp/singleton.hpp>
 #include <netp/heap.hpp>
-
-#include <netp/mutex.hpp>
-#include <netp/thread.hpp>
-#include <netp/promise.hpp>
 
 #ifdef NETP_ENABLE_TRACE_TIMER
 	#define NETP_TRACE_TIMER NETP_INFO

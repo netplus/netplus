@@ -537,6 +537,9 @@
     <ClInclude Include="..\..\include\netp\memory_unit_test.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\thread_impl\thread_basic.hpp">
+      <Filter>Header Files\netp\thread_impl</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">

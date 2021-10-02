@@ -2,6 +2,7 @@
 #define  _NETP_HANDLER_TLS_CREDENTIALS_HPP
 
 #include <memory>
+#include <netp/app.hpp>
 
 #ifdef NETP_WITH_BOTAN
 #include <botan/credentials_manager.h>

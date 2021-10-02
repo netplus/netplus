@@ -3,7 +3,6 @@
 
 #include <netp/core.hpp>
 #include <netp/address.hpp>
-#include <netp/logger_broker.hpp>
 
 #ifdef _NETP_WIN
 	#include <netp/os/winsock_helper.hpp>
@@ -58,7 +57,7 @@ namespace netp {
 
 		NETP_ASSERT(rt == NETP_SOCKET_ERROR);
 		const int ec = netp_socket_get_last_errno();
-		NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvmsg, ERROR: %d", fd, ec);
+		//NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvmsg, ERROR: %d", fd, ec);
 		if (ec == netp::E_EINTR) {
 			goto _recvmsg;
 		} else {
@@ -153,6 +152,7 @@ namespace netp {
 	}
 
 	inline int close(SOCKET fd) {
+//		NETP_VERBOSE("[#%zu]netp::close", fd );
 		return NETP_CLOSE_SOCKET(fd);
 	}
 
@@ -294,7 +294,7 @@ namespace netp {
 				ec_o = netp::OK;
 				break;
 			} else if (r == 0) {
-				NETP_TRACE_SOCKET_API("[netp::recv][#%d]socket closed by remote side gracefully[detected by recv]", fd);
+				//NETP_TRACE_SOCKET_API("[netp::recv][#%d]socket closed by remote side gracefully[detected by recv]", fd);
 				ec_o = netp::E_SOCKET_GRACE_CLOSE;
 				break;
 			} else {
@@ -306,13 +306,13 @@ namespace netp {
 				} else {
 					NETP_ASSERT(ec != netp::OK);
 					ec_o = ec;
-					NETP_TRACE_SOCKET_API("[netp::recv][#%d]recv: %d", fd, ec);
+					//NETP_TRACE_SOCKET_API("[netp::recv][#%d]recv: %d", fd, ec);
 					break;
 				}
 			}
 		} while (true);
 
-		NETP_TRACE_SOCKET_API("[netp::recv][#%d]recv bytes, %u, ec: %d", fd, R, ec_o);
+		//NETP_TRACE_SOCKET_API("[netp::recv][#%d]recv bytes, %u, ec: %d", fd, R, ec_o);
 		NETP_ASSERT(R <= size);
 		return R;
 	}
@@ -335,14 +335,14 @@ sendto:
 			//sometimes, we got nbytes != len (happens on rpi )
 			//NETP_ASSERT((u32_t)nbytes == len);
 			ec_o = netp::OK;
-			NETP_TRACE_SOCKET_API("[netp::sendto][#%d]sendto() == %d", fd, nbytes);
+			//NETP_TRACE_SOCKET_API("[netp::sendto][#%d]sendto() == %d", fd, nbytes);
 			return nbytes;
 		}
 
 		NETP_ASSERT(nbytes == -1);
 		int ec = netp_socket_get_last_errno();
 		_NETP_REFIX_EWOULDBLOCK(ec);
-		NETP_TRACE_SOCKET_API("[netp::sendto][#%d]send failed, error code: %d", fd, ec);
+		//NETP_TRACE_SOCKET_API("[netp::sendto][#%d]send failed, error code: %d", fd, ec);
 		if (ec == netp::E_EINTR) {
 			goto sendto;
 		} else {
@@ -360,14 +360,14 @@ recvfrom:
 
 		if (NETP_LIKELY(nbytes > 0)) {
 			ec_o = netp::OK;
-			NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom() == %d", fd, nbytes);
+			//NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom() == %d", fd, nbytes);
 			return nbytes;
 		}
 
 		NETP_ASSERT(nbytes == -1);
 		int ec = netp_socket_get_last_errno();
 		_NETP_REFIX_EWOULDBLOCK(ec);
-		NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom, ERROR: %d", fd, ec);
+		//NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom, ERROR: %d", fd, ec);
 		if (ec == netp::E_EINTR) {
 			goto recvfrom;
 		} else {
@@ -392,7 +392,7 @@ recvfrom:
 
 		SOCKET listenfd = ::socket(domain, type, OS_DEF_protocol[protocol]);
 		if (listenfd == NETP_INVALID_SOCKET) {
-			NETP_INFO("[socketpair]make listener failed: %d", netp_socket_get_last_errno());
+			//NETP_INFO("[socketpair]make listener failed: %d", netp_socket_get_last_errno());
 			return NETP_SOCKET_ERROR;
 		}
 

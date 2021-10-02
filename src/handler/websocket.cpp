@@ -1,6 +1,6 @@
 #include <netp/handler/websocket.hpp>
 
-#include <netp/logger_broker.hpp>
+#include <netp/app.hpp>
 #include <netp/channel_handler_context.hpp>
 #include <netp/channel.hpp>
 

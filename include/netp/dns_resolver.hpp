@@ -14,7 +14,6 @@
 #endif
 
 #include <netp/smart_ptr.hpp>
-#include <netp/singleton.hpp>
 #include <netp/promise.hpp>
 #include <netp/ipv4.hpp>
 #include <netp/io_monitor.hpp>
@@ -62,7 +61,7 @@ namespace netp {
 #endif
 
 	class dns_resolver :
-		public netp::singleton<dns_resolver>
+		public netp::non_atomic_ref_base
 	{
 		friend class app;
 		friend struct ares_fd_monitor;
@@ -142,6 +141,7 @@ namespace netp {
 
 	public:
 		dns_resolver();
+		~dns_resolver();
 		NRP<netp::promise<int>> add_name_server(std::vector<std::string> const& ns);
 		NRP<dns_query_promise> resolve(string_t const& domain);
 

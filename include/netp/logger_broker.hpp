@@ -10,7 +10,7 @@
 namespace netp {
 
 	class logger_broker:
-		public netp::singleton<netp::logger_broker>
+		public netp::non_atomic_ref_base
 	{
 	public:
 		logger_broker();
@@ -28,17 +28,5 @@ namespace netp {
 		bool m_isInited;
 	};
 }
-
-#define NETP_LOGGER_BROKER	( netp::logger_broker::instance() )
-
-#define	NETP_VERBOSE(...)			(NETP_LOGGER_BROKER->write( netp::logger::LOG_MASK_VERBOSE, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__ ))
-#define	NETP_INFO(...)				(NETP_LOGGER_BROKER->write( netp::logger::LOG_MASK_INFO, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__ ))
-#define	NETP_WARN(...)			(NETP_LOGGER_BROKER->write( netp::logger::LOG_MASK_WARN, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__ ))
-#define	NETP_ERR(...)				(NETP_LOGGER_BROKER->write( netp::logger::LOG_MASK_ERR, __FILE__, __LINE__, __FUNCTION__,__VA_ARGS__ ))
-
-#ifndef _NETP_DEBUG
-	#undef NETP_VERBOSE
-	#define NETP_VERBOSE(...)
-#endif
 
 #endif

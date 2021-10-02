@@ -3,10 +3,10 @@
 
 #include <vector>
 #include <netp/core.hpp>
+#include <netp/app.hpp>
 #include <netp/memory.hpp>
 #include <netp/address.hpp>
 #include <netp/l2/m6.hpp>
-#include <netp/logger_broker.hpp>
 #include <netp/string.hpp>
 
 namespace netp {

@@ -5,7 +5,7 @@
 #include <netp/packet.hpp>
 #include <netp/channel_handler.hpp>
 
-#include <netp/logger_broker.hpp>
+#include <netp/app.hpp>
 
 namespace netp {namespace handler {
 

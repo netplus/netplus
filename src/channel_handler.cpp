@@ -1,3 +1,5 @@
+
+#include <netp/app.hpp>
 #include <netp/channel.hpp>
 #include <netp/channel_handler.hpp>
 #include <netp/channel_pipeline.hpp>

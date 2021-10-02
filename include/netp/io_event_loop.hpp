@@ -4,12 +4,11 @@
 #include <vector>
 #include <set>
 
-#include <netp/singleton.hpp>
+#include <netp/core.hpp>
+#include <netp/smart_ptr.hpp>
 #include <netp/mutex.hpp>
-#include <netp/thread.hpp>
 
 #include <netp/timer.hpp>
-
 #include <netp/promise.hpp>
 #include <netp/packet.hpp>
 #include <netp/poller_abstract.hpp>
@@ -48,6 +47,8 @@ namespace netp {
 		S_EXIT //exit..
 	};
 
+	class timer_broker;
+	class thread;
 	class io_event_loop :
 		public ref_base
 	{
@@ -88,7 +89,7 @@ namespace netp {
 		//0,	NO WAIT
 		//~0,	INFINITE WAIT
 		//>0,	WAIT nanosecond
-		__NETP_FORCE_INLINE i64_t _calc_wait_dur_in_nano() {
+		i64_t _calc_wait_dur_in_nano() {
 
 			NETP_ASSERT( m_waiting.load(std::memory_order_relaxed) == false, "_calc_wait_dur_in_nano waiting check failed" );
 			static_assert(TIMER_TIME_INFINITE == i64_t(-1), "timer infinite check");
@@ -109,31 +110,8 @@ namespace netp {
 			return ndelayns;
 		}
 
-		virtual void init() {
-			m_channel_rcv_buf = netp::make_ref<netp::packet>(m_cfg.ch_buf_size);
-			m_tid = std::this_thread::get_id();
-			m_tb = netp::make_ref<timer_broker>();
-			
-			m_poller->init();
-		}
-
-		virtual void deinit() {
-			NETP_VERBOSE("[io_event_loop]deinit begin");
-			NETP_ASSERT(in_event_loop());
-			NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_EXIT), "event loop deinit state check failed");
-
-			{
-				lock_guard<spin_mutex> lg(m_tq_mutex);
-				NETP_ASSERT(m_tq_standby.empty());
-			}
-
-			NETP_ASSERT(m_tq.empty());
-			NETP_ASSERT(m_tb->size() == 0);
-			m_tb = nullptr;
-
-			m_poller->deinit();
-			NETP_VERBOSE("[io_event_loop]deinit done");
-		}
+		virtual void init();
+		virtual void deinit();
 
 		void __run();
 		void __do_notify_terminating();
@@ -144,21 +122,8 @@ namespace netp {
 		void __terminate();
 
 	public:
-		io_event_loop(io_poller_type t, NRP<poller_abstract> const& poller, event_loop_cfg const& cfg) :
-			m_waiting(false),
-			m_state(u8_t(loop_state::S_IDLE)),
-			m_type(t),
-			m_io_ctx_count(0),
-			m_io_ctx_count_before_running(0),
-			m_poller(poller),
-			m_internal_ref_count(0),
-			m_cfg(cfg)
-		{}
-
-		~io_event_loop() {
-			NETP_ASSERT(m_tb == nullptr);
-			NETP_ASSERT(m_th == nullptr);
-		}
+		io_event_loop(io_poller_type t, NRP<poller_abstract> const& poller, event_loop_cfg const& cfg);
+		~io_event_loop();
 
 		inline void schedule(fn_task_t&& f) {
 
@@ -280,7 +245,7 @@ namespace netp {
 	class app;
 	typedef std::vector<NRP<io_event_loop>> io_event_loop_vector;
 	class io_event_loop_group:
-		public netp::singleton<io_event_loop_group>
+		public non_atomic_ref_base
 	{
 		friend class netp::app;
 		enum class bye_event_loop_state {
@@ -300,7 +265,7 @@ namespace netp {
 		NRP<io_event_loop> m_bye_event_loop;
 
 
-		void _init( int count[io_poller_type::T_POLLER_MAX], event_loop_cfg cfgs[io_poller_type::T_POLLER_MAX]);
+		void _init( u32_t count[io_poller_type::T_POLLER_MAX], event_loop_cfg cfgs[io_poller_type::T_POLLER_MAX]);
 
 		void _notify_terminating_all();
 		void _wait_all();
@@ -311,7 +276,7 @@ namespace netp {
 
 		void notify_terminating_loop(io_poller_type t);
 		void wait_loop(io_poller_type t);
-		void launch_loop(io_poller_type t, int count, event_loop_cfg const& cfg, fn_event_loop_maker_t const& fn_maker = nullptr);
+		void launch_loop(io_poller_type t, u32_t count, event_loop_cfg const& cfg, fn_event_loop_maker_t const& fn_maker = nullptr);
 
 		io_poller_type query_available_custom_poller_type();
 		netp::size_t size(io_poller_type t);

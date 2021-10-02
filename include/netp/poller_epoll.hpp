@@ -14,17 +14,27 @@ namespace netp {
 	class poller_epoll final:
 		public poller_interruptable_by_fd
 	{
+		char _HEAD[64];
 		int m_epfd;
+		int m_epfd1;
+		int m_epfd2;
+		int m_epfd3;
+		char _TAIL[64];
 
 	public:
 		poller_epoll():
 			poller_interruptable_by_fd(),
 			m_epfd(NETP_INVALID_SOCKET)
 		{
+			std::memset(_HEAD, 0, 64);
+			std::memset(_TAIL, 0, 64);
 		}
 
 		~poller_epoll() {
 			NETP_ASSERT( m_epfd == NETP_INVALID_SOCKET);
+			char _aa[64] = { 0 };
+			NETP_ASSERT(std::memcmp(_TAIL, _aa, 64) == 0);
+			NETP_ASSERT(std::memcmp(_HEAD, _aa, 64) == 0);
 		}
 
 		int watch(u8_t flag, io_ctx* ctx) override {
@@ -84,19 +94,24 @@ namespace netp {
 	public:
 		void init() override {
 			//the size argument is ignored since Linux 2.6.8, but must be greater than zero
-			m_epfd = epoll_create(NETP_EPOLL_CREATE_HINT_SIZE);
+			int epfd = epoll_create(NETP_EPOLL_CREATE_HINT_SIZE);
+			m_epfd = epfd;
+			m_epfd1 = epfd;
+			m_epfd2 = epfd;
+			m_epfd3 = epfd;
+
 			if (-1 == m_epfd) {
 				NETP_THROW("create epoll handle failed");
 			}
-			NETP_VERBOSE("[EPOLL][##%u]init epoll handle ok", m_epfd);
+			NETP_VERBOSE("[EPOLL][##%u]init epoll handle ok, %u, %u, %u", m_epfd, m_epfd1,m_epfd2, m_epfd3);
 			poller_interruptable_by_fd::init();
 		}
 
 		void deinit() override {
 			poller_interruptable_by_fd::deinit();
 			NETP_ASSERT(m_epfd != NETP_INVALID_SOCKET);
-			NETP_VERBOSE("[EPOLL][##%u]EPOLL::deinit() begin", m_epfd);
-			int rt = ::close(m_epfd);
+			NETP_VERBOSE("[EPOLL][##%u]EPOLL::deinit() begin, %u, %u, %u", m_epfd, m_epfd1, m_epfd2, m_epfd3);
+			int rt = netp::close(m_epfd);
 			if (-1 == rt) {
 				NETP_THROW("EPOLL::deinit epoll handle failed");
 			}

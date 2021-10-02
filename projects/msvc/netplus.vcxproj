@@ -167,6 +167,7 @@
     <ClInclude Include="..\..\include\netp\thread_impl\mutex_basic.hpp" />
     <ClInclude Include="..\..\include\netp\thread_impl\shared_mutex.hpp" />
     <ClInclude Include="..\..\include\netp\thread_impl\spin_mutex.hpp" />
+    <ClInclude Include="..\..\include\netp\thread_impl\thread_basic.hpp" />
     <ClInclude Include="..\..\include\netp\timer.hpp" />
     <ClInclude Include="..\..\include\netp\tls.hpp" />
   </ItemGroup>

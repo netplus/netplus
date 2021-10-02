@@ -116,7 +116,7 @@ namespace netp {
 
 #define NETP_TEST_ANY
 #ifdef NETP_TEST_ANY
-#include <netp/logger_broker.hpp>
+#include <netp/app.hpp>
 #include <utility>
 
 namespace netp { namespace test {
