@@ -7,9 +7,8 @@
 #include <netp/core.hpp>
 #include <netp/string.hpp>
 
-#ifdef _NETP_USE_UDNS
-	#include "../../3rd/udns/0.4/udns.h"
-#elif defined _NETP_USE_C_ARES
+
+#if defined(_NETP_USE_C_ARES)
 	#include "../../3rd/c-ares/c-ares-1.17.1/include/ares.h"
 #endif
 
@@ -76,11 +75,6 @@ namespace netp {
 
 		NRP<event_loop> L;
 
-#ifdef _NETP_USE_UDNS
-		NRP<netp::socket_channel> m_so;
-		struct dns_ctx* m_dns_ctx;
-#endif
-
 #ifdef _NETP_USE_C_ARES
 		ares_channel m_ares_channel;
 		long m_ares_active_query;
@@ -134,9 +128,7 @@ namespace netp {
 		void restart();
 
 		void cb_dns_timeout(NRP<netp::timer> const& t);
-#ifdef _NETP_USE_UDNS
-		void async_read_dns_reply( int status,io_ctx* ctx);
-#endif
+
 		void _do_resolve(string_t const& domain, NRP<dns_query_promise> const& p);
 
 	public:

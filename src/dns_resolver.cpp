@@ -70,29 +70,16 @@ namespace netp {
 
 	void dns_resolver::reset( NRP<event_loop> const& L_ ) {
 		NETP_ASSERT( L_== nullptr || (L_->poller_type() == NETP_DEFAULT_POLLER_TYPE) );
-		
 		L = L_;
 		m_ns.clear();
 		m_flag = 0;
-
-#ifdef _NETP_USE_U_DNS
-		NETP_ASSERT(m_so == nullptr, "dns resolver check m_so failed");
-		NETP_ASSERT(m_tm_dnstimeout == nullptr, "dns resolver check m_tm_dnstimeout failed");
-#endif
 	}
 
 	dns_resolver::dns_resolver() :
 		L(nullptr),
 		m_ares_active_query(0),
-#ifdef _NETP_USE_UDNS
-		m_so(nullptr),
-		m_dns_ctx(&dns_defctx),
-#endif
 		m_flag(0)
 	{
-#ifdef _NETP_USE_UDNS
-		dns_init(m_dns_ctx, 0);
-#endif
 	}
 
 	dns_resolver::~dns_resolver() {
@@ -101,9 +88,6 @@ namespace netp {
 	void dns_resolver::_do_add_name_server() {
 		NETP_ASSERT(L->in_event_loop());
 		std::for_each(m_ns.begin(), m_ns.end(), [&](std::string const& serv) {
-#ifdef _NETP_USE_UDNS
-			dns_add_serv(m_dns_ctx, serv.c_str());
-#endif
 			NETP_VERBOSE("[dns_resolver]add dns serv: %s", serv.c_str());
 		});
 	}
@@ -196,68 +180,6 @@ namespace netp {
 		NETP_INFO("[dns_resolver]launched");
 		p->set(netp::OK);
 #endif
-		
-#ifdef _NETP_USE_UDNS		
-		NETP_ASSERT(m_dns_ctx != NULL);
-		_do_add_name_server();
-		int fd = dns_open(m_dns_ctx);
-		if (fd < 0) {
-			NETP_ERR("[dns_resolver]dns open failed: %d", fd);
-			p->set(fd);
-			return;
-		}
-
-		NRP<socket_cfg> cfg = netp::make_ref<socket_cfg>(L);
-		cfg->fd = fd;
-		cfg->family = NETP_AF_INET;
-		cfg->type = NETP_SOCK_DGRAM;
-		cfg->proto = NETP_PROTOCOL_UDP;
-		cfg->L = L;
-
-		int rt;
-		std::tie(rt,m_so) = netp::create_socket_channel(cfg);
-		if ( rt  != netp::OK ) {
-			m_so->ch_close();
-			m_so = nullptr;
-			p->set(rt);
-			return;
-		}
-
-		rt = m_so->bind_any();
-		if (rt != netp::OK) {
-			m_so->ch_close();
-			m_so = nullptr;
-			p->set(rt);
-			return;
-		}
-		//libudns do not support iocp
-		m_so->ch_set_active();
-		m_so->ch_set_connected();
-		
-		m_so->ch_io_begin([dnsr=this, p](int status , io_ctx*) {
-			NETP_ASSERT(dnsr->L->in_event_loop());
-			NETP_ASSERT(dnsr->m_flag & dns_resolver_flag::f_launching);
-			dnsr->m_flag &= dns_resolver_flag::f_launching;
-			if (status == netp::OK) {
-				NETP_INFO("[dns_resolver][%s]init done", dnsr->m_so->ch_info().c_str());
-				dnsr->m_flag |= dns_resolver_flag::f_running;
-				dnsr->m_so->ch_io_read(std::bind(&dns_resolver::async_read_dns_reply, dns_resolver::instance(), std::placeholders::_1, std::placeholders::_2));
-				dnsr->m_so->ch_close_promise()->if_done([dnsr](int const&) {
-					NETP_INFO("[dns_resolver][%s]dns socket_channel closed", dnsr->m_so->ch_info().c_str());
-					dnsr->m_flag &= ~dns_resolver_flag::f_running;
-					dnsr->m_so = nullptr;
-					dnsr->m_tm_dnstimeout = nullptr;
-					dnsr->_do_start(netp::make_ref<netp::promise<int>>());
-				});
-
-				dnsr->m_tm_dnstimeout = netp::make_ref<netp::timer>(std::chrono::milliseconds(200), &dns_resolver::cb_dns_timeout, dnsr, std::placeholders::_1);
-				//tm always finished before loop terminated
-				p->set(netp::OK);
-			} else {
-				p->set(status);
-			}
-		});
-#endif
 	}
 
 	NRP<netp::promise<int>> dns_resolver::start() {
@@ -282,18 +204,6 @@ namespace netp {
 		__ares_wait();
 
 		ares_library_cleanup();
-
-#ifdef _NETP_USE_UDNS
-		m_so->ch_close();//force close fd first
-		NETP_ASSERT(m_dns_ctx != nullptr);
-		while (dns_active(m_dns_ctx) > 0) {
-			//clear all pending request
-			dns_timeouts(m_dns_ctx, -1, std::time(0) + (24*36000) );
-		}
-
-		NETP_ASSERT(dns_active(m_dns_ctx) == 0);
-		dns_close(m_dns_ctx);
-#endif
 
 		NETP_ASSERT(m_tm_dnstimeout != nullptr);
 		m_tm_dnstimeout = nullptr;
@@ -348,83 +258,12 @@ namespace netp {
 
 		__ares_check_timeout();
 #endif
-
-#ifdef _NETP_USE_UDNS
-		dns_timeouts(m_dns_ctx, -1, 0);
-		if (dns_active(m_dns_ctx)>0) {
-			m_flag |= f_timeout_timer;
-			L->launch(t, netp::make_ref<netp::promise<int>>());
-		}
-#endif
 	}
-
-#ifdef _NETP_USE_UDNS
-	void dns_resolver::async_read_dns_reply(int status, io_ctx* ctx_) {
-		NETP_ASSERT(L->in_event_loop());
-
-		//NETP_ASSERT(status == netp::OK);
-#ifdef NETP_HAS_POLLER_IOCP
-		iocp_ctx* ctx = (iocp_ctx*)ctx_;
-		if (status > 0) {
-			dns_ioevent_with_udpdata_in(m_dns_ctx, 0, (unsigned char*) ctx->ol_r->wsabuf.buf, status, ctx->ol_r->from_ptr );
-			dns_ioevent(m_dns_ctx, 0);
-			return;
-		}
-#endif
-		(void*)ctx_;
-		if (status == netp::OK) {
-			//struct sockaddr_in addr_in;
-			//::memset(&addr_in, 0, sizeof(addr_in));
-			//addr_in.sin_family = u16_t(addr.family());
-			//addr_in.sin_port = addr.nport();
-			//addr_in.sin_addr.s_addr = addr.nipv4();
-			//dns_ioevent_with_udpdata_in(m_dns_ctx, 0, in->head(), in->len(), &addr_in );
-			dns_ioevent(m_dns_ctx, 0);
-			return;
-		}
-
-		NETP_ERR("[dns_resolver]dns read error: %d", status);
-		_do_stop(netp::make_ref<netp::promise<int>>());
-	}
-#endif
 
 //#define NETP_FREE_ASYNC_DNS_QUERY(Q) \
 //	Q->~async_dns_query(); \
 //	netp::allocator<async_dns_query>::free(Q); \
 //	Q = nullptr;
-
-#ifdef _NETP_USE_UDNS
-	static void dns_submit_a4_cb(struct dns_ctx* ctx, struct dns_rr_a4* result, void* data) {
-		NETP_ASSERT(ctx != NULL);
-		NETP_ASSERT(data != NULL);
-		async_dns_query* adq = (async_dns_query*)data;
-		NETP_ASSERT(adq->dnsquery_p != nullptr);
-		if (result == NULL) {
-			int code = dns_status(ctx);
-			NETP_ASSERT(code != netp::OK);
-			NETP_ASSERT(code >= ::DNS_E_BADQUERY && code <= ::DNS_E_TEMPFAIL);
-			NETP_ERR("[dns_resolver]dns resolve failed: %d:%s", code, dns_strerror(code));
-			adq->dnsquery_p->set(std::make_tuple(dns_error_map[NETP_ABS(code)], std::vector<ipv4_t, netp::allocator<ipv4_t>>()));
-			netp::allocator<async_dns_query>::trash(adq);
-			return;
-		}
-
-		std::vector<ipv4_t, netp::allocator<ipv4_t>> ipv4s;
-		if (result->dnsa4_nrr > 0) {
-			for (int i = 0; i < result->dnsa4_nrr; ++i) {
-				ipv4s.push_back( ntohl(result->dnsa4_addr[i].s_addr) );
-			}
-		}
-
-		if (ipv4s.size()) {
-			adq->dnsquery_p->set(std::make_tuple(netp::OK, ipv4s));
-		} else {
-			adq->dnsquery_p->set(std::make_tuple(netp::E_DNS_DOMAIN_NO_DATA, ipv4s));
-		}
-		dns_free_ptr(result);
-		netp::allocator<async_dns_query>::trash(adq);
-	}
-#endif
 
 #ifdef _NETP_USE_C_ARES
 
@@ -552,28 +391,6 @@ namespace netp {
 		++m_ares_active_query;
 		ares_gethostbyname(m_ares_channel, domain.c_str(), AF_INET, __ares_gethostbyname_cb, adq);
 		__ares_check_timeout();
-#endif
-
-#ifdef _NETP_USE_UDNS
-		NETP_ASSERT(m_dns_ctx != NULL);
-		struct dns_query* q = dns_submit_a4(m_dns_ctx, domain.c_str(), 0, dns_submit_a4_cb, (void*)adq);
-		if (q == NULL) {
-			dns_free_ptr(q);
-			netp::allocator<async_dns_query>::trash(adq);
-
-			int code = dns_status(m_dns_ctx);
-			NETP_ASSERT(code != netp::OK);
-			NETP_ASSERT(code >= ::DNS_E_BADQUERY && code <= ::DNS_E_TEMPFAIL);
-			NETP_ERR("[dns_resolver]dns resolve failed: %d:%s", code, dns_strerror(code));
-			p->set(std::make_tuple(dns_error_map[NETP_ABS(code)],std::vector<ipv4_t, netp::allocator<ipv4_t>>()));
-			return;
-		}
-
-		dns_timeouts(m_dns_ctx, -1, 0);
-		if ( (m_flag&f_timeout_timer) == 0) {
-			m_flag |= f_timeout_timer;
-			L->launch(m_tm_dnstimeout, netp::make_ref<netp::promise<int>>());
-		}
 #endif
 	}
 

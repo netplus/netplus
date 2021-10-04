@@ -172,7 +172,7 @@ namespace netp {
 	}
 
 	void app::_parse_cfg(int argc, char** argv) {
-	
+		if ( !(argc >1)) { return; }
 		struct ::option long_options[] = {
 			{"netp-cfg", optional_argument, 0, 1},
 			{0,0,0,0}
@@ -203,10 +203,12 @@ namespace netp {
 		_app_thread_init();
 		_cfg_default_loop_cfg();
 		_init();
+		std::atomic_thread_fence(std::memory_order_release);
 	}
 
 	app::~app()
 	{
+		std::atomic_thread_fence(std::memory_order_acquire);
 		//double check
 		_event_loop_deinit();
 
@@ -215,10 +217,7 @@ namespace netp {
 	}
 
 	int app::startup(int argc, char** argv) {
-		NETP_ASSERT(argc >= 1);
-		if (argc > 0) {
-			_parse_cfg(argc, argv);
-		}
+		_parse_cfg(argc, argv);
 
 		//check def
 		if (!m_is_cfg_json_checked) {
@@ -444,6 +443,13 @@ namespace netp {
 #ifdef _NETP_WIN
 		netp::os::winsock_init();
 #endif
+
+		NETP_ASSERT(m_def_loop_group == nullptr);
+		m_def_loop_group = netp::make_ref<netp::event_loop_group>(u8_t(NETP_DEFAULT_POLLER_TYPE), default_event_loop_maker);
+
+		NETP_ASSERT(m_dns_resolver == nullptr);
+		m_dns_resolver = netp::make_ref<netp::dns_resolver>();
+
 		NETP_TRACE_APP("net init end");
 	}
 
@@ -452,6 +458,9 @@ namespace netp {
 #ifdef _NETP_WIN
 		netp::os::winsock_deinit();
 #endif
+
+		m_def_loop_group = nullptr;
+		m_dns_resolver = nullptr;
 		NETP_TRACE_APP("net deinit end");
 	}
 
@@ -461,15 +470,11 @@ namespace netp {
 			return;
 		}
 
-		NETP_ASSERT(m_def_loop_group == nullptr);
-		m_def_loop_group = netp::make_ref<netp::event_loop_group>(u8_t(NETP_DEFAULT_POLLER_TYPE), default_event_loop_maker);
+		NETP_ASSERT( m_def_loop_group != nullptr );
 		m_def_loop_group->start(m_loop_count, m_channel_read_buf_size);
 		NETP_TRACE_APP("[app]init loop done");
 
-		NETP_ASSERT(m_dns_resolver == nullptr);
-		m_dns_resolver = netp::make_ref<netp::dns_resolver>();
 		m_dns_resolver->reset(m_def_loop_group->internal_next());
-
 		if (m_dnsnses.size()) {
 			m_dns_resolver->add_name_server(m_dnsnses);
 		}
@@ -496,10 +501,7 @@ namespace netp {
 
 		//reset loop after all loop reference dattached from business code
 		m_def_loop_group->wait();
-		m_def_loop_group = nullptr;
-
 		m_dns_resolver->reset(nullptr);
-		m_dns_resolver = nullptr;
 	}
 
 	//ISSUE: if the waken thread is main thread, we would get stuck here
