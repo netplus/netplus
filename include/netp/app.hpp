@@ -7,10 +7,8 @@
 
 #include <netp/logger_broker.hpp>
 #include <netp/event_loop.hpp>
-#include <netp/dns_resolver.hpp>
 
 //#define NETP_DEBUG_OBJECT_SIZE
-
 namespace netp {
 
 	//typedef std::function<void()> fn_app_hook_t;
@@ -23,10 +21,8 @@ namespace netp {
 	class app:
 		public netp::singleton<app>
 	{
-
 	private:
 		NRP<event_loop_group> m_def_loop_group;
-		NRP<dns_resolver> m_dns_resolver;
 		NRP<logger_broker> m_logger_broker;
 
 		netp::mutex m_mutex;
@@ -39,7 +35,7 @@ namespace netp {
 
 		std::atomic<bool> m_loop_inited;
 		std::vector<std::tuple<int,i64_t>> m_signo_tuple_vec;
-		std::vector<std::string> m_dnsnses; //dotip
+		std::vector<std::string> m_dns_hosts; //dotip
 		std::string m_logfilepathname;
 
 		void _app_thread_init();
@@ -82,6 +78,7 @@ namespace netp {
 		void cfg_channel_read_buf(u32_t buf_in_kbytes);
 		void cfg_add_dns(std::string const& dns_ns);
 		void cfg_log_filepathname(std::string const& logfilepathname_);
+		void dns_hosts(std::vector<netp::string_t, netp::allocator<netp::string_t>>&) const ;
 
 		//startup loop & dns
 		int startup(int argc, char** argv);
@@ -132,10 +129,6 @@ namespace netp {
 
 		__NETP_FORCE_INLINE
 		NRP<netp::event_loop_group> const& def_loop_group() const { return m_def_loop_group; }
-		
-		__NETP_FORCE_INLINE
-		NRP<netp::dns_resolver> const& dns() const { return m_dns_resolver; }
-
 		__NETP_FORCE_INLINE
 		NRP<netp::logger_broker> const& logger() const { return m_logger_broker; }
 	};

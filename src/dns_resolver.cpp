@@ -3,6 +3,7 @@
 
 #include <netp/dns_resolver.hpp>
 #include <netp/socket_api.hpp>
+#include <netp/event_loop.hpp>
 
 namespace netp {
 
@@ -68,6 +69,26 @@ namespace netp {
 		}
 	}
 
+	void dns_resolver::__ares_check_timeout() {
+		NETP_ASSERT(m_flag & f_running);
+
+		if ((m_ares_active_query > 0) && ((m_flag & f_timeout_timer) == 0)) {
+			m_flag |= f_timeout_timer;
+			NRP<netp::promise<int>> ltp = netp::make_ref<netp::promise<int>>();
+			ltp->if_done([this](int rt) {
+				if (rt != netp::OK) {
+					m_flag &= ~f_timeout_timer;
+				}
+				});
+
+			struct timeval nxt_exp = { 1,1 };
+			NETP_ASSERT(m_tm_dnstimeout != nullptr);
+			ares_timeout(m_ares_channel, 0, &nxt_exp);
+			m_tm_dnstimeout->set_delay(std::chrono::milliseconds((nxt_exp.tv_sec * 1000) + (nxt_exp.tv_usec / 1000)));
+			L->launch(m_tm_dnstimeout, ltp);
+		}
+	}
+
 	void dns_resolver::reset( NRP<event_loop> const& L_ ) {
 		NETP_ASSERT( L_== nullptr || (L_->poller_type() == NETP_DEFAULT_POLLER_TYPE) );
 		L = L_;
@@ -87,12 +108,12 @@ namespace netp {
 
 	void dns_resolver::_do_add_name_server() {
 		NETP_ASSERT(L->in_event_loop());
-		std::for_each(m_ns.begin(), m_ns.end(), [&](std::string const& serv) {
+		std::for_each(m_ns.begin(), m_ns.end(), [&](netp::string_t const& serv) {
 			NETP_VERBOSE("[dns_resolver]add dns serv: %s", serv.c_str());
 		});
 	}
 
-	NRP<netp::promise<int>> dns_resolver::add_name_server(std::vector<std::string> const& ns) {
+	NRP<netp::promise<int>> dns_resolver::add_name_server(std::vector<netp::string_t, netp::allocator<netp::string_t>> const& ns) {
 		NRP<netp::promise<int>> p = netp::make_ref<netp::promise<int>>();
 		L->execute([dnsr = this, ns, p]() {
 			dnsr->m_ns.insert(dnsr->m_ns.begin(), ns.begin(), ns.end());
@@ -273,6 +294,8 @@ namespace netp {
 	}
 
 	int dns_resolver::__ares_socket_create_cb(ares_socket_t socket_fd, int type) {
+		(void)type;
+
 		//NETP_VERBOSE("[dns_resolver]__ares_socket_create_cb, fd: %d, type: %d", socket_fd, type);
 		NETP_ASSERT(L != nullptr);
 		NETP_ASSERT(L->in_event_loop());
@@ -331,6 +354,7 @@ namespace netp {
 
 	void dns_resolver::__ares_gethostbyname_cb(void* arg, int status, int timeouts, struct hostent* hostent)
 	{
+		(void)timeouts;
 		async_dns_query* adq = (async_dns_query*)arg;
 		adq->dnsr->__ares_done();
 		if (status == ARES_SUCCESS) {

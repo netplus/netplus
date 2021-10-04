@@ -83,12 +83,18 @@ namespace netp {
 	}
 
 	void app::cfg_add_dns(std::string const& dns_ns) {
-		m_dnsnses.push_back(dns_ns);
+		m_dns_hosts.push_back(dns_ns);
 	}
 
 	void app::cfg_log_filepathname(std::string const& logfilepathname_) {
 		if (logfilepathname_.length() == 0) { return; }
 		m_logfilepathname = logfilepathname_;
+	}
+
+	void app::dns_hosts(std::vector<netp::string_t, netp::allocator<netp::string_t>>& dns_hosts) const {
+		for (auto dns : m_dns_hosts) {
+			dns_hosts.push_back( netp::string_t(dns.c_str()));
+		}
 	}
 
 	void app::_app_thread_init() 
@@ -197,8 +203,7 @@ namespace netp {
 		m_is_cfg_json_checked(false),
 		m_should_exit(false),
 		m_loop_inited(false),
-		m_logfilepathname(),
-		m_dnsnses(std::vector<std::string>())
+		m_logfilepathname()
 	{
 		_app_thread_init();
 		_cfg_default_loop_cfg();
@@ -446,10 +451,6 @@ namespace netp {
 
 		NETP_ASSERT(m_def_loop_group == nullptr);
 		m_def_loop_group = netp::make_ref<netp::event_loop_group>(u8_t(NETP_DEFAULT_POLLER_TYPE), default_event_loop_maker);
-
-		NETP_ASSERT(m_dns_resolver == nullptr);
-		m_dns_resolver = netp::make_ref<netp::dns_resolver>();
-
 		NETP_TRACE_APP("net init end");
 	}
 
@@ -460,7 +461,6 @@ namespace netp {
 #endif
 
 		m_def_loop_group = nullptr;
-		m_dns_resolver = nullptr;
 		NETP_TRACE_APP("net deinit end");
 	}
 
@@ -469,39 +469,20 @@ namespace netp {
 		if (!m_loop_inited.compare_exchange_strong(N, true, std::memory_order_acq_rel, std::memory_order_acquire)) {
 			return;
 		}
-
 		NETP_ASSERT( m_def_loop_group != nullptr );
 		m_def_loop_group->start(m_loop_count, m_channel_read_buf_size);
 		NETP_TRACE_APP("[app]init loop done");
-
-		m_dns_resolver->reset(m_def_loop_group->internal_next());
-		if (m_dnsnses.size()) {
-			m_dns_resolver->add_name_server(m_dnsnses);
-		}
-
-		NRP<netp::promise<int>> dnsp = m_dns_resolver->start();
-		if (dnsp->get() != netp::OK) {
-			NETP_ERR("[app]start dnsresolver failed: %d, exit", dnsp->get());
-			_event_loop_deinit();
-			exit(dnsp->get());
-		}
-		
-		NETP_TRACE_APP("[app]init dns done");
 	}
 
 	void app::_event_loop_deinit() {
-
 		bool Y = true;
 		if (!m_loop_inited.compare_exchange_strong(Y, false, std::memory_order_acq_rel, std::memory_order_acquire)) {
 			return;
 		}
 
 		m_def_loop_group->notify_terminating();
-		m_dns_resolver->stop();
-
 		//reset loop after all loop reference dattached from business code
 		m_def_loop_group->wait();
-		m_dns_resolver->reset(nullptr);
 	}
 
 	//ISSUE: if the waken thread is main thread, we would get stuck here

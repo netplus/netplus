@@ -253,7 +253,7 @@
     <ClCompile Include="..\..\src\http\message.cpp" />
     <ClCompile Include="..\..\src\http\parser.cpp" />
     <ClCompile Include="..\..\src\http\url_parser.cpp" />
-    <ClCompile Include="..\..\src\io_event_loop.cpp" />
+    <ClCompile Include="..\..\src\event_loop.cpp" />
     <ClCompile Include="..\..\src\logger\android_log_print.cpp" />
     <ClCompile Include="..\..\src\logger\console_logger.cpp" />
     <ClCompile Include="..\..\src\logger\file_logger.cpp" />

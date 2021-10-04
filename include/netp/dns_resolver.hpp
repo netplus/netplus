@@ -11,14 +11,13 @@
 #if defined(_NETP_USE_C_ARES)
 	#include "../../3rd/c-ares/c-ares-1.17.1/include/ares.h"
 #endif
-
+#include <netp/ipv4.hpp>
 #include <netp/smart_ptr.hpp>
 #include <netp/promise.hpp>
-#include <netp/ipv4.hpp>
 #include <netp/io_monitor.hpp>
-#include <netp/event_loop.hpp>
 
 namespace netp {
+	class event_loop;
 	class socket_channel;
 	struct io_ctx;
 
@@ -59,10 +58,11 @@ namespace netp {
 #endif
 #endif
 
+	class event_loop;
 	class dns_resolver :
 		public netp::non_atomic_ref_base
 	{
-		friend class app;
+		friend class event_loop;
 		friend struct ares_fd_monitor;
 		friend struct async_dns_query;
 		enum dns_resolver_flag {
@@ -81,7 +81,7 @@ namespace netp {
 #endif
 
 		NRP<netp::timer> m_tm_dnstimeout;
-		std::vector<std::string> m_ns; //for restart
+		std::vector<netp::string_t, netp::allocator<netp::string_t>> m_ns; //for restart
 		u8_t m_flag;
 
 #ifdef _NETP_USE_C_ARES
@@ -94,25 +94,7 @@ namespace netp {
 		int __ares_socket_create_cb(ares_socket_t socket_fd, int type);
 		void __ares_socket_state_cb(ares_socket_t socket_fd, int readable, int writable);
 		inline void __ares_done() { NETP_ASSERT(m_ares_active_query>0); --m_ares_active_query; }
-		inline void __ares_check_timeout() {
-			NETP_ASSERT( m_flag&f_running );
-
-			if ((m_ares_active_query > 0) && ((m_flag & f_timeout_timer) == 0)) {
-				m_flag |= f_timeout_timer;
-				NRP<netp::promise<int>> ltp = netp::make_ref<netp::promise<int>>();
-				ltp->if_done([this](int rt) {
-					if (rt != netp::OK) {
-						m_flag &= ~f_timeout_timer;
-					}
-				});
-
-				struct timeval nxt_exp = {1,1};
-				NETP_ASSERT(m_tm_dnstimeout != nullptr);
-				ares_timeout(m_ares_channel, 0, &nxt_exp);
-				m_tm_dnstimeout->set_delay( std::chrono::milliseconds( (nxt_exp.tv_sec*1000) + (nxt_exp.tv_usec/1000) ) );
-				L->launch(m_tm_dnstimeout, ltp);
-			}
-		}
+		void __ares_check_timeout();
 #endif
 
 	private:
@@ -134,7 +116,7 @@ namespace netp {
 	public:
 		dns_resolver();
 		~dns_resolver();
-		NRP<netp::promise<int>> add_name_server(std::vector<std::string> const& ns);
+		NRP<netp::promise<int>> add_name_server(std::vector<netp::string_t, netp::allocator<netp::string_t>> const& ns);
 		NRP<dns_query_promise> resolve(string_t const& domain);
 
 		static void __ares_gethostbyname_cb(void* arg, int status, int timeouts, struct hostent* hostent);

@@ -569,7 +569,7 @@
     <ClCompile Include="..\..\src\funcs.cpp">
       <Filter>Source Files\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\io_event_loop.cpp">
+    <ClCompile Include="..\..\src\event_loop.cpp">
       <Filter>Source Files\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\logger_broker.cpp">

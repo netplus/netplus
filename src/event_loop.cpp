@@ -3,6 +3,7 @@
 #include <netp/timer.hpp>
 #include <netp/thread.hpp>
 #include <netp/event_loop.hpp>
+#include <netp/dns_resolver.hpp>
 
 #if defined(NETP_HAS_POLLER_EPOLL)
 #include <netp/poller_epoll.hpp>
@@ -68,21 +69,46 @@ namespace netp {
 		}
 
 		NETP_ASSERT(poller != nullptr);
-		return netp::make_ref<event_loop>(t,poller, channel_read_buf_size);
+
+		event_loop_cfg cfg = { t, channel_read_buf_size, poller, std::vector<netp::string_t, netp::allocator<netp::string_t>>() };
+		netp::app::instance()->dns_hosts(cfg.dns_hosts);
+		return netp::make_ref<event_loop>(cfg);
 	}
 
 	void event_loop::init() {
 		m_channel_rcv_buf = netp::make_ref<netp::packet>(m_channel_read_buf_size,0);
 		m_tid = std::this_thread::get_id();
 		m_tb = netp::make_ref<timer_broker>();
-
 		m_poller->init();
+
+		m_dns_resolver = netp::make_ref<dns_resolver>();
+		if (m_dns_hosts.size()) {
+			m_dns_resolver->add_name_server(m_dns_hosts);
+		}
+		if (m_type == NETP_DEFAULT_POLLER_TYPE) {
+			m_dns_resolver->reset( NRP<event_loop>(this) );
+			inc_internal_ref_count();
+		} else {
+			m_dns_resolver->reset( netp::app::instance()->def_loop_group()->next());
+		}
+
+		NRP<netp::promise<int>> dnsp = m_dns_resolver->start();
+		if (dnsp->get() != netp::OK) {
+			char _fail_message[256] = { 0 };
+			snprintf(_fail_message, 255, "dns resolver start failed: %d", dnsp->get());
+			NETP_ERR("[app]start dnsresolver failed: %d, exit", dnsp->get());
+			NETP_THROW("dns_resolver start failed");
+		}
 	}
 
 	void event_loop::deinit() {
 		NETP_VERBOSE("[event_loop]deinit begin");
 		NETP_ASSERT(in_event_loop());
 		NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_EXIT), "event loop deinit state check failed");
+
+		NETP_ASSERT( m_dns_resolver != nullptr );
+		m_dns_resolver->reset(nullptr);
+		m_dns_resolver = nullptr;
 
 		{
 			lock_guard<spin_mutex> lg(m_tq_mutex);
@@ -161,6 +187,13 @@ namespace netp {
 
 	void event_loop::__do_notify_terminating() {
 		NETP_ASSERT( in_event_loop() );
+
+		//dns resolver stop would result in dns socket be removed from io_ctx
+		//we keep m_dns_resolver instance until there is no event_loop reference outside
+		//no new fd is accepted after state enter terminating, so it's safe to stop dns first
+		NETP_ASSERT(m_dns_resolver != nullptr);
+		m_dns_resolver->stop();
+
 		io_do(io_action::NOTIFY_TERMINATING, 0);
 		if (m_io_ctx_count == m_io_ctx_count_before_running) {
 			__do_enter_terminated();
@@ -221,15 +254,16 @@ namespace netp {
 		NETP_INFO("[event_loop][%u]__terminate end", m_type);
 	}
 
-	event_loop::event_loop(u8_t t, NRP<poller_abstract> const& poller, u32_t channel_read_buf_size):
+	event_loop::event_loop(event_loop_cfg const& cfg):
 		m_waiting(false),
 		m_state(u8_t(loop_state::S_IDLE)),
-		m_type(t),
+		m_type(cfg.type),
+		m_poller(cfg.poller),
 		m_io_ctx_count(0),
-		m_io_ctx_count_before_running(0),
-		m_poller(poller),
+		m_io_ctx_count_before_running(0), 
 		m_internal_ref_count(0),
-		m_channel_read_buf_size(channel_read_buf_size)
+		m_channel_read_buf_size(cfg.channel_read_buf_size),
+		m_dns_hosts(cfg.dns_hosts.begin(), cfg.dns_hosts.end())
 	{}
 
 	event_loop::~event_loop() {
@@ -419,14 +453,14 @@ namespace netp {
 			NETP_THROW("event_loop_group deinit logic issue");
 		}
 
-		NRP<event_loop> event_loop_group::internal_next() {
-			shared_lock_guard<shared_mutex> lg(m_loop_mtx);
-			NETP_ASSERT(m_loop.size() != 0);
-			int idx = m_curr_loop_idx.fetch_add(1, std::memory_order_relaxed) % m_loop.size();
-			m_loop[idx]->inc_internal_ref_count();
-			return m_loop[idx];
-			//NETP_THROW("event_loop_group deinit logic issue");
-		}
+		//NRP<event_loop> event_loop_group::internal_next() {
+		//	shared_lock_guard<shared_mutex> lg(m_loop_mtx);
+		//	NETP_ASSERT(m_loop.size() != 0);
+		//	int idx = m_curr_loop_idx.fetch_add(1, std::memory_order_relaxed) % m_loop.size();
+		//	m_loop[idx]->inc_internal_ref_count();
+		//	return m_loop[idx];
+		//	//NETP_THROW("event_loop_group deinit logic issue");
+		//}
 
 		void event_loop_group::execute(fn_task_t&& f) {
 			next()->execute(std::forward<fn_task_t>(f));

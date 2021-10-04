@@ -913,12 +913,13 @@ namespace netp {
 
 		NRP<socket_channel> so;
 		if (cfg->proto == NETP_PROTOCOL_USER) {
+			NETP_ASSERT(cfg->L->poller_type() != NETP_DEFAULT_POLLER_TYPE );
 			if (cfg->ch_maker == nullptr) {
 				return std::make_tuple(netp::E_CHANNEL_MISSING_MAKER, nullptr );
 			}
 			so = cfg->ch_maker(cfg);
-		}
-		else {
+		} else {
+			NETP_ASSERT(cfg->L->poller_type() == NETP_DEFAULT_POLLER_TYPE);
 			NETP_ASSERT(cfg->ch_maker == nullptr);
 			so = default_socket_channel_maker(cfg);
 		}

@@ -153,7 +153,11 @@ namespace netp {
 			return;
 		}
 
-		NRP<dns_query_promise> dnsp = netp::app::instance()->dns()->resolve(info.host);
+		if (cfg_->L == nullptr) {
+			cfg_->L = netp::app::instance()->def_loop_group()->next();
+		}
+
+		NRP<dns_query_promise> dnsp = cfg_->L->resolve(info.host);
 		dnsp->if_done([host=info.host,port = info.port, initializer, ch_dialf, _dcfg](std::tuple<int, std::vector<ipv4_t, netp::allocator<ipv4_t>>> const& tupdns) {
 			if (std::get<0>(tupdns) != netp::OK) {
 				ch_dialf->set(std::make_tuple(std::get<0>(tupdns), nullptr));
