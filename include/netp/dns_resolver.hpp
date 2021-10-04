@@ -98,23 +98,21 @@ namespace netp {
 #endif
 
 	private:
-		void reset( NRP<event_loop> const& L );
 		void _do_add_name_server();
 
 		void _do_start(NRP<netp::promise<int>> const& p);
 		NRP<netp::promise<int>> start();
 
 		void _do_stop(NRP<netp::promise<int>> const& p);
-
 		NRP<netp::promise<int>> stop();
+
 		void restart();
 
 		void cb_dns_timeout(NRP<netp::timer> const& t);
-
 		void _do_resolve(string_t const& domain, NRP<dns_query_promise> const& p);
 
 	public:
-		dns_resolver();
+		dns_resolver(NRP<event_loop> const& L_);
 		~dns_resolver();
 		NRP<netp::promise<int>> add_name_server(std::vector<netp::string_t, netp::allocator<netp::string_t>> const& ns);
 		NRP<dns_query_promise> resolve(string_t const& domain);

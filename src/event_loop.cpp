@@ -81,15 +81,15 @@ namespace netp {
 		m_tb = netp::make_ref<timer_broker>();
 		m_poller->init();
 
-		m_dns_resolver = netp::make_ref<dns_resolver>();
-		if (m_dns_hosts.size()) {
-			m_dns_resolver->add_name_server(m_dns_hosts);
-		}
+
 		if (m_type == NETP_DEFAULT_POLLER_TYPE) {
-			m_dns_resolver->reset( NRP<event_loop>(this) );
+			m_dns_resolver = netp::make_ref<dns_resolver>(NRP<event_loop>(this));
 			inc_internal_ref_count();
 		} else {
-			m_dns_resolver->reset( netp::app::instance()->def_loop_group()->next());
+			m_dns_resolver = netp::make_ref<dns_resolver>(netp::app::instance()->def_loop_group()->next());
+		}
+		if (m_dns_hosts.size()) {
+			m_dns_resolver->add_name_server(m_dns_hosts);
 		}
 
 		NRP<netp::promise<int>> dnsp = m_dns_resolver->start();
@@ -107,7 +107,6 @@ namespace netp {
 		NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_EXIT), "event loop deinit state check failed");
 
 		NETP_ASSERT( m_dns_resolver != nullptr );
-		m_dns_resolver->reset(nullptr);
 		m_dns_resolver = nullptr;
 
 		{

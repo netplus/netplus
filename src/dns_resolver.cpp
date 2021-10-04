@@ -89,22 +89,22 @@ namespace netp {
 		}
 	}
 
-	void dns_resolver::reset( NRP<event_loop> const& L_ ) {
-		NETP_ASSERT( L_== nullptr || (L_->poller_type() == NETP_DEFAULT_POLLER_TYPE) );
-		L = L_;
-		m_ns.clear();
-		m_flag = 0;
-	}
+	//void dns_resolver::reset( NRP<event_loop> const& L_ ) {
+	//	NETP_ASSERT( L_== nullptr || (L_->poller_type() == NETP_DEFAULT_POLLER_TYPE) );
+	//	L = L_;
+	//	m_ns.clear();
+	//	m_flag = 0;
+	//}
 
-	dns_resolver::dns_resolver() :
-		L(nullptr),
+	dns_resolver::dns_resolver(NRP<event_loop> const& L_) :
+		L(L_),
 		m_ares_active_query(0),
 		m_flag(0)
 	{
+		NETP_ASSERT(L_ != nullptr );
 	}
 
-	dns_resolver::~dns_resolver() {
-	}
+	dns_resolver::~dns_resolver() {}
 
 	void dns_resolver::_do_add_name_server() {
 		NETP_ASSERT(L->in_event_loop());
@@ -204,6 +204,7 @@ namespace netp {
 	}
 
 	NRP<netp::promise<int>> dns_resolver::start() {
+		NETP_ASSERT( L != nullptr );
 		NRP<netp::promise<int>> p = netp::make_ref<netp::promise<int>>();
 		L->execute([dnsr=this,p]() {
 			dnsr->_do_start(p);
