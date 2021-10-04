@@ -216,21 +216,23 @@ namespace netp {
 
 	int app::startup(int argc, char** argv) {
 		NETP_ASSERT(argc >= 1);
-		std::string data = netp::curr_local_data_str();
-		std::string data_;
-		netp::replace(data, std::string("-"), std::string("_"), data_);
-		cfg_log_filepathname(std::string(argv[0]) + std::string(".") + data_ + ".log");
+		if (argc > 0) {
+			_parse_cfg(argc, argv);
+		}
 
-		_parse_cfg(argc, argv);
+		//check def
 		if (!m_is_cfg_json_checked) {
 			_init_from_cfg_json("./netp.cfg.json");
 		}
 
-		string_t logfilepath = "./netp.log";
-		if (m_logfilepathname.length()) {
-			logfilepath = netp::string_t(m_logfilepathname.c_str());
+		if (m_logfilepathname.length() == 0) {
+			std::string data = netp::curr_local_data_str();
+			std::string data_;
+			netp::replace(data, std::string("-"), std::string("_"), data_);
+			cfg_log_filepathname(std::string(argv[0]) + std::string(".") + data_ + ".log");
 		}
-		NRP<logger::file_logger> filelogger = netp::make_ref<netp::logger::file_logger>(logfilepath);
+
+		NRP<logger::file_logger> filelogger = netp::make_ref<netp::logger::file_logger>(netp::string_t(m_logfilepathname.c_str()));
 		filelogger->set_mask_by_level(NETP_FILE_LOGGER_LEVEL);
 		m_logger_broker->add(filelogger);
 
