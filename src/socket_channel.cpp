@@ -350,6 +350,7 @@ int socket_base::get_left_snd_queue() const {
 		_set_fail_and_return:
 			NETP_ASSERT( 0==(m_chflag&int(channel_flag::F_CONNECTED)) );
 			m_chflag |= int(channel_flag::F_WRITE_ERROR);
+			m_chflag &= ~int(channel_flag::F_CONNECTING);
 			m_cherrno = status;
 			ch_io_end_connect();
 			ch_close_impl(netp::make_ref<netp::promise<int>>());

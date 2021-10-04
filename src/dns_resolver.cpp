@@ -75,11 +75,12 @@ namespace netp {
 		if ((m_ares_active_query > 0) && ((m_flag & f_timeout_timer) == 0)) {
 			m_flag |= f_timeout_timer;
 			NRP<netp::promise<int>> ltp = netp::make_ref<netp::promise<int>>();
-			ltp->if_done([this](int rt) {
+			ltp->if_done([dnsr=NRP<dns_resolver>(this)](int rt) {
+				NETP_ASSERT( dnsr->L->in_event_loop() );
 				if (rt != netp::OK) {
-					m_flag &= ~f_timeout_timer;
+					dnsr->m_flag &= ~f_timeout_timer;
 				}
-				});
+			});
 
 			struct timeval nxt_exp = { 1,1 };
 			NETP_ASSERT(m_tm_dnstimeout != nullptr);
@@ -115,7 +116,7 @@ namespace netp {
 
 	NRP<netp::promise<int>> dns_resolver::add_name_server(std::vector<netp::string_t, netp::allocator<netp::string_t>> const& ns) {
 		NRP<netp::promise<int>> p = netp::make_ref<netp::promise<int>>();
-		L->execute([dnsr = this, ns, p]() {
+		L->execute([dnsr = NRP<dns_resolver>(this), ns, p]() {
 			dnsr->m_ns.insert(dnsr->m_ns.begin(), ns.begin(), ns.end());
 			p->set(netp::OK);
 		});
@@ -190,10 +191,16 @@ namespace netp {
 		}
 
 		ares_free_data(ns);
+
+		//@note
+		//it's safe to set this pointer, cuz ares ares_destroy always happens before loop exit
+		//for def loop, it's always true
+		//for non-def-loop, if it exit before def loop's exit, it's always true
+
 		ares_set_socket_callback(m_ares_channel, ___ares_socket_create_cb, this);
 
 		NETP_ASSERT(m_tm_dnstimeout == nullptr);
-		m_tm_dnstimeout = netp::make_ref<netp::timer>(std::chrono::milliseconds(100), &dns_resolver::cb_dns_timeout, this, std::placeholders::_1);
+		m_tm_dnstimeout = netp::make_ref<netp::timer>(std::chrono::milliseconds(100), &dns_resolver::cb_dns_timeout, NRP<dns_resolver>(this), std::placeholders::_1);
 
 		m_flag &= ~dns_resolver_flag::f_launching;
 		m_flag |= dns_resolver_flag::f_running;
@@ -206,7 +213,7 @@ namespace netp {
 	NRP<netp::promise<int>> dns_resolver::start() {
 		NETP_ASSERT( L != nullptr );
 		NRP<netp::promise<int>> p = netp::make_ref<netp::promise<int>>();
-		L->execute([dnsr=this,p]() {
+		L->execute([dnsr=NRP<dns_resolver>(this),p]() {
 			dnsr->_do_start(p);
 		});
 		return p;
@@ -251,7 +258,7 @@ namespace netp {
 
 	NRP<netp::promise<int>> dns_resolver::stop() {
 		NRP<netp::promise<int>> p = netp::make_ref<netp::promise<int>>();
-		L->execute([dnsr=this,p]() {
+		L->execute([dnsr=NRP<dns_resolver>(this),p]() {
 			dnsr->m_flag |= f_stop_called;
 			dnsr->_do_stop(p);
 		});
@@ -409,7 +416,7 @@ namespace netp {
 		}
 
 		async_dns_query* adq = netp::allocator<async_dns_query>::make();
-		adq->dnsr = this;
+		adq->dnsr = NRP<dns_resolver>(this);
 		adq->dnsquery_p = p;
 
 #ifdef _NETP_USE_C_ARES
@@ -421,7 +428,7 @@ namespace netp {
 
 	NRP<dns_query_promise> dns_resolver::resolve(string_t const& domain) {
 		NRP<dns_query_promise> dnsp = netp::make_ref<dns_query_promise>();
-		L->execute([dnsr=this, domain, dnsp]() {
+		L->execute([dnsr=NRP<dns_resolver>(this), domain, dnsp]() {
 			dnsr->_do_resolve(domain, dnsp);
 		});
 		return dnsp;

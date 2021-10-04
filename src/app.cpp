@@ -60,7 +60,7 @@ namespace netp {
 	}
 
 	void app::_cfg_default_loop_cfg() {
-		cfg_loop_count( u32_t(std::thread::hardware_concurrency() * 1.5f));
+		cfg_loop_count( u32_t(std::thread::hardware_concurrency()));
 		cfg_channel_read_buf(128);
 	}
 
@@ -166,9 +166,12 @@ namespace netp {
 			cfg_log_filepathname(cfg_json["log"].get<std::string>());
 		}
 
-		if (cfg_json.find("def_loop_count") != cfg_json.end() && cfg_json["def_loop_count"].is_number()) {
+		if (cfg_json.find("def_loop_count_factor") != cfg_json.end() && cfg_json["def_loop_count_factor"].is_number_float() && cfg_json["def_loop_count_factor"].get<float>() > 0 ) {
+			cfg_loop_count(u32_t(cfg_json["def_loop_count_factor"].get<float>()*std::thread::hardware_concurrency()));
+		} else if (cfg_json.find("def_loop_count") != cfg_json.end() && cfg_json["def_loop_count"].is_number()) {
 			cfg_loop_count(cfg_json["def_loop_count"]);
 		}
+
 		if (cfg_json.find("def_channel_read_buf") != cfg_json.end() && cfg_json["def_channel_read_buf"].is_number()) {
 			cfg_channel_read_buf(cfg_json["def_channel_read_buf"].get<int>());
 		}
@@ -377,7 +380,7 @@ namespace netp {
 	}
 
 #if defined(NETP_DEBUG_OBJECT_SIZE)
-	void app::__dump_sizeof() {
+	void app::_dump_sizeof() {
 
 		NETP_TRACE_APP("sizeof(void*): %u", sizeof(void*));
 

@@ -26,7 +26,7 @@ namespace netp {
 	class dns_resolver;
 	struct async_dns_query
 	{
-		dns_resolver* dnsr;
+		NRP<dns_resolver> dnsr;
 		NRP<dns_query_promise> dnsquery_p;
 	};
 
@@ -60,7 +60,7 @@ namespace netp {
 
 	class event_loop;
 	class dns_resolver :
-		public netp::non_atomic_ref_base
+		public netp::ref_base
 	{
 		friend class event_loop;
 		friend struct ares_fd_monitor;
