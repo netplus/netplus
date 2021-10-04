@@ -68,7 +68,7 @@ namespace netp {
 		NRP <netp::promise<std::tuple<int, NRP<socket_channel>>>> p = netp::make_ref<netp::promise<std::tuple<int, NRP<socket_channel>>>>();
 		if (cfg->L == nullptr) {
 			NETP_ASSERT(cfg->proto != NETP_PROTOCOL_USER);
-			cfg->L = netp::app::instance()->loop_group()->next(NETP_DEFAULT_POLLER_TYPE);
+			cfg->L = netp::app::instance()->def_loop_group()->next();
 		}
 		do_async_create_socket_channel(p, cfg);
 		return p;
@@ -77,7 +77,7 @@ namespace netp {
 	void do_dial(NRP<channel_dial_promise> const& ch_dialf, NRP<address> const& addr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
 		if (cfg->L == nullptr) {
 			NETP_ASSERT(cfg->type != NETP_AF_USER);
-			cfg->L = netp::app::instance()->loop_group()->next();
+			cfg->L = netp::app::instance()->def_loop_group()->next();
 		}
 		if (!cfg->L->in_event_loop()) {
 			cfg->L->schedule([addr, initializer, ch_dialf, cfg]() {
@@ -230,7 +230,7 @@ namespace netp {
 
 		NRP<address> laddr=netp::make_ref<address>(info.host.c_str(), info.port, cfg->family);
 		if (cfg->L == nullptr) {
-			cfg->L = app::instance()->loop_group()->next(NETP_DEFAULT_POLLER_TYPE);
+			cfg->L = app::instance()->def_loop_group()->next();
 		}
 
 		if (!cfg->L->in_event_loop()) {

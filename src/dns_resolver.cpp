@@ -68,8 +68,8 @@ namespace netp {
 		}
 	}
 
-	void dns_resolver::reset( NRP<io_event_loop> const& L_ ) {
-		NETP_ASSERT( L_== nullptr || (L_->poller_type() != io_poller_type::T_IOCP && L_->poller_type() != io_poller_type::T_POLLER_CUSTOM_1 && L_->poller_type() != io_poller_type::T_POLLER_CUSTOM_2));
+	void dns_resolver::reset( NRP<event_loop> const& L_ ) {
+		NETP_ASSERT( L_== nullptr || (L_->poller_type() == NETP_DEFAULT_POLLER_TYPE) );
 		
 		L = L_;
 		m_ns.clear();

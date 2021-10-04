@@ -21,7 +21,7 @@
 
 namespace netp {
 
-	extern void set_memory_pool_slot_entries_size_level(int l);
+	extern void cfg_memory_pool_slot_entries_size_level(int l);
 
 	enum TABLE {
 		T0 = 0,

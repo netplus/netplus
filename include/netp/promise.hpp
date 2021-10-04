@@ -254,8 +254,8 @@ namespace netp {
 			//(1) if callee is executed on another thread, we need call std::atomic_thread_fence(std::memory_order_acquire) before reading v
 			//(2) ofc, we could just call is_done() instead
 
-			//(3) luckly, you do not need to do any synchronization mentioned above, if you schedule/execute callee by io_event_loop
-			//refer to void io_event_loop::schedule()/__run() for detail
+			//(3) luckly, you do not need to do any synchronization mentioned above, if you schedule/execute callee by event_loop
+			//refer to void event_loop::schedule()/__run() for detail
 
 			//alternative impl:
 				//we can pass a object such as promise itself, then do get() on callee thread to sure memory synchronization

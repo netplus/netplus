@@ -80,7 +80,7 @@ namespace netp {
 				return;
 			} else if (nready == -1) {
 				//notice 10038
-				NETP_ERR("[io_event_loop][select]select error, errno: %d", netp_socket_get_last_errno());
+				NETP_ERR("[event_loop][select]select error, errno: %d", netp_socket_get_last_errno());
 				return;
 			}
 

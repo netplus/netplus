@@ -17,7 +17,7 @@ namespace netp {
 		public socket_channel
 	{
 		template <class socket_channel_t>
-		friend std::tuple<int, NRP<socket_channel_t>> accepted_create(NRP<io_event_loop> const& L, SOCKET nfd, address const& laddr, address const& raddr, NRP<socket_cfg> const& cfg);
+		friend std::tuple<int, NRP<socket_channel_t>> accepted_create(NRP<event_loop> const& L, SOCKET nfd, address const& laddr, address const& raddr, NRP<socket_cfg> const& cfg);
 
 		template <class socket_channel_t>
 		friend std::tuple<int, NRP<socket_channel_t>> create(NRP<socket_cfg> const& cfg);

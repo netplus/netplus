@@ -19,8 +19,6 @@ namespace netp {
 		T_IOCP, //win
 		T_EPOLL, //linux,epoll,et
 		T_KQUEUE,//bsd
-		T_POLLER_CUSTOM_1,
-		T_POLLER_CUSTOM_2,
 		T_POLLER_MAX,
 		T_NONE
 	};

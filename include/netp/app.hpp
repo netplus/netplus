@@ -6,116 +6,88 @@
 #include <netp/test.hpp>
 
 #include <netp/logger_broker.hpp>
-#include <netp/io_event_loop.hpp>
+#include <netp/event_loop.hpp>
 #include <netp/dns_resolver.hpp>
 
 //#define NETP_DEBUG_OBJECT_SIZE
 
 namespace netp {
 
-	typedef std::function<void()> fn_app_hook_t;
-
-	struct app_cfg {
-
-		std::string logfilepathname;
-		std::vector<std::string> dnsnses; //dotip
-		u32_t poller_max[T_POLLER_MAX];
-		u32_t poller_count[T_POLLER_MAX];
-		event_loop_cfg event_loop_cfgs[T_POLLER_MAX];
-
-		fn_app_hook_t app_startup_prev;
-		fn_app_hook_t app_startup_post;
-		fn_app_hook_t app_exit_prev;
-		fn_app_hook_t app_exit_post;
-
-		fn_app_hook_t app_event_loop_init_prev;
-		fn_app_hook_t app_event_loop_init_post;
-		fn_app_hook_t app_event_loop_deinit_prev;
-		fn_app_hook_t app_event_loop_deinit_post;
-
-		bool __cfg_json_checked;
-		void __init_from_cfg_json(const char* jsonfile);
-		void __parse_cfg(int argc, char** argv);
-
-		void __cfg_default_loop_cfg();
-	public:
-		app_cfg(int argc, char** argv);
-		app_cfg();
-
-		//<0, disable
-		//=0, std::thread::hardware_concurrency()
-		//<std::thread::hardware_concurrency()<<1, accepted
-		//max std::thread::hardware_concurrency()<<1
-		void cfg_poller_max(io_poller_type t, int c);
-		void cfg_poller_count(io_poller_type t, int c);
-
-		void cfg_channel_buf(io_poller_type t, int buf_in_kbytes);
-		void cfg_add_dns(std::string const& dns_ns);
-
-		void cfg_log_filepathname(std::string const& logfilepathname_);
-	};
+	//typedef std::function<void()> fn_app_hook_t;
+#if defined(_NETP_DEBUG) || 1
+	#define	NETP_TRACE_APP(...)				(m_logger_broker->write( netp::logger::LOG_MASK_INFO, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__ ))
+#else
+	#define	NETP_TRACE_APP(...)
+#endif
 
 	class app:
 		public netp::singleton<app>
 	{
 
 	private:
-
-		NRP<io_event_loop_group> m_io_evt_group;
+		NRP<event_loop_group> m_def_loop_group;
 		NRP<dns_resolver> m_dns_resolver;
 		NRP<logger_broker> m_logger_broker;
 
-		bool m_should_exit;
 		netp::mutex m_mutex;
 		netp::condition m_cond;
+
+		u32_t m_loop_count;
+		u32_t m_channel_read_buf_size;
+		bool m_is_cfg_json_checked;
+		bool m_should_exit;
+
+		std::atomic<bool> m_loop_inited;
 		std::vector<std::tuple<int,i64_t>> m_signo_tuple_vec;
-		app_cfg m_cfg;
+		std::vector<std::string> m_dnsnses; //dotip
+		std::string m_logfilepathname;
 
-		fn_app_hook_t m_app_startup_prev;
-		fn_app_hook_t m_app_startup_post;
-		fn_app_hook_t m_app_exit_prev;
-		fn_app_hook_t m_app_exit_post;
+		void _app_thread_init();
+		void _app_thread_deinit();
 
-		fn_app_hook_t m_app_event_loop_init_prev;
-		fn_app_hook_t m_app_event_loop_init_post;
-		fn_app_hook_t m_app_event_loop_deinit_prev;
-		fn_app_hook_t m_app_event_loop_deinit_post;
+		void _init_from_cfg_json(const char* jsonfile);
+		void _parse_cfg(int argc, char** argv);
 
-		void app_thread_init();
-		void app_thread_deinit();
+		void _cfg_default_loop_cfg();
+
+		void _init();
+		void _deinit();
+
+		void _log_init();
+		void _log_deinit();
+
+#ifndef NETP_DISABLE_INSTRUCTION_SET_DETECTOR
+		void _dump_arch_info();
+#endif
+
+#ifdef NETP_DEBUG_OBJECT_SIZE
+		void _dump_sizeof();
+#endif
+
+		void _signal_init();
+		void _signal_deinit();
+
+		void _net_init();
+		void _net_deinit();
+
+		void _event_loop_init();
+		void _event_loop_deinit();
 
 	public:
 		//@warn: if we do need to create app on heap, we should always use new/delete, or std::shared_ptr
 		app();
 		~app();
 
-		int startup(app_cfg const& cfg);
+		void cfg_loop_count(u32_t c);
+		void cfg_channel_read_buf(u32_t buf_in_kbytes);
+		void cfg_add_dns(std::string const& dns_ns);
+		void cfg_log_filepathname(std::string const& logfilepathname_);
 
-		void _startup();
-		void _exit();
+		//startup loop & dns
+		int startup(int argc, char** argv);
 
-		void _init();
-		void _deinit();
-
-		void __log_init();
-		void __log_deinit();
-
-#ifndef NETP_DISABLE_INSTRUCTION_SET_DETECTOR
-		void dump_arch_info();
-#endif
-
-#ifdef NETP_DEBUG_OBJECT_SIZE
-		void __dump_sizeof();
-#endif
-
-		void __signal_init();
-		void __signal_deinit();
-
-		void __net_init();
-		void __net_deinit();
-
-		void ___event_loop_init();
-		void ___event_loop_wait();
+		//stop loop & dns
+		void stop();
 
 		//ISSUE: if the waken thread is main thread, we would get stuck here
 		void handle_signal(int signo);
@@ -159,7 +131,7 @@ namespace netp {
 		}
 
 		__NETP_FORCE_INLINE
-		NRP<netp::io_event_loop_group> const& loop_group() const { return m_io_evt_group; }
+		NRP<netp::event_loop_group> const& def_loop_group() const { return m_def_loop_group; }
 		
 		__NETP_FORCE_INLINE
 		NRP<netp::dns_resolver> const& dns() const { return m_dns_resolver; }

@@ -104,7 +104,7 @@ namespace netp {
 	};
 
 	static SLOT_ENTRIES_SIZE_LEVEL g_memory_pool_slot_entries_size_level = L_EXTREM_LARGE;
-	void set_memory_pool_slot_entries_size_level(int l) {
+	void cfg_memory_pool_slot_entries_size_level(int l) {
 		if (l < L_EXTREM_LOW) {
 			l = L_EXTREM_LOW;
 		}

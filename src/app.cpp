@@ -59,125 +59,39 @@ namespace netp {
 		g_sigbroker->unbind_by_handle_id(handle_id);
 	}
 
-
-	void app_cfg::__cfg_default_loop_cfg() {
-		const int hcore = std::thread::hardware_concurrency();
-		for (size_t i = 0; i < T_POLLER_MAX; ++i) {
-			cfg_poller_max(io_poller_type(i), hcore << 1);
-			if (i == NETP_DEFAULT_POLLER_TYPE) {
-				cfg_poller_count(io_poller_type(i), int(std::ceil(hcore) * 1.5f));
-			}
-			else {
-				//0 means disabled
-				cfg_poller_count(io_poller_type(i), -1);
-			}
-			event_loop_cfgs[i].ch_buf_size = (128 * 1024);
-		}
-	}
-	app_cfg::app_cfg(int argc, char** argv) :
-		logfilepathname(),
-		dnsnses(std::vector<std::string>()),
-		app_startup_prev(nullptr),
-		app_startup_post(nullptr),
-		app_exit_prev(nullptr),
-		app_exit_post(nullptr),
-		app_event_loop_init_prev(nullptr),
-		app_event_loop_init_post(nullptr),
-		app_event_loop_deinit_prev(nullptr),
-		app_event_loop_deinit_post(nullptr),
-		__cfg_json_checked(false)
-	{
-		NETP_ASSERT(argc >= 1);
-		__cfg_default_loop_cfg();
-		std::string data = netp::curr_local_data_str();
-		std::string data_;
-		netp::replace(data, std::string("-"), std::string("_"), data_);
-		cfg_log_filepathname(std::string(argv[0]) + std::string(".") + data_ + ".log");
-		__parse_cfg(argc, argv);
-
-		if (!__cfg_json_checked) {
-			__init_from_cfg_json("./netp.cfg.json");
-		}
+	void app::_cfg_default_loop_cfg() {
+		cfg_loop_count( u32_t(std::thread::hardware_concurrency() * 1.5f));
+		cfg_channel_read_buf(128);
 	}
 
-	app_cfg::app_cfg() :
-		logfilepathname(),
-		dnsnses(std::vector<std::string>()),
-		app_startup_prev(nullptr),
-		app_startup_post(nullptr),
-		app_exit_prev(nullptr),
-		app_exit_post(nullptr),
-		app_event_loop_init_prev(nullptr),
-		app_event_loop_init_post(nullptr),
-		app_event_loop_deinit_prev(nullptr),
-		app_event_loop_deinit_post(nullptr),
-		__cfg_json_checked(false)
-	{
-		__cfg_default_loop_cfg();
-		std::string data = netp::curr_local_data_str();
-		std::string data_;
-		netp::replace(data, std::string("-"), std::string("_"), data_);
-		cfg_log_filepathname("netp_" + data_ + ".log");
-		__init_from_cfg_json("./netp.cfg.json");
-	}
-
-	//<0, disable
-	//=0, std::thread::hardware_concurrency()
-	//<std::thread::hardware_concurrency()<<1, accepted
-	//max std::thread::hardware_concurrency()<<1
-	void app_cfg::cfg_poller_max(io_poller_type t, int c) {
-		const int hcore = std::thread::hardware_concurrency();
-		if (c < hcore) {
-			poller_max[t] = hcore;
-		}
-		else if ((c) > (hcore << 1)) {
-			poller_max[t] = (hcore << 1);
-		}
-		else {
-			poller_max[t] = c;
-		}
-		//update poller max
-		cfg_poller_count(t, poller_count[t]);
-	}
-
-	void app_cfg::cfg_poller_count(io_poller_type t, int c) {
+	void app::cfg_loop_count( u32_t c) {
 		u32_t hcore = std::thread::hardware_concurrency();
-		NETP_ASSERT(poller_max[t] >= hcore);
-		if (c < 0) {
-			poller_count[t] = 0;
-			if (t == NETP_DEFAULT_POLLER_TYPE) {
-				poller_count[t] = 1;
-			}
-		}
-		else if (c == 0) {
-			poller_count[t] = hcore;
-		}
-		else if (u32_t(c) > poller_max[t]) {
-			poller_count[t] = poller_max[t];
-		}
-		else if (c <= 0) {//accepted
-			poller_count[t] = c;
+		if (c == 0) {
+			m_loop_count = hcore;
+		} else if (u32_t(c) > (hcore<<1) ) {
+			m_loop_count = (hcore << 1);
+		} else {
+			m_loop_count = c;
 		}
 	}
 
-	void app_cfg::cfg_channel_buf(io_poller_type t, int buf_in_kbytes) {
-		if (buf_in_kbytes > 0) {
-			event_loop_cfgs[t].ch_buf_size = buf_in_kbytes * (1024);
+	void app::cfg_channel_read_buf(u32_t buf_in_kbytes) {
+		if (buf_in_kbytes > 512) {
+			buf_in_kbytes = 512;
 		}
+		m_channel_read_buf_size = buf_in_kbytes * (1024);
 	}
 
-	void app_cfg::cfg_add_dns(std::string const& dns_ns) {
-		dnsnses.push_back(dns_ns);
+	void app::cfg_add_dns(std::string const& dns_ns) {
+		m_dnsnses.push_back(dns_ns);
 	}
 
-	void app_cfg::cfg_log_filepathname(std::string const& logfilepathname_) {
+	void app::cfg_log_filepathname(std::string const& logfilepathname_) {
 		if (logfilepathname_.length() == 0) { return; }
-		logfilepathname = logfilepathname_;
+		m_logfilepathname = logfilepathname_;
 	}
 
-
-
-	void app::app_thread_init() 
+	void app::_app_thread_init() 
 	{
 		static_assert(sizeof(netp::i8_t) == 1, "assert sizeof(i8_t) failed");
 		static_assert(sizeof(netp::u8_t) == 1, "assert sizeof(u8_t) failed");
@@ -213,7 +127,7 @@ namespace netp {
 #endif
 	}
 
-	void app::app_thread_deinit()
+	void app::_app_thread_deinit()
 	{
 #if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
 		tls_destroy<mutex_set_t>();
@@ -226,7 +140,7 @@ namespace netp {
 #endif
 	}
 
-	void app_cfg::__init_from_cfg_json(const char* jsonfile) {
+	void app::_init_from_cfg_json(const char* jsonfile) {
 		std::ifstream ifs(jsonfile, std::ifstream::in);
 		if (!ifs.good()) {
 			return;
@@ -237,28 +151,27 @@ namespace netp {
 		if (cfg_json.is_discarded()) {
 			return;
 		}
-		if (__cfg_json_checked) { return; }
-		__cfg_json_checked = true;
+		if (m_is_cfg_json_checked) { 
+			return;
+		}
+		m_is_cfg_json_checked = true;
 
 		if (cfg_json.find("log") != cfg_json.end() && cfg_json["log"].is_string()) {
 			cfg_log_filepathname(cfg_json["log"].get<std::string>());
 		}
 
-		if (cfg_json.find("def_loop_count_max") != cfg_json.end() && cfg_json["def_loop_count_max"].is_number()) {
-			cfg_poller_max(NETP_DEFAULT_POLLER_TYPE, cfg_json["def_loop_count_max"].get<int>());
-		}
 		if (cfg_json.find("def_loop_count") != cfg_json.end() && cfg_json["def_loop_count"].is_number()) {
-			cfg_poller_count(NETP_DEFAULT_POLLER_TYPE, cfg_json["def_loop_count"]);
+			cfg_loop_count(cfg_json["def_loop_count"]);
 		}
-		if (cfg_json.find("def_loop_channel_buf") != cfg_json.end() && cfg_json["def_loop_channel_buf"].is_number()) {
-			cfg_channel_buf(NETP_DEFAULT_POLLER_TYPE, cfg_json["def_loop_channel_buf"].get<int>());
+		if (cfg_json.find("def_channel_read_buf") != cfg_json.end() && cfg_json["def_channel_read_buf"].is_number()) {
+			cfg_channel_read_buf(cfg_json["def_channel_read_buf"].get<int>());
 		}
 		if (cfg_json.find("memory_pool_slot_entries_size_level") != cfg_json.end() && cfg_json["memory_pool_slot_entries_size_level"].is_number()) {
-			set_memory_pool_slot_entries_size_level(cfg_json["memory_pool_slot_entries_size_level"].get<int>());
+			cfg_memory_pool_slot_entries_size_level(cfg_json["memory_pool_slot_entries_size_level"].get<int>());
 		}
 	}
 
-	void app_cfg::__parse_cfg(int argc, char** argv) {
+	void app::_parse_cfg(int argc, char** argv) {
 	
 		struct ::option long_options[] = {
 			{"netp-cfg", optional_argument, 0, 1},
@@ -273,7 +186,7 @@ namespace netp {
 			switch (opt) {
 			case 1:
 			{
-				__init_from_cfg_json(optarg);
+				_init_from_cfg_json(optarg);
 			}
 			break;
 			}
@@ -281,61 +194,52 @@ namespace netp {
 	}
 
 	app::app() :
+		m_is_cfg_json_checked(false),
 		m_should_exit(false),
-		m_cfg(),
-		m_app_startup_prev(nullptr),
-		m_app_startup_post(nullptr),
-		m_app_exit_prev(nullptr),
-		m_app_exit_post(nullptr),
-		m_app_event_loop_init_prev(nullptr),
-		m_app_event_loop_init_post(nullptr),
-		m_app_event_loop_deinit_prev(nullptr),
-		m_app_event_loop_deinit_post(nullptr)
+		m_loop_inited(false),
+		m_logfilepathname(),
+		m_dnsnses(std::vector<std::string>())
 	{
-		app_thread_init();
+		_app_thread_init();
+		_cfg_default_loop_cfg();
+		_init();
 	}
 
 	app::~app()
 	{
-		if (m_app_exit_prev ) {
-			m_app_exit_prev();
-		}
-		_exit();
-		if (m_app_exit_post ) {
-			 m_app_exit_post();
-		}
-		app_thread_deinit();
+		//double check
+		_event_loop_deinit();
+
+		_deinit();
+		_app_thread_deinit();
 	}
 
-	int app::startup(app_cfg const& cfg) {
-		m_cfg = cfg;
-		m_app_startup_prev = (cfg.app_startup_prev);
-		m_app_startup_post = (cfg.app_startup_post);
-		m_app_exit_prev=(cfg.app_exit_prev);
-		m_app_exit_post = (cfg.app_exit_post);
-		m_app_event_loop_init_prev = (cfg.app_event_loop_init_prev);
-		m_app_event_loop_init_post = (cfg.app_event_loop_init_post);
-		m_app_event_loop_deinit_prev = (cfg.app_event_loop_deinit_prev);
-		m_app_event_loop_deinit_post = (cfg.app_event_loop_deinit_post);
-		if (m_app_startup_prev) {
-			m_app_startup_prev();
-		}
-		_startup();
-		if (m_app_startup_post) {
-			m_app_startup_post();
-		}
-		return netp::OK;
-	}
+	int app::startup(int argc, char** argv) {
+		NETP_ASSERT(argc >= 1);
+		std::string data = netp::curr_local_data_str();
+		std::string data_;
+		netp::replace(data, std::string("-"), std::string("_"), data_);
+		cfg_log_filepathname(std::string(argv[0]) + std::string(".") + data_ + ".log");
 
-	void app::_startup() {
-		__log_init();
+		_parse_cfg(argc, argv);
+		if (!m_is_cfg_json_checked) {
+			_init_from_cfg_json("./netp.cfg.json");
+		}
+
+		string_t logfilepath = "./netp.log";
+		if (m_logfilepathname.length()) {
+			logfilepath = netp::string_t(m_logfilepathname.c_str());
+		}
+		NRP<logger::file_logger> filelogger = netp::make_ref<netp::logger::file_logger>(logfilepath);
+		filelogger->set_mask_by_level(NETP_FILE_LOGGER_LEVEL);
+		m_logger_broker->add(filelogger);
 
 #ifdef _NETP_DEBUG
-		dump_arch_info();
+		_dump_arch_info();
 #endif
-		
+
 #ifdef NETP_DEBUG_OBJECT_SIZE
-		__dump_sizeof();
+		_dump_sizeof();
 #endif
 
 		NRP<app_test_unit> apptest = netp::make_ref<app_test_unit>();
@@ -344,17 +248,27 @@ namespace netp {
 			exit(-2);
 		}
 
-		__signal_init();
-		__net_init();
+		_event_loop_init();
+		return netp::OK;
 	}
 
-	void app::_exit() {
-		__net_deinit();
-		__signal_deinit();
-		__log_deinit();
+	void app::stop() {
+		_event_loop_deinit();
 	}
 
-	void app::__log_init() {
+	void app::_init() {
+		_log_init();
+		_signal_init();
+		_net_init();
+	}
+
+	void app::_deinit() {
+		_net_deinit();
+		_signal_deinit();
+		_log_deinit();
+	}
+
+	void app::_log_init() {
 		NETP_ASSERT( m_logger_broker == nullptr ) ;
 		m_logger_broker = netp::make_ref<logger_broker>();
 		m_logger_broker->init();
@@ -365,14 +279,6 @@ namespace netp {
 		m_logger_broker->add(clg);
 #endif
 
-		string_t logfilepath = "./netp.log";
-		if (m_cfg.logfilepathname.length()) {
-			logfilepath = netp::string_t(m_cfg.logfilepathname.c_str());
-		}
-		NRP<logger::file_logger> filelogger = netp::make_ref<netp::logger::file_logger>(logfilepath);
-		filelogger->set_mask_by_level(NETP_FILE_LOGGER_LEVEL);
-		m_logger_broker->add(filelogger);
-
 #ifdef NETP_ENABLE_ANDROID_LOG
 		NRP<android_log_print> alp = netp::make_ref<android_log_print>();
 		alp->set_mask_by_level(NETP_CONSOLE_LOGGER_LEVEL);
@@ -381,12 +287,12 @@ namespace netp {
 #endif
 	}
 
-	void app::__log_deinit() {
+	void app::_log_deinit() {
 		m_logger_broker->deinit();
 		m_logger_broker = nullptr;
 	}
 
-	void app::dump_arch_info() {
+	void app::_dump_arch_info() {
 		const char bob[2] = { 0x01, 0x02 };
 		const u16_t bob_u16 = *((u16_t*)(&bob[0]));
 #if __NETP_IS_BIG_ENDIAN
@@ -460,48 +366,48 @@ namespace netp {
 
 		support_message(arch_info, "NEON", netp::CPUID::NEON());
 
-		NETP_INFO("ARCH INFO: %s\n", arch_info.c_str());
-		NETP_INFO("alignof(std::max_align_t): %d\n", alignof(std::max_align_t) );
+		NETP_TRACE_APP("ARCH INFO: %s\n", arch_info.c_str());
+		NETP_TRACE_APP("alignof(std::max_align_t): %d\n", alignof(std::max_align_t) );
 	}
 
 #if defined(NETP_DEBUG_OBJECT_SIZE)
 	void app::__dump_sizeof() {
 
-		NETP_INFO("sizeof(void*): %u", sizeof(void*));
+		NETP_TRACE_APP("sizeof(void*): %u", sizeof(void*));
 
-		NETP_INFO("sizeof(std::atomic<long>): %u", sizeof(std::atomic<long>));
-		NETP_INFO("sizeof(netp::__atomic_counter): %u", sizeof(netp::__atomic_counter));
-		NETP_INFO("sizeof(netp::__non_atomic_counter): %u", sizeof(netp::__non_atomic_counter));
-		NETP_INFO("sizeof(netp::ref_base): %u", sizeof(netp::ref_base));
-		NETP_INFO("sizeof(netp::non_atomic_ref_base): %u", sizeof(netp::non_atomic_ref_base));
-		NETP_INFO("sizeof(netp::packet): %u", sizeof(netp::packet));
-		NETP_INFO("sizeof(ref_ptr<netp::packet>): %u", sizeof(NRP<netp::packet>));
+		NETP_TRACE_APP("sizeof(std::atomic<long>): %u", sizeof(std::atomic<long>));
+		NETP_TRACE_APP("sizeof(netp::__atomic_counter): %u", sizeof(netp::__atomic_counter));
+		NETP_TRACE_APP("sizeof(netp::__non_atomic_counter): %u", sizeof(netp::__non_atomic_counter));
+		NETP_TRACE_APP("sizeof(netp::ref_base): %u", sizeof(netp::ref_base));
+		NETP_TRACE_APP("sizeof(netp::non_atomic_ref_base): %u", sizeof(netp::non_atomic_ref_base));
+		NETP_TRACE_APP("sizeof(netp::packet): %u", sizeof(netp::packet));
+		NETP_TRACE_APP("sizeof(ref_ptr<netp::packet>): %u", sizeof(NRP<netp::packet>));
 
-		NETP_INFO("sizeof(address): %u", sizeof(netp::address));
+		NETP_TRACE_APP("sizeof(address): %u", sizeof(netp::address));
 
-		NETP_INFO("sizeof(netp::channel): %u", sizeof(netp::channel));
-		NETP_INFO("sizeof(netp::io_ctx): %u", sizeof(netp::io_ctx));
-		NETP_INFO("sizeof(netp::fn_io_event_t): %u", sizeof(netp::fn_io_event_t));
-		NETP_INFO("sizeof(std::function<void(int)>): %u", sizeof(std::function<void(int)>));
-		NETP_INFO("sizeof(std::function<void(int, int)>): %u", sizeof(std::function<void(int, int)>));
-		NETP_INFO("sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>): %u", sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>));
-		NETP_INFO("sizeof(netp::socket): %u", sizeof(netp::socket_channel));
-		NETP_INFO("sizeof(std::vector<int>): %u", sizeof(std::vector<int>));
-		NETP_INFO("sizeof(std::vector<std::function<void(int)>): %u", sizeof(std::vector<std::function<void(int)>>));
-		NETP_INFO("sizeof(std::vector<std::function<void(int, int)>>): %u", sizeof(std::vector<std::function<void(int, int)>>));
-		NETP_INFO("sizeof(netp::promise<int>): %u", sizeof(netp::promise<int>));
-		NETP_INFO("sizeof(netp::promise<tuple<int,NRP<socket>>>): %u", sizeof(netp::promise<std::tuple<int, NRP<netp::socket_channel>>>));
-		NETP_INFO("sizeof(netp::event_broker_promise): %u", sizeof(netp::event_broker_promise<int>));
-		NETP_INFO("sizeof(netp::spin_mutex): %u", sizeof(netp::spin_mutex));
-		NETP_INFO("sizeof(netp::mutex): %u", sizeof(netp::mutex));
-		NETP_INFO("sizeof(netp::condition): %u", sizeof(netp::condition));
-		NETP_INFO("sizeof(std::condition_variable): %u", sizeof(std::condition_variable));
-		NETP_INFO("sizeof(netp::condition_any): %u", sizeof(netp::condition_any));
-		NETP_INFO("sizeof(std::condition_variable_any): %u", sizeof(std::condition_variable_any));
+		NETP_TRACE_APP("sizeof(netp::channel): %u", sizeof(netp::channel));
+		NETP_TRACE_APP("sizeof(netp::io_ctx): %u", sizeof(netp::io_ctx));
+		NETP_TRACE_APP("sizeof(netp::fn_io_event_t): %u", sizeof(netp::fn_io_event_t));
+		NETP_TRACE_APP("sizeof(std::function<void(int)>): %u", sizeof(std::function<void(int)>));
+		NETP_TRACE_APP("sizeof(std::function<void(int, int)>): %u", sizeof(std::function<void(int, int)>));
+		NETP_TRACE_APP("sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>): %u", sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>));
+		NETP_TRACE_APP("sizeof(netp::socket): %u", sizeof(netp::socket_channel));
+		NETP_TRACE_APP("sizeof(std::vector<int>): %u", sizeof(std::vector<int>));
+		NETP_TRACE_APP("sizeof(std::vector<std::function<void(int)>): %u", sizeof(std::vector<std::function<void(int)>>));
+		NETP_TRACE_APP("sizeof(std::vector<std::function<void(int, int)>>): %u", sizeof(std::vector<std::function<void(int, int)>>));
+		NETP_TRACE_APP("sizeof(netp::promise<int>): %u", sizeof(netp::promise<int>));
+		NETP_TRACE_APP("sizeof(netp::promise<tuple<int,NRP<socket>>>): %u", sizeof(netp::promise<std::tuple<int, NRP<netp::socket_channel>>>));
+		NETP_TRACE_APP("sizeof(netp::event_broker_promise): %u", sizeof(netp::event_broker_promise<int>));
+		NETP_TRACE_APP("sizeof(netp::spin_mutex): %u", sizeof(netp::spin_mutex));
+		NETP_TRACE_APP("sizeof(netp::mutex): %u", sizeof(netp::mutex));
+		NETP_TRACE_APP("sizeof(netp::condition): %u", sizeof(netp::condition));
+		NETP_TRACE_APP("sizeof(std::condition_variable): %u", sizeof(std::condition_variable));
+		NETP_TRACE_APP("sizeof(netp::condition_any): %u", sizeof(netp::condition_any));
+		NETP_TRACE_APP("sizeof(std::condition_variable_any): %u", sizeof(std::condition_variable_any));
 	}
 #endif
 
-	void app::__signal_init() {
+	void app::_signal_init() {
 		netp::unique_lock<netp::mutex> ulk(m_mutex);
 		signal_broker_init();
 
@@ -520,7 +426,7 @@ namespace netp {
 		}
 	}
 
-	void app::__signal_deinit() {
+	void app::_signal_deinit() {
 		netp::unique_lock<netp::mutex> ulk(m_mutex);
 		while (m_signo_tuple_vec.size()) {
 			std::tuple<int, i64_t>& pair = m_signo_tuple_vec.back();
@@ -528,93 +434,67 @@ namespace netp {
 			m_signo_tuple_vec.pop_back();
 		}
 		signal_broker_deinit();
-		NETP_INFO("deinit signal end");
+		NETP_TRACE_APP("deinit signal end");
 	}
 
-	void app::__net_init() {
-		NETP_INFO("net init begin");
+	void app::_net_init() {
+		NETP_TRACE_APP("net init begin");
 #ifdef _NETP_WIN
 		netp::os::winsock_init();
 #endif
-
-		if (m_app_event_loop_init_prev) {
-			m_app_event_loop_init_prev();
-		}
-		___event_loop_init();
-		if (m_app_event_loop_init_post) {
-			m_app_event_loop_init_post();
-		}
-
-		NETP_INFO("net init end");
+		NETP_TRACE_APP("net init end");
 	}
 
-	void app::__net_deinit() {
-		NETP_INFO("net deinit begin");
-		m_io_evt_group->_notify_terminating_all();
-		m_dns_resolver->stop();
-		if (m_app_event_loop_deinit_prev) {
-			m_app_event_loop_deinit_prev();
-		}
-		___event_loop_wait();
-		if (m_app_event_loop_deinit_post) {
-			m_app_event_loop_deinit_post();
-		}
-
+	void app::_net_deinit() {
+		NETP_TRACE_APP("net deinit begin");
 #ifdef _NETP_WIN
 		netp::os::winsock_deinit();
 #endif
-		NETP_INFO("net deinit end");
+		NETP_TRACE_APP("net deinit end");
 	}
 
-	void app::___event_loop_init() {
-		NETP_ASSERT(m_io_evt_group == nullptr);
-		m_io_evt_group = netp::make_ref<netp::io_event_loop_group>();
-		m_io_evt_group ->_init(m_cfg.poller_count, m_cfg.event_loop_cfgs);
-		NETP_INFO("[app]init loop done");
+	void app::_event_loop_init() {
+		bool N = false;
+		if (!m_loop_inited.compare_exchange_strong(N, true, std::memory_order_acq_rel, std::memory_order_acquire)) {
+			return;
+		}
+
+		NETP_ASSERT(m_def_loop_group == nullptr);
+		m_def_loop_group = netp::make_ref<netp::event_loop_group>(u8_t(NETP_DEFAULT_POLLER_TYPE), default_event_loop_maker);
+		m_def_loop_group->start(m_loop_count, m_channel_read_buf_size);
+		NETP_TRACE_APP("[app]init loop done");
 
 		NETP_ASSERT(m_dns_resolver == nullptr);
 		m_dns_resolver = netp::make_ref<netp::dns_resolver>();
+		m_dns_resolver->reset(m_def_loop_group->internal_next());
 
-#if defined(NETP_DEFAULT_POLLER_TYPE_IOCP)
-		m_io_evt_group->launch_loop(io_poller_type::T_SELECT, 1, m_cfg.event_loop_cfgs[NETP_DEFAULT_POLLER_TYPE]);
-		m_dns_resolver->reset(io_event_loop_group::instance()->internal_next(io_poller_type::T_SELECT));
-#else
-		m_dns_resolver->reset(m_io_evt_group->internal_next());
-#endif
-
-#if defined(_NETP_WIN) && defined(_NETP_USE_UDNS)
-		if (m_cfg.dnsnses.size() == 0) {
-			vector_ipv4_t dnslist;
-			netp::os::get_local_dns_server_list(dnslist);
-			for (std::size_t i = 0; i < dnslist.size(); ++i) {
-				NETP_INFO("[app]add dns: %s", netp::ipv4todotip(dnslist[i]).c_str());
-				m_cfg.dnsnses.push_back( std::string(netp::ipv4todotip(dnslist[i]).c_str()));
-			}
-		}
-
-		if (m_cfg.dnsnses.size() == 0) {
-			NETP_ERR("[app]no dns nameserver");
-		}
-#endif
-		
-		if (m_cfg.dnsnses.size()) {
-			m_dns_resolver->add_name_server(m_cfg.dnsnses);
+		if (m_dnsnses.size()) {
+			m_dns_resolver->add_name_server(m_dnsnses);
 		}
 
 		NRP<netp::promise<int>> dnsp = m_dns_resolver->start();
 		if (dnsp->get() != netp::OK) {
 			NETP_ERR("[app]start dnsresolver failed: %d, exit", dnsp->get());
-			_exit();
+			_event_loop_deinit();
 			exit(dnsp->get());
 		}
 		
-		NETP_INFO("[app]init dns done");
+		NETP_TRACE_APP("[app]init dns done");
 	}
 
-	void app::___event_loop_wait() {
+	void app::_event_loop_deinit() {
+
+		bool Y = true;
+		if (!m_loop_inited.compare_exchange_strong(Y, false, std::memory_order_acq_rel, std::memory_order_acquire)) {
+			return;
+		}
+
+		m_def_loop_group->notify_terminating();
+		m_dns_resolver->stop();
+
 		//reset loop after all loop reference dattached from business code
-		m_io_evt_group->_wait_all();
-		m_io_evt_group = nullptr;
+		m_def_loop_group->wait();
+		m_def_loop_group = nullptr;
 
 		m_dns_resolver->reset(nullptr);
 		m_dns_resolver = nullptr;
@@ -624,7 +504,7 @@ namespace netp {
 	void app::handle_signal(int signo) {
 		netp::unique_lock<netp::mutex> ulk(m_mutex);
 		//NETP_ASSERT(false);
-		NETP_INFO("[APP]receive signo: %d", signo);
+		NETP_TRACE_APP("[APP]receive signo: %d", signo);
 		m_cond.notify_one();
 
 #if defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID) || defined(_NETP_APPLE)

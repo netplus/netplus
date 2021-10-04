@@ -107,7 +107,7 @@ namespace netp { namespace http {
 		};
 		
 	private:
-		NRP<netp::io_event_loop> m_loop;
+		NRP<netp::event_loop> m_loop;
 		NRP<netp::channel_handler_context> m_ctx;
 		NRP<netp::promise<int>> m_close_f;
 
@@ -122,8 +122,8 @@ namespace netp { namespace http {
 		void _do_close(NRP<netp::promise<int>> const& close_f);
 
 	public:
-		client( netp::string_t const& host, http_cfg const& http_cfg_, NRP<io_event_loop> const& L = nullptr ) :
-			m_loop(L != nullptr ?L: app::instance()->loop_group()->next()),
+		client( netp::string_t const& host, http_cfg const& http_cfg_, NRP<event_loop> const& L = nullptr ) :
+			m_loop(L != nullptr ?L: app::instance()->def_loop_group()->next()),
 			m_flag(http_cfg_.close_on_response_done ? (f_closed|f_close_on_response_done) : f_closed),
 			m_wstate(http_write_state::S_WRITE_CLOSED),
 			m_host(host)
@@ -132,7 +132,7 @@ namespace netp { namespace http {
 
 		~client() {}
 
-		NRP<io_event_loop> const& event_loop() const { return m_loop; }
+		NRP<event_loop> const& event_loop() const { return m_loop; }
 
 		void http_cb_connected(NRP<netp::channel_handler_context> const& ctx_);
 		void http_cb_closed(NRP<netp::channel_handler_context> const& ctx_);

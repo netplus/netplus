@@ -155,7 +155,7 @@ namespace netp {
 		typedef std::deque<NRP<netp::rpc_req_message>, netp::allocator<NRP<netp::rpc_req_message>>> rpc_message_req_queue_t;
 
 	private:
-		NRP<netp::io_event_loop> m_loop;
+		NRP<netp::event_loop> m_loop;
 		rpc_write_state m_wstate;
 		fn_on_push_t m_fn_on_push;
 
@@ -193,10 +193,10 @@ namespace netp {
 		void read(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const &income);
 
 	public:
-		rpc(NRP<netp::io_event_loop> const& L);
+		rpc(NRP<netp::event_loop> const& L);
 		~rpc();
 
-		NRP<netp::io_event_loop> const& event_loop() const { return m_loop; }
+		NRP<netp::event_loop> const& event_loop() const { return m_loop; }
 		NRP<netp::channel> const& channel() const { return m_ctx->ch; }
 
 		template <class ctx_t>

@@ -3,7 +3,7 @@
 
 #include <netp/core.hpp>
 #include <netp/packet.hpp>
-#include <netp/io_event_loop.hpp>
+#include <netp/event_loop.hpp>
 #include <netp/address.hpp>
 
 #include <netp/promise.hpp>
@@ -124,7 +124,7 @@ namespace netp {
 		public netp::io_monitor
 	{
 	public:
-		NRP<io_event_loop> L;
+		NRP<event_loop> L;
 	protected:
 		int m_chflag;
 		int m_cherrno;
@@ -193,7 +193,7 @@ namespace netp {
 			}
 
 	public:
-		channel(NRP<io_event_loop> const& L_) :
+		channel(NRP<event_loop> const& L_) :
 			L(L_),
 			m_chflag(int(channel_flag::F_CLOSED)),
 			m_cherrno(0),
@@ -208,7 +208,7 @@ namespace netp {
 			NETP_TRACE_CHANNEL_CREATION("channel::~channel()");
 		}
 
-		//__NETP_FORCE_INLINE NRP<io_event_loop> const& event_loop() const { return m_loop;}
+		//__NETP_FORCE_INLINE NRP<event_loop> const& event_loop() const { return m_loop;}
 		__NETP_FORCE_INLINE NRP<channel_pipeline> const& pipeline() const { return m_pipeline;}
 		__NETP_FORCE_INLINE NRP<promise<int>> const& ch_close_promise() const { return m_ch_close_p;}
 

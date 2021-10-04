@@ -6,7 +6,7 @@
 #include <netp/address.hpp>
 
 #include <netp/channel_handler_context.hpp>
-#include <netp/io_event_loop.hpp>
+#include <netp/event_loop.hpp>
 
 #define PIPELINE_VOID_FIRE_VOID(NAME) \
 	__NETP_FORCE_INLINE void fire_##NAME() const {\
@@ -71,7 +71,7 @@ namespace netp {
 		friend class channel;
 
 	private:
-		NRP<io_event_loop> m_loop;
+		NRP<event_loop> m_loop;
 		NRP<channel> m_ch;
 		//tail,head is boundary
 		NRP<channel_handler_context> m_head;

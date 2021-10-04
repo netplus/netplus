@@ -39,7 +39,7 @@ NETP_INFO("make netp_cond_ptr by placement new done");
 NRP<bfr::bpoll_handle> bh = netp::make_ref<bfr::bpoll_handle>((nullptr));
 NETP_INFO("make bh done,pass 0");
 
-NRP<netp::io_event_loop> L = netp::io_event_loop_group::instance()->next();
+NRP<netp::event_loop> L = netp::event_loop_group::instance()->next();
 NRP<bfr::bpoll_handle> bh2 = netp::make_ref<bfr::bpoll_handle>(L);
 NETP_INFO("make bh done");
 */

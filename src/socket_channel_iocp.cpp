@@ -81,7 +81,7 @@ namespace netp {
 			NETP_ASSERT(laddr->port() == m_laddr->port());
 			NETP_ASSERT(raddr_in->sin_family == m_family);
 
-			NRP<io_event_loop> LL = io_event_loop_group::instance()->next(L->poller_type());
+			NRP<event_loop> LL = event_loop_group::instance()->next(L->poller_type());
 			LL->execute([LL, fn_initializer, nfd, laddr, raddr, cfg]() {
 				NRP<socket_cfg> cfg_ = netp::make_ref<socket_cfg>();
 				cfg_->fd = nfd;

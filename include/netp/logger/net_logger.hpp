@@ -11,7 +11,7 @@
 
 namespace netp {
 	class rpc;
-	class io_event_loop;
+	class event_loop;
 }
 
 namespace netp { namespace logger {
@@ -27,7 +27,7 @@ namespace netp { namespace logger {
 			};
 
 		private:
-			NRP<io_event_loop> m_loop;
+			NRP<event_loop> m_loop;
 			u8_t m_flag;
 			string_t m_server;
 			NRP<rpc> m_rpc;

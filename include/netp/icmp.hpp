@@ -184,7 +184,7 @@ namespace netp {
 				NRP<socket_cfg> cfg = netp::make_ref<socket_cfg>();
 				cfg->type = NETP_SOCK_RAW;
 				cfg->proto = NETP_PROTOCOL_ICMP;
-				cfg->L = app::instance()->loop_group()->next();
+				cfg->L = app::instance()->def_loop_group()->next();
 				std::tie(creatert, m_so) = netp::create_socket_channel(cfg);
 				return creatert;
 			}

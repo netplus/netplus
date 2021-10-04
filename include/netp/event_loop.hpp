@@ -31,12 +31,9 @@ namespace netp {
 	typedef std::function<void()> fn_task_t;
 	typedef std::vector<fn_task_t, netp::allocator<fn_task_t>> io_task_q_t;
 
-	struct event_loop_cfg {
-		u32_t ch_buf_size;
-	};
-
-	class io_event_loop;
-	typedef std::function< NRP<io_event_loop>(io_poller_type t, event_loop_cfg const& cfg) > fn_event_loop_maker_t;
+	class event_loop;
+	typedef std::function<NRP<event_loop>(u8_t t, u32_t size) > fn_event_loop_maker_t;
+	extern NRP<event_loop> default_event_loop_maker(u8_t t, u32_t channel_read_buf_size);
 
 	enum class loop_state {
 		S_IDLE,
@@ -49,19 +46,19 @@ namespace netp {
 
 	class timer_broker;
 	class thread;
-	class io_event_loop :
+	class event_loop :
 		public ref_base
 	{
 		enum LOOP_WAIT_FLAG {
 			F_LOOP_WAIT_NONE_ZERO_TIME_WAIT =1,
 			F_LOOP_WAIT_ENTER_WAITING = 1<<1
 		};
-		friend class io_event_loop_group;
+		friend class event_loop_group;
 
 	protected:
 		std::atomic<bool> m_waiting;
 		std::atomic<u8_t> m_state;
-		io_poller_type m_type;
+		u8_t m_type;
 
 		int m_io_ctx_count;
 		int m_io_ctx_count_before_running;
@@ -79,8 +76,7 @@ namespace netp {
 
 		//timer_timepoint_t m_wait_until;
 		std::atomic<long> m_internal_ref_count;
-		event_loop_cfg m_cfg;
-
+		u32_t m_channel_read_buf_size;
 	protected:
 		inline long internal_ref_count() { return m_internal_ref_count.load(std::memory_order_relaxed); }
 		inline void store_internal_ref_count( long count ) { m_internal_ref_count.store( count, std::memory_order_relaxed); }
@@ -122,8 +118,8 @@ namespace netp {
 		void __terminate();
 
 	public:
-		io_event_loop(io_poller_type t, NRP<poller_abstract> const& poller, event_loop_cfg const& cfg);
-		~io_event_loop();
+		event_loop(u8_t t, NRP<poller_abstract> const& poller, u32_t channel_read_buf_size);
+		~event_loop();
 
 		inline void schedule(fn_task_t&& f) {
 
@@ -179,7 +175,7 @@ namespace netp {
 
 		void launch(NRP<netp::timer> const& t , NRP<netp::promise<int>> const& lf = nullptr ) {
 			if(!in_event_loop()) {
-				schedule([L = NRP<io_event_loop>(this), t, lf]() {
+				schedule([L = NRP<event_loop>(this), t, lf]() {
 					L->launch(t, lf);
 				});
 				return;
@@ -194,7 +190,7 @@ namespace netp {
 
 		void launch(NRP<netp::timer>&& t, NRP<netp::promise<int>> const& lf = nullptr) {
 			if (!in_event_loop()) {
-				schedule([L = NRP<io_event_loop>(this), t=std::move(t) , lf]() {
+				schedule([L = NRP<event_loop>(this), t=std::move(t) , lf]() {
 					L->launch(std::move(t), lf);
 				});
 				return;
@@ -207,9 +203,11 @@ namespace netp {
 			}
 		}
 
-		inline io_poller_type poller_type() const { return m_type; }
+		inline
+		u8_t poller_type() const { return m_type; }
 
-		__NETP_FORCE_INLINE NRP<netp::packet> const& channel_rcv_buf() const {
+		__NETP_FORCE_INLINE
+		NRP<netp::packet> const& channel_rcv_buf() const {
 			return m_channel_rcv_buf;
 		}
 
@@ -243,8 +241,8 @@ namespace netp {
 	};
 
 	class app;
-	typedef std::vector<NRP<io_event_loop>> io_event_loop_vector;
-	class io_event_loop_group:
+	typedef std::vector<NRP<event_loop>> event_loop_vector_t;
+	class event_loop_group:
 		public non_atomic_ref_base
 	{
 		friend class netp::app;
@@ -256,38 +254,36 @@ namespace netp {
 		};
 
 	private:
-		netp::shared_mutex m_loop_mtx[T_POLLER_MAX];
-		std::atomic<u32_t> m_curr_loop_idx[T_POLLER_MAX];
-		io_event_loop_vector m_loop[T_POLLER_MAX];
+		netp::shared_mutex m_loop_mtx;
+		std::atomic<u32_t> m_curr_loop_idx;
+		event_loop_vector_t m_loop;
 
-		long m_bye_ref_count;
 		std::atomic<bye_event_loop_state> m_bye_state;
-		NRP<io_event_loop> m_bye_event_loop;
+		NRP<event_loop> m_bye_event_loop;
+		long m_bye_ref_count;
+		u8_t m_io_poller_type;
+		fn_event_loop_maker_t m_fn_loop_maker;
 
-
-		void _init( u32_t count[io_poller_type::T_POLLER_MAX], event_loop_cfg cfgs[io_poller_type::T_POLLER_MAX]);
-
-		void _notify_terminating_all();
-		void _wait_all();
-
+		void _wait_loop();
 	public:
-		io_event_loop_group();
-		~io_event_loop_group();
+		event_loop_group(u8_t t, fn_event_loop_maker_t const& fn_maker);
+		~event_loop_group();
 
-		void notify_terminating_loop(io_poller_type t);
-		void wait_loop(io_poller_type t);
-		void launch_loop(io_poller_type t, u32_t count, event_loop_cfg const& cfg, fn_event_loop_maker_t const& fn_maker = nullptr);
+		void wait();
+		void notify_terminating();
 
-		io_poller_type query_available_custom_poller_type();
-		netp::size_t size(io_poller_type t);
-		NRP<io_event_loop> next(io_poller_type t, std::set<NRP<io_event_loop>> const& exclude_this_set_if_have_more);
+		void start(u32_t count, u32_t channel_read_buf_size);
+		void stop();
 
-		NRP<io_event_loop> next(io_poller_type t = NETP_DEFAULT_POLLER_TYPE);
-		NRP<io_event_loop> internal_next(io_poller_type t = NETP_DEFAULT_POLLER_TYPE);
+		netp::size_t size();
 
-		void execute(fn_task_t&& f, io_poller_type = NETP_DEFAULT_POLLER_TYPE);
-		void schedule(fn_task_t&& f, io_poller_type = NETP_DEFAULT_POLLER_TYPE);
-		void launch(NRP<netp::timer> const& t, NRP<netp::promise<int>> const& lf = nullptr, io_poller_type = NETP_DEFAULT_POLLER_TYPE);
+		NRP<event_loop> next(std::set<NRP<event_loop>> const& exclude_this_set_if_have_more);
+		NRP<event_loop> next();
+		NRP<event_loop> internal_next();
+
+		void execute(fn_task_t&& f);
+		void schedule(fn_task_t&& f);
+		void launch(NRP<netp::timer> const& t, NRP<netp::promise<int>> const& lf = nullptr);
 	};
 }
 #endif

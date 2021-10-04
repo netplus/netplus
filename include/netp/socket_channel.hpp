@@ -75,7 +75,7 @@ namespace netp {
 		public ref_base
 	{
 	public:
-		NRP<io_event_loop> L;
+		NRP<event_loop> L;
 		SOCKET fd;
 		u8_t family;
 		u8_t type;
@@ -91,7 +91,7 @@ namespace netp {
 		u32_t wsabuf_size;
 
 		fn_socket_channel_maker_t ch_maker;
-		socket_cfg(NRP<io_event_loop> const& L = nullptr) :
+		socket_cfg(NRP<event_loop> const& L = nullptr) :
 			L(L),
 			fd(SOCKET(NETP_INVALID_SOCKET)),
 			family((NETP_AF_INET)),

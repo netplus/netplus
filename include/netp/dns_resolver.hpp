@@ -17,7 +17,7 @@
 #include <netp/promise.hpp>
 #include <netp/ipv4.hpp>
 #include <netp/io_monitor.hpp>
-#include <netp/io_event_loop.hpp>
+#include <netp/event_loop.hpp>
 
 namespace netp {
 	class socket_channel;
@@ -74,7 +74,7 @@ namespace netp {
 			f_restarting = 1<<4
 		};
 
-		NRP<io_event_loop> L;
+		NRP<event_loop> L;
 
 #ifdef _NETP_USE_UDNS
 		NRP<netp::socket_channel> m_so;
@@ -122,7 +122,7 @@ namespace netp {
 #endif
 
 	private:
-		void reset( NRP<io_event_loop> const& L );
+		void reset( NRP<event_loop> const& L );
 		void _do_add_name_server();
 
 		void _do_start(NRP<netp::promise<int>> const& p);

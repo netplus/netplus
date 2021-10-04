@@ -451,7 +451,7 @@ int socket_base::get_left_snd_queue() const {
 				}
 			}
 			
-			NRP<io_event_loop> LL = netp::app::instance()->loop_group()->next(L->poller_type());
+			NRP<event_loop> LL = netp::app::instance()->def_loop_group()->next();
 			LL->execute([LL,fn_initializer,nfd, laddr, raddr, listener_cfg]() {
 				NRP<socket_cfg> cfg_ = netp::make_ref<socket_cfg>();
 				cfg_->fd = nfd;

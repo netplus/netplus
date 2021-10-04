@@ -309,7 +309,7 @@
     <ClInclude Include="..\..\include\netp\icmp.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\netp\io_event_loop.hpp">
+    <ClInclude Include="..\..\include\netp\event_loop.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\netp\ipv4.hpp">

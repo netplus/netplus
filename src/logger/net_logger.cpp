@@ -1,4 +1,4 @@
-#include <netp/io_event_loop.hpp>
+#include <netp/event_loop.hpp>
 #include <netp/rpc.hpp>
 #include <netp/logger/net_logger.hpp>
 #include <netp/app.hpp>
@@ -113,7 +113,7 @@ namespace netp { namespace logger {
 	}
 
 	net_logger::net_logger(std::string const& server) :
-		m_loop(app::instance()->loop_group()->next()),
+		m_loop(app::instance()->def_loop_group()->next()),
 		m_flag(0),
 		m_server(server.c_str(), server.length()),
 		m_rpc()

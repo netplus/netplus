@@ -2,7 +2,7 @@
 #include <netp/app.hpp>
 #include <netp/timer.hpp>
 #include <netp/thread.hpp>
-#include <netp/io_event_loop.hpp>
+#include <netp/event_loop.hpp>
 
 #if defined(NETP_HAS_POLLER_EPOLL)
 #include <netp/poller_epoll.hpp>
@@ -23,7 +23,7 @@
 
 namespace netp {
 
-	inline static NRP<io_event_loop> default_event_loop_maker(io_poller_type t, event_loop_cfg const& cfg) {
+	NRP<event_loop> default_event_loop_maker(u8_t t, u32_t channel_read_buf_size) {
 		NRP<poller_abstract> poller;
 		switch (t) {
 #if defined(NETP_HAS_POLLER_EPOLL)
@@ -68,19 +68,19 @@ namespace netp {
 		}
 
 		NETP_ASSERT(poller != nullptr);
-		return netp::make_ref<io_event_loop>(t,poller, cfg);
+		return netp::make_ref<event_loop>(t,poller, channel_read_buf_size);
 	}
 
-	void io_event_loop::init() {
-		m_channel_rcv_buf = netp::make_ref<netp::packet>(m_cfg.ch_buf_size);
+	void event_loop::init() {
+		m_channel_rcv_buf = netp::make_ref<netp::packet>(m_channel_read_buf_size,0);
 		m_tid = std::this_thread::get_id();
 		m_tb = netp::make_ref<timer_broker>();
 
 		m_poller->init();
 	}
 
-	void io_event_loop::deinit() {
-		NETP_VERBOSE("[io_event_loop]deinit begin");
+	void event_loop::deinit() {
+		NETP_VERBOSE("[event_loop]deinit begin");
 		NETP_ASSERT(in_event_loop());
 		NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_EXIT), "event loop deinit state check failed");
 
@@ -94,11 +94,11 @@ namespace netp {
 		m_tb = nullptr;
 
 		m_poller->deinit();
-		NETP_VERBOSE("[io_event_loop]deinit done");
+		NETP_VERBOSE("[event_loop]deinit done");
 	}
 
 	//@NOTE: promise to execute all task already in tq or tq_standby
-	void io_event_loop::__run() {
+	void event_loop::__run() {
 		//NETP_ASSERT(!"CHECK EXCEPTION STACK");
 		init();
 		//record a snapshot, used by update state
@@ -139,11 +139,11 @@ namespace netp {
 			//@NOTE: we should terminate our process in this case
 			//m_state = S_EXIT;
 			//deinit();
-			NETP_WARN("[io_event_loop]__run reach exception------------------------------------------");
+			NETP_WARN("[event_loop]__run reach exception------------------------------------------");
 			throw;
 		}
 		{
-			NETP_VERBOSE("[io_event_loop]exiting run");
+			NETP_VERBOSE("[event_loop]exiting run");
 			// EDGE check
 			// scenario 1:
 			// 1) do schedule, 2) set L -> null
@@ -159,16 +159,16 @@ namespace netp {
 		deinit();
 	}
 
-	void io_event_loop::__do_notify_terminating() {
+	void event_loop::__do_notify_terminating() {
 		NETP_ASSERT( in_event_loop() );
 		io_do(io_action::NOTIFY_TERMINATING, 0);
 		if (m_io_ctx_count == m_io_ctx_count_before_running) {
 			__do_enter_terminated();
 		}
-	//	NETP_VERBOSE("[io_event_loop]__do_notify_terminating done");
+	//	NETP_VERBOSE("[event_loop]__do_notify_terminating done");
 	}
 
-	void io_event_loop::__do_enter_terminated() {
+	void event_loop::__do_enter_terminated() {
 		//no competitor here, store directly
 		NETP_ASSERT(in_event_loop());
 		m_state.store(u8_t(loop_state::S_TERMINATED), std::memory_order_release);
@@ -177,280 +177,264 @@ namespace netp {
 	}
 	
 	//terminating phase 1
-	void io_event_loop::__notify_terminating() {
+	void event_loop::__notify_terminating() {
 		u8_t running = u8_t(loop_state::S_RUNNING);
 		if (m_state.compare_exchange_strong(running, u8_t(loop_state::S_TERMINATING), std::memory_order_acq_rel, std::memory_order_acquire)) {
-			schedule([L = NRP<io_event_loop>(this)]() {
+			schedule([L = NRP<event_loop>(this)]() {
 				L->__do_notify_terminating();
 			});
 		}
 	}
 
-		int io_event_loop::__launch() {
-			u8_t _si = u8_t(loop_state::S_IDLE);
-			bool upstate = m_state.compare_exchange_strong(_si, u8_t(loop_state::S_LAUNCHING), std::memory_order_acq_rel, std::memory_order_acquire);
-			NETP_ASSERT(upstate == true);
+	int event_loop::__launch() {
+		u8_t _si = u8_t(loop_state::S_IDLE);
+		bool upstate = m_state.compare_exchange_strong(_si, u8_t(loop_state::S_LAUNCHING), std::memory_order_acq_rel, std::memory_order_acquire);
+		NETP_ASSERT(upstate == true);
 
-			m_th = netp::make_ref<netp::thread>();
-			int rt = m_th->start(&io_event_loop::__run, NRP<io_event_loop>(this));
-			NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
-			int k = 0;
-			while (m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_LAUNCHING)) {
-				netp::this_thread::yield(++k);
-			}
-			//NETP_VERBOSE("[io_event_loop][%u]__launch done", m_type);
+		m_th = netp::make_ref<netp::thread>();
+		int rt = m_th->start(&event_loop::__run, NRP<event_loop>(this));
+		NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
+		int k = 0;
+		while (m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_LAUNCHING)) {
+			netp::this_thread::yield(++k);
+		}
+		//NETP_VERBOSE("[event_loop][%u]__launch done", m_type);
 			
-			return netp::OK;
+		return netp::OK;
+	}
+
+	void event_loop::__terminate() {
+		NETP_VERBOSE("[event_loop][%u]__terminate begin", m_type );
+		while (m_state.load(std::memory_order_acquire) != u8_t(loop_state::S_TERMINATED)) {
+			netp::this_thread::sleep(1);
 		}
-
-		void io_event_loop::__terminate() {
-			NETP_VERBOSE("[io_event_loop][%u]__terminate begin", m_type );
-			while (m_state.load(std::memory_order_acquire) != u8_t(loop_state::S_TERMINATED)) {
-				netp::this_thread::sleep(1);
-			}
-			u8_t terminated = u8_t(loop_state::S_TERMINATED);
-			if (m_state.compare_exchange_strong(terminated, u8_t(loop_state::S_EXIT), std::memory_order_acq_rel, std::memory_order_acquire)) {
-				NETP_VERBOSE("[io_event_loop][%u]enter S_EXIT, last interrupt if needed", m_type);
-				m_poller->interrupt_wait();
-				//@NOTE:
-				//1, we don't interrupt these kinds of thread, cuz we want all the tasks be finished one by one
-				//m_th->interrupt();
-				m_th->join();
-				m_th = nullptr;
-			}
-			NETP_INFO("[io_event_loop][%u]__terminate end", m_type);
+		u8_t terminated = u8_t(loop_state::S_TERMINATED);
+		if (m_state.compare_exchange_strong(terminated, u8_t(loop_state::S_EXIT), std::memory_order_acq_rel, std::memory_order_acquire)) {
+			NETP_VERBOSE("[event_loop][%u]enter S_EXIT, last interrupt if needed", m_type);
+			m_poller->interrupt_wait();
+			//@NOTE:
+			//1, we don't interrupt these kinds of thread, cuz we want all the tasks be finished one by one
+			//m_th->interrupt();
+			m_th->join();
+			m_th = nullptr;
 		}
+		NETP_INFO("[event_loop][%u]__terminate end", m_type);
+	}
 
-		io_event_loop::io_event_loop(io_poller_type t, NRP<poller_abstract> const& poller, event_loop_cfg const& cfg) :
-			m_waiting(false),
-			m_state(u8_t(loop_state::S_IDLE)),
-			m_type(t),
-			m_io_ctx_count(0),
-			m_io_ctx_count_before_running(0),
-			m_poller(poller),
-			m_internal_ref_count(0),
-			m_cfg(cfg)
-		{}
+	event_loop::event_loop(u8_t t, NRP<poller_abstract> const& poller, u32_t channel_read_buf_size):
+		m_waiting(false),
+		m_state(u8_t(loop_state::S_IDLE)),
+		m_type(t),
+		m_io_ctx_count(0),
+		m_io_ctx_count_before_running(0),
+		m_poller(poller),
+		m_internal_ref_count(0),
+		m_channel_read_buf_size(channel_read_buf_size)
+	{}
 
-		io_event_loop::~io_event_loop() {
-			NETP_ASSERT(m_tb == nullptr);
-			NETP_ASSERT(m_th == nullptr);
+	event_loop::~event_loop() {
+		NETP_ASSERT(m_tb == nullptr);
+		NETP_ASSERT(m_th == nullptr);
+	}
+
+	event_loop_group::event_loop_group( u8_t t, fn_event_loop_maker_t const& L_maker):
+		m_curr_loop_idx(0),
+		m_bye_state(bye_event_loop_state::S_IDLE),
+		m_bye_ref_count(0),
+		m_io_poller_type(t),
+		m_fn_loop_maker(L_maker)
+	{
+	}
+
+	event_loop_group::~event_loop_group()
+	{
+		//guarentee to always return non-null for next()
+		bye_event_loop_state bye_state_exit = bye_event_loop_state::S_EXIT;
+		if (m_bye_state.compare_exchange_strong(bye_state_exit, bye_event_loop_state::S_IDLE, std::memory_order_acq_rel, std::memory_order_acquire) ) {
+			m_bye_event_loop = nullptr;
+			m_bye_ref_count = 0;
 		}
+		NETP_ASSERT(m_bye_event_loop == nullptr);
+	}
 
-		io_event_loop_group::io_event_loop_group():
-			m_bye_ref_count(0),
-			m_bye_state(bye_event_loop_state::S_IDLE)
+	void event_loop_group::notify_terminating() {
+		shared_lock_guard<shared_mutex> slg(m_loop_mtx);
+		for(::size_t i=0;i<m_loop.size();++i) {
+			m_loop[i]->__notify_terminating();
+		}
+	}
+
+	/*
+	@dealloc logic
+		I, phase 1, detach event_loop from event_loop_vector one by one by the following procedure
+			1) call event_loop->notify_terminating() to give a termination notification to all FDs
+			2) loop enter in terminating state, all fd object(socket) would received a termination notification, do force close
+				a) no new fd would be accepted on TERMINATING state
+				b) fd ctx would be removed after socket be closed
+			3) once all fds ctx has been removed from LOOP, LOOP enter TERMINATED state
+				a) no new timer would be accepted on TERMINATED state
+				b) update state to S_EXIT (by loop_group)
+				c) LOOP do deinit
+			4), remove LOOP from loop_vector
+		II, when event_loop_vector.size() == 0, next() would always return m_bye_event_loop
+		III, when event_loop_vector.size() ==0, we enter into phase 2
+
+		IV, in phase 2, we terminate m_bye_event_loop
+	*/
+
+	void event_loop_group::_wait_loop() {
+	__dealloc_begin:
+		std::vector<NRP<event_loop>> to_deattach;
 		{
-		}
-		io_event_loop_group::~io_event_loop_group()
-		{
-		}
-
-		void io_event_loop_group::notify_terminating_loop(io_poller_type t) {
-			shared_lock_guard<shared_mutex> slg(m_loop_mtx[t]);
-			for(::size_t i=0;i<m_loop[t].size();++i) {
-				m_loop[t][i]->__notify_terminating();
+			lock_guard<shared_mutex> lg(m_loop_mtx);
+			if (m_loop.size() == 0) {
+				event_loop_vector_t().swap(m_loop);
+				//NETP_INFO("[event_loop][%u]__dealloc_poller end, all event loop dattached", t);
+				return;//exit
 			}
-		}
 
-		void io_event_loop_group::launch_loop(io_poller_type t, u32_t count, event_loop_cfg const& cfg, fn_event_loop_maker_t const& fn_maker ) {
-			NETP_VERBOSE("[io_event_loop_group]alloc poller: %u, count: %u, ch_buf_size: %u", t, count, cfg.ch_buf_size );
-			lock_guard<shared_mutex> lg(m_loop_mtx[t]);
-			m_curr_loop_idx[t] = 0;
-			while (count-- > 0) {
-				NRP<io_event_loop> o = fn_maker == nullptr ?
-					default_event_loop_maker(t,cfg) : 
-					fn_maker(t,cfg);
-
-				int rt = o->__launch();
+			bye_event_loop_state idle = bye_event_loop_state::S_IDLE;
+			if (m_bye_state.compare_exchange_strong(idle, bye_event_loop_state::S_PREPARING, std::memory_order_acq_rel, std::memory_order_acquire)) {
+				NETP_ASSERT(m_bye_event_loop == nullptr, "m_bye_event_loop check failed");
+				m_bye_event_loop = m_fn_loop_maker(m_io_poller_type, 128*1024);
+				int rt = m_bye_event_loop->__launch();
 				NETP_ASSERT(rt == netp::OK);
-				o->store_internal_ref_count(o.ref_count());
-				m_loop[t].push_back(std::move(o));
+				m_bye_ref_count = m_bye_event_loop.ref_count();
+
+				bye_event_loop_state preparing = bye_event_loop_state::S_PREPARING;
+				bool set_to_running = m_bye_state.compare_exchange_strong(preparing, bye_event_loop_state::S_RUNNING, std::memory_order_acq_rel, std::memory_order_acquire);
+				NETP_ASSERT(set_to_running == true);
+				NETP_ASSERT(m_bye_state.load(std::memory_order_relaxed) == bye_event_loop_state::S_RUNNING);
 			}
-		}
 
-		void io_event_loop_group::wait_loop(io_poller_type t) {
-		__dealloc_begin:
-			std::vector<NRP<io_event_loop>> to_deattach;
-			{
-				lock_guard<shared_mutex> lg(m_loop_mtx[t]);
-				if (m_loop[t].size() == 0) {
-					io_event_loop_vector().swap(m_loop[t]);
-					//NETP_INFO("[io_event_loop][%u]__dealloc_poller end, all event loop dattached", t);
-					return;//exit
+			event_loop_vector_t::iterator&& it = m_loop.begin();
+			while (it != m_loop.end()) {
+				//ref_count == internal_ref_count means no other ref for this LOOP, it is safe to deattach it from our pool
+				if ((*it).ref_count() == (*it)->internal_ref_count()) {
+					NETP_VERBOSE("[event_loop][%u]__dealloc_poller, dattached one event loop", m_io_poller_type);
+
+					to_deattach.push_back(*it);
+					m_loop.erase(it);
+					break;
 				}
-
-				bye_event_loop_state idle = bye_event_loop_state::S_IDLE;
-				if (m_bye_state.compare_exchange_strong(idle, bye_event_loop_state::S_PREPARING, std::memory_order_acq_rel, std::memory_order_acquire)) {
-					NETP_ASSERT(m_bye_event_loop == nullptr, "m_bye_event_loop check failed");
-					m_bye_event_loop = default_event_loop_maker(NETP_DEFAULT_POLLER_TYPE, { 0 });
-					int rt = m_bye_event_loop->__launch();
-					NETP_ASSERT(rt == netp::OK);
-					m_bye_ref_count = m_bye_event_loop.ref_count();
-
-					bye_event_loop_state preparing = bye_event_loop_state::S_PREPARING;
-					bool set_to_running = m_bye_state.compare_exchange_strong(preparing, bye_event_loop_state::S_RUNNING, std::memory_order_acq_rel, std::memory_order_acquire);
-					NETP_ASSERT(set_to_running == true);
-				}
-
-				io_event_loop_vector::iterator&& it = m_loop[t].begin();
-				while( it != m_loop[t].end() ) {
-					//ref_count == internal_ref_count means no other ref for this LOOP, we must deattach it from our pool
-					if((*it).ref_count() == (*it)->internal_ref_count() ) {
-						NETP_VERBOSE("[io_event_loop][%u]__dealloc_poller, dattached one event loop", t);
-
-						to_deattach.push_back(*it);
-						m_loop[t].erase(it);
-						break;
-					} else {
-						++it;
-					}
-				}
-			}
-			while (to_deattach.size()) {
-				to_deattach.back()->__terminate();
-				to_deattach.pop_back();
-			}
-			netp::this_thread::no_interrupt_sleep(1);
-			goto __dealloc_begin;
-		}
-
-		void io_event_loop_group::_init(u32_t count[io_poller_type::T_POLLER_MAX], event_loop_cfg cfgs[io_poller_type::T_POLLER_MAX]) {
-			for (u32_t i = 0; i < T_POLLER_MAX; ++i) {
-				if (count[i] > 0) {
-					launch_loop(io_poller_type(i),count[i], cfgs[i]);
+				else {
+					++it;
 				}
 			}
 		}
-
-		void io_event_loop_group::_notify_terminating_all() {
-			//phase 1, terminating
-			for (int t = T_POLLER_MAX - 1; t >= 0; --t) {
-				if (m_loop[t].size()) {
-					NETP_INFO("[io_event_loop]__notify_terminating, type: %d", io_poller_type(t));
-					notify_terminating_loop(io_poller_type(t));
-				}
-			}
+		while (to_deattach.size()) {
+			to_deattach.back()->__terminate();
+			to_deattach.pop_back();
 		}
+		netp::this_thread::no_interrupt_sleep(1);
+		goto __dealloc_begin;
+	}
 
-		/*
-			@dealloc logic
-				I, phase 1, detach io_event_loop from io_event_loop_vector one by one by the following procedure
-					1) call io_event_loop->stop() to set its state into S_EXIT;
-						when io_event_loop get into S_EXIT, we do as followwing:
-						2), phase 1, call all fd event, cancel all new watch evt, ignore all unwatch, timer
-						3), execute all tasks in m_tq_standby && m_tq, if no more tasks exit, we delete m_tq_standby, and forbidding any new scheduled task
-					4), terminate this event_loop
-				II, when io_event_loop_vector.size() == 0, next() would always return m_bye_io_event_loop [this kind of io_event_loop can only do executor and schedule]
-				III, when all kinds of io_event_loop_vector.size() ==0, we enter into phase 2
-
-				IV, in phase 2, we stop m_bye_io_event_loop
-		*/
-		void io_event_loop_group::_wait_all() {
+		void event_loop_group::wait() {
 
 			//phase 2, deattach one by one
-			for (int t = T_POLLER_MAX - 1; t >= 0; --t) {
-				if (m_loop[t].size()) {
-					NETP_INFO("[io_event_loop]__dealloc_poller, type: %d", io_poller_type(t));
-					wait_loop(io_poller_type(t));
-					NETP_INFO("[io_event_loop]__dealloc_poller, type: %d done", io_poller_type(t));
-				}
-			}
+			NETP_INFO("[event_loop]__dealloc_poller, type: %d", m_io_poller_type);
+			_wait_loop();
+			NETP_INFO("[event_loop]__dealloc_poller, type: %d done", m_io_poller_type);
 
 			bye_event_loop_state running = bye_event_loop_state::S_RUNNING;
 			if (m_bye_state.compare_exchange_strong(running, bye_event_loop_state::S_EXIT, std::memory_order_acq_rel, std::memory_order_acquire)) {
-				NETP_INFO("[io_event_loop]__dealloc_poller bye, begin");
+				NETP_INFO("[event_loop]__dealloc_poller bye, begin");
 				NETP_ASSERT(m_bye_event_loop != nullptr);
 				m_bye_event_loop->__notify_terminating();
-				while ( m_bye_event_loop.ref_count() != m_bye_ref_count) {
+				while (m_bye_event_loop.ref_count() != m_bye_ref_count) {
 					//NETP_INFO("l.ref_count: %ld, ref_count: %ld", m_bye_event_loop.ref_count(), m_bye_ref_count.load(std::memory_order_acquire) );
 					netp::this_thread::no_interrupt_sleep(1);
 				}
 				m_bye_event_loop->__terminate();
-				m_bye_event_loop = nullptr;
-				m_bye_ref_count = 0;
-				m_bye_state.store(bye_event_loop_state::S_IDLE);
-				NETP_INFO("[io_event_loop]__dealloc_poller bye done");
+				NETP_INFO("[event_loop]__dealloc_poller bye done");
 			}
 		}
 
-		io_poller_type io_event_loop_group::query_available_custom_poller_type() {
-			for (int i = T_POLLER_CUSTOM_1; i < T_POLLER_MAX; ++i) {
-				if (m_loop[i].size() == 0) {
-					return io_poller_type(i);
-				}
+		void event_loop_group::start(u32_t count, u32_t channel_read_buf_size) {
+			NETP_VERBOSE("[event_loop_group]alloc poller: %u, count: %u, ch_buf_read_size: %u", m_io_poller_type, count, channel_read_buf_size);
+			lock_guard<shared_mutex> lg(m_loop_mtx);
+			m_curr_loop_idx = 0;
+			NETP_ASSERT( m_fn_loop_maker != nullptr );
+			while (count-- > 0) {
+				NRP<event_loop> o = m_fn_loop_maker(m_io_poller_type, channel_read_buf_size);
+				int rt = o->__launch();
+				NETP_ASSERT(rt == netp::OK);
+				o->store_internal_ref_count(o.ref_count());
+				m_loop.push_back(std::move(o));
 			}
-			return T_NONE;
 		}
 
-		netp::size_t io_event_loop_group::size(io_poller_type t) {
-			shared_lock_guard<shared_mutex> lg(m_loop_mtx[t]);
-			return netp::size_t(m_loop[t].size());
+		void event_loop_group::stop() {
+			notify_terminating();
+			wait();
 		}
 
-		NRP<io_event_loop> io_event_loop_group::next(io_poller_type t, std::set<NRP<io_event_loop>> const& exclude_this_list_if_have_more) {
+		netp::size_t event_loop_group::size() {
+			shared_lock_guard<shared_mutex> lg(m_loop_mtx);
+			return netp::size_t(m_loop.size());
+		}
+
+		//if there is a event_loop_group instance, we must always guarantee to return non-null loop instance
+		NRP<event_loop> event_loop_group::next(std::set<NRP<event_loop>> const& exclude_this_list_if_have_more) {
 			{
-				shared_lock_guard<shared_mutex> lg(m_loop_mtx[t]);
-				const io_event_loop_vector& pollers = m_loop[t];
-				if (pollers.size() > 0) {
-					const std::size_t psize = pollers.size();
+				shared_lock_guard<shared_mutex> lg(m_loop_mtx);
+				if (m_loop.size() > 0) {
+					const std::size_t psize = m_loop.size();
 					if (psize <= exclude_this_list_if_have_more.size()) {
 						//skip one time
 						//u32_t idx = netp::atomic_incre(&m_curr_poller_idx[t]) % psize;
 						//if (exclude_this_list_if_have_more.find(pollers[idx]) == exclude_this_list_if_have_more.end()) {
 						//	return pollers[idx];
 						//}
-						return pollers[m_curr_loop_idx[t].fetch_add(1, std::memory_order_relaxed) % psize];
+						return m_loop[m_curr_loop_idx.fetch_add(1, std::memory_order_relaxed) % psize];
 					}
 					else {
-						u32_t idx = m_curr_loop_idx[t].fetch_add(1, std::memory_order_relaxed) % psize;
-						while (exclude_this_list_if_have_more.find(pollers[idx]) != exclude_this_list_if_have_more.end()) {
-							idx = m_curr_loop_idx[t].fetch_add(1, std::memory_order_relaxed) % psize;
+						u32_t idx = m_curr_loop_idx.fetch_add(1, std::memory_order_relaxed) % psize;
+						while (exclude_this_list_if_have_more.find(m_loop[idx]) != exclude_this_list_if_have_more.end()) {
+							idx = m_curr_loop_idx.fetch_add(1, std::memory_order_relaxed) % psize;
 						}
-						return pollers[idx];
+						return m_loop[idx];
 					}
 				}
 			}
-
-			if (m_bye_state.load(std::memory_order_relaxed) == bye_event_loop_state::S_RUNNING) {
+			if (m_bye_state.load(std::memory_order_relaxed) != bye_event_loop_state::S_IDLE) {
+				NETP_ASSERT(m_bye_event_loop != nullptr);
 				return m_bye_event_loop;
 			}
-			NETP_THROW("io_event_loop_group deinit logic issue");
+			NETP_THROW("event_loop_group deinit logic issue");
 		}
 
-		NRP<io_event_loop> io_event_loop_group::next(io_poller_type t) {
+		NRP<event_loop> event_loop_group::next() {
 			{
-				shared_lock_guard<shared_mutex> lg(m_loop_mtx[t]);
-				const io_event_loop_vector& pollers = m_loop[t];
-				if (pollers.size() != 0) {
-					return pollers[m_curr_loop_idx[t].fetch_add(1, std::memory_order_relaxed) % pollers.size()];
+				shared_lock_guard<shared_mutex> lg(m_loop_mtx);
+				if (m_loop.size() != 0) {
+					return m_loop[m_curr_loop_idx.fetch_add(1, std::memory_order_relaxed) % m_loop.size()];
 				}
 			}
-			if(m_bye_state.load(std::memory_order_relaxed) == bye_event_loop_state::S_RUNNING) {
+			if(m_bye_state.load(std::memory_order_relaxed) != bye_event_loop_state::S_IDLE) {
+				NETP_ASSERT(m_bye_event_loop != nullptr);
 				return m_bye_event_loop;
 			}
-			NETP_THROW("io_event_loop_group deinit logic issue");
+			NETP_THROW("event_loop_group deinit logic issue");
 		}
 
-		
-		NRP<io_event_loop> io_event_loop_group::internal_next(io_poller_type t) {
-			shared_lock_guard<shared_mutex> lg(m_loop_mtx[t]);
-			const io_event_loop_vector& pollers = m_loop[t];
-			NETP_ASSERT(m_loop[t].size() != 0);
-			int idx = m_curr_loop_idx[t].fetch_add(1, std::memory_order_relaxed) % pollers.size();
-			pollers[idx]->inc_internal_ref_count();
-			return pollers[idx];
-			//NETP_THROW("io_event_loop_group deinit logic issue");
+		NRP<event_loop> event_loop_group::internal_next() {
+			shared_lock_guard<shared_mutex> lg(m_loop_mtx);
+			NETP_ASSERT(m_loop.size() != 0);
+			int idx = m_curr_loop_idx.fetch_add(1, std::memory_order_relaxed) % m_loop.size();
+			m_loop[idx]->inc_internal_ref_count();
+			return m_loop[idx];
+			//NETP_THROW("event_loop_group deinit logic issue");
 		}
-		
 
-		void io_event_loop_group::execute(fn_task_t&& f, io_poller_type poller_t) {
-			next(poller_t)->execute(std::forward<fn_task_t>(f));
+		void event_loop_group::execute(fn_task_t&& f) {
+			next()->execute(std::forward<fn_task_t>(f));
 		}
-		void io_event_loop_group::schedule(fn_task_t&& f, io_poller_type poller_t) {
-			next(poller_t)->schedule(std::forward<fn_task_t>(f));
+		void event_loop_group::schedule(fn_task_t&& f) {
+			next()->schedule(std::forward<fn_task_t>(f));
 		}
-		void io_event_loop_group::launch(NRP<netp::timer> const& t, NRP<netp::promise<int>> const& lf, io_poller_type poller_t) {
-			next(poller_t)->launch(t,lf);
+		void event_loop_group::launch(NRP<netp::timer> const& t, NRP<netp::promise<int>> const& lf) {
+			next()->launch(t,lf);
 		}
 }

@@ -1,7 +1,7 @@
 #ifndef _NETP_CHANNEL_HANDLER_CONTEXT_HPP
 #define _NETP_CHANNEL_HANDLER_CONTEXT_HPP
 
-#include <netp/io_event_loop.hpp>
+#include <netp/event_loop.hpp>
 #include <netp/channel_handler.hpp>
 #include <netp/address.hpp>
 
@@ -181,7 +181,7 @@ namespace netp {
 	{
 	public:
 		friend class channel_pipeline;
-		NRP<io_event_loop> L;
+		NRP<event_loop> L;
 		NRP<netp::channel> ch;
 	private:
 		u16_t H_FLAG;

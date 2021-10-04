@@ -447,7 +447,7 @@ namespace netp {
 		}
 	}
 
-	rpc::rpc(NRP<netp::io_event_loop> const& L):
+	rpc::rpc(NRP<netp::event_loop> const& L):
 		channel_handler_abstract(netp::CH_ACTIVITY|netp::CH_INBOUND_READ),
 		m_loop(L),
 		m_wstate(rpc_write_state::S_WRITE_CLOSED),
