@@ -205,7 +205,7 @@ namespace netp {
 	app::app() :
 		m_is_cfg_json_checked(false),
 		m_should_exit(false),
-		m_loop_inited(false),
+		m_loop_group_state(event_loop_group_state::s_idle),
 		m_logfilepathname()
 	{
 		_app_thread_init();
@@ -259,6 +259,14 @@ namespace netp {
 
 		_event_loop_init();
 		return netp::OK;
+	}
+
+	//remote end do not SEND FIN immedialy even we've send FIN to it, so interrupt is a necessary if we want to exit app quickly
+	void app::interrupt_fds() {
+		event_loop_group_state run = event_loop_group_state::s_run;
+		if (m_loop_group_state.compare_exchange_strong(run, event_loop_group_state::s_notified, std::memory_order_acq_rel, std::memory_order_acquire)) {
+			m_def_loop_group->notify_terminating();
+		}
 	}
 
 	void app::stop() {
@@ -468,8 +476,9 @@ namespace netp {
 	}
 
 	void app::_event_loop_init() {
-		bool N = false;
-		if (!m_loop_inited.compare_exchange_strong(N, true, std::memory_order_acq_rel, std::memory_order_acquire)) {
+		event_loop_group_state idle = event_loop_group_state::s_idle;
+		if (!m_loop_group_state.compare_exchange_strong(idle, event_loop_group_state::s_run, std::memory_order_acq_rel, std::memory_order_acquire)) {
+			NETP_TRACE_APP("[app]init loop failed");
 			return;
 		}
 		NETP_ASSERT( m_def_loop_group != nullptr );
@@ -478,14 +487,16 @@ namespace netp {
 	}
 
 	void app::_event_loop_deinit() {
-		bool Y = true;
-		if (!m_loop_inited.compare_exchange_strong(Y, false, std::memory_order_acq_rel, std::memory_order_acquire)) {
-			return;
+		event_loop_group_state run = event_loop_group_state::s_run;
+		if (m_loop_group_state.compare_exchange_strong(run, event_loop_group_state::s_notified, std::memory_order_acq_rel, std::memory_order_acquire)) {
+			m_def_loop_group->notify_terminating();
 		}
 
-		m_def_loop_group->notify_terminating();
+		event_loop_group_state notified = event_loop_group_state::s_notified;
+		if (m_loop_group_state.compare_exchange_strong(notified, event_loop_group_state::s_wait_done, std::memory_order_acq_rel, std::memory_order_acquire)) {
+			m_def_loop_group->wait();
+		}
 		//reset loop after all loop reference dattached from business code
-		m_def_loop_group->wait();
 	}
 
 	//ISSUE: if the waken thread is main thread, we would get stuck here

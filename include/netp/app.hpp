@@ -18,6 +18,13 @@ namespace netp {
 	#define	NETP_TRACE_APP(...)
 #endif
 
+	enum class event_loop_group_state {
+		s_idle,
+		s_run,
+		s_notified,
+		s_wait_done
+	};
+
 	class app:
 		public netp::singleton<app>
 	{
@@ -33,7 +40,7 @@ namespace netp {
 		bool m_is_cfg_json_checked;
 		bool m_should_exit;
 
-		std::atomic<bool> m_loop_inited;
+		std::atomic<event_loop_group_state> m_loop_group_state;
 		std::vector<std::tuple<int,i64_t>> m_signo_tuple_vec;
 		std::vector<std::string> m_dns_hosts; //dotip
 		std::string m_logfilepathname;
@@ -68,7 +75,6 @@ namespace netp {
 
 		void _event_loop_init();
 		void _event_loop_deinit();
-
 	public:
 		//@warn: if we do need to create app on heap, we should always use new/delete, or std::shared_ptr
 		app();
@@ -83,7 +89,9 @@ namespace netp {
 		//startup loop & dns
 		int startup(int argc, char** argv);
 
-		//stop loop & dns
+		void interrupt_fds();
+
+		//stop loop
 		void stop();
 
 		//ISSUE: if the waken thread is main thread, we would get stuck here
