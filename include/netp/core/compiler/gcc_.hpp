@@ -44,6 +44,7 @@ Note
 This function attribute is a GNU compiler extension that the ARM compiler supports. It has the keyword equivalent __forceinline.
 */
 #define __NETP_FORCE_INLINE inline __attribute__((always_inline))
+#define __NETP_NO_INLINE __attribute__ ((noinline))
 
 #define NETP_LIKELY(x) __builtin_expect(!!(x), 1)
 #define NETP_UNLIKELY(x) __builtin_expect(!!(x), 0)

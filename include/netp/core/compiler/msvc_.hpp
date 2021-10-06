@@ -21,6 +21,7 @@ MSVC++ 5.0  _MSC_VER == 1100
 
 #define __NETP_TLS thread_local
 #define __NETP_FORCE_INLINE __forceinline
+#define __NETP_NO_INLINE	__declspec(noinline)
 
 #if defined(_MSC_VER) && (_MSC_VER < 1600)
 	typedef unsigned char uint8_t;

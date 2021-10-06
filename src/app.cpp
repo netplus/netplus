@@ -45,7 +45,7 @@ namespace netp {
 
 	i64_t signal_register(int signo, netp::fn_signal_handler_t&& H) {
 		if (H == nullptr) {
-			NETP_WARN("[signal_broker]register_signal, ignore: %d", signo);
+			//NETP_WARN("[signal_broker]register_signal, ignore: %d", signo);
 			::signal(signo, SIG_IGN);
 			return -1;
 		}

@@ -5,6 +5,16 @@
 
 namespace netp {
 
+//#define _NETP_STACK_SIZE_CHECK
+#ifdef _NETP_STACK_SIZE_CHECK
+	__NETP_NO_INLINE
+	void ___nest_stack_size_check(int i) {
+		char __u[10240] = { 0 };
+		std::memset(__u, 10240, i);
+		___nest_stack_size_check(++i);
+	}
+#endif
+
 	thread::thread() :
 		m_th(nullptr),
 		m_th_data(nullptr),
@@ -44,6 +54,10 @@ namespace netp {
 		NETP_VERBOSE("[thread]__RUN_PROXY__, thread stack size: %d", ssize);
 		NETP_ASSERT(ssize >= (1024 * 1024 * 4)); //4M
 		(void)ssize;
+#endif
+
+#ifdef _NETP_STACK_SIZE_CHECK
+		___nest_stack_size_check(0);
 #endif
 
 #ifdef NETP_ENABLE_DEBUG_STACK_SIZE

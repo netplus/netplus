@@ -526,26 +526,28 @@ int socket_base::get_left_snd_queue() const {
 		___do_io_read_done(status);
 	}
 
+	//we always do ch_io_end for close_write_impl, so if we're here, there must be no (WRITE_ERROR|F_WRITE_SHUTDOWN)
 	void socket_channel::__do_io_write( int status, io_ctx*) {
-		NETP_ASSERT( (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWNING)|int(channel_flag::F_BDLIMIT)|int(channel_flag::F_CLOSING) | int(channel_flag::F_WRITE_ERROR))) == 0 );
+		NETP_ASSERT( (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWNING)|int(channel_flag::F_BDLIMIT)|int(channel_flag::F_CLOSING) | int(channel_flag::F_WRITE_ERROR) |int(channel_flag::F_WRITE_SHUTDOWN) )) == 0 );
 		//NETP_TRACE_SOCKET("[socket][%s]__do_io_write, write begin: %d, flag: %u", ch_info().c_str(), status , m_chflag );
 		if (status == netp::OK) {
-#ifdef NETP_ENABLE_FAST_WRITE
-			if (m_chflag&int(channel_flag::F_WRITE_ERROR)) {//bdlimit cb, if fast_write enabled
-				NETP_ASSERT( (m_fn_write == nullptr) ? m_outbound_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
-				NETP_ASSERT(ch_errno() != netp::OK);
-				NETP_VERBOSE("[socket][%s]__do_io_write(), but socket error already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
-				return ;
-			} else if (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWN))) {//bdlimit cb, if fast_write enabled
-				NETP_ASSERT((m_fn_write == nullptr) ? m_outbound_entry_q.size() == 0 : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
-				NETP_VERBOSE("[socket][%s]__do_io_write(), but socket write closed already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
-				return;
-			} else {
-#endif
+
+//#ifdef NETP_ENABLE_FAST_WRITE
+//			if (m_chflag&int(channel_flag::F_WRITE_ERROR)) {//bdlimit cb, if fast_write enabled
+//				NETP_ASSERT( (m_fn_write == nullptr) ? m_outbound_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
+//				NETP_ASSERT(ch_errno() != netp::OK);
+//				NETP_VERBOSE("[socket][%s]__do_io_write(), but socket error already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
+//				return ;
+//			} else if (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWN))) {//bdlimit cb, if fast_write enabled
+//				NETP_ASSERT((m_fn_write == nullptr) ? m_outbound_entry_q.size() == 0 : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
+//				NETP_VERBOSE("[socket][%s]__do_io_write(), but socket write closed already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
+//				return;
+//			} else {
+//#endif
 				status = (!is_udp() ? socket_channel::___do_io_write() : socket_channel::___do_io_write_to());
-#ifdef NETP_ENABLE_FAST_WRITE
-			}
-#endif
+//#ifdef NETP_ENABLE_FAST_WRITE
+//			}
+//#endif
 		}
 		__do_io_write_done(status);
 	}
@@ -672,7 +674,8 @@ int socket_base::get_left_snd_queue() const {
 		if (closep) { closep->set(prt); }
 	}
 
-	//if there is a error, we'll always do ch_close_impl
+	//if there is a write_error, we'll always do ch_close_impl(nullptr), ch_close_impl(null) might result in ch_close_read(), ch_close_read might result in ch_close_impl again
+	//we would get to F_WRITE_SHUDOWN state in this exection(ch_close_impl) eventually
 	//if there is no erorr, just pending shutdown
 	void socket_channel::ch_close_write_impl(NRP<promise<int>> const& closep) {
 		NETP_ASSERT(L->in_event_loop());
@@ -711,6 +714,10 @@ int socket_base::get_left_snd_queue() const {
 	//ERROR FIRST
 	void socket_channel::ch_close_impl(NRP<promise<int>> const& closep) {
 		NETP_ASSERT(L->in_event_loop());
+
+		//note: F_CONNECTING would be cleared if dial failed, or dail cancel by loop terminating
+		NETP_ASSERT( (m_chflag & int(channel_flag::F_CONNECTING)) == 0);
+
 		int prt = netp::OK;
 		if (m_chflag&int(channel_flag::F_CLOSED)) {
 			prt = (netp::E_CHANNEL_CLOSED);
@@ -733,15 +740,17 @@ int socket_base::get_left_snd_queue() const {
 		} else if (m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)|int(channel_flag::F_BDLIMIT)) ) {
 			//wait for write done event, we might in a write barrier
 			//for a non-error close, do grace shutdown
+			//for error close, we would not reach here
 			NETP_ASSERT((m_fn_write == nullptr) ? m_outbound_entry_q.size() : true, "[#%s]chflag: %d, cherrno: %d", ch_info().c_str(),  m_chflag, m_cherrno);
 			m_chflag |= int(channel_flag::F_CLOSE_PENDING);
 			prt = (netp::E_CHANNEL_CLOSING);
 		} else {
 __act_label_close_read_write:
-			if ((m_chflag & int(channel_flag::F_CONNECTING)) && ch_errno() == netp::OK) {
-				m_chflag |= int(channel_flag::F_WRITE_ERROR);
-				ch_errno() = (netp::E_CHANNEL_ABORT);
-			}
+			//if ((m_chflag & int(channel_flag::F_CONNECTING)) && ch_errno() == netp::OK) {
+			//	m_chflag |= int(channel_flag::F_WRITE_ERROR);
+			//	ch_errno() = (netp::E_CHANNEL_ABORT);
+			//	__ch_io_cancel_connect(netp::E_CHANNEL_ABORT, m_io_ctx);
+			//}
 			_ch_do_close_read_write();
 		}
 

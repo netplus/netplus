@@ -385,8 +385,8 @@ namespace netp {
 			if (tst->count) {
 __fast_path:
 	#ifdef _NETP_DEBUG
-				NETP_ASSERT(TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]>0);
-				NETP_ASSERT(tst->ptr[tst->count-1] != 0);
+				NETP_ASSERT(TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]>0, "l: %u, t: %u, s: %u, tst->count: %u, tst->max: %u", g_memory_pool_slot_entries_size_level, t,s , tst->count, tst->max );
+				NETP_ASSERT(tst->ptr[tst->count-1] != 0, "tst->count: %u, tst->max: %u", tst->count , tst->max );
 	#endif
 				 a_hdr = (aligned_hdr*) (tst->ptr[--tst->count]);
 

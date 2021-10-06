@@ -132,7 +132,7 @@ namespace netp { namespace http {
 
 		~client() {}
 
-		NRP<event_loop> const& event_loop() const { return m_loop; }
+		NRP<event_loop> const& loop() const { return m_loop; }
 
 		void http_cb_connected(NRP<netp::channel_handler_context> const& ctx_);
 		void http_cb_closed(NRP<netp::channel_handler_context> const& ctx_);
