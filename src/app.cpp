@@ -82,6 +82,15 @@ namespace netp {
 		m_channel_read_buf_size = buf_in_kbytes * (1024);
 	}
 
+	void app::cfg_channel_bdlimit_clock(u32_t clock) {
+		if (clock < 5) {
+			clock = 5;
+		} else if (clock > 200) {
+			clock = 200;
+		}
+		m_channel_bdlimit_clock = clock;
+	}
+
 	void app::cfg_add_dns(std::string const& dns_ns) {
 		m_dns_hosts.push_back(dns_ns);
 	}
@@ -162,21 +171,26 @@ namespace netp {
 		}
 		m_is_cfg_json_checked = true;
 
-		if (cfg_json.find("log") != cfg_json.end() && cfg_json["log"].is_string()) {
-			cfg_log_filepathname(cfg_json["log"].get<std::string>());
+		if (cfg_json.find("netp_memory_pool_slot_entries_size_level") != cfg_json.end() && cfg_json["netp_memory_pool_slot_entries_size_level"].is_number()) {
+			cfg_memory_pool_slot_entries_size_level(cfg_json["netp_memory_pool_slot_entries_size_level"].get<int>());
 		}
 
-		if (cfg_json.find("def_loop_count_factor") != cfg_json.end() && cfg_json["def_loop_count_factor"].is_number_float() && cfg_json["def_loop_count_factor"].get<float>() > 0 ) {
-			cfg_loop_count(u32_t(cfg_json["def_loop_count_factor"].get<float>()*std::thread::hardware_concurrency()));
-		} else if (cfg_json.find("def_loop_count") != cfg_json.end() && cfg_json["def_loop_count"].is_number()) {
-			cfg_loop_count(cfg_json["def_loop_count"]);
+		if (cfg_json.find("netp_log") != cfg_json.end() && cfg_json["netp_log"].is_string()) {
+			cfg_log_filepathname(cfg_json["netp_log"].get<std::string>());
 		}
 
-		if (cfg_json.find("def_channel_read_buf") != cfg_json.end() && cfg_json["def_channel_read_buf"].is_number()) {
-			cfg_channel_read_buf(cfg_json["def_channel_read_buf"].get<int>());
+		if (cfg_json.find("netp_def_loop_count_by_factor") != cfg_json.end() && cfg_json["netp_def_loop_count_by_factor"].is_number_float() && cfg_json["def_loop_count_factor"].get<float>() > 0 ) {
+			cfg_loop_count(u32_t(cfg_json["netp_def_loop_count_by_factor"].get<float>()*std::thread::hardware_concurrency()));
+		} 
+		if (cfg_json.find("netp_def_loop_count") != cfg_json.end() && cfg_json["netp_def_loop_count"].is_number()) {
+			cfg_loop_count(cfg_json["netp_def_loop_count"]);
 		}
-		if (cfg_json.find("memory_pool_slot_entries_size_level") != cfg_json.end() && cfg_json["memory_pool_slot_entries_size_level"].is_number()) {
-			cfg_memory_pool_slot_entries_size_level(cfg_json["memory_pool_slot_entries_size_level"].get<int>());
+
+		if (cfg_json.find("netp_channel_read_buf") != cfg_json.end() && cfg_json["netp_channel_read_buf"].is_number()) {
+			cfg_channel_read_buf(cfg_json["netp_channel_read_buf"].get<int>());
+		}
+		if (cfg_json.find("netp_channel_bdlimit_clock") != cfg_json.end() && cfg_json["netp_channel_bdlimit_clock"].is_number()) {
+			cfg_channel_bdlimit_clock(cfg_json["netp_channel_bdlimit_clock"].get<int>());
 		}
 	}
 
@@ -184,6 +198,12 @@ namespace netp {
 		if ( !(argc >1)) { return; }
 		struct ::option long_options[] = {
 			{"netp-cfg", optional_argument, 0, 1},
+			{"netp-log", optional_argument, 0, 2 },
+			{"netp-memory-pool-slot-entries-size-level", optional_argument, 0, 3 },
+			{"netp-def-loop-count-by-factor", optional_argument, 0, 4 },
+			{"netp-def-loop-count", optional_argument, 0, 5 },
+			{"netp-channel-read_buf", optional_argument, 0, 6 },
+			{"netp-channel-bdlimit-clock", optional_argument, 0, 7 },
 			{0,0,0,0}
 		};
 
@@ -198,6 +218,36 @@ namespace netp {
 				_init_from_cfg_json(optarg);
 			}
 			break;
+			case 2:
+			{
+				cfg_log_filepathname(std::string(optarg));
+			}
+			break;
+			case 3:
+			{
+				cfg_memory_pool_slot_entries_size_level(std::atoi(optarg));
+			}
+			break;
+			case 4:
+			{
+				cfg_loop_count(std::atoi(optarg)*std::thread::hardware_concurrency());
+			}
+			break;
+			case 5:
+			{
+				cfg_loop_count(std::atoi(optarg));
+			}
+			break;
+			case 6:
+			{
+				cfg_channel_read_buf(std::atoi(optarg));
+			}
+			break;
+			case 7:
+			{
+				cfg_channel_bdlimit_clock(std::atoi(optarg));
+			}
+			break;
 			}
 		}
 	}
@@ -205,6 +255,8 @@ namespace netp {
 	app::app() :
 		m_is_cfg_json_checked(false),
 		m_should_exit(false),
+		m_channel_read_buf_size(128*1024),
+		m_channel_bdlimit_clock(50),
 		m_loop_group_state(event_loop_group_state::s_idle),
 		m_logfilepathname()
 	{
@@ -550,12 +602,14 @@ namespace netp {
 			netp::benchmark mk("f16");
 			for (int i = 0; i < total; ++i) {
 				volatile u16_t h1 = netp::security::fletcher16((const uint8_t*)p->head(), p->len());
+				(void)h1;
 			}
 		}
 		{
 			netp::benchmark mk("crc16");
 			for (int i = 0; i < total; ++i) {
 				volatile u16_t h2 = netp::security::crc16(p->head(), p->len());
+				(void)h2;
 			}
 		}
 

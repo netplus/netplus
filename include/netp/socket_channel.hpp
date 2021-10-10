@@ -16,7 +16,6 @@
 #define NETP_ENABLE_FAST_WRITE
 
 //in milliseconds, small clock would result in a more accurate control
-#define NETP_SOCKET_BDLIMIT_TIMER_DELAY_DUR (50)
 #define NETP_DEFAULT_LISTEN_BACKLOG 256
 
 namespace netp {
@@ -162,7 +161,7 @@ namespace netp {
 
 		u32_t m_outbound_budget;
 		u32_t m_outbound_limit; //in byte
-
+		long long m_outbound_limit_last_tp;
 		fn_io_event_t* m_fn_read;
 		fn_io_event_t* m_fn_write;
 
@@ -181,8 +180,9 @@ namespace netp {
 			m_rcv_buf_ptr(cfg->L->channel_rcv_buf()->head()),
 			m_rcv_buf_size(u32_t(cfg->L->channel_rcv_buf()->left_right_capacity())),
 			m_noutbound_bytes(0),
-			m_outbound_budget(cfg->bdlimit),
-			m_outbound_limit(cfg->bdlimit),
+			m_outbound_budget(cfg->bdlimit <1000 ? 1000: cfg->bdlimit ),
+			m_outbound_limit(cfg->bdlimit < 1000 ? 1000 : cfg->bdlimit),
+			m_outbound_limit_last_tp(0),
 			m_fn_read(nullptr),
 			m_fn_write(nullptr)
 		{

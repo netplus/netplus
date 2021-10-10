@@ -220,15 +220,20 @@ int socket_base::get_left_snd_queue() const {
 
 	void socket_channel::_tmcb_BDL(NRP<timer> const& t) {
 		NETP_ASSERT(L->in_event_loop());
-		NETP_ASSERT(m_outbound_limit > 0);
+		NETP_ASSERT(m_outbound_limit > 1000);
 		NETP_ASSERT(m_chflag&int(channel_flag::F_BDLIMIT_TIMER) );
+
 		m_chflag &= ~int(channel_flag::F_BDLIMIT_TIMER);
 		if (m_chflag & (int(channel_flag::F_WRITE_SHUTDOWN)|int(channel_flag::F_WRITE_ERROR))) {
 			return;
 		}
+		//netp::now<bfr_duration_t, bfr_clock_t>().time_since_epoch().count()
+		long long millinow = netp::now<netp::milliseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
+		long long bdlimit_delta = ( (millinow - m_outbound_limit_last_tp));
+		NETP_ASSERT(bdlimit_delta>0);
 
-		NETP_ASSERT(m_outbound_limit>=m_outbound_budget);
-		u32_t tokens = m_outbound_limit / (1000/NETP_SOCKET_BDLIMIT_TIMER_DELAY_DUR);
+		m_outbound_limit_last_tp = millinow;
+		u32_t tokens = (m_outbound_limit/1000)*bdlimit_delta;
 		if ( m_outbound_limit < (tokens+ m_outbound_budget)) {
 			m_outbound_budget = m_outbound_limit;
 		} else {
@@ -237,7 +242,6 @@ int socket_base::get_left_snd_queue() const {
 
 			//if we got write error just at terminating period
 			//the call to expire_all might reach here
-			
 			L->launch(t, netp::make_ref<netp::promise<int>>());
 		}
 
@@ -586,7 +590,8 @@ int socket_base::get_left_snd_queue() const {
 
 					if (!(m_chflag & int(channel_flag::F_BDLIMIT_TIMER)) && m_outbound_budget < (m_outbound_limit >> 1)) {
 						m_chflag |= int(channel_flag::F_BDLIMIT_TIMER);
-						L->launch(netp::make_ref<netp::timer>(std::chrono::milliseconds(NETP_SOCKET_BDLIMIT_TIMER_DELAY_DUR), &socket_channel::_tmcb_BDL, NRP<socket_channel>(this), std::placeholders::_1));
+						m_outbound_limit_last_tp = netp::now<netp::milliseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
+						L->launch(netp::make_ref<netp::timer>(std::chrono::milliseconds(netp::app::instance()->channel_bdlimit_clock()), &socket_channel::_tmcb_BDL, NRP<socket_channel>(this), std::placeholders::_1));
 					}
 				}
 
