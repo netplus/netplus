@@ -220,7 +220,7 @@ int socket_base::get_left_snd_queue() const {
 
 	void socket_channel::_tmcb_BDL(NRP<timer> const& t) {
 		NETP_ASSERT(L->in_event_loop());
-		NETP_ASSERT(m_outbound_limit > 1000);
+		NETP_ASSERT(m_outbound_limit >= 1000);
 		NETP_ASSERT(m_chflag&int(channel_flag::F_BDLIMIT_TIMER) );
 
 		m_chflag &= ~int(channel_flag::F_BDLIMIT_TIMER);

@@ -180,8 +180,8 @@ namespace netp {
 			m_rcv_buf_ptr(cfg->L->channel_rcv_buf()->head()),
 			m_rcv_buf_size(u32_t(cfg->L->channel_rcv_buf()->left_right_capacity())),
 			m_noutbound_bytes(0),
-			m_outbound_budget(cfg->bdlimit <1000 ? 1000: cfg->bdlimit ),
-			m_outbound_limit(cfg->bdlimit < 1000 ? 1000 : cfg->bdlimit),
+			m_outbound_budget(cfg->bdlimit !=0 && cfg->bdlimit <1000 ? 1000: cfg->bdlimit ),
+			m_outbound_limit(cfg->bdlimit != 0 && cfg->bdlimit < 1000 ? 1000 : cfg->bdlimit),
 			m_outbound_limit_last_tp(0),
 			m_fn_read(nullptr),
 			m_fn_write(nullptr)
@@ -899,8 +899,8 @@ namespace netp {
 			}
 			void ch_set_bdlimit(netp::u32_t limit) override {
 				L->execute([s = NRP<socket_channel>(this), limit]() {
-					s->m_outbound_limit = limit;
-					s->m_outbound_budget = s->m_outbound_limit;
+					s->m_outbound_limit = limit !=0 && limit <1000? 1000:limit;
+					s->m_outbound_budget = limit !=0 && limit < 1000 ?1000: s->m_outbound_limit;
 				});
 			};
 	};
