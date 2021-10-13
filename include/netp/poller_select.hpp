@@ -4,6 +4,7 @@
 #include <netp/core.hpp>
 #include <netp/socket_api.hpp>
 #include <netp/poller_interruptable_by_fd.hpp>
+//#include <netp/benchmark.hpp>
 
 namespace netp {
 
@@ -73,7 +74,10 @@ namespace netp {
 				}
 			}
 
+//			timeval __val = { 0, 500};
+			//netp::benchmark mk("select");
 			int nready = ::select((int)(max_fd_v + 1), &m_fds[fds_r], &m_fds[fds_w], &m_fds[fds_e], tv); //only read now
+			//mk.mark("select return");
 			NETP_POLLER_WAIT_EXIT(wait_in_nano,W);
 
 			if (nready == 0) {

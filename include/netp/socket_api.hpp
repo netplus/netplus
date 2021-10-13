@@ -152,7 +152,6 @@ namespace netp {
 	}
 
 	inline int close(SOCKET fd) {
-//		NETP_VERBOSE("[#%zu]netp::close", fd );
 		return NETP_CLOSE_SOCKET(fd);
 	}
 
@@ -265,7 +264,9 @@ namespace netp {
 				}
 			}
 			else {
+#ifdef _NETP_DEBUG
 				NETP_ASSERT(r == -1);
+#endif
 				int ec = netp_socket_get_last_errno();
 				_NETP_REFIX_EWOULDBLOCK(ec);
 				if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
@@ -298,7 +299,9 @@ namespace netp {
 				ec_o = netp::E_SOCKET_GRACE_CLOSE;
 				break;
 			} else {
+#ifdef _NETP_DEBUG
 				NETP_ASSERT(r == -1);
+#endif
 				int ec = netp_socket_get_last_errno();
 				_NETP_REFIX_EWOULDBLOCK(ec);
 				if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
@@ -338,8 +341,9 @@ sendto:
 			//NETP_TRACE_SOCKET_API("[netp::sendto][#%d]sendto() == %d", fd, nbytes);
 			return nbytes;
 		}
-
+#ifdef _NETP_DEBUG
 		NETP_ASSERT(nbytes == -1);
+#endif
 		int ec = netp_socket_get_last_errno();
 		_NETP_REFIX_EWOULDBLOCK(ec);
 		//NETP_TRACE_SOCKET_API("[netp::sendto][#%d]send failed, error code: %d", fd, ec);
@@ -363,8 +367,9 @@ recvfrom:
 			//NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom() == %d", fd, nbytes);
 			return nbytes;
 		}
-
+#ifdef _NETP_DEBUG
 		NETP_ASSERT(nbytes == -1);
+#endif
 		int ec = netp_socket_get_last_errno();
 		_NETP_REFIX_EWOULDBLOCK(ec);
 		//NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom, ERROR: %d", fd, ec);

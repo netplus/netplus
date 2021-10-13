@@ -8,6 +8,7 @@
 #include <netp/core.hpp>
 #include <netp/poller_interruptable_by_fd.hpp>
 #include <netp/socket_api.hpp>
+//#include <netp/benchmark.hpp>
 
 namespace netp {
 
@@ -123,8 +124,12 @@ namespace netp {
 			NETP_ASSERT( m_epfd != NETP_INVALID_SOCKET );
 
 			struct epoll_event epEvents[NETP_EPOLL_PER_HANDLE_SIZE];
-			const int wait_in_mill = wait_in_nano != ~0 ? (wait_in_nano / i64_t(1000000)): ~0;
+			const int wait_in_mill = (wait_in_nano != ~0 ? (wait_in_nano / i64_t(1000000)): ~0);
+//			char _mk_buf[128] = { 0 };
+//			snprintf(_mk_buf, 128, "epollwait(%d)", wait_in_mill);
+//			netp::benchmark mk(_mk_buf);
 			int nEvents = epoll_wait(m_epfd, epEvents,NETP_EPOLL_PER_HANDLE_SIZE, wait_in_mill);
+//			mk.mark("epoll_wait return");
 			NETP_POLLER_WAIT_EXIT(wait_in_nano, W);
 			if ( -1 == nEvents ) {
 				NETP_ERR("[EPOLL][##%u]epoll wait event failed!, errno: %d", m_epfd, netp_socket_get_last_errno() );

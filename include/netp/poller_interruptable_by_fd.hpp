@@ -26,12 +26,17 @@ namespace netp {
 				byte_t tmp[8] = {0};
 				int ec = netp::OK;
 				do {
+#ifdef NETP_HAS_PIPE
+					u32_t c = ::read(ctx->fd, tmp, 8);
+					ec = netp_socket_get_last_errno();
+#else
 					u32_t c = netp::recv(ctx->fd, tmp, 8, ec, 0);
 					//if (c == 1) {
 					//	NETP_ASSERT(ec == netp::OK);
 					//	NETP_ASSERT(tmp[0] == 'i', "c: %d", tmp[0]);
 					//}
 					(void)c;
+#endif
 				} while (ec == netp::OK);
 			}
 		}
@@ -66,16 +71,22 @@ namespace netp {
 
 		void __init_interrupt_fd() {
 			SOCKET fds[2] = {NETP_INVALID_SOCKET, NETP_INVALID_SOCKET};
-			int rt = netp::socketpair(int(NETP_AF_INET), int(NETP_SOCK_STREAM), int(NETP_PROTOCOL_TCP), fds);
+			int rt;
+#ifdef NETP_HAS_PIPE
+			while (pipe(fds) == -1) {
+				netp::this_thread::yield();
+			}
+#else
+			rt = netp::socketpair(int(NETP_AF_INET), int(NETP_SOCK_STREAM), int(NETP_PROTOCOL_TCP), fds);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
+			rt = netp::set_nodelay(fds[1], true);
+			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
+#endif
 
 			rt = netp::set_nonblocking(fds[0],true);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
 			rt = netp::set_nonblocking(fds[1],true);
-			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
-
-			rt = netp::set_nodelay(fds[1],true);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
 			m_fd_monitor_r = netp::make_ref<interrupt_fd_monitor>(fds[0]);
@@ -121,12 +132,27 @@ namespace netp {
 		virtual void interrupt_wait() override {
 			NETP_ASSERT(m_fd_w > 0);
 			int ec;
+#ifdef NETP_HAS_PIPE
+			do {
+				char buf = 1;
+				int c = write(m_fd_w, &buf, 1);
+				if (c == 1) {
+					break;
+				}
+				int ec = netp_socket_get_last_errno();
+				if (ec == EINTR) {
+					continue;
+				}
+				NETP_WARN("[event_loop][##%u]interrupt pipe failed: %d", m_fd_w, ec);
+		} while (1);
+#else
 			const byte_t interrutp_a[1] = { (byte_t)'i' };
 			u32_t c = netp::send(m_fd_w, interrutp_a, 1, ec, 0);
 			if (NETP_UNLIKELY(ec != netp::OK)) {
-				NETP_WARN("[event_loop]interrupt send failed: %d", ec);
+				NETP_WARN("[event_loop][##u]interrupt send failed: %d", m_fd_w, ec);
 			}
 			(void)c;
+#endif
 		}
 
 		virtual io_ctx* io_begin(SOCKET fd, NRP<io_monitor> const& iom) override {

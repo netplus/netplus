@@ -54,13 +54,13 @@
 	#undef min
 #endif
 
-namespace netp {
-	//remark: WSAGetLastError() == GetLastError(), but there is no gurantee for future change.
-	#define netp_last_errno() NETP_NEGATIVE((long)::GetLastError())
-	#define netp_set_last_errno() NETP_NEGATIVE((long)::SetLastError(e))
-	#define netp_socket_set_last_errno(e) (::WSASetLastError(e))
-	#define netp_socket_get_last_errno() NETP_NEGATIVE((long)::WSAGetLastError())
+//remark: WSAGetLastError() == GetLastError(), but there is no gurantee for future change.
+#define netp_last_errno() NETP_NEGATIVE((long)::GetLastError())
+#define netp_set_last_errno() NETP_NEGATIVE((long)::SetLastError(e))
+#define netp_socket_set_last_errno(e) (::WSASetLastError(e))
+#define netp_socket_get_last_errno() NETP_NEGATIVE((long)::WSAGetLastError())
 
+namespace netp {
 	typedef int socklen_t;
 }
 #endif

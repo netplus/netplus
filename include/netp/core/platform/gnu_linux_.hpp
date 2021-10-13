@@ -23,13 +23,14 @@
 #define NETP_CLOSE_SOCKET	::close
 #define NETP_DUP						dup
 #define NETP_DUP2					dup2
+#define NETP_HAS_PIPE				1
+
+#define netp_last_errno() NETP_NEGATIVE((int)errno)
+#define netp_set_last_errno(e) (errno=e)
+#define netp_socket_set_last_errno(e) (errno=e)
+#define netp_socket_get_last_errno() (netp_last_errno())
 
 namespace netp {
-	#define netp_last_errno() NETP_NEGATIVE((int)errno)
-	#define netp_set_last_errno(e) (errno=e)
-	#define netp_socket_set_last_errno(e) (errno=e)
-	#define netp_socket_get_last_errno() (netp_last_errno())
-
 	typedef socklen_t socklen_t;
 }
 
