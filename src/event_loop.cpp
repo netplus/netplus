@@ -24,9 +24,9 @@
 
 namespace netp {
 
-	NRP<event_loop> default_event_loop_maker(u8_t t, u32_t channel_read_buf_size) {
+	NRP<event_loop> default_event_loop_maker(event_loop_cfg const& cfg) {
 		NRP<poller_abstract> poller;
-		switch (t) {
+		switch (cfg.type) {
 #if defined(NETP_HAS_POLLER_EPOLL)
 		case T_EPOLL:
 		{
@@ -69,35 +69,33 @@ namespace netp {
 		}
 
 		NETP_ASSERT(poller != nullptr);
-
-		event_loop_cfg cfg = { t, channel_read_buf_size, poller, std::vector<netp::string_t, netp::allocator<netp::string_t>>() };
-		netp::app::instance()->dns_hosts(cfg.dns_hosts);
-		return netp::make_ref<event_loop>(cfg);
+		return netp::make_ref<event_loop>(cfg, poller);
 	}
 
 	void event_loop::init() {
-		m_channel_rcv_buf = netp::make_ref<netp::packet>(m_channel_read_buf_size,0);
+		m_channel_rcv_buf = netp::make_ref<netp::packet>(m_cfg.channel_read_buf_size,0);
 		m_tid = std::this_thread::get_id();
 		m_tb = netp::make_ref<timer_broker>();
 		m_poller->init();
 
+		if (m_cfg.has_dns_resolver) {
+			if (m_cfg.type == NETP_DEFAULT_POLLER_TYPE) {
+				m_dns_resolver = netp::make_ref<dns_resolver>(NRP<event_loop>(this));
+				inc_internal_ref_count();
+			} else {
+				m_dns_resolver = netp::make_ref<dns_resolver>(netp::app::instance()->def_loop_group()->next());
+			}
 
-		if (m_type == NETP_DEFAULT_POLLER_TYPE) {
-			m_dns_resolver = netp::make_ref<dns_resolver>(NRP<event_loop>(this));
-			inc_internal_ref_count();
-		} else {
-			m_dns_resolver = netp::make_ref<dns_resolver>(netp::app::instance()->def_loop_group()->next());
-		}
-		if (m_dns_hosts.size()) {
-			m_dns_resolver->add_name_server(m_dns_hosts);
-		}
-
-		NRP<netp::promise<int>> dnsp = m_dns_resolver->start();
-		if (dnsp->get() != netp::OK) {
-			char _fail_message[256] = { 0 };
-			snprintf(_fail_message, 255, "dns resolver start failed: %d", dnsp->get());
-			NETP_ERR("[app]start dnsresolver failed: %d, exit", dnsp->get());
-			NETP_THROW("dns_resolver start failed");
+			if (m_dns_hosts.size()) {
+				m_dns_resolver->add_name_server(m_dns_hosts);
+			}
+			NRP<netp::promise<int>> dnsp = m_dns_resolver->start();
+			if (dnsp->get() != netp::OK) {
+				char _fail_message[256] = { 0 };
+				snprintf(_fail_message, 255, "dns resolver start failed: %d", dnsp->get());
+				NETP_ERR("[app]start dnsresolver failed: %d, exit", dnsp->get());
+				NETP_THROW("dns_resolver start failed");
+			}
 		}
 	}
 
@@ -106,8 +104,10 @@ namespace netp {
 		NETP_ASSERT(in_event_loop());
 		NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_EXIT), "event loop deinit state check failed");
 
-		NETP_ASSERT( m_dns_resolver != nullptr );
-		m_dns_resolver = nullptr;
+		if (m_cfg.has_dns_resolver) {
+			NETP_ASSERT(m_dns_resolver != nullptr);
+			m_dns_resolver = nullptr;
+		}
 
 		{
 			lock_guard<spin_mutex> lg(m_tq_mutex);
@@ -190,9 +190,10 @@ namespace netp {
 		//dns resolver stop would result in dns socket be removed from io_ctx
 		//we keep m_dns_resolver instance until there is no event_loop reference outside
 		//no new fd is accepted after state enter terminating, so it's safe to stop dns first
-		NETP_ASSERT(m_dns_resolver != nullptr);
-		m_dns_resolver->stop();
-
+		if (m_cfg.has_dns_resolver) {
+			NETP_ASSERT(m_dns_resolver != nullptr);
+			m_dns_resolver->stop();
+		}
 		io_do(io_action::NOTIFY_TERMINATING, 0);
 		if (m_io_ctx_count == m_io_ctx_count_before_running) {
 			__do_enter_terminated();
@@ -250,18 +251,17 @@ namespace netp {
 			m_th->join();
 			m_th = nullptr;
 		}
-		NETP_INFO("[event_loop][%u]__terminate end", m_type);
+		NETP_INFO("[event_loop][%u]__terminate end", m_cfg.type ) ;
 	}
 
-	event_loop::event_loop(event_loop_cfg const& cfg):
+	event_loop::event_loop(event_loop_cfg const& cfg, NRP<poller_abstract> const& poller):
 		m_waiting(false),
 		m_state(u8_t(loop_state::S_IDLE)),
-		m_type(cfg.type),
-		m_poller(cfg.poller),
+		m_cfg(cfg),
+		m_poller(poller),
 		m_io_ctx_count(0),
 		m_io_ctx_count_before_running(0), 
 		m_internal_ref_count(0),
-		m_channel_read_buf_size(cfg.channel_read_buf_size),
 		m_dns_hosts(cfg.dns_hosts.begin(), cfg.dns_hosts.end())
 	{}
 
@@ -270,11 +270,11 @@ namespace netp {
 		NETP_ASSERT(m_th == nullptr);
 	}
 
-	event_loop_group::event_loop_group( u8_t t, fn_event_loop_maker_t const& L_maker):
+	event_loop_group::event_loop_group( event_loop_cfg const& cfg, fn_event_loop_maker_t const& L_maker):
 		m_curr_loop_idx(0),
 		m_bye_state(bye_event_loop_state::S_IDLE),
 		m_bye_ref_count(0),
-		m_io_poller_type(t),
+		m_cfg(cfg),
 		m_fn_loop_maker(L_maker)
 	{
 	}
@@ -329,7 +329,7 @@ namespace netp {
 			bye_event_loop_state idle = bye_event_loop_state::S_IDLE;
 			if (m_bye_state.compare_exchange_strong(idle, bye_event_loop_state::S_PREPARING, std::memory_order_acq_rel, std::memory_order_acquire)) {
 				NETP_ASSERT(m_bye_event_loop == nullptr, "m_bye_event_loop check failed");
-				m_bye_event_loop = m_fn_loop_maker(m_io_poller_type, 128*1024);
+				m_bye_event_loop = m_fn_loop_maker(m_cfg);
 				int rt = m_bye_event_loop->__launch();
 				NETP_ASSERT(rt == netp::OK);
 				m_bye_ref_count = m_bye_event_loop.ref_count();
@@ -366,9 +366,9 @@ namespace netp {
 		void event_loop_group::wait() {
 
 			//phase 2, deattach one by one
-			NETP_INFO("[event_loop]__dealloc_poller, type: %d", m_io_poller_type);
+			NETP_INFO("[event_loop]__dealloc_poller, type: %d", m_cfg.type);
 			_wait_loop();
-			NETP_INFO("[event_loop]__dealloc_poller, type: %d done", m_io_poller_type);
+			NETP_INFO("[event_loop]__dealloc_poller, type: %d done", m_cfg.type);
 
 			bye_event_loop_state running = bye_event_loop_state::S_RUNNING;
 			if (m_bye_state.compare_exchange_strong(running, bye_event_loop_state::S_EXIT, std::memory_order_acq_rel, std::memory_order_acquire)) {
@@ -384,13 +384,13 @@ namespace netp {
 			}
 		}
 
-		void event_loop_group::start(u32_t count, u32_t channel_read_buf_size) {
+		void event_loop_group::start(u32_t count ) {
 			NETP_VERBOSE("[event_loop_group]alloc poller: %u, count: %u, ch_buf_read_size: %u", m_io_poller_type, count, channel_read_buf_size);
 			lock_guard<shared_mutex> lg(m_loop_mtx);
 			m_curr_loop_idx = 0;
 			NETP_ASSERT( m_fn_loop_maker != nullptr );
 			while (count-- > 0) {
-				NRP<event_loop> o = m_fn_loop_maker(m_io_poller_type, channel_read_buf_size);
+				NRP<event_loop> o = m_fn_loop_maker(m_cfg);
 				int rt = o->__launch();
 				NETP_ASSERT(rt == netp::OK);
 				o->store_internal_ref_count(o.ref_count());

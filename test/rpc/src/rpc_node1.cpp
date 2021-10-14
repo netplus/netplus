@@ -3,7 +3,7 @@
 #include "shared.hpp"
 
 int main(int argc, char** argv) {
-	netp::app  _app;
+	netp::app::instance()->startup(argc, argv);
 
 	netp::fn_rpc_activity_notify_t fn_bind_api = [](NRP<netp::rpc> const& r) {
 		r->bindcall(rpc_call_test_api::API_PING, 
@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
 		});
 	});
 
-	_app.run();
+	netp::app::instance()->wait();
 	std::get<1>(rpc_lf->get())->ch_close();
 
 	return 0;

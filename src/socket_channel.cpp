@@ -53,9 +53,8 @@ namespace netp {
 		if (m_chflag & (int(channel_flag::F_CONNECTING) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_LISTENING) | int(channel_flag::F_CLOSED)) ) {
 			return netp::E_SOCKET_INVALID_STATE;
 		}
-		NETP_ASSERT((m_chflag & int(channel_flag::F_ACTIVE)) == 0);
+		NETP_ASSERT( m_raddr == nullptr || m_raddr->is_null() );
 		m_raddr = addr->clone();
-		channel::ch_set_active();
 		return socket_connect_impl(addr);
 	}
 
@@ -220,7 +219,7 @@ int socket_base::get_left_snd_queue() const {
 
 	void socket_channel::_tmcb_BDL(NRP<timer> const& t) {
 		NETP_ASSERT(L->in_event_loop());
-		NETP_ASSERT(m_outbound_limit >= 1000);
+		NETP_ASSERT(m_outbound_limit > 0);
 		NETP_ASSERT(m_chflag&int(channel_flag::F_BDLIMIT_TIMER) );
 
 		m_chflag &= ~int(channel_flag::F_BDLIMIT_TIMER);
@@ -228,12 +227,12 @@ int socket_base::get_left_snd_queue() const {
 			return;
 		}
 		//netp::now<bfr_duration_t, bfr_clock_t>().time_since_epoch().count()
-		long long millinow = netp::now<netp::milliseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
-		long long bdlimit_delta = ( (millinow - m_outbound_limit_last_tp));
+		long long usnow = netp::now<netp::microseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
+		long long bdlimit_delta = ( (usnow - m_outbound_limit_last_tp));
 		NETP_ASSERT(bdlimit_delta>0);
 
-		m_outbound_limit_last_tp = millinow;
-		u32_t tokens = (m_outbound_limit/1000)*bdlimit_delta;
+		m_outbound_limit_last_tp = usnow;
+		u32_t tokens = u32_t((m_outbound_limit*1.0f/1000000)*bdlimit_delta);
 		if ( m_outbound_limit < (tokens+ m_outbound_budget)) {
 			m_outbound_budget = m_outbound_limit;
 		} else {
@@ -311,7 +310,7 @@ int socket_base::get_left_snd_queue() const {
 				dialp->set(status);
 				return;
 			}
-
+			so->ch_set_active();
 			int rt = so->connect(addr);
 			if (rt == netp::OK) {
 				NETP_TRACE_SOCKET("[socket][%s]socket connected directly", so->ch_info().c_str());
@@ -588,9 +587,9 @@ int socket_base::get_left_snd_queue() const {
 				if (m_outbound_limit != 0 ) {
 					m_outbound_budget -= nbytes;
 
-					if (!(m_chflag & int(channel_flag::F_BDLIMIT_TIMER)) && m_outbound_budget < (m_outbound_limit >> 1)) {
+					if (!(m_chflag & int(channel_flag::F_BDLIMIT_TIMER)) && m_outbound_budget < (m_outbound_limit>>3)) {
 						m_chflag |= int(channel_flag::F_BDLIMIT_TIMER);
-						m_outbound_limit_last_tp = netp::now<netp::milliseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
+						m_outbound_limit_last_tp = netp::now<netp::microseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
 						L->launch(netp::make_ref<netp::timer>(std::chrono::milliseconds(netp::app::instance()->channel_bdlimit_clock()), &socket_channel::_tmcb_BDL, NRP<socket_channel>(this), std::placeholders::_1));
 					}
 				}

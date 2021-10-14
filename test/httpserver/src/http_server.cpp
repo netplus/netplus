@@ -140,12 +140,14 @@ public:
 			file_download_service(m,ctx);
 			return;
 		}
+
+		ctx->close();
 	}
 };
 
 int main(int argc, char** argv) {
 
-	netp::app app;
+	netp::app::instance()->startup(argc, argv);
 
 	NRP<http_server> http_server_ = netp::make_ref<http_server>();
 	NRP<netp::channel_listen_promise> tls_listen = netp::listen_on("tcp://0.0.0.0:50443", [http_server_](NRP<netp::channel> const& ch) {
@@ -154,7 +156,7 @@ int main(int argc, char** argv) {
 		tlsconfig->cert_verify_required = false;
 		
 		tlsconfig->cert = std::string("./tls/cert/netplus/server_cert.pem");
-		tlsconfig->privkey = std::string("./tls/cert/netplus/server_key.pem");
+		tlsconfig->cert_privkey = std::string("./tls/cert/netplus/server_key.pem");
 		tlsconfig->ca_path = std::string("./tls/ca/netplus/");
 
 		//tlsconfig->cert = std::string("./tls/cert_for_server/dd.proxy/server_node_cert.pem");
@@ -191,7 +193,7 @@ int main(int argc, char** argv) {
 		return listen_rt;
 	}
 
-	app.run();
+	netp::app::instance()->wait();
 //	NRP<channel_future> ch_close_f = ch_future->channel()->ch_close();
 //	NETP_ASSERT(ch_close_f->get() == netp::OK);
 

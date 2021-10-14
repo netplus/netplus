@@ -4,7 +4,7 @@
 #include <netp/core.hpp>
 #include <netp/socket_api.hpp>
 #include <netp/poller_interruptable_by_fd.hpp>
-//#include <netp/benchmark.hpp>
+#include <netp/benchmark.hpp>
 
 namespace netp {
 
@@ -41,44 +41,38 @@ namespace netp {
     #pragma warning(push)
     #pragma warning(disable:4389)
 #endif
-		void poll(i64_t wait_in_nano, std::atomic<bool>& W) override {
-			timeval _tv = { 0,0 };
-			timeval* tv = 0;
-			if (wait_in_nano != ~0) {
-				if (wait_in_nano>0) {
-					_tv.tv_sec = static_cast<long>(wait_in_nano / 1000000000ULL);
-					_tv.tv_usec = static_cast<long>(wait_in_nano % 1000000000ULL) / 1000;
-				}
-				tv = &_tv;
-			}
+			void poll(i64_t wait_in_nano, std::atomic<bool>& W) override {
+				FD_ZERO(&m_fds[fds_r]);
+				FD_ZERO(&m_fds[fds_w]);
+				FD_ZERO(&m_fds[fds_e]);
 
-			FD_ZERO(&m_fds[fds_r]);
-			FD_ZERO(&m_fds[fds_w]);
-			FD_ZERO(&m_fds[fds_e]);
-
-			SOCKET max_fd_v = (SOCKET)0;
-			io_ctx* ctx;
-			for (ctx = m_io_ctx_list.next; ctx != &m_io_ctx_list; ctx = ctx->next) {
-				if (ctx->flag&io_flag::IO_READ) { 
-					FD_SET((ctx->fd), &m_fds[fds_r]);
-					if (ctx->fd > max_fd_v) {
-						max_fd_v = ctx->fd;
+				SOCKET max_fd_v = (SOCKET)0;
+				io_ctx* ctx;
+				for (ctx = m_io_ctx_list.next; ctx != &m_io_ctx_list; ctx = ctx->next) {
+					if (ctx->flag & io_flag::IO_READ) {
+						FD_SET((ctx->fd), &m_fds[fds_r]);
+						if (ctx->fd > max_fd_v) {
+							max_fd_v = ctx->fd;
+						}
+					}
+					if (ctx->flag & io_flag::IO_WRITE) {
+						FD_SET((ctx->fd), &m_fds[fds_w]);
+						FD_SET((ctx->fd), &m_fds[fds_e]);
+						if (ctx->fd > max_fd_v) {
+							max_fd_v = ctx->fd;
+						}
 					}
 				}
-				if (ctx->flag&io_flag::IO_WRITE) {
-					FD_SET((ctx->fd), &m_fds[fds_w]);
-					FD_SET((ctx->fd), &m_fds[fds_e]);
-					if (ctx->fd > max_fd_v) {
-						max_fd_v = ctx->fd;
-					}
-				}
-			}
 
-//			timeval __val = { 0, 500};
-			//netp::benchmark mk("select");
+			//wait_in_nano = netp::random_u64(2000000);
+			timeval _tv = { static_cast<long>(wait_in_nano / 1000000000ULL), static_cast<long>(wait_in_nano % 1000000000ULL) / 1000 };
+			timeval* tv = wait_in_nano != ~0 ? &_tv : 0 ;
+//			char mk_buf[128] = { 0 };
+//			snprintf(mk_buf, 128, "select(%lld)", (wait_in_nano == ~0) ? wait_in_nano : i64_t(wait_in_nano / 1000LL));
+//			netp::benchmark mk(mk_buf);
 			int nready = ::select((int)(max_fd_v + 1), &m_fds[fds_r], &m_fds[fds_w], &m_fds[fds_e], tv); //only read now
-			//mk.mark("select return");
-			NETP_POLLER_WAIT_EXIT(wait_in_nano,W);
+//			mk.mark("select return");
+			NETP_POLLER_WAIT_EXIT(wait_in_nano, W);
 
 			if (nready == 0) {
 				return;

@@ -34,15 +34,15 @@ namespace netp {
 	typedef std::vector<fn_task_t, netp::allocator<fn_task_t>> io_task_q_t;
 
 	struct event_loop_cfg {
+		u8_t has_dns_resolver;
 		u8_t type;
 		u32_t channel_read_buf_size;
-		NRP<poller_abstract> poller;
 		std::vector<netp::string_t, netp::allocator<netp::string_t>> dns_hosts;
 	};
 
 	class event_loop;
-	typedef std::function<NRP<event_loop>(u8_t t, u32_t size) > fn_event_loop_maker_t;
-	extern NRP<event_loop> default_event_loop_maker(u8_t t, u32_t size);
+	typedef std::function<NRP<event_loop>(event_loop_cfg const& cfg) > fn_event_loop_maker_t;
+	extern NRP<event_loop> default_event_loop_maker(event_loop_cfg const& cfg);
 
 	enum class loop_state {
 		S_IDLE,
@@ -70,9 +70,9 @@ namespace netp {
 		std::thread::id m_tid;
 		std::atomic<bool> m_waiting;
 		std::atomic<u8_t> m_state;
-		u8_t m_type;
+		event_loop_cfg m_cfg;
 
-		NRP<poller_abstract> m_poller;
+		const NRP<poller_abstract> m_poller;
 		NRP<timer_broker> m_tb;
 		NRP<dns_resolver> m_dns_resolver;
 
@@ -88,7 +88,6 @@ namespace netp {
 
 		//timer_timepoint_t m_wait_until;
 		std::atomic<long> m_internal_ref_count;
-		u32_t m_channel_read_buf_size;
 		std::vector<netp::string_t, netp::allocator<netp::string_t>> m_dns_hosts;
 
 	protected:
@@ -132,7 +131,7 @@ namespace netp {
 		void __terminate();
 
 	public:
-		event_loop(event_loop_cfg const& cfg);
+		event_loop(event_loop_cfg const& cfg, NRP<poller_abstract> const& poller);
 		~event_loop();
 
 		inline void schedule(fn_task_t&& f) {
@@ -190,7 +189,13 @@ namespace netp {
 
 		void launch(NRP<netp::timer> const& t , NRP<netp::promise<int>> const& lf = nullptr ) {
 			if(!in_event_loop()) {
-				schedule([L = NRP<event_loop>(this), t, lf]() {
+				netp::timer_clock_t::time_point outer_loop_tp = netp::timer_clock_t::now();
+				schedule([L = NRP<event_loop>(this), t, lf, outer_loop_tp]() {
+					netp::timer_clock_t::time_point inner_loop_tp = netp::timer_clock_t::now();
+					timer_duration_t tdur = t->get_delay();
+					tdur = tdur - (inner_loop_tp - outer_loop_tp);
+					if (tdur <= timer_duration_t(0)) { tdur = timer_duration_t(1); }
+					t->set_delay(tdur);
 					L->launch(t, lf);
 				});
 				return;
@@ -220,11 +225,12 @@ namespace netp {
 
 		__NETP_FORCE_INLINE
 		NRP<dns_query_promise> resolve(string_t const& domain) {
+			NETP_ASSERT(m_cfg.has_dns_resolver );
 			return m_dns_resolver->resolve(domain);
 		}
 
 		__NETP_FORCE_INLINE
-		u8_t poller_type() const { return m_type; }
+		u8_t poller_type() const { return m_cfg.type; }
 
 		__NETP_FORCE_INLINE
 		NRP<netp::packet> const& channel_rcv_buf() const {
@@ -281,25 +287,24 @@ namespace netp {
 		std::atomic<bye_event_loop_state> m_bye_state;
 		NRP<event_loop> m_bye_event_loop;
 		long m_bye_ref_count;
-		u8_t m_io_poller_type;
+		event_loop_cfg m_cfg;
 		fn_event_loop_maker_t m_fn_loop_maker;
 
 		void _wait_loop();
 	public:
-		event_loop_group(u8_t t, fn_event_loop_maker_t const& fn_maker);
+		event_loop_group(event_loop_cfg const& cfg, fn_event_loop_maker_t const& fn_maker);
 		~event_loop_group();
 
 		void wait();
 		void notify_terminating();
 
-		void start(u32_t count, u32_t channel_read_buf_size);
+		void start(u32_t count);
 		void stop();
 
 		netp::size_t size();
 
 		NRP<event_loop> next(std::set<NRP<event_loop>> const& exclude_this_set_if_have_more);
 		NRP<event_loop> next();
-//		NRP<event_loop> internal_next();
 
 		void execute(fn_task_t&& f);
 		void schedule(fn_task_t&& f);

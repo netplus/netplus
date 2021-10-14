@@ -49,18 +49,24 @@ public:
 int main(int argc, char** argv) {
 
 	//initialize a netplus app instance
-	netp::app app;
+	netp::app::instance()->startup(argc, argv);
 	std::string host = "tcp://127.0.0.1:13103";
 
 	netp::ref_ptr<netp::channel_listen_promise> listenp = netp::listen_on(host, [](netp::ref_ptr<netp::channel>const& ch) {
+		NRP<netp::handler::tls_config> tlsconfig = netp::make_ref<netp::handler::tls_config>();
+		tlsconfig->client_cert_auth_required = false;
+		tlsconfig->cert_verify_required = false;
+		tlsconfig->cert_privkey = std::string("./privkey2.pem");
+		tlsconfig->cert = std::string("./fullchain2.pem");
 
-		NRP<netp::handler::tls_context> tlsctx = netp::handler::default_tls_server_context(std::string("./fullchain2.pem"), std::string("./privkey2.pem"));
+		NRP<netp::handler::tls_context> tlsctx = netp::handler::tls_context_with_tlsconfig(tlsconfig);
 		NRP<netp::handler::tls_server> _tls_server = netp::make_ref<netp::handler::tls_server>(tlsctx);
 		ch->pipeline()->add_last(_tls_server);
 
 		ch->pipeline()->add_last(netp::make_ref<netp::handler::hlen>());
 		ch->pipeline()->add_last(netp::make_ref<Pong>());
-		});
+	});
+
 	int listenrt = std::get<0>(listenp->get());
 	if (listenrt != netp::OK) {
 		NETP_INFO("listen on host: %s failed, fail code: %d", host.c_str(), listenrt);
@@ -69,8 +75,13 @@ int main(int argc, char** argv) {
 	//	app.run();
 
 	netp::ref_ptr<netp::channel_dial_promise> dialp = netp::dial(host, [](netp::ref_ptr<netp::channel> const& ch) {
+		NRP<netp::handler::tls_config> tlsconfig = netp::make_ref<netp::handler::tls_config>();
+		tlsconfig->client_cert_auth_required = false;
+		tlsconfig->cert_verify_required = false;
+		tlsconfig->cert_privkey = std::string("./privkey2.pem");
+		tlsconfig->cert = std::string("./fullchain2.pem");
 
-		NRP<netp::handler::tls_context> tlsctx = netp::handler::default_tls_client_context("127.0.0.1", 13103);
+		NRP<netp::handler::tls_context> tlsctx = netp::handler::tls_context_with_tlsconfig(tlsconfig);
 		NRP<netp::handler::tls_client> _tls_client = netp::make_ref<netp::handler::tls_client>(tlsctx);
 		ch->pipeline()->add_last(_tls_client);
 
@@ -87,7 +98,7 @@ int main(int argc, char** argv) {
 	//wait for signal to exit
 	//Ctrl+C on windows
 	//kill -15 on linux
-	app.run();
+	netp::app::instance()->wait();
 
 	//close listen channel
 	std::get<1>(listenp->get())->ch_close();

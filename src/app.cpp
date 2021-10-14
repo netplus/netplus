@@ -83,8 +83,8 @@ namespace netp {
 	}
 
 	void app::cfg_channel_bdlimit_clock(u32_t clock) {
-		if (clock < 5) {
-			clock = 5;
+		if (clock < 1) {
+			clock = 1;
 		} else if (clock > 200) {
 			clock = 200;
 		}
@@ -202,7 +202,7 @@ namespace netp {
 			{"netp-memory-pool-slot-entries-size-level", optional_argument, 0, 3 },
 			{"netp-def-loop-count-by-factor", optional_argument, 0, 4 },
 			{"netp-def-loop-count", optional_argument, 0, 5 },
-			{"netp-channel-read_buf", optional_argument, 0, 6 },
+			{"netp-channel-read-buf", optional_argument, 0, 6 },
 			{"netp-channel-bdlimit-clock", optional_argument, 0, 7 },
 			{0,0,0,0}
 		};
@@ -513,7 +513,9 @@ namespace netp {
 #endif
 
 		NETP_ASSERT(m_def_loop_group == nullptr);
-		m_def_loop_group = netp::make_ref<netp::event_loop_group>(u8_t(NETP_DEFAULT_POLLER_TYPE), default_event_loop_maker);
+		event_loop_cfg cfg = { true, NETP_DEFAULT_POLLER_TYPE, m_channel_read_buf_size, std::vector<netp::string_t, netp::allocator<netp::string_t>>() };
+		dns_hosts(cfg.dns_hosts);
+		m_def_loop_group = netp::make_ref<netp::event_loop_group>(cfg, default_event_loop_maker);
 		NETP_TRACE_APP("net init end");
 	}
 
@@ -534,7 +536,7 @@ namespace netp {
 			return;
 		}
 		NETP_ASSERT( m_def_loop_group != nullptr );
-		m_def_loop_group->start(m_loop_count, m_channel_read_buf_size);
+		m_def_loop_group->start(m_loop_count);
 		NETP_TRACE_APP("[app]init loop done");
 	}
 
