@@ -226,16 +226,22 @@ namespace netp {
 			, class = typename std::enable_if<std::is_convertible<_callable, fn_promise_callee_t>::value>::type>
 		void if_done(_callable const& callee) {
 			if (is_done()) {
-				//callee's sequence does not make sense here, so we could have a fast path
+
+				//note: users should pay attention on the following note
+				//note1: callee's sequence does not make sense if multi-callee do not have relation for each other, so we could have a fast path, the current impl prefer to this fast path
+				//note2: callee's sequence make sense the following case
+				//	1) thread 1 call if_done[callee1], before state done
+				// 2) thread 1 call if_done[callee2] right after thread 2 call set (update state to done,  but not reach to evt invoke yet)
+				//  callee 2 happens before callee 1 in this case
 				//fast path
 				callee(promise_t::m_v);
 			} else {
 				lock_guard<spin_mutex> lg(m_mutex);
-				//slow path: double check
+				//slow path: double check 
 				if (is_done()) {
 					callee(promise_t::m_v);
 				} else {
-					//if we miss a if_done in this place, we must not miss it in promise::set, cuz store must happen before lock of m_mutex
+					//if we miss a if_done in this place, we must not miss it in promise::set, cuz state store must happen before lock of m_mutex
 					event_broker_promise_t::bind(std::bind(std::forward<_callable>(callee), std::placeholders::_1));
 				}
 			}

@@ -30,7 +30,7 @@ namespace netp {
 		OPTION_KEEP_ALIVE = 1 << 5
 	};
 
-	const static int default_socket_option = int(socket_option::OPTION_NON_BLOCKING) | int(socket_option::OPTION_KEEP_ALIVE);
+	const static int default_socket_option = (int(socket_option::OPTION_NON_BLOCKING) | int(socket_option::OPTION_KEEP_ALIVE));
 
 	struct keep_alive_vals {
 		netp::u8_t	 probes;
@@ -275,6 +275,7 @@ namespace netp {
 		int _cfg_nodelay(bool onoff) {
 
 			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_fd == NETP_INVALID_SOCKET);
+			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_protocol == u16_t(NETP_PROTOCOL_UDP));
 			bool setornot = ((m_option & u16_t(socket_option::OPTION_NODELAY)) && (!onoff)) ||
 				(((m_option & u16_t(socket_option::OPTION_NODELAY)) == 0) && (onoff));
 
@@ -287,17 +288,18 @@ namespace netp {
 			NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 			if (onoff) {
 				m_option |= u16_t(socket_option::OPTION_NODELAY);
-			}
-			else {
+			} else {
 				m_option &= ~u16_t(socket_option::OPTION_NODELAY);
 			}
 			return netp::OK;
 		}
 
+		//@no way to read it back on windows
 		int __cfg_keepalive_vals(keep_alive_vals const& vals) {
 			/*BFR WILL SETUP A DEFAULT KAV AT START FOR THE CURRENT IMPL*/
 			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_fd == NETP_INVALID_SOCKET);
 			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_protocol == u16_t(NETP_PROTOCOL_USER));
+			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_protocol == u16_t(NETP_PROTOCOL_UDP));
 			NETP_ASSERT(m_option & int(socket_option::OPTION_KEEP_ALIVE));
 			int rt;
 #ifdef _NETP_WIN
@@ -347,6 +349,7 @@ namespace netp {
 
 			/*BFR WILL SETUP A DEFAULT KAV AT START FOR THE CURRENT IMPL*/
 			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_protocol == u16_t(NETP_PROTOCOL_USER));
+			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_protocol == u16_t(NETP_PROTOCOL_UDP));
 
 			//force to false
 			int optval = onoff ? 1 : 0;
@@ -410,7 +413,7 @@ namespace netp {
 			return netp::OK;
 		}
 
-		//all user custom socket(such as bfr/kcp etc), must impl these functions by user to utilize netplus features
+		//all user custom socket(such as bfr etc), must impl these functions by user to utilize netplus features
 		//the name of these kinds of functions looks like socket_x_impl
 		//the defualt impl is posix socket api
 		virtual int socket_open_impl() {
@@ -903,11 +906,14 @@ namespace netp {
 					s->m_outbound_budget = limit ;
 				});
 			};
+
+			virtual void dup(NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> primise, NRP<event_loop> const& L) ;
 	};
 
 	extern NRP<socket_channel> default_socket_channel_maker(NRP<netp::socket_cfg> const& cfg);
 
-	inline std::tuple<int,NRP<socket_channel>> create_socket_channel(NRP<netp::socket_cfg> const& cfg) {
+	__NETP_FORCE_INLINE
+	std::tuple<int,NRP<socket_channel>> create_socket_channel(NRP<netp::socket_cfg> const& cfg) {
 		NETP_ASSERT(cfg->L != nullptr);
 		NETP_ASSERT(cfg->L->in_event_loop());
 

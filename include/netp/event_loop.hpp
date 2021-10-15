@@ -34,6 +34,28 @@ namespace netp {
 	typedef std::vector<fn_task_t, netp::allocator<fn_task_t>> io_task_q_t;
 
 	struct event_loop_cfg {
+		event_loop_cfg( u8_t type_, u32_t read_buf_ ) :
+			no_wait_us(1),
+			has_dns_resolver(YesNo::YES),
+			type(type_),
+			channel_read_buf_size(read_buf_)
+		{}
+
+		event_loop_cfg(u8_t type_, u32_t read_buf_, u8_t has_dns_resolver_) :
+			no_wait_us(1),
+			has_dns_resolver(has_dns_resolver_),
+			type(type_),
+			channel_read_buf_size(read_buf_)
+		{}
+
+		event_loop_cfg(u8_t type_, u32_t read_buf_, u8_t has_dns_resolver_, u8_t no_wait_us_) :
+			no_wait_us(no_wait_us_),
+			has_dns_resolver(has_dns_resolver_),
+			type(type_),
+			channel_read_buf_size(read_buf_)
+		{}
+
+		u8_t no_wait_us;
 		u8_t has_dns_resolver;
 		u8_t type;
 		u32_t channel_read_buf_size;
@@ -105,7 +127,10 @@ namespace netp {
 			netp::timer_duration_t ndelay;
 			m_tb->expire(ndelay);
 			i64_t ndelayns = i64_t(ndelay.count());
-			if (ndelayns == 0) {
+			//@note: opt for select, epoll_wait
+			//@note: select, epoll_wait cost too much time to return (ms level)
+			if ( (ndelayns != TIMER_TIME_INFINITE) && (ndelayns <= (i64_t(m_cfg.no_wait_us)*1000LL)) ) {
+				//less than 1us
 				return 0;
 			}
 
@@ -114,7 +139,7 @@ namespace netp {
 				if (m_tq_standby.size() != 0) {
 					return 0;
 				}
-				NETP_POLLER_WAIT_ENTER(ndelayns,m_waiting);
+				NETP_POLLER_WAIT_ENTER(m_waiting);
 			}
 			return ndelayns;
 		}

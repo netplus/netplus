@@ -7,10 +7,9 @@
 #define NETP_DEBUG_IO_CTX_
 
 //in nano
-#define NETP_POLLER_WAIT_IGNORE_DUR (u64_t(27))
 //ENTER HAS A lock_gurard to sure the compiler would not reorder it
-#define NETP_POLLER_WAIT_ENTER(wt_in_nano,W) ( ((u64_t(wt_in_nano)>NETP_POLLER_WAIT_IGNORE_DUR)) ? (W).store(true,std::memory_order_relaxed): (void)0)
-#define NETP_POLLER_WAIT_EXIT(wt_in_nano,W) std::atomic_signal_fence(std::memory_order_acq_rel);((u64_t(wt_in_nano)>NETP_POLLER_WAIT_IGNORE_DUR)) ? (W).store(false,std::memory_order_relaxed) : (void)0; std::atomic_signal_fence(std::memory_order_acq_rel);
+#define NETP_POLLER_WAIT_ENTER(W) ((W).store(true,std::memory_order_relaxed))
+#define NETP_POLLER_WAIT_EXIT(wt_in_nano,W) std::atomic_signal_fence(std::memory_order_acq_rel);((u64_t(wt_in_nano)>0)) ? (W).store(false,std::memory_order_relaxed) : (void)0; std::atomic_signal_fence(std::memory_order_acq_rel);
 
 namespace netp {
 

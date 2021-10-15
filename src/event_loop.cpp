@@ -78,7 +78,7 @@ namespace netp {
 		m_tb = netp::make_ref<timer_broker>();
 		m_poller->init();
 
-		if (m_cfg.has_dns_resolver) {
+		if (m_cfg.has_dns_resolver == YesNo::YES) {
 			if (m_cfg.type == NETP_DEFAULT_POLLER_TYPE) {
 				m_dns_resolver = netp::make_ref<dns_resolver>(NRP<event_loop>(this));
 				inc_internal_ref_count();
@@ -104,7 +104,7 @@ namespace netp {
 		NETP_ASSERT(in_event_loop());
 		NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_EXIT), "event loop deinit state check failed");
 
-		if (m_cfg.has_dns_resolver) {
+		if (m_cfg.has_dns_resolver == YesNo::YES) {
 			NETP_ASSERT(m_dns_resolver != nullptr);
 			m_dns_resolver = nullptr;
 		}
@@ -190,7 +190,7 @@ namespace netp {
 		//dns resolver stop would result in dns socket be removed from io_ctx
 		//we keep m_dns_resolver instance until there is no event_loop reference outside
 		//no new fd is accepted after state enter terminating, so it's safe to stop dns first
-		if (m_cfg.has_dns_resolver) {
+		if (m_cfg.has_dns_resolver == YesNo::YES) {
 			NETP_ASSERT(m_dns_resolver != nullptr);
 			m_dns_resolver->stop();
 		}
@@ -237,13 +237,13 @@ namespace netp {
 	}
 
 	void event_loop::__terminate() {
-		NETP_VERBOSE("[event_loop][%u]__terminate begin", m_type );
+		NETP_VERBOSE("[event_loop][%u]__terminate begin", m_cfg.type );
 		while (m_state.load(std::memory_order_acquire) != u8_t(loop_state::S_TERMINATED)) {
 			netp::this_thread::sleep(1);
 		}
 		u8_t terminated = u8_t(loop_state::S_TERMINATED);
 		if (m_state.compare_exchange_strong(terminated, u8_t(loop_state::S_EXIT), std::memory_order_acq_rel, std::memory_order_acquire)) {
-			NETP_VERBOSE("[event_loop][%u]enter S_EXIT, last interrupt if needed", m_type);
+			NETP_VERBOSE("[event_loop][%u]enter S_EXIT, last interrupt if needed", m_cfg.type);
 			m_poller->interrupt_wait();
 			//@NOTE:
 			//1, we don't interrupt these kinds of thread, cuz we want all the tasks be finished one by one
@@ -344,7 +344,7 @@ namespace netp {
 			while (it != m_loop.end()) {
 				//ref_count == internal_ref_count means no other ref for this LOOP, it is safe to deattach it from our pool
 				if ((*it).ref_count() == (*it)->internal_ref_count()) {
-					NETP_VERBOSE("[event_loop][%u]__dealloc_poller, dattached one event loop", m_io_poller_type);
+					NETP_VERBOSE("[event_loop][%u]__dealloc_poller, dattached one event loop", m_cfg.type);
 
 					to_deattach.push_back(*it);
 					m_loop.erase(it);
@@ -385,7 +385,7 @@ namespace netp {
 		}
 
 		void event_loop_group::start(u32_t count ) {
-			NETP_VERBOSE("[event_loop_group]alloc poller: %u, count: %u, ch_buf_read_size: %u", m_io_poller_type, count, channel_read_buf_size);
+			NETP_VERBOSE("[event_loop_group]alloc poller: %u, count: %u, ch_buf_read_size: %u", m_cfg.type, count, m_cfg.channel_read_buf_size);
 			lock_guard<shared_mutex> lg(m_loop_mtx);
 			m_curr_loop_idx = 0;
 			NETP_ASSERT( m_fn_loop_maker != nullptr );

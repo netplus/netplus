@@ -9,6 +9,11 @@
 
 namespace netp {
 
+	enum YesNo {
+		NO=0,
+		YES=1
+	};
+
 	namespace u8 {
 		const u32_t MAX = 0xffU;
 	}
