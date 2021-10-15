@@ -906,8 +906,6 @@ namespace netp {
 					s->m_outbound_budget = limit ;
 				});
 			};
-
-			virtual void dup(NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> primise, NRP<event_loop> const& L) ;
 	};
 
 	extern NRP<socket_channel> default_socket_channel_maker(NRP<netp::socket_cfg> const& cfg);
