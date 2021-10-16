@@ -513,7 +513,7 @@ namespace netp {
 #endif
 
 		NETP_ASSERT(m_def_loop_group == nullptr);
-		event_loop_cfg cfg(NETP_DEFAULT_POLLER_TYPE, m_channel_read_buf_size);
+		event_loop_cfg cfg(NETP_DEFAULT_POLLER_TYPE, m_channel_read_buf_size, f_enable_dns_resolver);
 		dns_hosts(cfg.dns_hosts);
 		m_def_loop_group = netp::make_ref<netp::event_loop_group>(cfg, default_event_loop_maker);
 		NETP_TRACE_APP("net init end");

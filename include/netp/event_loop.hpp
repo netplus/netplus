@@ -33,31 +33,34 @@ namespace netp {
 	typedef std::function<void()> fn_task_t;
 	typedef std::vector<fn_task_t, netp::allocator<fn_task_t>> io_task_q_t;
 
+	enum event_loop_flag {
+		f_th_thread_afinity =1<<0,
+		f_th_priority_above_normal =1<<1,
+		f_th_priority_time_critical = 1 << 2,
+		f_enable_dns_resolver =1<<3
+	};
+
 	struct event_loop_cfg {
-		event_loop_cfg( u8_t type_, u32_t read_buf_ ) :
-			no_wait_us(1),
-			has_dns_resolver(YesNo::YES),
+		explicit event_loop_cfg(u8_t type_, u32_t read_buf_, u8_t flag_) :
 			type(type_),
+			flag(flag_),
+			thread_affinity(0),
+			no_wait_us(1),
 			channel_read_buf_size(read_buf_)
 		{}
 
-		event_loop_cfg(u8_t type_, u32_t read_buf_, u8_t has_dns_resolver_) :
-			no_wait_us(1),
-			has_dns_resolver(has_dns_resolver_),
+		explicit event_loop_cfg(u8_t type_, u32_t read_buf_, u16_t no_wait_us_, u8_t flag_) :
 			type(type_),
-			channel_read_buf_size(read_buf_)
-		{}
-
-		event_loop_cfg(u8_t type_, u32_t read_buf_, u8_t has_dns_resolver_, u8_t no_wait_us_) :
+			flag(flag_),
+			thread_affinity(0),
 			no_wait_us(no_wait_us_),
-			has_dns_resolver(has_dns_resolver_),
-			type(type_),
 			channel_read_buf_size(read_buf_)
 		{}
 
-		u8_t no_wait_us;
-		u8_t has_dns_resolver;
 		u8_t type;
+		u8_t flag;
+		u8_t thread_affinity;
+		u16_t no_wait_us;
 		u32_t channel_read_buf_size;
 		std::vector<netp::string_t, netp::allocator<netp::string_t>> dns_hosts;
 	};
@@ -250,7 +253,7 @@ namespace netp {
 
 		__NETP_FORCE_INLINE
 		NRP<dns_query_promise> resolve(string_t const& domain) {
-			NETP_ASSERT(m_cfg.has_dns_resolver );
+			NETP_ASSERT(m_cfg.flag& f_enable_dns_resolver);
 			return m_dns_resolver->resolve(domain);
 		}
 

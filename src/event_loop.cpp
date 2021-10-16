@@ -78,7 +78,7 @@ namespace netp {
 		m_tb = netp::make_ref<timer_broker>();
 		m_poller->init();
 
-		if (m_cfg.has_dns_resolver == YesNo::YES) {
+		if (m_cfg.flag & f_enable_dns_resolver) {
 			if (m_cfg.type == NETP_DEFAULT_POLLER_TYPE) {
 				m_dns_resolver = netp::make_ref<dns_resolver>(NRP<event_loop>(this));
 				inc_internal_ref_count();
@@ -104,7 +104,7 @@ namespace netp {
 		NETP_ASSERT(in_event_loop());
 		NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_EXIT), "event loop deinit state check failed");
 
-		if (m_cfg.has_dns_resolver == YesNo::YES) {
+		if (m_cfg.flag & f_enable_dns_resolver) {
 			NETP_ASSERT(m_dns_resolver != nullptr);
 			m_dns_resolver = nullptr;
 		}
@@ -124,6 +124,17 @@ namespace netp {
 
 	//@NOTE: promise to execute all task already in tq or tq_standby
 	void event_loop::__run() {
+
+		if(m_cfg.flag&f_th_thread_afinity) {
+			m_th->set_affinity(m_cfg.thread_affinity);
+		}
+
+		if (m_cfg.flag & f_th_priority_time_critical) {
+			m_th->set_priority_time_critical();
+		} else if (m_cfg.flag & f_th_priority_above_normal) {
+			m_th->set_priority_above_normal();
+		}
+
 		//NETP_ASSERT(!"CHECK EXCEPTION STACK");
 		init();
 		//record a snapshot, used by update state
@@ -190,7 +201,7 @@ namespace netp {
 		//dns resolver stop would result in dns socket be removed from io_ctx
 		//we keep m_dns_resolver instance until there is no event_loop reference outside
 		//no new fd is accepted after state enter terminating, so it's safe to stop dns first
-		if (m_cfg.has_dns_resolver == YesNo::YES) {
+		if (m_cfg.flag & f_enable_dns_resolver) {
 			NETP_ASSERT(m_dns_resolver != nullptr);
 			m_dns_resolver->stop();
 		}
@@ -390,7 +401,11 @@ namespace netp {
 			m_curr_loop_idx = 0;
 			NETP_ASSERT( m_fn_loop_maker != nullptr );
 			while (count-- > 0) {
-				NRP<event_loop> o = m_fn_loop_maker(m_cfg);
+				event_loop_cfg __cfg = m_cfg;
+				if (m_cfg.flag&f_th_thread_afinity) {
+					++m_cfg.thread_affinity;
+				}
+				NRP<event_loop> o = m_fn_loop_maker(__cfg);
 				int rt = o->__launch();
 				NETP_ASSERT(rt == netp::OK);
 				o->store_internal_ref_count(o.ref_count());

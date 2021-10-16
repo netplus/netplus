@@ -15,17 +15,6 @@ namespace netp {
 	}
 #endif
 
-	thread::thread() :
-		m_th(nullptr),
-		m_th_data(nullptr),
-		m_th_run(nullptr)
-	{
-	}
-
-	thread::~thread() {
-		join();
-	}
-
 	void thread::__PRE_RUN_PROXY__() {
 		netp::random_init_seed();
 
@@ -96,6 +85,59 @@ namespace netp {
 #ifdef NETP_MEMORY_USE_ALLOCATOR_POOL
 		tls_destroy<netp::pool_aligned_allocator_t>();
 		netp::global_pool_aligned_allocator::instance()->decre_thread_count();
+#endif
+	}
+
+	thread::thread() :
+		m_th(nullptr),
+		m_th_data(nullptr),
+		m_th_run(nullptr)
+	{
+	}
+
+	thread::~thread() {
+		join();
+	}
+
+	void thread::set_affinity(int i) {
+		std::thread* th = m_th.load(std::memory_order_acquire);
+		if (i <= 0) { i = 0; }
+		if (th != nullptr) {
+#if defined(_NETP_WIN)
+			if (!SetThreadAffinityMask(th->native_handle(), (1ULL << (i)))) {
+				NETP_WARN("[thread]SetThreadAffinityMask failed: %d", netp_last_errno());
+			}
+#else defined(_NETP_GNU_LINUX)
+			cpu_set_t cpuset;
+			CPU_ZERO(&cpuset);
+			CPU_SET(i, &cpuset);
+			int rt = pthread_setaffinity_np(th->native_handle(),sizeof(cpu_set_t), &cpuset);
+			if (rt != 0) {
+				NETP_WARN("[thread]pthread_setaffinity_np failed: %d", rt);
+			}
+#endif
+		}
+	}
+
+	//note: https://stackoverflow.com/questions/10876342/equivalent-of-setthreadpriority-on-linux-pthreads
+	void thread::set_priority_above_normal() {
+#if defined(_NETP_WIN)
+		std::thread* th = m_th.load(std::memory_order_acquire);
+		if (th == nullptr) { return; }
+
+		if (!SetThreadPriority(th->native_handle(), THREAD_PRIORITY_ABOVE_NORMAL)) {
+			NETP_WARN("[thread]SetThreadPriority(THREAD_PRIORITY_ABOVE_NORMAL) failed: %d", netp_last_errno() );
+		}
+#endif
+	}
+	
+	void thread::set_priority_time_critical() {
+#if defined(_NETP_WIN)
+		std::thread* th = m_th.load(std::memory_order_acquire);
+		if (th == nullptr) { return; }
+		if (!SetThreadPriority(th->native_handle(), THREAD_PRIORITY_TIME_CRITICAL)) {
+			NETP_WARN("[thread]SetThreadPriority(THREAD_PRIORITY_TIME_CRITICAL) failed: %d", netp_last_errno());
+		}
 #endif
 	}
 

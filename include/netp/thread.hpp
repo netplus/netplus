@@ -128,6 +128,15 @@ _VARIADIC_EXPAND_0X(_THREAD_CONS, , , , )
 				th_data->interrupt();
 			}
 		}
+
+		std::thread* thread_ptr() const { return m_th.load(std::memory_order_acquire); }
+
+		//please do it in between starst and join
+		//no thread safe guarentee
+		void set_affinity(int i);
+
+		void set_priority_above_normal();
+		void set_priority_time_critical();
 	};
 
 	//will run until you call stop
