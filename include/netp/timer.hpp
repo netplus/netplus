@@ -60,7 +60,7 @@ namespace netp {
 
 		friend bool operator < (NRP<timer> const& l, NRP<timer> const& r);
 		friend bool operator > (NRP<timer> const& l, NRP<timer> const& r);
-		friend bool operator == (NRP<timer> const& l, NRP<timer> const& r);
+//		friend bool operator == (NRP<timer> const& l, NRP<timer> const& r);
 
 		friend struct timer_less;
 		friend struct timer_greater;
@@ -131,9 +131,9 @@ namespace netp {
 		return l->expiration > r->expiration;
 	}
 
-	inline bool operator == (NRP<timer> const& l, NRP<timer> const& r) {
-		return l->expiration == r->expiration;
-	}
+	//inline bool operator == (NRP<timer> const& l, NRP<timer> const& r) {
+	//	return l->expiration == r->expiration;
+	//}
 
 	struct timer_less
 	{

@@ -125,7 +125,7 @@ namespace netp {
 	//@NOTE: promise to execute all task already in tq or tq_standby
 	void event_loop::__run() {
 
-		if(m_cfg.flag&f_th_thread_afinity) {
+		if(m_cfg.flag&f_th_thread_affinity) {
 			m_th->set_affinity(m_cfg.thread_affinity);
 		}
 
@@ -402,7 +402,7 @@ namespace netp {
 			NETP_ASSERT( m_fn_loop_maker != nullptr );
 			while (count-- > 0) {
 				event_loop_cfg __cfg = m_cfg;
-				if (m_cfg.flag&f_th_thread_afinity) {
+				if (m_cfg.flag&f_th_thread_affinity) {
 					++m_cfg.thread_affinity;
 				}
 				NRP<event_loop> o = m_fn_loop_maker(__cfg);

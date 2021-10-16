@@ -34,14 +34,14 @@ namespace netp {
 	typedef std::vector<fn_task_t, netp::allocator<fn_task_t>> io_task_q_t;
 
 	enum event_loop_flag {
-		f_th_thread_afinity =1<<0,
+		f_th_thread_affinity =1<<0,
 		f_th_priority_above_normal =1<<1,
 		f_th_priority_time_critical = 1 << 2,
 		f_enable_dns_resolver =1<<3
 	};
 
 	struct event_loop_cfg {
-		explicit event_loop_cfg(u8_t type_, u32_t read_buf_, u8_t flag_) :
+		explicit event_loop_cfg(u8_t type_, u8_t flag_, u32_t read_buf_) :
 			type(type_),
 			flag(flag_),
 			thread_affinity(0),
@@ -49,18 +49,19 @@ namespace netp {
 			channel_read_buf_size(read_buf_)
 		{}
 
-		explicit event_loop_cfg(u8_t type_, u32_t read_buf_, u16_t no_wait_us_, u8_t flag_) :
+		//u16_t no_wait_us wide used construct 
+		explicit event_loop_cfg(u8_t type_, u8_t flag_, u32_t read_buf_, u8_t no_wait_us_) :
 			type(type_),
 			flag(flag_),
 			thread_affinity(0),
-			no_wait_us(no_wait_us_),
+			no_wait_us(u8_t(no_wait_us_)),
 			channel_read_buf_size(read_buf_)
 		{}
 
 		u8_t type;
 		u8_t flag;
 		u8_t thread_affinity;
-		u16_t no_wait_us;
+		u8_t no_wait_us;
 		u32_t channel_read_buf_size;
 		std::vector<netp::string_t, netp::allocator<netp::string_t>> dns_hosts;
 	};
