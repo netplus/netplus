@@ -909,33 +909,6 @@ namespace netp {
 	};
 
 	extern NRP<socket_channel> default_socket_channel_maker(NRP<netp::socket_cfg> const& cfg);
-
-	__NETP_FORCE_INLINE
-	std::tuple<int,NRP<socket_channel>> create_socket_channel(NRP<netp::socket_cfg> const& cfg) {
-		NETP_ASSERT(cfg->L != nullptr);
-		NETP_ASSERT(cfg->L->in_event_loop());
-
-		NRP<socket_channel> so;
-		if (cfg->proto == NETP_PROTOCOL_USER) {
-			NETP_ASSERT(cfg->L->poller_type() != NETP_DEFAULT_POLLER_TYPE );
-			if (cfg->ch_maker == nullptr) {
-				return std::make_tuple(netp::E_CHANNEL_MISSING_MAKER, nullptr );
-			}
-			so = cfg->ch_maker(cfg);
-		} else {
-			NETP_ASSERT(cfg->L->poller_type() == NETP_DEFAULT_POLLER_TYPE);
-			NETP_ASSERT(cfg->ch_maker == nullptr);
-			so = default_socket_channel_maker(cfg);
-		}
-
-		NETP_ASSERT(so != nullptr);
-		int rt = so->ch_init(cfg->option, cfg->kvals, cfg->sock_buf);
-		if (rt != netp::OK) {
-			return std::make_tuple(rt, nullptr);
-		}
-
-		NETP_ASSERT( so->ch_errno() == netp::OK );
-		return std::make_tuple(netp::OK, so);
-	}
+	extern std::tuple<int, NRP<socket_channel>> create_socket_channel(NRP<netp::socket_cfg> const& cfg);
 }
 #endif
