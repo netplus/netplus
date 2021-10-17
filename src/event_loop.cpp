@@ -340,7 +340,9 @@ namespace netp {
 			bye_event_loop_state idle = bye_event_loop_state::S_IDLE;
 			if (m_bye_state.compare_exchange_strong(idle, bye_event_loop_state::S_PREPARING, std::memory_order_acq_rel, std::memory_order_acquire)) {
 				NETP_ASSERT(m_bye_event_loop == nullptr, "m_bye_event_loop check failed");
-				m_bye_event_loop = m_fn_loop_maker(m_cfg);
+				event_loop_cfg __cfg = m_cfg;
+				__cfg.flag &= ~(f_th_thread_affinity | f_th_priority_above_normal | f_th_priority_time_critical);
+				m_bye_event_loop = m_fn_loop_maker(__cfg);
 				int rt = m_bye_event_loop->__launch();
 				NETP_ASSERT(rt == netp::OK);
 				m_bye_ref_count = m_bye_event_loop.ref_count();
@@ -466,15 +468,6 @@ namespace netp {
 			}
 			NETP_THROW("event_loop_group deinit logic issue");
 		}
-
-		//NRP<event_loop> event_loop_group::internal_next() {
-		//	shared_lock_guard<shared_mutex> lg(m_loop_mtx);
-		//	NETP_ASSERT(m_loop.size() != 0);
-		//	int idx = m_curr_loop_idx.fetch_add(1, std::memory_order_relaxed) % m_loop.size();
-		//	m_loop[idx]->inc_internal_ref_count();
-		//	return m_loop[idx];
-		//	//NETP_THROW("event_loop_group deinit logic issue");
-		//}
 
 		void event_loop_group::execute(fn_task_t&& f) {
 			next()->execute(std::forward<fn_task_t>(f));
