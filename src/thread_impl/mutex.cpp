@@ -24,8 +24,8 @@ namespace netp {
 			int sizeof_atomic_bool_my_bool = sizeof( std::atomic<bool> );
 			int sizeof_atomic_bool_my_bool_ins = sizeof( abb );
 #endif
-
 		}
+
 		atomic_spin_mutex::~atomic_spin_mutex() {}
 
 		void atomic_spin_mutex::lock() {

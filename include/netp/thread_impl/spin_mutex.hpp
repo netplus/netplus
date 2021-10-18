@@ -4,10 +4,13 @@
 #include <atomic>
 #include <netp/core.hpp>
 
-#if defined(_NETP_GNU_LINUX)
-	#define _NETP_USE_PTHREAD_SPIN_AS_SPIN_MUTEX
-	#include <pthread.h>
-#endif
+
+//pthread_spin_init might fail for several reason, disable it
+//https://linux.die.net/man/3/pthread_spin_init
+//#if defined(_NETP_GNU_LINUX)
+//	#define _NETP_USE_PTHREAD_SPIN_AS_SPIN_MUTEX
+//	#include <pthread.h>
+//#endif
 
 #include <netp/thread_impl/mutex_basic.hpp>
 
@@ -15,7 +18,7 @@ namespace netp { namespace impl {
 
 		class atomic_spin_mutex final {
 			NETP_DECLARE_NONCOPYABLE(atomic_spin_mutex)
-	#if defined(_NETP_GNU_LINUX) || (_MSC_VER>=1900) ||defined(_NETP_APPLE)
+	#if defined(_NETP_GNU_LINUX) || (_MSC_VER>=1900) || defined(_NETP_APPLE)
 					std::atomic_flag m_flag = ATOMIC_FLAG_INIT; //force for sure
 	#else
 					std::atomic_flag m_flag;

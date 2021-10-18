@@ -97,8 +97,26 @@
 #define _compiler_arch_header2(_generic_,_arch_) _compiler_arch_header1(_generic_,_arch_)
 #include _compiler_arch_header2(_NETP_COMPILER_STR,_NETP_ARCH_STR)
 
-namespace netp {
+#ifdef __NETP_IS_LITTLE_ENDIAN
+	#define NETP_HTONS(x) htons(x)
+	#define NETP_HTONL(x) htonl(x)
+	#define NETP_HTONLL(x) htonll(x)
 
+	#define NETP_NTOHS(x) ntohs(x)
+	#define NETP_NTOHL(x) ntohl(x)
+	#define NETP_NTOHLL(x) ntohll(x)
+#else
+	#define NETP_HTONS(x) (x)
+	#define NETP_HTONL(x) (x)
+	#define NETP_HTONLL(x) (x)
+
+	#define NETP_NTOHS(x) (x)
+	#define NETP_NTOHL(x) (x)
+	#define NETP_NTOHLL(x) (x)
+#endif
+
+
+namespace netp {
 	typedef signed char				i8_t;
 	typedef short							i16_t;
 	typedef int								i32_t;
