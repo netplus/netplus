@@ -1,7 +1,7 @@
 #ifndef _NETP_CONSTANTS_H_
 #define _NETP_CONSTANTS_H_
 
-#include <climits>
+#include <limits>
 #include <netp/core/platform.hpp>
 
 #define NETP_SOCKET_ERROR (-1)
@@ -15,33 +15,28 @@ namespace netp {
 	};
 
 	namespace u8 {
-		const u32_t MAX = 0xffU;
+		const u32_t MAX = std::numeric_limits<netp::u8_t>::max();
 	}
 	namespace i8 {
-		const u32_t MAX = 0x7f;
+		const u32_t MAX = std::numeric_limits<netp::i8_t>::max();
 	}
-
 	namespace u16 {
-		const u32_t MAX = 0xffffU;
+		const u32_t MAX = std::numeric_limits<netp::u16_t>::max();
 	}
 	namespace i16 {
-		const u32_t MAX = 0x7fffU;
+		const u32_t MAX = std::numeric_limits<netp::i16_t>::max();
 	}
-
 	namespace u32 {
-		const u32_t MAX = 0xffffffffUL;
+		const u32_t MAX = std::numeric_limits<netp::u32_t>::max();
 	}
-
 	namespace i32 {
-		const u32_t MAX = 0x7fffffffUL;
+		const u32_t MAX = std::numeric_limits<netp::i32_t>::max();
 	}
-
 	namespace u64 {
-		const u64_t MAX = 0xffffffffffffffffULL;
+		const u64_t MAX = std::numeric_limits<netp::u64_t>::max();
 	}
-
 	namespace i64 {
-		const u64_t MAX = 0x7fffffffffffffffULL;
+		const u64_t MAX = std::numeric_limits<netp::i64_t>::max();
 	}
 
 	//WSAEWOULDBLOCK
