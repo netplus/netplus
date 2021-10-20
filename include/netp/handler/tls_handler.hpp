@@ -55,35 +55,32 @@ namespace netp { namespace handler {
 	}
 
 	enum tls_handler_flag {
-		f_tls_ch_handshake = 1 << 0,
-		f_tls_ch_established = 1 << 1,
-		f_tls_ch_activated = 1 << 2,
-		f_tls_ch_write_idle = 1 << 3,
-		f_tls_ch_writing_user_data = 1<<4,
-		f_tls_ch_writing_barrier = 1 << 5,
-		f_tls_ch_close_pending = 1<<6,
-		f_tls_ch_close_called = 1<<7,
-		f_tls_is_client = 1 << 8,
+		f_tls_is_client = 1 << 0,
+		f_tls_ch_handshake = 1 << 1,
+		f_tls_ch_established = 1 << 2,
+		f_tls_ch_activated = 1 << 3,
+		f_tls_ch_writing = 1 << 4,//
+		f_tls_ch_writing_user_data = 1<<5,//barrier for tls_emit_data
 
-		f_tls_client_hello_sent =1<<10,
-		f_tls_client_hello_received = 1<<11,
-		f_tls_server_hello_sent =1<<12,
-		f_tls_server_hello_received = 1<<13,
+		f_tls_handler_close_called = 1<<6,
+		f_tls_handler_close_write_called = 1<<7,
+		f_tls_channel_close_notified = 1 << 8, //for botan::tls_channel
+		f_tls_ch_close_pending = 1<<9,
+		f_tls_ch_close_write_pending = 1 << 10,
 
-		f_ch_write_idle = 1<<14,
+		f_tls_client_hello_sent =1<<11,
+		f_tls_client_hello_received = 1<<12,
+		f_tls_server_hello_sent =1<<13,
+		f_tls_server_hello_received = 1<<14,
+
 		f_ch_writing = 1<<15,
 		f_ch_connected = 1<<16,
 		f_ch_read_closed = 1<<17,
 		f_ch_write_closed = 1 << 18,
 		f_ch_closed = 1 <<19,
 
-		f_ch_close_called = 1<<20,
-		f_ch_close_write_called = 1<<21,
 		f_ch_close_pending = 1<<22,
-		f_ch_close_write_pending =1<<23,
-
-		f_ch_handler_close_called = 1<<24,
-		f_ch_handler_close_write_called = 1<<25
+		f_ch_close_write_pending =1<<23
 	};
 
 	class tls_handler :
@@ -107,11 +104,11 @@ namespace netp { namespace handler {
 
 		NNASP<Botan::TLS::Channel> m_tls_channel;
 
-		typedef std::queue<tls_ch_outlet, std::deque<tls_ch_outlet, netp::allocator<tls_ch_outlet>>> tls_ch_outlet_queue_t;
-		typedef std::queue<socket_ch_outlet, std::deque<socket_ch_outlet, netp::allocator<socket_ch_outlet>>> socket_ch_outlets_queue_t;
+		typedef std::queue<tls_ch_outlet, std::deque<tls_ch_outlet, netp::allocator<tls_ch_outlet>>> tls_user_data_queue_t;
+		typedef std::queue<socket_ch_outlet, std::deque<socket_ch_outlet, netp::allocator<socket_ch_outlet>>> tls_record_data_queue_t;
 
-		tls_ch_outlet_queue_t m_outlets_to_tls_ch;
-		socket_ch_outlets_queue_t m_outlets_to_socket_ch;
+		tls_user_data_queue_t m_tls_outlets_user_data;
+		tls_record_data_queue_t m_tls_outlets_records_data;
 
 		NRP<netp::channel_handler_context> m_ctx;
 
@@ -126,32 +123,6 @@ namespace netp { namespace handler {
 		tls_handler(NRP<tls_context> const& tlsctx);
 		virtual ~tls_handler();
 
-		void _do_clean();
-
-		void _tls_ch_flush_done(int code);
-		void _try_tls_ch_flush();
-
-		void _socket_ch_flush_done(int code);
-		void _try_socket_ch_flush();
-
-		void tls_inspect_handshake_msg(const Botan::TLS::Handshake_Message& message) override;
-		bool tls_session_established(const Botan::TLS::Session& session) override;
-		void tls_session_activated() override;
-		void tls_emit_data(const uint8_t buf[], size_t length) override;
-		void tls_alert(Botan::TLS::Alert alert) override;
-		void tls_record_received(uint64_t /*seq_no*/, const uint8_t buf[], size_t buf_size) override;
-
-		void tls_log_error(const char* err) override;
-		void tls_log_debug(const char* what) override;
-
-		void tls_verify_cert_chain(
-			const std::vector<Botan::X509_Certificate>& cert_chain,
-			const std::vector<std::shared_ptr<const Botan::OCSP::Response>>& ocsp,
-			const std::vector<Botan::Certificate_Store*>& trusted_roots,
-			Botan::Usage_Type usage,
-			const std::string& hostname,
-			const Botan::TLS::Policy& policy) override;
-
 		void connected(NRP<channel_handler_context> const& ctx) override { (void)ctx; };
 		void closed(NRP<channel_handler_context> const& ctx) override;
 
@@ -163,6 +134,30 @@ namespace netp { namespace handler {
 		void close(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx) override;
 
 		void close_write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx) override;
+
+		void tls_verify_cert_chain(
+			const std::vector<Botan::X509_Certificate>& cert_chain,
+			const std::vector<std::shared_ptr<const Botan::OCSP::Response>>& ocsp,
+			const std::vector<Botan::Certificate_Store*>& trusted_roots,
+			Botan::Usage_Type usage,
+			const std::string& hostname,
+			const Botan::TLS::Policy& policy) override;
+
+		void _tls_user_data_flush_done(int code);
+		void _try_tls_user_data_flush();
+
+		void _tls_record_data_flush_done(int code);
+		void _try_tls_record_data_flush();
+
+		void tls_inspect_handshake_msg(const Botan::TLS::Handshake_Message& message) override;
+		bool tls_session_established(const Botan::TLS::Session& session) override;
+		void tls_session_activated() override;
+		void tls_emit_data(const uint8_t buf[], size_t length) override;
+		void tls_alert(Botan::TLS::Alert alert) override;
+		void tls_record_received(uint64_t /*seq_no*/, const uint8_t buf[], size_t buf_size) override;
+
+		void tls_log_error(const char* err) override;
+		void tls_log_debug(const char* what) override;
 	};
 }}
 
