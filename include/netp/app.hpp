@@ -18,11 +18,13 @@ namespace netp {
 	#define	NETP_TRACE_APP(...)
 #endif
 
-	enum class event_loop_group_state {
+	enum class app_state {
 		s_idle,
-		s_run,
-		s_notified,
-		s_wait_done
+		s_init_begin,
+		s_init_done,
+		s_loop_run,
+		s_loop_exit_notified,
+		s_loop_wait_done
 	};
 
 	class app:
@@ -41,7 +43,7 @@ namespace netp {
 		bool m_is_cfg_json_checked;
 		bool m_should_exit;
 
-		std::atomic<event_loop_group_state> m_loop_group_state;
+		std::atomic<app_state> m_app_state;
 		std::vector<std::tuple<int,i64_t>> m_signo_tuple_vec;
 		std::vector<std::string> m_dns_hosts; //dotip
 		std::string m_logfilepathname;
@@ -51,8 +53,6 @@ namespace netp {
 
 		void _init_from_cfg_json(const char* jsonfile);
 		void _parse_cfg(int argc, char** argv);
-
-		void _cfg_default_loop_cfg();
 
 		void _init();
 		void _deinit();
@@ -92,13 +92,14 @@ namespace netp {
 		void cfg_log_filepathname(std::string const& logfilepathname_);
 		void dns_hosts(std::vector<netp::string_t, netp::allocator<netp::string_t>>&) const ;
 
+		void init(int argc, char** argv);
+		
 		//startup loop & dns
-		int startup(int argc, char** argv);
+		void start_loop();
+		void stop_loop();
 
-		void interrupt_fds();
-
-		//stop loop
-		void stop();
+		void terminate_loop();	
+		void wait_loop();
 
 		//ISSUE: if the waken thread is main thread, we would get stuck here
 		void handle_signal(int signo);

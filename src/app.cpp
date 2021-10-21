@@ -59,11 +59,6 @@ namespace netp {
 		g_sigbroker->unbind_by_handle_id(handle_id);
 	}
 
-	void app::_cfg_default_loop_cfg() {
-		cfg_loop_count( u32_t(std::thread::hardware_concurrency()));
-		cfg_channel_read_buf(128);
-	}
-
 	void app::cfg_loop_count( u32_t c) {
 		u32_t hcore = std::thread::hardware_concurrency();
 		if (c == 0) {
@@ -253,17 +248,14 @@ namespace netp {
 	}
 
 	app::app() :
-		m_is_cfg_json_checked(false),
-		m_should_exit(false),
+		m_loop_count(u32_t(std::thread::hardware_concurrency())),
 		m_channel_read_buf_size(128*1024),
 		m_channel_bdlimit_clock(50),
-		m_loop_group_state(event_loop_group_state::s_idle),
+		m_is_cfg_json_checked(false),
+		m_should_exit(false), 
+		m_app_state(app_state::s_idle),
 		m_logfilepathname()
 	{
-		_app_thread_init();
-		_cfg_default_loop_cfg();
-		_init();
-		std::atomic_thread_fence(std::memory_order_release);
 	}
 
 	app::~app()
@@ -276,7 +268,12 @@ namespace netp {
 		_app_thread_deinit();
 	}
 
-	int app::startup(int argc, char** argv) {
+	void app::init( int argc, char** argv ) {
+		app_state __s_idle = app_state::s_idle;
+		if (!m_app_state.compare_exchange_strong(__s_idle, app_state::s_init_begin, std::memory_order_acq_rel, std::memory_order_acquire)) {
+			return;
+		}
+
 		_parse_cfg(argc, argv);
 
 		//check def
@@ -291,6 +288,8 @@ namespace netp {
 			cfg_log_filepathname(std::string(argv[0]) + std::string(".") + data_ + ".log");
 		}
 
+		_init();
+
 		NRP<logger::file_logger> filelogger = netp::make_ref<netp::logger::file_logger>(netp::string_t(m_logfilepathname.c_str()));
 		filelogger->set_mask_by_level(NETP_FILE_LOGGER_LEVEL);
 		m_logger_broker->add(filelogger);
@@ -301,34 +300,35 @@ namespace netp {
 
 #ifdef NETP_DEBUG_OBJECT_SIZE
 		_dump_sizeof();
-#endif
-
+#endif		
+		
 		NRP<app_test_unit> apptest = netp::make_ref<app_test_unit>();
 		if (!apptest->run()) {
 			NETP_INFO("apptest failed");
 			exit(-2);
+			return;
 		}
 
+		app_state __s_init_begin = app_state::s_init_begin;
+		if (!m_app_state.compare_exchange_strong(__s_init_begin, app_state::s_init_done, std::memory_order_acq_rel, std::memory_order_acquire)) {
+			return;
+		}
+	}
+
+	void app::start_loop() {
 		_event_loop_init();
-		return netp::OK;
 	}
 
-	//remote end do not SEND FIN immedialy even we've send FIN to it, so interrupt is a necessary if we want to exit app quickly
-	void app::interrupt_fds() {
-		event_loop_group_state run = event_loop_group_state::s_run;
-		if (m_loop_group_state.compare_exchange_strong(run, event_loop_group_state::s_notified, std::memory_order_acq_rel, std::memory_order_acquire)) {
-			m_def_loop_group->notify_terminating();
-		}
-	}
-
-	void app::stop() {
+	void app::stop_loop() {
 		_event_loop_deinit();
 	}
 
 	void app::_init() {
+		_app_thread_init();
 		_log_init();
 		_signal_init();
 		_net_init();
+		std::atomic_thread_fence(std::memory_order_release);
 	}
 
 	void app::_deinit() {
@@ -530,8 +530,8 @@ namespace netp {
 	}
 
 	void app::_event_loop_init() {
-		event_loop_group_state idle = event_loop_group_state::s_idle;
-		if (!m_loop_group_state.compare_exchange_strong(idle, event_loop_group_state::s_run, std::memory_order_acq_rel, std::memory_order_acquire)) {
+		app_state __s_init_done = app_state::s_init_done;
+		if (!m_app_state.compare_exchange_strong(__s_init_done, app_state::s_loop_run, std::memory_order_acq_rel, std::memory_order_acquire)) {
 			NETP_TRACE_APP("[app]init loop failed");
 			return;
 		}
@@ -540,16 +540,24 @@ namespace netp {
 		NETP_TRACE_APP("[app]init loop done");
 	}
 
-	void app::_event_loop_deinit() {
-		event_loop_group_state run = event_loop_group_state::s_run;
-		if (m_loop_group_state.compare_exchange_strong(run, event_loop_group_state::s_notified, std::memory_order_acq_rel, std::memory_order_acquire)) {
+	//remote end do not SEND FIN immedialy even we've send FIN to it, so interrupt is a necessary if we want to exit app quickly
+	void app::terminate_loop() {
+		app_state __s_loop_run = app_state::s_loop_run;
+		if (m_app_state.compare_exchange_strong(__s_loop_run, app_state::s_loop_exit_notified, std::memory_order_acq_rel, std::memory_order_acquire)) {
 			m_def_loop_group->notify_terminating();
 		}
+	}
 
-		event_loop_group_state notified = event_loop_group_state::s_notified;
-		if (m_loop_group_state.compare_exchange_strong(notified, event_loop_group_state::s_wait_done, std::memory_order_acq_rel, std::memory_order_acquire)) {
+	void app::wait_loop() {
+		app_state __s_loop_exit_notified = app_state::s_loop_exit_notified;
+		if (m_app_state.compare_exchange_strong(__s_loop_exit_notified, app_state::s_loop_wait_done, std::memory_order_acq_rel, std::memory_order_acquire)) {
 			m_def_loop_group->wait();
 		}
+	}
+
+	void app::_event_loop_deinit() {
+		terminate_loop();
+		wait_loop();
 		//reset loop after all loop reference dattached from business code
 	}
 
