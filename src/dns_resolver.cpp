@@ -90,13 +90,6 @@ namespace netp {
 		}
 	}
 
-	//void dns_resolver::reset( NRP<event_loop> const& L_ ) {
-	//	NETP_ASSERT( L_== nullptr || (L_->poller_type() == NETP_DEFAULT_POLLER_TYPE) );
-	//	L = L_;
-	//	m_ns.clear();
-	//	m_flag = 0;
-	//}
-
 	dns_resolver::dns_resolver(NRP<event_loop> const& L_) :
 		L(L_),
 		m_ares_active_query(0),
@@ -247,6 +240,11 @@ namespace netp {
 			return;
 		}
 
+		if (m_flag & dns_resolver_flag::f_timeout_barrier) {
+			m_flag |= f_restarting_pending;
+			return;
+		}
+
 		m_flag |= dns_resolver_flag::f_restarting;
 		NRP<netp::promise<int>> p_stop = netp::make_ref<netp::promise<int>>();
 		_do_stop(p_stop);
@@ -266,6 +264,7 @@ namespace netp {
 	}
 
 	void dns_resolver::cb_dns_timeout(NRP<netp::timer> const&) {
+		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(m_flag&f_timeout_timer);
 		m_flag &= ~f_timeout_timer;
 		if ( (m_flag& dns_resolver_flag::f_running) == 0  || (m_ares_active_query ==0) ) {
@@ -273,26 +272,36 @@ namespace netp {
 		}
 
 #ifdef _NETP_USE_C_ARES
-		ares_fd_monitor_map_t::iterator it = m_ares_fd_monitor_map.begin();
-		while (it != m_ares_fd_monitor_map.end()) {
-			NRP<ares_fd_monitor> m = it->second;
-			++it;
+		//ares_process_fd might result in insert/erase pair from m_ares_fd_monitor_map
+		//ares_process_fd might result in restart
 
-			ares_socket_t read_fd = m->flag & f_watch_read ? m->fd : ARES_SOCKET_BAD;
-			ares_socket_t write_fd = m->flag & f_watch_write ? m->fd : ARES_SOCKET_BAD;
-			if ( m->flag &(f_watch_read | f_watch_write) ) {
+		typedef std::deque<NRP<ares_fd_monitor>, netp::allocator<NRP<ares_fd_monitor>>> ares_fd_monitor_m_q_t;
+		ares_fd_monitor_m_q_t mmq;
+		ares_fd_monitor_map_t::iterator it = m_ares_fd_monitor_map.begin();
+		m_flag |= f_timeout_barrier;
+		while (it != m_ares_fd_monitor_map.end()) {
+			mmq.push_back((it++)->second);
+		}
+		while(mmq.size()) {
+			NRP<ares_fd_monitor>& m = mmq.front();
+			ares_socket_t read_fd = (m->flag & f_watch_read ? m->fd : ARES_SOCKET_BAD);
+			ares_socket_t write_fd = (m->flag & f_watch_write ? m->fd : ARES_SOCKET_BAD);
+			if (m->flag & (f_watch_read | f_watch_write)) {
 				ares_process_fd(m->dnsr.m_ares_channel, read_fd, write_fd);
 			}
+			mmq.pop_front();
+		}
+		m_flag &= ~f_timeout_barrier;
+
+		if (m_flag & f_restarting_pending) {
+			m_flag &= ~f_restarting_pending;
+			restart();
+			return;
 		}
 
 		__ares_check_timeout();
 #endif
 	}
-
-//#define NETP_FREE_ASYNC_DNS_QUERY(Q) \
-//	Q->~async_dns_query(); \
-//	netp::allocator<async_dns_query>::free(Q); \
-//	Q = nullptr;
 
 #ifdef _NETP_USE_C_ARES
 

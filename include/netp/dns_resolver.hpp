@@ -66,11 +66,13 @@ namespace netp {
 		friend struct ares_fd_monitor;
 		friend struct async_dns_query;
 		enum dns_resolver_flag {
-			f_timeout_timer = 1,
-			f_stop_called = 1<<1,
-			f_launching = 1<<2,
-			f_running = 1<<3,
-			f_restarting = 1<<4
+			f_stop_called = 1<<0,
+			f_launching = 1<<1,
+			f_running = 1<<2,
+			f_restarting = 1<<3,
+			f_restarting_pending =1<<4,
+			f_timeout_timer = 1<<5,
+			f_timeout_barrier = 1<<6 //pending restart action
 		};
 
 		NRP<event_loop> L;
