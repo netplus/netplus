@@ -1,6 +1,6 @@
 #include <netp.hpp>
 
-NRP<netp::promise<std::tuple<int, NRP<netp::packet>>>> set_p_on_L(NRP<netp::io_event_loop> L2) {
+NRP<netp::promise<std::tuple<int, NRP<netp::packet>>>> set_p_on_L(NRP<netp::event_loop> L2) {
 	NRP<netp::promise<std::tuple<int, NRP<netp::packet>>>> p = netp::make_ref<netp::promise<std::tuple<int, NRP<netp::packet>>>>();
 		
 	NETP_ASSERT(!L2->in_event_loop());
@@ -21,10 +21,11 @@ NRP<netp::promise<std::tuple<int, NRP<netp::packet>>>> set_p_on_L(NRP<netp::io_e
 
 int main(int argc, char** argv) {
 
-	netp::app _app;
+	netp::app::instance()->init(argc,argv);
+	netp::app::instance()->start_loop();
 
-	NRP<netp::io_event_loop> L1 = netp::io_event_loop_group::instance()->next();
-	NRP<netp::io_event_loop> L2 = netp::io_event_loop_group::instance()->next();
+	NRP<netp::event_loop> L1 = netp::app::instance()->def_loop_group()->next();
+	NRP<netp::event_loop> L2 = netp::app::instance()->def_loop_group()->next();
 	std::atomic<bool> round_go = true;
 	while (true) {
 		while (!round_go.load(std::memory_order_acquire)) {

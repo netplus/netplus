@@ -65,7 +65,8 @@ public:
 
 int main(int argc, char** argv) {
 
-	netp::app app;
+	netp::app::instance()->init(argc,argv);
+	netp::app::instance()->start_loop();
 
 	NRP<netp::channel_listen_promise> f_listen = netp::listen_on( "tcp://0.0.0.0:22310", [](NRP<netp::channel> const& ch) {
 		ch->pipeline()->add_last(netp::make_ref<example_handler>());
@@ -78,7 +79,7 @@ int main(int argc, char** argv) {
 	}
 
 	NRP<netp::channel> ch = std::get<1>(f_listen->get());
-	app.run();
+	netp::app::instance()->wait();
 	ch->ch_close();
 	ch->ch_close_promise()->wait();
 

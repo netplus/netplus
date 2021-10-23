@@ -62,7 +62,7 @@ void spawn_user_circle_timer(int i) {
 	NRP<cookie> c = netp::make_ref<cookie>(i);
 	NRP<netp::timer> t = netp::make_ref<netp::timer>(std::chrono::seconds(1), std::bind(&user_circle_tick, std::placeholders::_1));
 	t->set_ctx(c);
-	netp::io_event_loop_group::instance()->launch(t,netp::make_ref<netp::promise<int>>());
+	netp::app::instance()->def_loop_group()->launch(t,netp::make_ref<netp::promise<int>>());
 }
 
 
@@ -76,7 +76,7 @@ void spawn_timer(int i) {
 //	NRP<netp::timer> t = netp::make_ref<netp::timer>(delay, c, std::bind(&timer_tick,std::placeholders::_1, std::placeholders::_2));
 	NRP<netp::timer> t = netp::make_ref<netp::timer>(std::chrono::seconds(1),&timer_tick);
 	t->set_ctx(c);
-	netp::io_event_loop_group::instance()->launch(t);
+	netp::app::instance()->def_loop_group()->launch(t);
 }
 struct foo
 {
@@ -120,7 +120,7 @@ void spawn_object_timer(int i ) {
 	NRP<foo_timer> f = netp::make_ref<foo_timer>(i);
 	NRP<netp::timer> t = netp::make_ref<netp::timer>(delay, &foo_timer::bar, f, std::placeholders::_1);
 	t->set_ctx(c);
-	netp::io_event_loop_group::instance()->launch(t);
+	netp::app::instance()->def_loop_group()->launch(t);
 }
 
 void spawn_lambda_timer(int i) {
@@ -133,7 +133,7 @@ void spawn_lambda_timer(int i) {
 
 	NRP<netp::timer> t = netp::make_ref<netp::timer>(delay, f);
 	t->set_ctx(c);
-	netp::io_event_loop_group::instance()->launch(t);
+	netp::app::instance()->def_loop_group()->launch(t);
 }
 
 void th_spawn_timer() {
@@ -167,7 +167,8 @@ void th_spawn_timer() {
 int main(int argc, char** argv) {
 
 	std::srand(0);
-	netp::app _app;
+	netp::app::instance()->init(argc, argv);
+	netp::app::instance()->start_loop();
 
 	const int th_count = 4;
 	NRP<netp::thread> th[th_count];
@@ -177,7 +178,7 @@ int main(int argc, char** argv) {
 	}
 
 	//spawn_circle_tick(1);
-	_app.run();
+	netp::app::instance()->wait();
 
 	for (int i = 0; i < th_count; ++i) {
 		th[i]->interrupt();

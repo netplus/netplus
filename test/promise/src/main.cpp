@@ -8,12 +8,12 @@ NRP<netp::promise<int>> do_watch_a_future_state() {
 	NRP<netp::timer> tm = netp::make_ref<netp::timer>(std::chrono::seconds(2), [p]() {
 		p->set(8);
 	});
-	netp::io_event_loop_group::instance()->launch(tm);
+	netp::app::instance()->def_loop_group()->launch(tm);
 	return p;
 }
 int main(int argc, char** argv) {
-	netp::app _app;
-
+	netp::app::instance()->init(argc, argv);
+	netp::app::instance()->start_loop();
 	//非阻塞调用开始
 	NRP<netp::promise<int>> intp = do_watch_a_future_state();
 
@@ -26,6 +26,6 @@ int main(int argc, char** argv) {
 
 	//等待退出信号
 	//ctrl+c, kill -15
-	_app.run();
+	netp::app::instance()->start_loop();
 	return 0;
 }

@@ -3,7 +3,8 @@
 
 int main(int argc, char** argv) {
 
-	netp::app _app;
+	netp::app::instance()->init(argc, argv);
+	netp::app::instance()->start_loop();
 	std::string dialurl = "https://botan.randombit.net";
 
 	NRP<netp::http::client_dial_promise> dial_f = netp::http::dial(dialurl);
@@ -30,6 +31,19 @@ int main(int argc, char** argv) {
 		}
 	});
 
-	_app.run();
+	netp::app::instance()->wait();
+	
+	NRP<netp::http::client> c = std::get<1>(dial_f->get());
+	if (c != nullptr) {
+		c->close()->wait();
+		c = nullptr;
+	}
+
+	dial_f = nullptr;
+
+	//we need this line here for any tls related app unless we call the following line before netp::app::instance();
+	//Botan::initialize_allocator();
+	netp::app::instance()->stop_loop();
+
 	return 0;
 }

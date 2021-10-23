@@ -31,8 +31,10 @@ namespace netp {
 		public netp::singleton<app>
 	{
 	private:
+
 		NRP<event_loop_group> m_def_loop_group;
 		NRP<logger_broker> m_logger_broker;
+		global_pool_aligned_allocator* m_global_pool_aligned_allocator;
 
 		netp::mutex m_mutex;
 		netp::condition m_cond;
@@ -99,6 +101,8 @@ namespace netp {
 		void stop_loop();
 
 		void terminate_loop();	
+		//for any botan related app, we should call this line explicitly when we exit main
+		//or call Botan::initialize_allocator() explicitly before netp::app::instance()
 		void wait_loop();
 
 		//ISSUE: if the waken thread is main thread, we would get stuck here
@@ -146,6 +150,8 @@ namespace netp {
 		NRP<netp::event_loop_group> const& def_loop_group() const { return m_def_loop_group; }
 		__NETP_FORCE_INLINE
 		NRP<netp::logger_broker> const& logger() const { return m_logger_broker; }
+		__NETP_FORCE_INLINE
+		netp::global_pool_aligned_allocator* const global_allocator() const { return m_global_pool_aligned_allocator; }
 	};
 
 

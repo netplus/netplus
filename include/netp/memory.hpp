@@ -63,7 +63,6 @@ namespace netp {
 
 	//NOTE: if want to share address with different alignment in the same pool, we need to check alignment and do a re-align if necessary
 	class pool_aligned_allocator {
-
 	protected:
 		//pointer to the first table slot
 		//not all the table has seem size
@@ -85,8 +84,7 @@ namespace netp {
 	};
 
 	class global_pool_aligned_allocator final :
-		public pool_aligned_allocator,
-		public singleton<global_pool_aligned_allocator>
+		public pool_aligned_allocator
 	{
 		spin_mutex* m_table_slots_mtx[TABLE::T_COUNT];
 	public:

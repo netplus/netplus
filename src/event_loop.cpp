@@ -160,7 +160,7 @@ namespace netp {
 					while (i < ss) {
 						m_tq[i++]();
 					}
-					if (ss > 4096) {
+					if (ss > 1024) {
 						io_task_q_t().swap(m_tq);
 					}
 					else {

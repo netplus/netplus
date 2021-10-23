@@ -3,9 +3,10 @@
 
 int main(int argc, char** argv) {
 
-	netp::app _app;
+	netp::app::instance()->init(argc, argv);
+	netp::app::instance()->start_loop();
 
-	NRP<netp::dns_query_promise> dqp = netp::dns_resolver::instance()->resolve("www.163.com");
+	NRP<netp::dns_query_promise> dqp = netp::app::instance()->def_loop_group()->next()->resolve("www.163.com");
 
 	dqp->if_done([](std::tuple<int, std::vector<netp::ipv4_t, netp::allocator<netp::ipv4_t>>> const& query_result) {
 		int code = std::get<0>(query_result);
@@ -19,6 +20,6 @@ int main(int argc, char** argv) {
 		
 	});
 
-	_app.run();
+	netp::app::instance()->wait();
 	return 0;
 }

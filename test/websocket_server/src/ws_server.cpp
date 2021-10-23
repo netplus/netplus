@@ -4,9 +4,9 @@
 
 int main(int argc, char** argv) {
 
-	NETP_INFO("main begin");
+	netp::app::instance()->init(argc, argv);
+	netp::app::instance()->start_loop();
 
-	netp::app app;
 	std::string listenurl = "tcp://0.0.0.0:8010";
 	NRP<netp::channel_listen_promise> lch = netp::listen_on(listenurl, [](NRP<netp::channel> const& ch) {
 
@@ -29,7 +29,8 @@ int main(int argc, char** argv) {
 	NETP_ASSERT(std::get<1>(lch->get()) != NULL);
 	NETP_INFO("[roger]websocket server listening: %s", std::get<1>(lch->get())->ch_info().c_str() );
 
-	app.run();
+	netp::app::instance()->wait();
+
 	std::get<1>(lch->get())->ch_close();
 	NETP_INFO("main end");
 	return netp::OK;

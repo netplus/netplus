@@ -146,8 +146,9 @@ public:
 };
 
 int main(int argc, char** argv) {
-
-	netp::app::instance()->startup(argc, argv);
+	Botan::initialize_allocator();
+	netp::app::instance()->init(argc, argv);
+	netp::app::instance()->start_loop();
 
 	NRP<http_server> http_server_ = netp::make_ref<http_server>();
 	NRP<netp::channel_listen_promise> tls_listen = netp::listen_on("tcp://0.0.0.0:50443", [http_server_](NRP<netp::channel> const& ch) {

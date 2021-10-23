@@ -123,6 +123,8 @@ namespace netp { namespace http {
 		NETP_ASSERT(m_loop->in_event_loop());
 		if ((m_flag & f_closed) ==0) {
 			m_ctx->close(close_f);
+		} else {
+			close_f->set(netp::E_CHANNEL_CLOSED);
 		}
 	}
 

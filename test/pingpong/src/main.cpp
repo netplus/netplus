@@ -49,7 +49,9 @@ public:
 int main(int argc, char** argv) {
 
 	//initialize a netplus app instance
-	netp::app::instance()->startup(argc, argv);
+	Botan::initialize_allocator();
+	netp::app::instance()->init(argc, argv);
+	netp::app::instance()->start_loop();
 	std::string host = "tcp://127.0.0.1:13103";
 
 	netp::ref_ptr<netp::channel_listen_promise> listenp = netp::listen_on(host, [](netp::ref_ptr<netp::channel>const& ch) {

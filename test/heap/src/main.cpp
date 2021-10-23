@@ -136,7 +136,7 @@ void test_heap<std::vector<MyNode>,MyNode>(netp::u32_t const& max_v, bool increr
 
 int main(int argc, char** argv) {
 
-	netp::app _app;
+	netp::app::instance()->init(argc,argv);
 	const unsigned int size = 5000000;
 
 	//test_heap<std::vector<MyNode>, MyNode>(size, false);

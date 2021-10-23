@@ -127,7 +127,8 @@ namespace netp {
 		netp::tls_create<netp::impl::thread_data>();
 
 #ifdef NETP_MEMORY_USE_ALLOCATOR_POOL
-		netp::global_pool_aligned_allocator::instance();
+		NETP_ASSERT(m_global_pool_aligned_allocator == nullptr);
+		m_global_pool_aligned_allocator = ::new global_pool_aligned_allocator();
 		netp::tls_create<netp::pool_aligned_allocator_t>();
 #endif
 
@@ -146,7 +147,8 @@ namespace netp {
 
 #ifdef NETP_MEMORY_USE_ALLOCATOR_POOL
 		netp::tls_destroy<netp::pool_aligned_allocator_t>();
-		netp::global_pool_aligned_allocator::instance()->destroy_instance();
+		::delete m_global_pool_aligned_allocator;
+		m_global_pool_aligned_allocator = nullptr;
 #endif
 	}
 
@@ -248,6 +250,7 @@ namespace netp {
 	}
 
 	app::app() :
+		m_global_pool_aligned_allocator(nullptr),
 		m_loop_count(u32_t(std::thread::hardware_concurrency())),
 		m_channel_read_buf_size(128*1024),
 		m_channel_bdlimit_clock(50),

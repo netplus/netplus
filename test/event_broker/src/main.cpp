@@ -294,7 +294,7 @@ void test_unorderedmap_mem(int max) {
 
 int main(int argc, char** argv) {
 
-	netp::app app;
+	netp::app::instance()->init(argc, argv);
 
 	NRP<netp::promise<int>> p = netp::make_ref<netp::promise<int>>();
 	p->if_done([]( int rt ) {

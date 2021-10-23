@@ -29,12 +29,12 @@ namespace netp { namespace handler {
 		NRP<netp::handler::tls_config> tlsconfig;
 		Botan::TLS::Protocol_Version tls_version;
 
-		NNASP<Botan::RandomNumberGenerator> rng;
-		NNASP<Botan::TLS::Session_Manager> session_mgr;
-		NNASP<Botan::Credentials_Manager> credentials_mgr;
-		NNASP<netp::handler::tls_policy> policy;
+		NSP<Botan::RandomNumberGenerator> rng;
+		NSP<Botan::TLS::Session_Manager> session_mgr;
+		NSP<Botan::Credentials_Manager> credentials_mgr;
+		NSP<netp::handler::tls_policy> policy;
 
-		NNASP<Botan::TLS::Server_Information> server_info;//requried for verify, but we've to hack it for server verify cuz there is no 
+		NSP<Botan::TLS::Server_Information> server_info;//requried for verify, but we've to hack it for server verify cuz there is no 
 		std::vector<std::string> next_protocols;
 	};
 
@@ -44,12 +44,12 @@ namespace netp { namespace handler {
 
 		_tlsctx->tls_version = Botan::TLS::Protocol_Version::TLS_V12;
 
-		_tlsctx->rng = netp::non_atomic_shared::make<Botan::AutoSeeded_RNG>();
-		_tlsctx->session_mgr = netp::non_atomic_shared::make<Botan::TLS::Session_Manager_In_Memory>(*(_tlsctx->rng));
-		_tlsctx->policy = netp::non_atomic_shared::make<netp::handler::tls_policy>(_tlsctx->tlsconfig);
+		_tlsctx->rng = netp::make_shared<Botan::AutoSeeded_RNG>();
+		_tlsctx->session_mgr = netp::make_shared<Botan::TLS::Session_Manager_In_Memory>(*(_tlsctx->rng));
+		_tlsctx->policy = netp::make_shared<netp::handler::tls_policy>(_tlsctx->tlsconfig);
 
-		_tlsctx->credentials_mgr = netp::non_atomic_shared::make<netp::handler::Basic_Credentials_Manager>(tlsconfig->use_system_store, tlsconfig->ca_path, *(_tlsctx->rng), tlsconfig->cert,tlsconfig->cert_privkey);
-		_tlsctx->server_info = netp::non_atomic_shared::make<Botan::TLS::Server_Information>(tlsconfig->host, tlsconfig->port);
+		_tlsctx->credentials_mgr = netp::make_shared<netp::handler::Basic_Credentials_Manager>(tlsconfig->use_system_store, tlsconfig->ca_path, *(_tlsctx->rng), tlsconfig->cert,tlsconfig->cert_privkey);
+		_tlsctx->server_info = netp::make_shared<Botan::TLS::Server_Information>(tlsconfig->host, tlsconfig->port);
 		_tlsctx->next_protocols = {};
 		return _tlsctx;
 	}

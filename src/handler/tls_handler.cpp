@@ -35,10 +35,12 @@ namespace netp { namespace handler {
 			ctx->fire_error(netp::E_TLS_HANDSHAKE_FAILED);
 		}
 
-		NETP_ASSERT(m_ctx != nullptr);
-		m_ctx = nullptr;
 		NETP_ASSERT(m_tls_channel != nullptr);
 		m_tls_channel = nullptr;
+		m_tls_ctx = nullptr;
+
+		NETP_ASSERT(m_ctx != nullptr);
+		m_ctx = nullptr;
 	}
 
 	void tls_handler::write_closed(NRP<channel_handler_context> const& ctx) {
@@ -105,13 +107,8 @@ namespace netp { namespace handler {
 	}
 
 	void tls_handler::write(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) {
-		
+		//we should not get here if f_tls_ch_activated not set
 		NETP_ASSERT((m_flag & (f_tls_ch_activated | f_ch_connected)) == (f_tls_ch_activated | f_ch_connected));
-		//if (!(m_flag & f_tls_ch_activated)) {//we should not get here if f_tls_ch_activated not set
-		//	chp->set(netp::E_CHANNEL_INVALID_STATE);
-		//	return;
-		//}
-
 		if (m_flag & (f_tls_handler_close_called | f_tls_handler_close_write_called | f_ch_closed | f_ch_write_closed)) {
 			chp->set(netp::E_CHANNEL_WRITE_CLOSED);
 			return;
@@ -155,6 +152,7 @@ namespace netp { namespace handler {
 		NETP_ASSERT(m_tls_outlets_user_data.size() == 0);
 		NETP_ASSERT(m_tls_channel != nullptr);
 		NNASP<Botan::TLS::Channel> tlsch = m_tls_channel;
+
 		if (m_flag& f_tls_channel_close_notified) {
 			//if ctx->closed already , no side effect, just do it
 			ctx->close(chp);

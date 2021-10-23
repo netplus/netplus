@@ -38,15 +38,12 @@ int main(int argc, char** argv) {
 	parse_param(g_param, argc, argv);
 
 	for (int i = 0; i < g_param.for_max; ++i) {
-		netp::app_cfg appcfg;
-		appcfg.event_loop_cfgs[netp::u8_t(NETP_DEFAULT_POLLER_TYPE)].ch_buf_size = g_param.loopbufsize;
+		netp::app::instance()->init(argc,argv);
+		netp::app::instance()->cfg_channel_read_buf(g_param.loopbufsize);
 		if (g_param.thread != 0) {
-			appcfg.cfg_poller_count(NETP_DEFAULT_POLLER_TYPE, g_param.thread);
+			netp::app::instance()->cfg_loop_count(g_param.thread);
 		}
-		appcfg.cfg_channel_rcv_buf(NETP_DEFAULT_POLLER_TYPE, 64);
-
-		netp::app _app(appcfg);
-
+		netp::app::instance()->start_loop();
 /*
 		NRP<netp::packet> outp1 = netp::make_ref<netp::packet>();
 		NRP<netp::packet> outp2 = outp1;		
@@ -63,8 +60,6 @@ int main(int argc, char** argv) {
 		outp2 = nullptr;
 		outp3 = nullptr;
 		outp4 = nullptr;
-
-
 
 		_atomic_long.load(std::memory_order_relaxed);
 		_atomic_long.load(std::memory_order_acquire);
@@ -97,32 +92,36 @@ int main(int argc, char** argv) {
 
 		printoutp(pvec);
 */
-		netp::benchmark bmarker("start");
-		handler_start_listener(g_param);
-		bmarker.mark("listen done");
+		{
+			netp::benchmark bmarker("start");
+			handler_start_listener(g_param);
+			bmarker.mark("listen done");
 
-		handler_dial_clients(g_param);
-		bmarker.mark("dial all done");
+			handler_dial_clients(g_param);
+			bmarker.mark("dial all done");
 
-		_app.run();
+			netp::app::instance()->wait();
 
-		handler_stop_listener();
-		bmarker.mark("wait for listener");
+			handler_stop_listener();
+			bmarker.mark("wait for listener");
 
-		std::chrono::steady_clock::duration cost = bmarker.mark("test done");
-		std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(cost);
-		if (sec.count() == 0) {
-			sec = std::chrono::seconds(1);
+			std::chrono::steady_clock::duration cost = bmarker.mark("test done");
+			std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(cost);
+			if (sec.count() == 0) {
+				sec = std::chrono::seconds(1);
+			}
+
+			float avgrate = netp::u64_t(g_param.packet_number) * 1.0 / (sec.count());
+			float avgbits = netp::u64_t(g_param.packet_number) * netp::u64_t(g_param.packet_size) * 1.0 / (sec.count() * 1000 * 1000);
+			NETP_INFO("\n---\npacket size: %ld bytes\nnumber: %ld\ncost: %ld s\navgrate: %0.2f/s\navgbits: %0.2fMB/s\n---",
+				g_param.packet_size,
+				g_param.packet_number,
+				sec.count(),
+				g_param.client_max * avgrate, g_param.client_max * avgbits);
+			NETP_INFO("main exit");
 		}
 
-		float avgrate = netp::u64_t(g_param.packet_number) * 1.0 / (sec.count());
-		float avgbits = netp::u64_t(g_param.packet_number) * netp::u64_t(g_param.packet_size) * 1.0 / (sec.count() * 1000 * 1000);
-		NETP_INFO("\n---\npacket size: %ld bytes\nnumber: %ld\ncost: %ld s\navgrate: %0.2f/s\navgbits: %0.2fMB/s\n---",
-			g_param.packet_size,
-			g_param.packet_number,
-			sec.count(),
-			g_param.client_max * avgrate, g_param.client_max * avgbits);
-		NETP_INFO("main exit");
+		netp::app::instance()->destroy_instance();
 	}
 	return 0;
 }

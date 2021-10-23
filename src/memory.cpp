@@ -1,4 +1,5 @@
 #include <netp/memory.hpp>
+#include <netp/app.hpp>
 
 namespace netp {
 
@@ -401,7 +402,7 @@ __fast_path:
 			if (tst->max) {
 				//tst->max ==0 means no pool object allowed in this slot
 				//borrow
-				size_t c = global_pool_aligned_allocator::instance()->borrow(t, s, tst, (tst->max) >> 1);
+				size_t c = netp::app::instance()->global_allocator()->borrow(t, s, tst, (tst->max) >> 1);
 				NETP_ASSERT(c == tst->count);
 				if (c != 0) {
 					goto __fast_path;
@@ -444,7 +445,7 @@ __fast_path:
 		if ((t < T_COUNT) && (tst->count<tst->max) ) {
 			tst->ptr[tst->count++] = (u8_t*)a_hdr;
 			if (tst->count == tst->max) {
-				global_pool_aligned_allocator::instance()->commit(t, s, tst, (tst->max) >> 1);
+				netp::app::instance()->global_allocator()->commit(t, s, tst, (tst->max) >> 1);
 			}
 			return;
 		}
@@ -483,15 +484,6 @@ __fast_path:
 	}
 
 	global_pool_aligned_allocator::~global_pool_aligned_allocator() {
-		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
-			for (size_t s = 0; s < NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t); ++s) {
-				lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
-				u32_t& _gcount = m_tables[t][s]->count;
-				while ( _gcount>0) {
-					std::free(m_tables[t][s]->ptr[ --_gcount ]);
-				}
-			}
-		}
 		//deallocate mutex
 		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
 			::delete[] m_table_slots_mtx[t];
@@ -507,7 +499,7 @@ __fast_path:
 					NETP_ASSERT(m_tables[t][s]->max == 0);
 					continue;
 				}
-				u32_t max_n = m_tables[t][s]->max + TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s];
+				u32_t max_n = (m_tables[t][s]->max + TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]);
 				u8_t* __ptr = (u8_t*)(std::realloc(m_tables[t][s], sizeof(table_slot_t) + sizeof(u8_t*) * max_n));
 				m_tables[t][s] = (table_slot_t*)__ptr;
 				m_tables[t][s]->max = max_n;

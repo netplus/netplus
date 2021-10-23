@@ -2,7 +2,9 @@
 
 int main(int argc, char** argv) {
 
-	netp::app _app;
+	netp::app::instance()->init(argc, argv);
+	netp::app::instance()->start_loop();
+
 
 	/*
 	std::string eastmoney = "http://quote.eastmoney.com/";
@@ -110,7 +112,7 @@ int main(int argc, char** argv) {
 		rf2->wait();
 	}
 
-	_app.run();
+	netp::app::instance()->wait();
 
 	return 0;
 }

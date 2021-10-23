@@ -3,7 +3,8 @@
 #include "shared.hpp"
 
 int main(int argc, char** argv) {
-	netp::app::instance()->startup(argc, argv);
+	netp::app::instance()->init(argc, argv);
+	netp::app::instance()->start_loop();
 
 	netp::fn_rpc_activity_notify_t fn_bind_api = [](NRP<netp::rpc> const& r) {
 		r->bindcall(rpc_call_test_api::API_PING, 

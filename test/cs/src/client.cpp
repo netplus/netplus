@@ -53,7 +53,9 @@ public:
 };
 
 int main(int argc, char** argv) {
-	netp::app app ;
+	netp::app::instance()->init(argc, argv);
+	netp::app::instance()->start_loop();
+
 	std::string url = "tcp://127.0.0.1:22310";
 	NRP<netp::channel_dial_promise> f = netp::dial(url, [url](NRP<netp::channel> const& ch) {
 		ch->pipeline()->add_last(netp::make_ref<hello_handler>(url, 2000));
@@ -67,7 +69,7 @@ int main(int argc, char** argv) {
 		}
 	});
 
-	app.run();
+	netp::app::instance()->wait();
 	int rt = std::get<0>(f->get());
 	if (rt != netp::OK) {
 		return rt ;

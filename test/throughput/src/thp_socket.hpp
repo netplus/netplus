@@ -38,7 +38,7 @@ void th_listener() {
 	cfg->family = NETP_AF_INET;
 	cfg->type = NETP_SOCK_STREAM;
 	cfg->proto = NETP_PROTOCOL_TCP;
-	cfg->L = netp::io_event_loop_group::instance()->next();
+	cfg->L = netp::app::instance()->def_loop_group()->next();
 	cfg->option &= ~netp::u8_t(netp::socket_option::OPTION_NON_BLOCKING);
 	std::tuple<int, NRP<netp::socket_channel>> tupc = netp::create_socket_channel(cfg);
 
@@ -76,7 +76,7 @@ void th_listener() {
 	acfg->type = NETP_SOCK_STREAM;
 	acfg->proto = NETP_PROTOCOL_TCP;
 	acfg->fd = nfd;
-	acfg->L = netp::io_event_loop_group::instance()->next();
+	acfg->L = netp::app::instance()->def_loop_group()->next();
 	acfg->option &= ~netp::u8_t(netp::socket_option::OPTION_NON_BLOCKING);
 
 	std::tuple<int, NRP<netp::socket_channel>> accepted_tupc = netp::create_socket_channel(acfg);
@@ -97,7 +97,7 @@ void th_dialer() {
 	cfg->family = NETP_AF_INET;
 	cfg->type = NETP_SOCK_STREAM;
 	cfg->proto = NETP_PROTOCOL_TCP;
-	cfg->L = netp::io_event_loop_group::instance()->next();
+	cfg->L = netp::app::instance()->def_loop_group()->next();
 	cfg->option &= ~netp::u8_t(netp::socket_option::OPTION_NON_BLOCKING);
 
 	std::tuple<int, NRP<netp::socket_channel>> tupc = netp::create_socket_channel(cfg);
