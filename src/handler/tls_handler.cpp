@@ -37,8 +37,12 @@ namespace netp { namespace handler {
 
 		NETP_ASSERT(m_tls_channel != nullptr);
 		m_tls_channel = nullptr;
-		m_tls_ctx = nullptr;
 
+		// tls_handler::read migh result in m_ctx->close(), (write handshake failed with write error);
+		// if m_tls_ctx is reset during read, we got memory issue
+		// suggestion to botan team: botan should use ptr for the channel context, not reference
+		// m_tls_ctx = nullptr;
+		// but this ptr is safe to be derefrenced untile the next round right after this api [closed()]
 		NETP_ASSERT(m_ctx != nullptr);
 		m_ctx = nullptr;
 	}

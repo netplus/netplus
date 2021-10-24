@@ -921,7 +921,9 @@ __act_label_close_read_write:
 			NETP_TRACE_SOCKET("[socket][%s]io_action::END, flag: %d", ch_info().c_str(), m_chflag);
 
 			ch_fire_closed(close());
-			//delay one tick to hold this
+			//@note: trick
+			//delay one tick to hold this channel's ref
+			//in case we're in handler's read/write/close call, if we remove this iom from iom list immediately, we might get memory issue
 			L->schedule([so = NRP<socket_channel>(this)]() {
 				so->__ch_clean();
 			});
