@@ -57,7 +57,7 @@ namespace netp {
 	void ares_fd_monitor::io_notify_read(int status, io_ctx*) {
 		if (status == netp::OK) {
 			ares_process_fd(dnsr.m_ares_channel, fd, ARES_SOCKET_BAD);
-		}  else {
+		} else {
 			io_end();
 		}
 	}
@@ -371,22 +371,22 @@ namespace netp {
 
 	void dns_resolver::__ares_gethostbyname_cb(void* arg, int status, int timeouts, struct hostent* hostent)
 	{
+#ifdef _NETP_DEBUG
+		NETP_ASSERT(L->in_event_loop());
+#endif
 		(void)timeouts;
 		async_dns_query* adq = (async_dns_query*)arg;
 		adq->dnsr->__ares_done();
 		if (status == ARES_SUCCESS) {
 			std::vector<netp::ipv4_t, netp::allocator<netp::ipv4_t>> ipv4s;
-
 			char** lpSrc;
 			for (lpSrc = hostent->h_addr_list; *lpSrc; lpSrc++) {
-
 				switch (hostent->h_addrtype) {
 				case AF_INET:
 				{
 					char addr_buf[32] = {0};
 					ares_inet_ntop(hostent->h_addrtype, *lpSrc, addr_buf, sizeof(addr_buf));
 					ipv4s.push_back( dotiptoip(addr_buf));
-
 					//u_long nip = u32_t(*lpSrc);
 					//ipv4s.push_back( ntohl(nip) );
 				}
