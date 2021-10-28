@@ -47,7 +47,7 @@ C_ARES_DEFINES := HAVE_CONFIG_H
 C_3RD_DEFINES :=\
 	$(foreach define,$(C_ARES_DEFINES), -D$(define))
 
-# for http parser
+# for llhttp/c-ares parser
 LIB_3RD_C_FILES 	:= $(shell find $(LIB_3RD_FILES_DIR) -name *.c -not -name ".*")
 LIB_3RD_C_O_FILES	:= $(LIB_3RD_C_FILES:.c=.$(O_EXT))
 LIB_3RD_C_O_FILES	:= $(foreach path,$(LIB_3RD_C_O_FILES), $(subst $(LIB_3RD_DIR)/,,$(path)))
@@ -129,7 +129,7 @@ $(LIB_3RD_CPP_BUILD_DIR)/%.o : $(LIB_3RD_DIR)/%.cpp
 	@echo $(<F)
 	@echo "------build 3rd cpp file end------"
 	
-	$(CXX) $(CC_MISC) $(CC_C11) $(CC_3RD_CPP_MISC)  $(DEFINES) $(INCLUDES) $< -o $@
+	$(CXX) $(CC_MISC) $(CC_C11) $(CC_3RD_CPP_MISC) $(DEFINES) $(INCLUDES) $< -o $@
 
 $(LIB_3RD_C_BUILD_DIR)/%.o : $(LIB_3RD_DIR)/%.c
 	@if [ ! -d $(@D) ] ; then \
