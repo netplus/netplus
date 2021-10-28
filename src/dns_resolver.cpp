@@ -375,11 +375,11 @@ namespace netp {
 
 	void dns_resolver::__ares_gethostbyname_cb(void* arg, int status, int timeouts, struct hostent* hostent)
 	{
-#ifdef _NETP_DEBUG
-		NETP_ASSERT(L->in_event_loop());
-#endif
 		(void)timeouts;
 		async_dns_query* adq = (async_dns_query*)arg;
+#ifdef _NETP_DEBUG
+		NETP_ASSERT(adq->dnsr->L->in_event_loop());
+#endif
 		adq->dnsr->__ares_done();
 		if (status == ARES_SUCCESS) {
 			std::vector<netp::ipv4_t, netp::allocator<netp::ipv4_t>> ipv4s;
