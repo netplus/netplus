@@ -275,25 +275,7 @@ namespace netp {
 		//ares_process_fd might result in insert/erase pair from m_ares_fd_monitor_map
 		//ares_process_fd might result in restart
 
-		/*
-		typedef std::deque<NRP<ares_fd_monitor>, netp::allocator<NRP<ares_fd_monitor>>> ares_fd_monitor_m_q_t;
-		ares_fd_monitor_m_q_t mmq;
-		ares_fd_monitor_map_t::iterator it = m_ares_fd_monitor_map.begin();
 		m_flag |= f_timeout_barrier;
-		while (it != m_ares_fd_monitor_map.end()) {
-			mmq.push_back((it++)->second);
-		}
-		while(mmq.size()) {
-			NRP<ares_fd_monitor>& m = mmq.front();
-			ares_socket_t read_fd = (m->flag & f_watch_read ? m->fd : ARES_SOCKET_BAD);
-			ares_socket_t write_fd = (m->flag & f_watch_write ? m->fd : ARES_SOCKET_BAD);
-			if (m->flag & (f_watch_read | f_watch_write)) {
-				ares_process_fd(m->dnsr.m_ares_channel, read_fd, write_fd);
-			}
-			mmq.pop_front();
-		}
-		*/
-
 		ares_process_fd(m_ares_channel, ARES_SOCKET_BAD, ARES_SOCKET_BAD);
 		m_flag &= ~f_timeout_barrier;
 
