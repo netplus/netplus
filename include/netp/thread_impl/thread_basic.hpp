@@ -183,8 +183,9 @@ namespace netp { namespace impl {
 #ifdef _NETP_WIN
 			return static_cast<u64_t>(GetCurrentThreadId());
 #else
-			std::hash<std::thread::id> hasher;
-			return static_cast<netp::u64_t>(hasher(std::this_thread::get_id()));
+			return netp::u64_t(pthread_self());
+			//std::hash<std::thread::id> hasher;
+			//return static_cast<netp::u64_t>(hasher(std::this_thread::get_id()));
 #endif
 		}
 	}//end of this_thread

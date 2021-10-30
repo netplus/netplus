@@ -45,9 +45,11 @@ namespace netp {
 			flag &= ~f_watch_write;
 		}
 		
-		dnsr.L->io_end(ctx);
 		netp::close(fd);
 		dnsr.m_ares_fd_monitor_map.erase(fd);
+		dnsr.L->schedule([afm=NRP<ares_fd_monitor>(this),L_=dnsr.L, ctx_=ctx]() {
+			L_->io_end(ctx_);
+		});
 	}
 
 	void ares_fd_monitor::io_notify_terminating(int, io_ctx*) {
@@ -236,11 +238,11 @@ namespace netp {
 
 	void dns_resolver::restart() {
 		NETP_ASSERT( L->in_event_loop() );
-		if ((m_flag & dns_resolver_flag::f_restarting)) {
+		if ((m_flag&dns_resolver_flag::f_restarting)) {
 			return;
 		}
 
-		if (m_flag & dns_resolver_flag::f_timeout_barrier) {
+		if (m_flag&dns_resolver_flag::f_timeout_barrier) {
 			m_flag |= f_restarting_pending;
 			return;
 		}
@@ -304,14 +306,14 @@ namespace netp {
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT((m_flag & dns_resolver_flag::f_running));
 
-		NRP<netp::ares_fd_monitor> mm = netp::make_ref<netp::ares_fd_monitor>(*this, socket_fd);
-		io_ctx* ctx = L->io_begin(socket_fd, mm);
+		NRP<netp::ares_fd_monitor> afm = netp::make_ref<netp::ares_fd_monitor>(*this, socket_fd);
+		io_ctx* ctx = L->io_begin(socket_fd, afm);
 		if (ctx == nullptr) {
 			return -1;
 		}
 
-		mm->ctx = ctx;
-		m_ares_fd_monitor_map.insert({ socket_fd, mm });
+		afm->ctx = ctx;
+		m_ares_fd_monitor_map.insert({ socket_fd, afm });
 		return netp::OK;
 	}
 
@@ -394,6 +396,7 @@ namespace netp {
 			adq->dnsquery_p->set(std::make_tuple( NETP_NEGATIVE(status), std::vector<netp::ipv4_t, netp::allocator<netp::ipv4_t>>()));
 		}
 		if (status == ARES_ECONNREFUSED) {
+			NETP_WARN("[dns_resolver]resolve status: %d", ARES_ECONNREFUSED);
 			adq->dnsr->L->schedule([dnsr=adq->dnsr]() {
 				dnsr->restart();
 			});

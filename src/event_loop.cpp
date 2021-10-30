@@ -179,7 +179,6 @@ namespace netp {
 			throw;
 		}
 		{
-			NETP_VERBOSE("[event_loop]exiting run");
 			// EDGE check
 			// scenario 1:
 			// 1) do schedule, 2) set L -> null
@@ -193,6 +192,7 @@ namespace netp {
 		}
 
 		deinit();
+		NETP_VERBOSE("[event_loop]exiting run");
 	}
 
 	void event_loop::__do_notify_terminating() {
@@ -279,6 +279,7 @@ namespace netp {
 	event_loop::~event_loop() {
 		NETP_ASSERT(m_tb == nullptr);
 		NETP_ASSERT(m_th == nullptr);
+		NETP_VERBOSE("[event_loop::~event_loop][%u]", m_cfg.type);
 	}
 
 	event_loop_group::event_loop_group( event_loop_cfg const& cfg, fn_event_loop_maker_t const& L_maker):
@@ -357,13 +358,12 @@ namespace netp {
 			while (it != m_loop.end()) {
 				//ref_count == internal_ref_count means no other ref for this LOOP, it is safe to deattach it from our pool
 				if ((*it).ref_count() == (*it)->internal_ref_count()) {
-					NETP_VERBOSE("[event_loop][%u]__dealloc_poller, dattached one event loop", m_cfg.type);
+					NETP_VERBOSE("[event_loop][%u]_wait_loop, dattached one event loop", m_cfg.type);
 
 					to_deattach.push_back(*it);
 					m_loop.erase(it);
 					break;
-				}
-				else {
+				} else {
 					++it;
 				}
 			}
@@ -379,13 +379,13 @@ namespace netp {
 		void event_loop_group::wait() {
 
 			//phase 2, deattach one by one
-			NETP_INFO("[event_loop]__dealloc_poller, type: %d", m_cfg.type);
+			NETP_INFO("[event_loop][%u]wait", m_cfg.type);
 			_wait_loop();
-			NETP_INFO("[event_loop]__dealloc_poller, type: %d done", m_cfg.type);
+			NETP_INFO("[event_loop][%u]wait done", m_cfg.type);
 
 			bye_event_loop_state running = bye_event_loop_state::S_RUNNING;
 			if (m_bye_state.compare_exchange_strong(running, bye_event_loop_state::S_EXIT, std::memory_order_acq_rel, std::memory_order_acquire)) {
-				NETP_INFO("[event_loop]__dealloc_poller bye, begin");
+				NETP_INFO("[event_loop][%u]wait bye, begin", m_cfg.type );
 				NETP_ASSERT(m_bye_event_loop != nullptr);
 				m_bye_event_loop->__notify_terminating();
 				while (m_bye_event_loop.ref_count() != m_bye_ref_count) {
@@ -393,7 +393,7 @@ namespace netp {
 					netp::this_thread::no_interrupt_sleep(1);
 				}
 				m_bye_event_loop->__terminate();
-				NETP_INFO("[event_loop]__dealloc_poller bye done");
+				NETP_INFO("[event_loop][%u]wait bye done", m_cfg.type );
 			}
 		}
 
