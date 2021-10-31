@@ -341,6 +341,7 @@ namespace netp {
 			bye_event_loop_state idle = bye_event_loop_state::S_IDLE;
 			if (m_bye_state.compare_exchange_strong(idle, bye_event_loop_state::S_PREPARING, std::memory_order_acq_rel, std::memory_order_acquire)) {
 				NETP_ASSERT(m_bye_event_loop == nullptr, "m_bye_event_loop check failed");
+				NETP_VERBOSE("[event_loop][%u]launch bye begin", m_cfg.type);
 				event_loop_cfg __cfg = m_cfg;
 				__cfg.flag &= ~(f_th_thread_affinity | f_th_priority_above_normal | f_th_priority_time_critical);
 				m_bye_event_loop = m_fn_loop_maker(__cfg);
@@ -352,6 +353,7 @@ namespace netp {
 				bool set_to_running = m_bye_state.compare_exchange_strong(preparing, bye_event_loop_state::S_RUNNING, std::memory_order_acq_rel, std::memory_order_acquire);
 				NETP_ASSERT(set_to_running == true);
 				NETP_ASSERT(m_bye_state.load(std::memory_order_relaxed) == bye_event_loop_state::S_RUNNING);
+				NETP_VERBOSE("[event_loop][%u]launch bye end", m_cfg.type);
 			}
 
 			event_loop_vector_t::iterator&& it = m_loop.begin();
@@ -385,7 +387,7 @@ namespace netp {
 
 			bye_event_loop_state running = bye_event_loop_state::S_RUNNING;
 			if (m_bye_state.compare_exchange_strong(running, bye_event_loop_state::S_EXIT, std::memory_order_acq_rel, std::memory_order_acquire)) {
-				NETP_INFO("[event_loop][%u]wait bye, begin", m_cfg.type );
+				NETP_VERBOSE("[event_loop][%u]wait bye begin", m_cfg.type );
 				NETP_ASSERT(m_bye_event_loop != nullptr);
 				m_bye_event_loop->__notify_terminating();
 				while (m_bye_event_loop.ref_count() != m_bye_ref_count) {
@@ -393,7 +395,7 @@ namespace netp {
 					netp::this_thread::no_interrupt_sleep(1);
 				}
 				m_bye_event_loop->__terminate();
-				NETP_INFO("[event_loop][%u]wait bye done", m_cfg.type );
+				NETP_VERBOSE("[event_loop][%u]wait bye end", m_cfg.type );
 			}
 		}
 

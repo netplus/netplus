@@ -99,14 +99,14 @@ namespace netp {
 			if (-1 == m_epfd) {
 				NETP_THROW("create epoll handle failed");
 			}
-			NETP_VERBOSE("[EPOLL][##%u]init epoll handle ok, %u, %u, %u", m_epfd);
+			NETP_VERBOSE("[EPOLL][##%u]init epoll handle ok", m_epfd);
 			poller_interruptable_by_fd::init();
 		}
 
 		void deinit() override {
 			poller_interruptable_by_fd::deinit();
 			NETP_ASSERT(m_epfd != NETP_INVALID_SOCKET);
-			NETP_VERBOSE("[EPOLL][##%u]EPOLL::deinit() begin, %u, %u, %u", m_epfd);
+			NETP_VERBOSE("[EPOLL][##%u]EPOLL::deinit() begin", m_epfd);
 			int rt = netp::close(m_epfd);
 			if (-1 == rt) {
 				NETP_THROW("EPOLL::deinit epoll handle failed");
