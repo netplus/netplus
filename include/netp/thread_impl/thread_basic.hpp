@@ -158,23 +158,18 @@ namespace netp { namespace impl {
 		inline void no_interrupt_yield() {
 			std::this_thread::yield();
 		}
+		//https://stackoverflow.com/questions/18071664/stdthis-threadsleep-for-and-nanoseconds
 		inline void yield(u64_t k) {
-			if (k < 4) {
-			}
-			else if (k < 28) {
+			if (k<100) {
 				netp::this_thread::yield();
-			}
-			else {
+			} else {
 				netp::this_thread::sleep_for<std::chrono::nanoseconds>(std::chrono::nanoseconds(k));
 			}
 		}
 		inline void no_interrupt_yield(u64_t k) {
-			if (k < 4) {
-			}
-			else if (k < 28) {
+			if (k< 100) {
 				std::this_thread::yield();
-			}
-			else {
+			} else {
 				std::this_thread::sleep_for(std::chrono::nanoseconds(k));
 			}
 		}

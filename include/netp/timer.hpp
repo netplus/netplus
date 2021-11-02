@@ -174,7 +174,7 @@ namespace netp {
 
 		inline void launch(NRP<timer> const& t) {
 			NETP_ASSERT(t != nullptr);
-			NETP_ASSERT(t->delay >= timer_duration_t(0) && (t->delay != timer_duration_t(~0)));
+			NETP_ASSERT(t->delay >= timer_duration_t(0) && (t->delay != timer_duration_t(~0)), "t->delay: %lld", t->delay.count() );
 			t->expiration = timer_clock_t::now() + t->delay;
 			m_tq.push_back(t);
 		}

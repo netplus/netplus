@@ -32,7 +32,7 @@ namespace netp {
 			int k = 0;
 			while(!try_lock()) {
 				++k;
-				netp::this_thread::no_interrupt_yield(NETP_MIN((k>>1),60));
+				netp::this_thread::no_interrupt_yield(NETP_MIN(k,0xff));
 			}
 		}
 
