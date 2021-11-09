@@ -590,6 +590,7 @@ namespace netp {
 				NETP_ASSERT(m_chflag & int(channel_flag::F_CLOSED));
 				rt = open();
 				if (rt != netp::OK) {
+					NETP_WARN("[socket][%s][ch_init]open, errno: %d", ch_info().c_str(), rt );
 					m_chflag |= int(channel_flag::F_READ_ERROR);
 					ch_errno() = rt;
 					ch_close_impl(nullptr);
@@ -600,6 +601,7 @@ namespace netp {
 			NETP_ASSERT( (m_chflag & int(channel_flag::F_CLOSED))==0);
 			rt = _cfg_option(opt, kvals);
 			if (rt != netp::OK) {
+				NETP_WARN("[socket][%s][ch_init]_cfg_option, errno: %d", ch_info().c_str(), rt);
 				m_chflag |= int(channel_flag::F_READ_ERROR);
 				ch_errno() = rt;
 				ch_close_impl(nullptr);
@@ -607,6 +609,7 @@ namespace netp {
 			}
 			rt = _cfg_buffer(cbc);
 			if (rt != netp::OK) {
+				NETP_WARN("[socket][%s][ch_init]_cfg_buffer, errno: %d", ch_info().c_str(), rt);
 				m_chflag |= int(channel_flag::F_READ_ERROR);
 				ch_errno() = rt;
 				ch_close_impl(nullptr);

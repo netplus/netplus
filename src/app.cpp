@@ -253,7 +253,7 @@ namespace netp {
 		m_global_pool_aligned_allocator(nullptr),
 		m_loop_count(u32_t(std::thread::hardware_concurrency())),
 		m_channel_read_buf_size(128*1024),
-		m_channel_bdlimit_clock(50),
+		m_channel_bdlimit_clock(30),/*resolution on windows is 15ms*/
 		m_is_cfg_json_checked(false),
 		m_should_exit(false), 
 		m_app_state(app_state::s_idle),
