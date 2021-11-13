@@ -190,7 +190,7 @@ namespace netp {
 	template <typename clock_t, typename duration_t
 		, typename std::enable_if<std::is_same<typename clock_t::duration, duration_t>::value>::type ** = 0
 	>
-		inline std::chrono::time_point<clock_t, duration_t> now(typename std::enable_if<std::is_same<typename clock_t::duration, duration_t>::value>::type** = 0) {
+	inline std::chrono::time_point<clock_t, duration_t> now(typename std::enable_if<std::is_same<typename clock_t::duration, duration_t>::value>::type** = 0) {
 		return clock_t::now();
 	}
 

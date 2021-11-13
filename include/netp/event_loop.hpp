@@ -28,6 +28,8 @@
 #error "unknown poller type"
 #endif
 
+//#define NETP_DEBUG_LOOP_TIME
+
 namespace netp {
 
 	typedef std::function<void()> fn_task_t;
@@ -116,6 +118,12 @@ namespace netp {
 		std::atomic<long> m_internal_ref_count;
 		std::vector<netp::string_t, netp::allocator<netp::string_t>> m_dns_hosts;
 
+
+#ifdef NETP_DEBUG_LOOP_TIME
+		long long m_loop_last_tp;
+		long long m_last_wait;
+#endif
+
 	protected:
 		inline long internal_ref_count() { return m_internal_ref_count.load(std::memory_order_relaxed); }
 		inline void store_internal_ref_count( long count ) { m_internal_ref_count.store( count, std::memory_order_relaxed); }
@@ -125,7 +133,6 @@ namespace netp {
 		//~0,	INFINITE WAIT
 		//>0,	WAIT nanosecond
 		i64_t _calc_wait_dur_in_nano() {
-
 			NETP_ASSERT( m_waiting.load(std::memory_order_relaxed) == false, "_calc_wait_dur_in_nano waiting check failed" );
 			static_assert(TIMER_TIME_INFINITE == i64_t(-1), "timer infinite check");
 			netp::timer_duration_t ndelay;
@@ -135,16 +142,25 @@ namespace netp {
 			//@note: select, epoll_wait cost too much time to return (ms level)
 			if ( (ndelayns != TIMER_TIME_INFINITE) && (ndelayns <= (i64_t(m_cfg.no_wait_us)*1000LL)) ) {
 				//less than 1us
+#ifdef NETP_DEBUG_LOOP_TIME
+				m_last_wait = 0;
+#endif
 				return 0;
 			}
 
 			{
 				lock_guard<spin_mutex> lg(m_tq_mutex);
 				if (m_tq_standby.size() != 0) {
+#ifdef NETP_DEBUG_LOOP_TIME
+					m_last_wait = 0;
+#endif
 					return 0;
 				}
 				NETP_POLLER_WAIT_ENTER(m_waiting);
 			}
+#ifdef NETP_DEBUG_LOOP_TIME
+			m_last_wait = ndelayns;
+#endif
 			return ndelayns;
 		}
 
@@ -163,8 +179,27 @@ namespace netp {
 		event_loop(event_loop_cfg const& cfg, NRP<poller_abstract> const& poller);
 		~event_loop();
 
+//#define _NETP_DUMP_SCHEDULE_COST
+		/*win10 output
+		[event_loop]schedule, cost: 122800 ns, interrupted: 1
+		[event_loop]schedule, cost: 76400 ns, interrupted: 1
+		[event_loop]schedule, cost: 64200 ns, interrupted: 1
+		[event_loop]schedule, cost: 300 ns, interrupted: 0
+		[event_loop]schedule, cost: 1000 ns, interrupted: 0
+		[event_loop]schedule, cost: 100 ns, interrupted: 0
+		[event_loop]schedule, cost: 1100 ns, interrupted: 0
+		[event_loop]schedule, cost: 47100 ns, interrupted: 1
+		[event_loop]schedule, cost: 39800 ns, interrupted: 1
+		[event_loop]schedule, cost: 200 ns, interrupted: 0
+		[event_loop]schedule, cost: 1400 ns, interrupted: 0
+		[event_loop]schedule, cost: 1400 ns, interrupted: 0
+		[event_loop]schedule, cost: 500 ns, interrupted: 0
+		[event_loop]schedule, cost: 500 ns, interrupted: 0
+		[event_loop]schedule, cost: 100 ns, interrupted: 0
+		[event_loop]schedule, cost: 47000 ns, interrupted: 1
+		[event_loop]schedule, cost: 100 ns, interrupted: 0
+		*/
 		inline void schedule(fn_task_t&& f) {
-
 			//NOTE: upate on 2021/04/03
 			//lock_guard of m_tq_mutex also works as a memory barrier for memory accesses across loops in between task caller and task callee
 
@@ -172,6 +207,9 @@ namespace netp {
 			//lock_guard of m_tq_mutex would pose a load/store memory barrier at least
 			//these kinds of barrier could make sure that the compiler would not reorder the instruction around the barrier, so interrupt_poller would always have a false initial value
 			//as  a per thread variable, the reorder brought by CPU should not be a issue for _interrupt_poller
+#ifdef _NETP_DUMP_SCHEDULE_COST
+			long long __begin = netp::now<std::chrono::nanoseconds, netp::steady_clock_t>().time_since_epoch().count();
+#endif
 			bool _interrupt_poller = false;
 			{
 				lock_guard<spin_mutex> lg(m_tq_mutex);
@@ -181,6 +219,10 @@ namespace netp {
 			if (_interrupt_poller) {
 				m_poller->interrupt_wait();
 			}
+#ifdef _NETP_DUMP_SCHEDULE_COST
+			long long __end = netp::now<std::chrono::nanoseconds, netp::steady_clock_t>().time_since_epoch().count();
+			printf("[event_loop]schedule, cost: %llu ns, interrupted: %d\n", __end - __begin, _interrupt_poller);
+#endif
 		}
 
 		inline void schedule(fn_task_t const& f) {

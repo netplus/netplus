@@ -167,7 +167,7 @@ namespace netp { namespace impl {
 			}
 		}
 		inline void no_interrupt_yield(u64_t k) {
-			if (k< 100) {
+			if (k<128) {
 				std::this_thread::yield();
 			} else {
 				std::this_thread::sleep_for(std::chrono::nanoseconds(k));

@@ -142,6 +142,9 @@ namespace netp {
 		u8_t _SL = u8_t(loop_state::S_LAUNCHING);
 		const bool rt = m_state.compare_exchange_strong(_SL, u8_t(loop_state::S_RUNNING), std::memory_order_acq_rel, std::memory_order_acquire);
 		NETP_ASSERT(rt == true);
+#ifdef NETP_DEBUG_LOOP_TIME
+		m_loop_last_tp = netp::now<std::chrono::nanoseconds, netp::steady_clock_t>().time_since_epoch().count();
+#endif
 		try {
 			//this load also act as a memory synchronization fence to sure all release operation happen before this line
 			//if we make_ref a atomic_ref object, then we call L->schedule([o=atomic_ref_instance](){});, the assign of a atomic_ref_instance would trigger memory_order_acq_rel, this operation guard all object member initialization and member valud update before the assign
@@ -168,6 +171,12 @@ namespace netp {
 					}
 				}
 				//@_calc_wait_dur_in_nano must happen before poll..
+
+#ifdef NETP_DEBUG_LOOP_TIME
+				long long _now = netp::now<std::chrono::nanoseconds, netp::steady_clock_t>().time_since_epoch().count();
+				NETP_INFO("[event_loop]loop dt: %llu ns, last_wait: %llu", _now - m_loop_last_tp, m_last_wait);
+				m_loop_last_tp = _now;
+#endif
 				m_poller->poll(_calc_wait_dur_in_nano(), m_waiting);
 			}
 		}

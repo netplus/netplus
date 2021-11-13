@@ -518,7 +518,11 @@ namespace netp { namespace handler {
 				//https://datatracker.ietf.org/doc/html/rfc5246#section-7.2.2, upon fatal alert, both side close transport immediately
 				NETP_WARN("[tls_handler]fatal Alert: %s, do handler::close()", alert.type_string().c_str());
 				NETP_ASSERT(m_ctx != nullptr);
-				close(netp::make_ref<netp::promise<int>>(), m_ctx);
+				if ((m_flag & (f_tls_ch_activated | f_ch_connected)) == (f_tls_ch_activated | f_ch_connected)) {
+					close(netp::make_ref<netp::promise<int>>(), m_ctx);
+				} else {
+					if (m_ctx) { m_ctx->close(); }
+				}
 			}
 		}
 		break;
