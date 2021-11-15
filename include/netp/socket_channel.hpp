@@ -54,7 +54,7 @@ namespace netp {
 		NRP<address> laddr;
 		NRP<address> raddr;
 
-		std::string to_string() const {
+		netp::string_t to_string() const {
 			char _buf[1024] = { 0 };
 #ifdef _NETP_MSVC
 			int nbytes = snprintf(_buf, 1024, "#%zu:%s:L:%s-R:%s", fd, DEF_protocol_str[int(p)], laddr ? laddr->to_string().c_str():"", raddr ?raddr->to_string().c_str():"");
@@ -64,7 +64,7 @@ namespace netp {
 #error "unknown compiler"
 #endif
 
-			return std::string(_buf, nbytes);
+			return netp::string_t(_buf, nbytes);
 		}
 	};
 
@@ -900,7 +900,7 @@ namespace netp {
 			}
 
 			__NETP_FORCE_INLINE channel_id_t ch_id() const override { return m_fd; }
-			std::string ch_info() const override {
+			netp::string_t ch_info() const override {
 				return socketinfo{ m_fd, (m_family),(m_type),(m_protocol),local_addr(), remote_addr() }.to_string();
 			}
 			void ch_set_bdlimit(netp::u32_t limit) override {

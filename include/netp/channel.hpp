@@ -327,7 +327,7 @@ public: \
 		void io_notify_write(int, io_ctx*) {};
 
 		virtual channel_id_t ch_id() const = 0; //called by context in event_loop
-		virtual std::string ch_info() const = 0;
+		virtual netp::string_t ch_info() const = 0;
 		virtual void ch_set_bdlimit(u32_t) {};
 
 		virtual NRP<promise<int>> ch_set_read_buffer_size(u32_t size) = 0;
