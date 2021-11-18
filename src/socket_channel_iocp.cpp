@@ -237,17 +237,17 @@ namespace netp {
 			return;
 		}
 		iocp_ctx* ctx = (iocp_ctx*)ctx_;
-		NETP_ASSERT(m_noutbound_bytes > 0);
-		socket_outbound_entry entry = m_outbound_entry_q.front();
+		NETP_ASSERT(m_tx_bytes > 0);
+		socket_outbound_entry entry = m_tx_entry_q.front();
 		NETP_ASSERT(entry.data != nullptr);
-		m_noutbound_bytes -= status;
+		m_tx_bytes -= status;
 		entry.data->skip(status);
 		if (entry.data->len() == 0) {
 			entry.write_promise->set(netp::OK);
-			m_outbound_entry_q.pop_front();
+			m_tx_entry_q.pop_front();
 		}
 		status = netp::OK;
-		if (m_noutbound_bytes > 0) {
+		if (m_tx_bytes > 0) {
 			status = __iocp_do_WSASend(ctx->ol_w);
 			if (status == netp::OK) {
 				ctx->ol_w->action_status |= AS_WAIT_IOCP;
@@ -263,8 +263,8 @@ namespace netp {
 		NETP_ASSERT(olctx != nullptr);
 		NETP_ASSERT((olctx->action_status & (AS_WAIT_IOCP)) == 0);
 
-		NETP_ASSERT(m_noutbound_bytes > 0);
-		socket_outbound_entry& entry = m_outbound_entry_q.front();
+		NETP_ASSERT(m_tx_bytes > 0);
+		socket_outbound_entry& entry = m_tx_entry_q.front();
 		olctx->wsabuf = { ULONG(entry.data->len()), (char*)entry.data->head() };
 		ol_ctx_reset(olctx);
 		int rt = ::WSASend(m_fd, &olctx->wsabuf, 1, NULL, 0, &olctx->ol, NULL);

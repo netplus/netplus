@@ -86,7 +86,7 @@ namespace netp {
 
 		keep_alive_vals kvals;
 		channel_buf_cfg sock_buf;
-		u32_t bdlimit; //in Byte (1kb == 1024Byte), 0 means no limit
+		u32_t tx_limit; //in Byte (1kb == 1024Byte), 0 means no limit
 		u32_t wsabuf_size;
 
 		fn_socket_channel_maker_t ch_maker;
@@ -101,7 +101,7 @@ namespace netp {
 			raddr(),
 			kvals(default_tcp_keep_alive_vals),
 			sock_buf({ 0 }),
-			bdlimit(0),
+			tx_limit(0),
 			wsabuf_size(64*1024),
 			ch_maker(nullptr)
 		{}
@@ -118,7 +118,7 @@ namespace netp {
 			_cfg->raddr = raddr;
 			_cfg->kvals = kvals;
 			_cfg->sock_buf = sock_buf;
-			_cfg->bdlimit = bdlimit;
+			_cfg->tx_limit = tx_limit;
 			_cfg->wsabuf_size = wsabuf_size;
 			_cfg->ch_maker = ch_maker;
 
@@ -156,16 +156,16 @@ namespace netp {
 		byte_t* m_rcv_buf_ptr;
 		u32_t m_rcv_buf_size;
 
-		u32_t m_noutbound_bytes;
-		socket_outbound_entry_t m_outbound_entry_q;
+		u32_t m_tx_bytes;
+		socket_outbound_entry_t m_tx_entry_q;
 
-		u32_t m_outbound_budget;
-		u32_t m_outbound_limit; //in byte
-		long long m_outbound_limit_last_tp;
+		u32_t m_tx_budget;
+		u32_t m_tx_limit; //in byte
+		long long m_tx_limit_last_tp;
 		fn_io_event_t* m_fn_read;
 		fn_io_event_t* m_fn_write;
 
-		void _tmcb_BDL(NRP<timer> const& t);
+		void _tmcb_tx_limit(NRP<timer> const& t);
 
 		socket_channel(NRP<socket_cfg> const& cfg) :
 			channel(cfg->L),
@@ -179,10 +179,10 @@ namespace netp {
 			m_io_ctx(0),
 			m_rcv_buf_ptr(cfg->L->channel_rcv_buf()->head()),
 			m_rcv_buf_size(u32_t(cfg->L->channel_rcv_buf()->left_right_capacity())),
-			m_noutbound_bytes(0),
-			m_outbound_budget(cfg->bdlimit ),
-			m_outbound_limit(cfg->bdlimit),
-			m_outbound_limit_last_tp(0),
+			m_tx_bytes(0),
+			m_tx_budget(cfg->tx_limit),
+			m_tx_limit(cfg->tx_limit),
+			m_tx_limit_last_tp(0),
 			m_fn_read(nullptr),
 			m_fn_write(nullptr)
 		{
@@ -650,14 +650,14 @@ namespace netp {
 			m_chflag &= ~int(channel_flag::F_WRITE_SHUTDOWN_PENDING);
 			ch_io_end_write();
 
-			while (m_outbound_entry_q.size()) {
+			while (m_tx_entry_q.size()) {
 				NETP_ASSERT( (ch_errno() != 0) && (m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_READ_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))) );
-				socket_outbound_entry& entry = m_outbound_entry_q.front();
+				socket_outbound_entry& entry = m_tx_entry_q.front();
 				NETP_WARN("[socket][%s]cancel outbound, nbytes:%u, errno: %d", ch_info().c_str(), entry.data->len(), ch_errno());
 				//hold a copy before we do pop it from queue
 				NRP<promise<int>> wp = entry.write_promise;
-				m_noutbound_bytes -= u32_t(entry.data->len());
-				m_outbound_entry_q.pop_front();
+				m_tx_bytes -= u32_t(entry.data->len());
+				m_tx_entry_q.pop_front();
 				NETP_ASSERT(wp->is_idle());
 				wp->set(ch_errno());
 			}
@@ -752,8 +752,8 @@ namespace netp {
 			switch (status) {
 			case netp::OK:
 			{
-				NETP_ASSERT((m_chflag & int(channel_flag::F_BDLIMIT)) == 0);
-				NETP_ASSERT(m_outbound_entry_q.size() == 0, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
+				NETP_ASSERT((m_chflag & int(channel_flag::F_TX_LIMIT)) == 0);
+				NETP_ASSERT(m_tx_entry_q.size() == 0, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 				if (m_chflag & int(channel_flag::F_CLOSE_PENDING)) {
 					_ch_do_close_read_write();
 					NETP_TRACE_SOCKET("[socket][%s]IO_WRITE, end F_CLOSE_PENDING, _ch_do_close_read_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
@@ -761,7 +761,7 @@ namespace netp {
 					_ch_do_close_write();
 					NETP_TRACE_SOCKET("[socket][%s]IO_WRITE, end F_WRITE_SHUTDOWN_PENDING, ch_close_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
 				} else {
-					std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>().swap(m_outbound_entry_q);
+					std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>().swap(m_tx_entry_q);
 					ch_io_end_write();
 				}
 
@@ -770,7 +770,7 @@ namespace netp {
 			break;
 			case netp::E_EWOULDBLOCK:
 			{
-				NETP_ASSERT(m_outbound_entry_q.size(), "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
+				NETP_ASSERT(m_tx_entry_q.size(), "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 #ifdef NETP_ENABLE_FAST_WRITE
 				NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER)) );
 				ch_io_write();
@@ -782,7 +782,7 @@ namespace netp {
 			break;
 			case netp::E_CHANNEL_BDLIMIT:
 			{
-				m_chflag |= int(channel_flag::F_BDLIMIT);
+				m_chflag |= int(channel_flag::F_TX_LIMIT);
 				ch_io_end_write();
 			}
 			break;
@@ -905,8 +905,8 @@ namespace netp {
 			}
 			void ch_set_bdlimit(netp::u32_t limit) override {
 				L->execute([s = NRP<socket_channel>(this), limit]() {
-					s->m_outbound_limit = limit ;
-					s->m_outbound_budget = limit ;
+					s->m_tx_limit = limit ;
+					s->m_tx_budget = limit ;
 				});
 			};
 	};

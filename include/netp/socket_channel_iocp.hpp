@@ -116,8 +116,8 @@ namespace netp {
 		/*
 		void ch_io_end() override {
 			NETP_ASSERT(L->in_event_loop());
-			NETP_ASSERT(m_outbound_entry_q.size() == 0);
-			NETP_ASSERT(m_noutbound_bytes == 0);
+			NETP_ASSERT(m_tx_entry_q.size() == 0);
+			NETP_ASSERT(m_tx_bytes == 0);
 			NETP_ASSERT(m_chflag & int(channel_flag::F_CLOSED));
 			NETP_ASSERT((m_chflag & (int(channel_flag::F_WATCH_READ) | int(channel_flag::F_WATCH_WRITE))) == 0);
 			NETP_TRACE_SOCKET("[socket][%s]io_action::END, flag: %d", ch_info().c_str(), m_chflag);
@@ -287,7 +287,7 @@ namespace netp {
 				return;
 			}
 
-			if (m_noutbound_bytes == 0) {
+			if (m_tx_bytes == 0) {
 				if (fn_write != nullptr) {
 					fn_write(netp::E_CHANNEL_OUTGO_LIST_EMPTY, 0);
 				}

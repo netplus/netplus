@@ -77,8 +77,8 @@ namespace netp {
 
 		F_LISTENING = 1<<18,
 		F_ACTIVE = 1 << 19,
-		F_BDLIMIT = 1 << 20,
-		F_BDLIMIT_TIMER = 1 << 21,
+		F_TX_LIMIT = 1 << 20,
+		F_TX_LIMIT_TIMER = 1 << 21,
 
 		F_IO_EVENT_LOOP_BEGIN_DONE = 1<<22,
 		F_IO_EVENT_LOOP_NOTIFY_TERMINATING=1<<23,
