@@ -356,8 +356,10 @@ sendto:
 	}
 
 	inline netp::u32_t recvfrom( SOCKET fd, byte_t* const buff_o, netp::u32_t size, NRP<address>& addr_o, int& ec_o, int const& flag) {
-recvfrom:
-		addr_o = netp::make_ref<address>();
+	recvfrom:
+	#ifdef _NETP_DEBUG
+		NETP_ASSERT( addr_o != nullptr );
+	#endif
 		::memset((void*)addr_o->sockaddr_v4(), 0, sizeof(struct sockaddr_in));
 		socklen_t socklen = sizeof(struct sockaddr_in);
 		const int nbytes = ::recvfrom(fd, reinterpret_cast<char*>(buff_o), (int)size, flag, addr_o->sockaddr_v4(), &socklen);
