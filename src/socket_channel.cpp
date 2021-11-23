@@ -705,7 +705,7 @@ int socket_base::get_left_snd_queue() const {
 		} else {
 			//connecting channel would only be closed by ch_close_impl
 			NETP_ASSERT( (m_chflag&int(channel_flag::F_CONNECTING)) ==0 );
-			NETP_ASSERT(((m_chflag&(int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) )) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) )) && (m_fn_write == nullptr) ?
+			NETP_ASSERT(((m_chflag&(int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) )) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_USE_DEFAULT_WRITE))) ?
 				m_tx_entry_q.size():
 				true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 
@@ -732,14 +732,14 @@ int socket_base::get_left_snd_queue() const {
 		} else if (m_chflag & (int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))) {
 			NETP_ASSERT( ch_errno() != netp::OK );
 			NETP_ASSERT(m_chflag & (int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR) | (int(channel_flag::F_FIRE_ACT_EXCEPTION))));
-			NETP_ASSERT(((m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED))) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) )) && (m_fn_write == nullptr) ?
+			NETP_ASSERT(((m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_USE_DEFAULT_WRITE))) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_USE_DEFAULT_WRITE))) ?
 				m_tx_entry_q.size() :
 				true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 
 			goto __act_label_close_read_write;
 		} else if ( m_chflag & (int(channel_flag::F_CLOSE_PENDING)| int(channel_flag::F_WRITE_SHUTDOWN_PENDING)) ) {
 			NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER) | int(channel_flag::F_WATCH_WRITE) | int(channel_flag::F_TX_LIMIT)));
-			NETP_ASSERT( (m_fn_write == nullptr) ? m_tx_entry_q.size() : true, "[#%s]chflag: %d, cherrno: %d", ch_info().c_str(), m_chflag, m_cherrno);
+			NETP_ASSERT( m_chflag&(int(channel_flag::F_USE_DEFAULT_WRITE)) ? m_tx_entry_q.size() : true, "[#%s]chflag: %d, cherrno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 			prt = (netp::E_OP_INPROCESS);
 		} else if (m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)|int(channel_flag::F_TX_LIMIT)) ) {
 			//wait for write done event, we might in a write barrier
@@ -1005,7 +1005,8 @@ __act_label_close_read_write:
 			}
 
 			if (m_chflag & int(channel_flag::F_WATCH_WRITE)) {
-				NETP_ASSERT(m_chflag & int(channel_flag::F_CONNECTED));
+				//for udp socket, it might be in non-connected state
+				NETP_ASSERT( is_udp() ? true: m_chflag & int(channel_flag::F_CONNECTED));
 				if (fn_write != nullptr) {
 					fn_write(netp::E_SOCKET_OP_ALREADY, 0);
 				}

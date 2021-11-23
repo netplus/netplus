@@ -268,11 +268,11 @@ namespace netp {
 				NETP_ASSERT(r == -1);
 #endif
 				int ec = netp_socket_get_last_errno();
-				_NETP_REFIX_EWOULDBLOCK(ec);
 				if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
 					continue;
 				} else {
-					NETP_TRACE_SOCKET_API("[netp::send][#%d]send failed: %d", fd, ec);
+					//NETP_TRACE_SOCKET_API("[netp::send][#%d]send failed: %d", fd, ec);
+					_NETP_REFIX_EWOULDBLOCK(ec);
 					ec_o = ec;
 					break;
 				}
@@ -303,11 +303,10 @@ namespace netp {
 				NETP_ASSERT(r == -1);
 #endif
 				int ec = netp_socket_get_last_errno();
-				_NETP_REFIX_EWOULDBLOCK(ec);
 				if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
 					continue;
 				} else {
-					NETP_ASSERT(ec != netp::OK);
+					_NETP_REFIX_EWOULDBLOCK(ec);
 					ec_o = ec;
 					//NETP_TRACE_SOCKET_API("[netp::recv][#%d]recv: %d", fd, ec);
 					break;
@@ -320,19 +319,23 @@ namespace netp {
 		return R;
 	}
 
-	inline netp::u32_t sendto(SOCKET fd, netp::byte_t const* const buf, netp::u32_t len, NRP<address> const& addr, int& ec_o, int const& flag) {
+	inline netp::u32_t sendto(SOCKET fd, netp::byte_t const* const buf, netp::u32_t len, NRP<address> const& addr_to, int& ec_o, int const& flag) {
 
 		NETP_ASSERT(buf != nullptr);
 		NETP_ASSERT(len > 0);
-		NETP_ASSERT(addr && !addr->is_null());
 
-		struct sockaddr_in addr_in;
-		::memset(&addr_in, 0, sizeof(addr_in));
-		addr_in.sin_family = u16_t(addr->family());
-		addr_in.sin_port = addr->nport();
-		addr_in.sin_addr.s_addr = addr->nipv4();
-sendto:
-		const int nbytes = ::sendto(fd, reinterpret_cast<const char*>(buf), (int)len, flag, reinterpret_cast<struct sockaddr*>(&addr_in), sizeof(addr_in));
+	sendto:
+		int nbytes;
+		if (addr_to != nullptr) {
+			struct sockaddr_in addr_in;
+			::memset(&addr_in, 0, sizeof(addr_in));
+			addr_in.sin_family = u16_t(addr_to->family());
+			addr_in.sin_port = addr_to->nport();
+			addr_in.sin_addr.s_addr = addr_to->nipv4();
+			nbytes = ::sendto(fd, reinterpret_cast<const char*>(buf), (int)len, flag, reinterpret_cast<struct sockaddr*>(&addr_in), sizeof(addr_in));
+		} else {
+			nbytes = ::sendto(fd, reinterpret_cast<const char*>(buf), (int)len, flag,NULL, 0);
+		}
 
 		if (NETP_LIKELY(nbytes > 0)) {
 			//sometimes, we got nbytes != len (happens on rpi )
@@ -345,11 +348,11 @@ sendto:
 		NETP_ASSERT(nbytes == -1);
 #endif
 		int ec = netp_socket_get_last_errno();
-		_NETP_REFIX_EWOULDBLOCK(ec);
 		//NETP_TRACE_SOCKET_API("[netp::sendto][#%d]send failed, error code: %d", fd, ec);
 		if (ec == netp::E_EINTR) {
 			goto sendto;
 		} else {
+			_NETP_REFIX_EWOULDBLOCK(ec);
 			ec_o = ec;
 		}
 		return 0;
@@ -357,12 +360,14 @@ sendto:
 
 	inline netp::u32_t recvfrom( SOCKET fd, byte_t* const buff_o, netp::u32_t size, NRP<address>& addr_o, int& ec_o, int const& flag) {
 	recvfrom:
-	#ifdef _NETP_DEBUG
-		NETP_ASSERT( addr_o != nullptr );
-	#endif
-		::memset((void*)addr_o->sockaddr_v4(), 0, sizeof(struct sockaddr_in));
-		socklen_t socklen = sizeof(struct sockaddr_in);
-		const int nbytes = ::recvfrom(fd, reinterpret_cast<char*>(buff_o), (int)size, flag, addr_o->sockaddr_v4(), &socklen);
+		int nbytes;
+		if (addr_o != nullptr) {
+			::memset((void*)addr_o->sockaddr_v4(), 0, sizeof(struct sockaddr_in));
+			socklen_t socklen = sizeof(struct sockaddr_in);
+			nbytes = ::recvfrom(fd, reinterpret_cast<char*>(buff_o), (int)size, flag, addr_o->sockaddr_v4(), &socklen);
+		} else {
+			nbytes = ::recvfrom(fd, reinterpret_cast<char*>(buff_o), (int)size, flag, NULL, NULL);
+		}
 
 		if (NETP_LIKELY(nbytes > 0)) {
 			ec_o = netp::OK;
@@ -373,11 +378,11 @@ sendto:
 		NETP_ASSERT(nbytes == -1);
 #endif
 		int ec = netp_socket_get_last_errno();
-		_NETP_REFIX_EWOULDBLOCK(ec);
 		//NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom, ERROR: %d", fd, ec);
 		if (ec == netp::E_EINTR) {
 			goto recvfrom;
 		} else {
+			_NETP_REFIX_EWOULDBLOCK(ec);
 			ec_o = ec;
 		}
 		return 0;

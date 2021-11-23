@@ -271,7 +271,7 @@ namespace netp {
 			}
 
 			if (m_chflag & int(channel_flag::F_WATCH_WRITE)) {
-				NETP_ASSERT(m_chflag & int(channel_flag::F_CONNECTED));
+				NETP_ASSERT(is_udp() ? true: m_chflag & int(channel_flag::F_CONNECTED));
 				if (fn_write != nullptr) {
 					fn_write(netp::E_SOCKET_OP_ALREADY, 0);
 				}
