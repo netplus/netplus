@@ -30,7 +30,8 @@ namespace netp {
 	struct evt_node_list 
 	{
 		evt_node_list *prev, *next;
-		int flag:8;
+		int invoking_nest_level:6;
+		int flag:2;
 		int cnt : 24;
 		//H:32 would be updated when insert happens
 		//H:32 -> evt_id
@@ -39,6 +40,7 @@ namespace netp {
 		evt_node_list() :
 			prev(0),
 			next(0),
+			invoking_nest_level(0),
 			flag(0),
 			id(i32_t(s_event_handler_id.fetch_add(1, std::memory_order_relaxed)))
 		{}
@@ -48,9 +50,8 @@ namespace netp {
 	};
 
 	enum evt_node_flag {
-		f_invoking = 1 << 0,
-		f_insert_pending = 1 << 1,
-		f_delete_pending = 1 << 2
+		f_insert_pending = 1 << 0,
+		f_delete_pending = 1 << 1
 	};
 
 	template <class _callable>
@@ -139,7 +140,7 @@ namespace netp {
 			event_map_t::iterator&& it = m_handlers.find(evt_id); 
 			if (it != m_handlers.end()) {
 				evt_node_list* evt_hl = it->second;
-				if(evt_hl->flag & evt_node_flag::f_invoking) {
+				if(evt_hl->invoking_nest_level>0) {
 					evt_node->flag |= evt_node_flag::f_insert_pending;
 					//told invoker that we have pending insert
 					evt_hl->flag |= evt_node_flag::f_insert_pending;
@@ -198,7 +199,7 @@ namespace netp {
 			//@WARN can not just do flag option
 			//then wish it to be deleted in the nxt invoke, if no invoke happens, we might got memory leak if the broker and event handler has ABBA relation
 			NETP_LIST_SAFE_FOR(cur, nxt, evt_hl) {
-				if (evt_hl->flag & evt_node_flag::f_invoking) {
+				if (evt_hl->invoking_nest_level > 0) {
 					cur->flag |= evt_node_flag::f_delete_pending;
 					evt_hl->flag |= evt_node_flag::f_delete_pending;
 				} else {
@@ -230,7 +231,7 @@ namespace netp {
 					continue;
 				}
 
-				if (evt_hl->flag & evt_node_flag::f_invoking) {
+				if (evt_hl->invoking_nest_level > 0) {
 					cur->flag |= evt_node_flag::f_delete_pending;
 					evt_hl->flag |= evt_node_flag::f_delete_pending;
 				} else {
@@ -294,37 +295,61 @@ namespace netp {
 			//(5) bind/unbind has no thread safe gurantee
 
 
-			//head->flag works as a invoking/insert/delete barrier 
+			//edge case:
+			// 1: 
+			// invoke [evt_id_a] {call (1)}
+			//		a. do bind [evt_id_a] in call (1), (append new handler {h2})
+			//		b. invoke [evt_id_a] in {call (1)} (nest call) {call (2)}
+			// should we enable h2 in call (2) ? YES for the current impl
+			// 
+			
+			// 2: 
+			// invoke [evt_id_a] {call (1)}
+			//		a. do bind [evt_id_a] in call (1), (append new handler {h2})
+			//		b. do unbind [evt_id_a] in call (1), (append new handler {h2})
+			//		c. invoke [evt_id_a] in {call (1)} (nest call) {call (2)}
+			// should we enable h2 in call (2) ? NO for the current impl
+			// 
+			
+
+			
+			//head->flag works as a invoking/insert/delete barrier to simplify insert/delete operation of the list
 			evt_node_list* ev_hl = it->second;
-			if (ev_hl->flag & evt_node_flag::f_invoking) {
-				NETP_THROW("embeded invoking forbidden");
+			if (ev_hl->invoking_nest_level == u8_t(0x3F) /*6 bit len*/) {
+				NETP_THROW("invoking nest level reach (0x3F)");
 			}
 
-			ev_hl->flag |= evt_node_flag::f_invoking;
+			//@NOTE: stop compiler optimization (++ --) == 0
+			//should we use WRITE_ONCE for invoking_nest_level ?
+			++ev_hl->invoking_nest_level;
+			//ev_hl->flag |= evt_node_flag::f_invoking;
 			evt_node_list* cur, *nxt;
 			 NETP_LIST_SAFE_FOR(cur, nxt, ev_hl) {
-				 if (cur->flag & (evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending)) {
-					 continue;
-				 } else {
+				 if ((cur->flag & (evt_node_flag::f_insert_pending/*skip this invoking*/|evt_node_flag::f_delete_pending)) == 0 ) {
 					 (*((_callable_conv_to*)(cur->address_of_callee())))(std::forward<_Args>(_args)...);
 				 }
 			 }
-			 
+			 --ev_hl->invoking_nest_level;
 			 //full scan for deallocating
+			 //@NOTE: conside the following case
+			 //1) call invoke [a]
+			 //2) insert a new evt handler right after the list
+			 //3) delete the newly insert handle, before [a] done
+			 //4) we get both (evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending) for that handle
 			 if (ev_hl->flag & (evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending)) {
 				 NETP_LIST_SAFE_FOR(cur,nxt, ev_hl) {
-					 if (cur->flag & evt_node_flag::f_insert_pending) {
-						 cur->flag &= ~evt_node_flag::f_insert_pending;
-					 } else if (cur->flag & evt_node_flag::f_delete_pending) {
+					 if (cur->flag & evt_node_flag::f_delete_pending) {
 						 NETP_ASSERT(ev_hl->cnt > 0);
 						 --ev_hl->cnt;
 
 						 netp::list_delete(cur);
 						 evt_node_deallocate(cur);
-					 } else {}
+					 } else if (cur->flag & evt_node_flag::f_insert_pending) {
+						 cur->flag &= ~evt_node_flag::f_insert_pending;
+					 }
 				 }
+				 ev_hl->flag &= ~(evt_node_flag::f_insert_pending | evt_node_flag::f_delete_pending);
 			 }
-			 ev_hl->flag &= ~(evt_node_flag::f_invoking| evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending);
 		}
 
 #ifdef __NETP_DEBUG_BROKER_INVOKER_
