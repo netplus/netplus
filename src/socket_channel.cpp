@@ -55,7 +55,7 @@ namespace netp {
 		}
 		NETP_ASSERT( m_raddr == nullptr || m_raddr->is_null() );
 		m_raddr = addr->clone();
-		return socket_connect_impl(addr);
+		return socket_connect_impl(m_raddr);
 	}
 
 	int socket_channel::listen(int backlog) {
