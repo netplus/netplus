@@ -151,9 +151,11 @@ namespace netp {
 		}
 
 		void wait() {
-			while (m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_IDLE)) {
+			//we need acquire to place a load barrier
+			//refer to set 
+			while (promise_t::m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE)) {
 				lock_guard<spin_mutex> lg(m_mutex);
-				if (m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_IDLE) ) {
+				if (promise_t::m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE) ) {
 					++promise_t::m_waiter;
 					__cond_allocate_check();
 					m_cond->wait(m_mutex);
@@ -164,10 +166,10 @@ namespace netp {
 
 		template <class _Rep, class _Period>
 		void wait_for(std::chrono::duration<_Rep, _Period>&& dur) {
-			if (m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_IDLE)) {
+			if (m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE)) {
 				lock_guard<spin_mutex> lg(m_mutex);
 				const std::chrono::time_point< std::chrono::steady_clock> tp_expire = std::chrono::steady_clock::now() + dur;
-				while (m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_IDLE )) {
+				while (m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE )) {
 					const std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
 					if (now >= tp_expire) {
 						break;
@@ -180,13 +182,13 @@ namespace netp {
 			}
 		}
 		const inline bool is_idle() const {
-			return m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_IDLE);
+			return m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE);
 		}
 		const inline bool is_done() const {
-			return m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_DONE);
+			return m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_DONE);
 		}
 		const inline bool is_cancelled() const {
-			return m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_CANCELLED);
+			return m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_CANCELLED);
 		}
 
 		bool cancel() {
@@ -196,7 +198,7 @@ namespace netp {
 				return false;
 			}
 
-			NETP_ASSERT(m_state.load(std::memory_order_relaxed) == u8_t(promise_state::S_CANCELLED));
+			NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_CANCELLED));
 			promise_t::m_waiter >0 ? m_cond->notify_all():(void)0;
 			event_broker_promise_t::invoke(V());
 			return true;
