@@ -213,7 +213,7 @@ namespace netp {
 			bool _interrupt_poller = false;
 			{
 				lock_guard<spin_mutex> lg(m_tq_mutex);
-				m_tq_standby.push_back(std::move(f));
+				m_tq_standby.emplace_back(std::move(f));
 				_interrupt_poller=( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_relaxed));
 			}
 			if (_interrupt_poller) {
