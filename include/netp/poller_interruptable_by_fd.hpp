@@ -70,8 +70,8 @@ namespace netp {
 		~poller_interruptable_by_fd() {}
 
 		void __init_interrupt_fd() {
-			SOCKET fds[2] = {NETP_INVALID_SOCKET, NETP_INVALID_SOCKET};
 			int rt;
+			SOCKET fds[2] = {NETP_INVALID_SOCKET, NETP_INVALID_SOCKET};
 #ifdef NETP_HAS_PIPE
 			while (pipe(fds) == -1) {
 				netp::this_thread::yield();
@@ -96,9 +96,11 @@ namespace netp {
 			NETP_ASSERT(rt == netp::OK);
 			m_fd_monitor_r->ctx = ctx;
 			m_fd_w = fds[1];
+			NETP_VERBOSE("[poller_interruptable_by_fd]__init_interrupt_fd done, fds[r], fds[w], fd_r: %u, m_fd_w: %u", fds[0], fds[1], m_fd_monitor_r->fd, m_fd_w);
 		}
 
 		void __deinit_interrupt_fd() {
+			NETP_TRACE_IOE("[poller_interruptable_by_fd]__deinit_interrupt_fd begin, fd_r:%u, m_fd_w: %u", m_fd_monitor_r->fd, m_fd_w);
 			io_do(io_action::END_READ, m_fd_monitor_r->ctx);
 			io_end(m_fd_monitor_r->ctx);
 
@@ -106,8 +108,7 @@ namespace netp {
 			NETP_CLOSE_SOCKET(m_fd_w);
 			m_fd_monitor_r->fd = (SOCKET)NETP_INVALID_SOCKET;
 			m_fd_w = (SOCKET)NETP_INVALID_SOCKET;
-
-			NETP_TRACE_IOE("[event_loop][default]deinit done");
+			NETP_TRACE_IOE("[poller_interruptable_by_fd]__deinit_interrupt_fd done");
 
 			//NETP_ASSERT(m_ctxs.size() == 0);
 			NETP_ASSERT(NETP_LIST_IS_EMPTY(&m_io_ctx_list), "m_io_ctx_list not empty");
@@ -130,7 +131,6 @@ namespace netp {
 		}
 
 		virtual void interrupt_wait() override {
-			NETP_ASSERT(m_fd_w > 0);
 			int ec;
 #ifdef NETP_HAS_PIPE
 			do {
@@ -140,16 +140,16 @@ namespace netp {
 					break;
 				}
 				int ec = netp_socket_get_last_errno();
-				if (ec == EINTR) {
+				if (ec == netp::E_EINTR) {
 					continue;
 				}
-				NETP_WARN("[event_loop][##%u]interrupt pipe failed: %d", m_fd_w, ec);
+				NETP_WARN("[poller_interruptable_by_fd][##%u]interrupt pipe failed: %d", m_fd_w, ec);
 		} while (1);
 #else
 			const byte_t interrutp_a[1] = { (byte_t)'i' };
 			u32_t c = netp::send(m_fd_w, interrutp_a, 1, ec, 0);
 			if (NETP_UNLIKELY(ec != netp::OK)) {
-				NETP_WARN("[event_loop][##u]interrupt send failed: %d", m_fd_w, ec);
+				NETP_WARN("[poller_interruptable_by_fd][##u]interrupt send failed: %d", m_fd_w, ec);
 			}
 			(void)c;
 #endif
@@ -179,7 +179,7 @@ namespace netp {
 			switch (act) {
 			case io_action::READ:
 			{
-				NETP_TRACE_IOE("[event_loop][#%d]io_action::READ", ctx->fd);
+				NETP_TRACE_IOE("[poller_interruptable_by_fd][#%d]io_action::READ", ctx->fd);
 				NETP_ASSERT((ctx->flag & io_flag::IO_READ) == 0);
 				int rt = watch(io_flag::IO_READ, ctx);
 				if (netp::OK == rt) {
@@ -190,7 +190,7 @@ namespace netp {
 			break;
 			case io_action::END_READ:
 			{
-				NETP_TRACE_IOE("[event_loop][type:%d][#%d]io_action::END_READ", ctx->fd);
+				NETP_TRACE_IOE("[poller_interruptable_by_fd][type:%d][#%d]io_action::END_READ", ctx->fd);
 				if (ctx->flag & io_flag::IO_READ) {
 					ctx->flag &= ~io_flag::IO_READ;
 					//we need this condition check ,cuz epoll might fail to watch
@@ -201,7 +201,7 @@ namespace netp {
 			break;
 			case io_action::WRITE:
 			{
-				NETP_TRACE_IOE("[event_loop][type:%d][#%d]io_action::WRITE", ctx->fd);
+				NETP_TRACE_IOE("[poller_interruptable_by_fd][type:%d][#%d]io_action::WRITE", ctx->fd);
 				NETP_ASSERT((ctx->flag & io_flag::IO_WRITE) == 0);
 				int rt = watch(io_flag::IO_WRITE, ctx);
 				if (netp::OK == rt) {
@@ -212,7 +212,7 @@ namespace netp {
 			break;
 			case io_action::END_WRITE:
 			{
-				NETP_TRACE_IOE("[event_loop][type:%d][#%d]io_action::END_WRITE", ctx->fd);
+				NETP_TRACE_IOE("[poller_interruptable_by_fd][type:%d][#%d]io_action::END_WRITE", ctx->fd);
 				if (ctx->flag & io_flag::IO_WRITE) {
 					ctx->flag &= ~io_flag::IO_WRITE;
 					//we need this condition check ,cuz epoll might fail to watch
@@ -223,7 +223,7 @@ namespace netp {
 			break;
 			case io_action::NOTIFY_TERMINATING:
 			{
-				NETP_VERBOSE("[event_loop]notify terminating...");
+				NETP_VERBOSE("[poller_interruptable_by_fd]notify terminating...");
 				io_ctx* _ctx, * _ctx_n;
 				for (_ctx = (m_io_ctx_list.next), _ctx_n = _ctx->next; _ctx != &(m_io_ctx_list); _ctx = _ctx_n, _ctx_n = _ctx->next) {
 					if (_ctx->fd == m_fd_monitor_r->fd) {
@@ -235,7 +235,7 @@ namespace netp {
 
 					_ctx->iom->io_notify_terminating(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
 				}
-				NETP_VERBOSE("[event_loop]notify terminating done");
+				NETP_VERBOSE("[poller_interruptable_by_fd]notify terminating done");
 			}
 			break;
 			case io_action::READ_WRITE:

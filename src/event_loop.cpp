@@ -224,7 +224,11 @@ namespace netp {
 	void event_loop::__do_enter_terminated() {
 		//no competitor here, store directly
 		NETP_ASSERT(in_event_loop());
-		m_state.store(u8_t(loop_state::S_TERMINATED), std::memory_order_release);
+		NETP_ASSERT(m_io_ctx_count == m_io_ctx_count_before_running);
+		u8_t terminating = u8_t(loop_state::S_TERMINATING);
+		int rt = m_state.compare_exchange_strong(terminating, u8_t(loop_state::S_TERMINATED), std::memory_order_acq_rel, std::memory_order_acquire);
+		NETP_ASSERT(rt == true);
+		NETP_VERBOSE("[event_loop][%u]__do_enter_terminated done", m_cfg.type);
 		NETP_ASSERT(m_tb != nullptr);
 		m_tb->expire_all();
 	}
@@ -249,21 +253,21 @@ namespace netp {
 		NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
 		int k = 0;
 		while (m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_LAUNCHING)) {
-			netp::this_thread::yield(++k);
+			netp::this_thread::no_interrupt_yield(++k);
 		}
-		//NETP_VERBOSE("[event_loop][%u]__launch done", m_type);
-			
 		return netp::OK;
 	}
 
 	void event_loop::__terminate() {
 		NETP_VERBOSE("[event_loop][%u]__terminate begin", m_cfg.type );
 		while (m_state.load(std::memory_order_acquire) != u8_t(loop_state::S_TERMINATED)) {
-			netp::this_thread::sleep(1);
+			netp::this_thread::no_interrupt_sleep(1);
 		}
 		u8_t terminated = u8_t(loop_state::S_TERMINATED);
 		if (m_state.compare_exchange_strong(terminated, u8_t(loop_state::S_EXIT), std::memory_order_acq_rel, std::memory_order_acquire)) {
 			NETP_VERBOSE("[event_loop][%u]enter S_EXIT, last interrupt if needed", m_cfg.type);
+			//@TODO
+			//NOTE: interrupt_wait might failed, the the L->deinit() happens before interrupt_wait, the Loop enter wait ,then interrupted by system && m_state entered into S_EXIT at the time [eintr]
 			m_poller->interrupt_wait();
 			//@NOTE:
 			//1, we don't interrupt these kinds of thread, cuz we want all the tasks be finished one by one
@@ -380,6 +384,7 @@ namespace netp {
 			}
 		}
 		while (to_deattach.size()) {
+			//if L get here, it's probably in wait state (if L is not intrrupted by system[eintr])
 			to_deattach.back()->__terminate();
 			to_deattach.pop_back();
 		}
@@ -390,9 +395,9 @@ namespace netp {
 		void event_loop_group::wait() {
 
 			//phase 2, deattach one by one
-			NETP_INFO("[event_loop][%u]wait", m_cfg.type);
+			NETP_INFO("[event_loop][%u]event_loop_group::_wait_loop", m_cfg.type);
 			_wait_loop();
-			NETP_INFO("[event_loop][%u]wait done", m_cfg.type);
+			NETP_INFO("[event_loop][%u]event_loop_group::_wait_loop done", m_cfg.type);
 
 			bye_event_loop_state running = bye_event_loop_state::S_RUNNING;
 			if (m_bye_state.compare_exchange_strong(running, bye_event_loop_state::S_EXIT, std::memory_order_acq_rel, std::memory_order_acquire)) {
@@ -459,9 +464,11 @@ namespace netp {
 					}
 				}
 			}
-			if (m_bye_state.load(std::memory_order_relaxed) != bye_event_loop_state::S_IDLE) {
-				NETP_ASSERT(m_bye_event_loop != nullptr);
-				return m_bye_event_loop;
+			//as the load might happens on other thread, we need a memory barrier
+			NRP<event_loop> __tmp = m_bye_event_loop;//may a copy first
+			if (m_bye_state.load(std::memory_order_acquire) != bye_event_loop_state::S_IDLE) {
+				NETP_ASSERT(__tmp != nullptr);
+				return __tmp;
 			}
 			NETP_THROW("event_loop_group deinit logic issue");
 		}
@@ -473,9 +480,10 @@ namespace netp {
 					return m_loop[m_curr_loop_idx.fetch_add(1, std::memory_order_relaxed) % m_loop.size()];
 				}
 			}
-			if(m_bye_state.load(std::memory_order_relaxed) != bye_event_loop_state::S_IDLE) {
-				NETP_ASSERT(m_bye_event_loop != nullptr);
-				return m_bye_event_loop;
+			NRP<event_loop> __tmp = m_bye_event_loop;//may a copy first
+			if(m_bye_state.load(std::memory_order_acquire) != bye_event_loop_state::S_IDLE) {
+				NETP_ASSERT(__tmp != nullptr);
+				return __tmp;
 			}
 			NETP_THROW("event_loop_group deinit logic issue");
 		}
