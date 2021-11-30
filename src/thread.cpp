@@ -107,7 +107,7 @@ namespace netp {
 			if (!SetThreadAffinityMask(th->native_handle(), (1ULL << (i)))) {
 				NETP_WARN("[thread]SetThreadAffinityMask failed: %d", netp_last_errno());
 			}
-#else defined(_NETP_GNU_LINUX)
+#elif defined(_NETP_GNU_LINUX)
 			cpu_set_t cpuset;
 			CPU_ZERO(&cpuset);
 			CPU_SET(i, &cpuset);

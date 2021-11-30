@@ -146,12 +146,12 @@ namespace netp {
 		while (!m_write_list.empty()) {
 			NRP<rpc_req_message>& _req = m_write_list.front();
 
-			if ( (_req->m->type == rpc_message_type::T_REQ && _req->callp->is_cancelled())
-				|| (_req->m->type == rpc_message_type::T_DATA && _req->pushp->is_cancelled())
-				) {
-				m_write_list.pop_front();
-				continue;
-			}
+			//if ( (_req->m->type == rpc_message_type::T_REQ && _req->callp->is_cancelled())
+			//	|| (_req->m->type == rpc_message_type::T_DATA && _req->pushp->is_cancelled())
+			//	) {
+			//	m_write_list.pop_front();
+			//	continue;
+			//}
 
 			NETP_ASSERT(_req->state == rpc_req_message_state::S_WAIT_WRITE);
 			_req->state = rpc_req_message_state::S_WRITING;
