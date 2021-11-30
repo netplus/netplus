@@ -281,8 +281,8 @@ namespace netp {
 
 		void launch(NRP<netp::timer>&& t, NRP<netp::promise<int>> const& lf = nullptr) {
 			if (!in_event_loop()) {
-				schedule([L = NRP<event_loop>(this), t=std::move(t) , lf]() {
-					L->launch(std::move(t), lf);
+				schedule([L = NRP<event_loop>(this), t_=std::move(t) , lf]() {
+					L->launch(t_, lf);
 				});
 				return;
 			}

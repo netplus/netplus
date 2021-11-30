@@ -154,19 +154,19 @@ namespace netp {
 					//again the spin_mutex acts as a memory synchronization fence
 					lock_guard<spin_mutex> lg(m_tq_mutex);
 					if (!m_tq_standby.empty()) {
-						std::swap(m_tq, m_tq_standby);
+						m_tq.swap(m_tq_standby);
 					}
 				}
-				std::size_t ss = m_tq.size();
+				const std::size_t ss = m_tq.size();
 				if (ss > 0) {
 					std::size_t i = 0;
 					while (i < ss) {
 						m_tq[i++]();
 					}
+					NETP_ASSERT(ss == m_tq.size());
 					if (ss > 1024) {
 						io_task_q_t().swap(m_tq);
-					}
-					else {
+					} else {
 						m_tq.clear();
 					}
 				}
