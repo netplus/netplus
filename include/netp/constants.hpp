@@ -4,8 +4,14 @@
 #include <limits>
 #include <netp/core/platform.hpp>
 
-#define NETP_SOCKET_ERROR (-1)
-#define NETP_INVALID_SOCKET netp::SOCKET(~0)
+#ifdef _NETP_WIN
+	#define NETP_INVALID_SOCKET INVALID_SOCKET
+	#define NETP_SOCKET_ERROR SOCKET_ERROR
+#else
+	#define NETP_INVALID_SOCKET netp::SOCKET(~0)
+	#define NETP_SOCKET_ERROR (-1)
+#endif
+
 
 namespace netp {
 

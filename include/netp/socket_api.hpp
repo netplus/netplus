@@ -139,6 +139,10 @@ namespace netp {
 		return ::socket(family, type, OS_DEF_protocol[protocol]);
 	}
 
+	inline int close(SOCKET fd) {
+		return NETP_CLOSE_SOCKET(fd);
+	}
+
 	inline int connect(SOCKET fd, NRP<address> const& addr) {
 		return ::connect(fd, (const struct sockaddr*)(addr->sockaddr_v4()), sizeof(struct sockaddr_in));
 	}
@@ -149,10 +153,6 @@ namespace netp {
 
 	inline int shutdown(SOCKET fd, int flag) {
 		return  ::shutdown(fd, flag);
-	}
-
-	inline int close(SOCKET fd) {
-		return NETP_CLOSE_SOCKET(fd);
 	}
 
 	inline int listen( SOCKET fd, int backlog) {
@@ -451,7 +451,7 @@ namespace netp {
 		sv[1] = connectfd;
 	end:
 		//NETP_INFO("[socketpair]make socketpair status: %d", netp_socket_get_last_errno() );
-		NETP_CLOSE_SOCKET(listenfd);
+		netp::close(listenfd);
 		return rt;
 	}
 }
