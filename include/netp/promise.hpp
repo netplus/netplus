@@ -91,10 +91,10 @@ namespace netp {
 		}
 	};
 
+	//@note: remove cancel state, cancel operation should a user level logic, 
 	enum class promise_state {
 		S_IDLE, //wait to operation
 		S_UPDATING,
-		S_CANCELLED, //operation cancelled
 		S_DONE //operation done
 	};
 
@@ -139,23 +139,21 @@ namespace netp {
 			__cond_deallocate_check();
 		}
 
-		inline const V& get() {
-			wait();
-			return m_v;
+		const __NETP_FORCE_INLINE bool is_idle() const {
+			return m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE);
+		}
+		const __NETP_FORCE_INLINE bool is_done() const {
+			return m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_DONE);
 		}
 
-		template <class _Rep, class _Period>
-		inline const V& get(std::chrono::duration<_Rep, _Period>&& dur) {
-			wait_for<_Rep,_Period>(std::forward<std::chrono::duration<_Rep, _Period>>(dur));
-			return m_v;
-		}
-
+		//wait and wait_for should be public
+		//in case: user could call wait_for a duration, then do a query on a var that would set by promise::set opeation if user want to..
 		void wait() {
 			//we need acquire to place a load barrier
 			//refer to set 
-			while (promise_t::m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE)) {
+			while (!is_done()) {
 				lock_guard<spin_mutex> lg(m_mutex);
-				if (promise_t::m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE) ) {
+				if (!is_done()) {
 					++promise_t::m_waiter;
 					__cond_allocate_check();
 					m_cond->wait(m_mutex);
@@ -166,10 +164,10 @@ namespace netp {
 
 		template <class _Rep, class _Period>
 		void wait_for(std::chrono::duration<_Rep, _Period>&& dur) {
-			if (m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE)) {
+			if (!is_done()) {
 				lock_guard<spin_mutex> lg(m_mutex);
 				const std::chrono::time_point< std::chrono::steady_clock> tp_expire = std::chrono::steady_clock::now() + dur;
-				while (m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE )) {
+				while (!is_done()) {
 					const std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
 					if (now >= tp_expire) {
 						break;
@@ -181,16 +179,24 @@ namespace netp {
 				}
 			}
 		}
-		const inline bool is_idle() const {
-			return m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_IDLE);
-		}
-		const inline bool is_done() const {
-			return m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_DONE);
-		}
-		const inline bool is_cancelled() const {
-			return m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_CANCELLED);
+
+		__NETP_FORCE_INLINE
+		const V& get() {
+			wait();
+			return m_v;
 		}
 
+		template <class _Rep, class _Period>
+		__NETP_FORCE_INLINE const V& get(std::chrono::duration<_Rep, _Period>&& dur) {
+			wait_for<_Rep, _Period>(std::forward<std::chrono::duration<_Rep, _Period>>(dur));
+			return m_v;
+		}
+
+		//@note: cancel logic should be implmented in user's business level 
+/*
+//		const inline bool is_cancelled() const {
+//			return m_state.load(std::memory_order_acquire) == u8_t(promise_state::S_CANCELLED);
+//		}
 		bool cancel() {
 			lock_guard<spin_mutex> lg(m_mutex);
 			u8_t s = u8_t(promise_state::S_IDLE);
@@ -203,6 +209,7 @@ namespace netp {
 			event_broker_promise_t::invoke(V());
 			return true;
 		}
+		*/
 
 		//NOTE: failed to call set might lead to memory leak if there was resource/dependency in callee
 		template<class _callable
@@ -228,10 +235,10 @@ namespace netp {
 			, class = typename std::enable_if<std::is_convertible<_callable, fn_promise_callee_t>::value>::type>
 		void if_done(_callable const& callee) {
 			if (is_done()) {
-
-				//note: users should pay attention on the following note
-				//note1: callee's sequence does not make sense if multi-callee do not have relation for each other, so we could have a fast path, the current impl prefer to this fast path
-				//note2: callee's sequence make sense the following case
+				//@note: the below line might happen before event_broker_promise_t::invoke(m_v);
+				//@note: users should pay attention on the following note
+				//@note1: callee's sequence does not make sense if multi-callee do not have relation for each other, so we could have a fast path, the current impl prefer to this fast path
+				//@note2: callee's sequence make sense the following case
 				//	1) thread 1 call if_done[callee1], before state done
 				// 2) thread 1 call if_done[callee2] right after thread 2 call set (update state to done,  but not reach to evt invoke yet)
 				//  callee 2 happens before callee 1 in this case
@@ -241,6 +248,7 @@ namespace netp {
 				lock_guard<spin_mutex> lg(m_mutex);
 				//slow path: double check 
 				if (is_done()) {
+					//@note: the below line might happen before event_broker_promise_t::invoke(m_v);
 					callee(promise_t::m_v);
 				} else {
 					//if we miss a if_done in this place, we must not miss it in promise::set, cuz state store must happen before lock of m_mutex
@@ -249,7 +257,7 @@ namespace netp {
 			}
 		}
 
-		//if future was destructed during set by accident, we would get a ~mutex(){} assert failed on DEBUG version
+		//if promise was destructed during set by accident, we would get a ~mutex(){} assert failed on DEBUG version
 		void set(V const& v) {
 			
 			//only one thread, one try succeed
@@ -278,6 +286,7 @@ namespace netp {
 			promise_t::m_v = v;
 			//we need a a memory barrier to prevent m_v be reordered 
 			//m_v's assign must happen before state update
+			//any m_v read operation after a state query which result in S_DONE by option (std::memory_order_acquire) shall have the latest set value
 			promise_t::m_state.store(u8_t(promise_state::S_DONE), std::memory_order_release);
 
 			NETP_DEBUG_STACK_SIZE();
