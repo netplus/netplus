@@ -593,23 +593,25 @@ namespace netp {
 			NETP_ASSERT(L->in_event_loop());
 			//NETP_ASSERT(ch_id() == NETP_INVALID_SOCKET ? (m_chflag & int(channel_flag::F_CLOSED)) : true);
 
-			channel::ch_init();
-			//@note: F_CLOSED SHOULD ALWAYS BE CLEARED ONCE channel::ch_init done
+			//@note: F_CLOSED SHOULD ALWAYS BE CLEARED ONCE fd is set
 			//cuz we use this flag to check rdwr check ,rdwr -> ch_io_end -> ch_deinit()
+
+			//set F_CLOSED if fd is NETP_INVALID_SOCKET when socket_channel is constructed
+			//set F_CLOSED if both read|write is shutdowned, then schedule a ch_io_end to do netp::close(fd) & ch_deinit();
 
 			int rt = netp::OK;
 			if (m_fd == NETP_INVALID_SOCKET) {
-				NETP_ASSERT(m_chflag & int(channel_flag::F_CLOSED));
 				rt = open();
 				if (rt != netp::OK) {
 					NETP_WARN("[socket][%s][ch_init]open, errno: %d", ch_info().c_str(), rt );
-					m_chflag |= int(channel_flag::F_READ_ERROR);
+					m_chflag |= int(channel_flag::F_READ_ERROR)|int(channel_flag::F_WRITE_ERROR);
 					ch_errno() = rt;
-					ch_close_impl(nullptr);
 					return rt;
 				}
+				NETP_ASSERT(m_fd != NETP_INVALID_SOCKET);
 			}
 			NETP_TRACE_SOCKET_OC("[socket][%s][ch_init][netp::open][socket]", ch_info().c_str());
+			channel::ch_init();
 
 			NETP_ASSERT( (m_chflag & int(channel_flag::F_CLOSED))==0);
 			rt = _cfg_option(opt, kvals);
