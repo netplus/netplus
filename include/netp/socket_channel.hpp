@@ -124,7 +124,6 @@ namespace netp {
 
 			return _cfg;
 		}
-
 	};
 
 	struct socket_outbound_entry final {
@@ -139,6 +138,7 @@ namespace netp {
 	class socket_channel:
 		public channel
 	{
+		friend void do_dup_socket_channel(NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> const& p, NRP<netp::socket_channel> const& ch, NRP<netp::event_loop> const& LL);
 		friend void do_dial(NRP<channel_dial_promise> const& ch_dialf, NRP<address> const& addr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg);
 		friend void do_listen_on(NRP<channel_listen_promise> const& listenp, NRP<address> const& laddr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg, int backlog);
 		typedef std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>> socket_outbound_entry_t;
@@ -591,8 +591,6 @@ namespace netp {
 
 		int ch_init(u16_t opt, keep_alive_vals const& kvals, channel_buf_cfg const& cbc) {
 			NETP_ASSERT(L->in_event_loop());
-			//NETP_ASSERT(ch_id() == NETP_INVALID_SOCKET ? (m_chflag & int(channel_flag::F_CLOSED)) : true);
-
 			//@note: F_CLOSED SHOULD ALWAYS BE CLEARED ONCE fd is set
 			//cuz we use this flag to check rdwr check ,rdwr -> ch_io_end -> ch_deinit()
 
@@ -638,10 +636,7 @@ namespace netp {
 		//@todo
 		//tcp6://ipv6address
 		void do_listen_on(NRP<promise<int>> const& intp, NRP<address> const& addr, fn_channel_initializer_t const& fn_accepted, NRP<socket_cfg> const& ccfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
-		//NRP<promise<int>> listen_on(address const& addr, fn_channel_initializer_t const& fn_accepted, NRP<socket_cfg> const& cfg, int backlog = NETP_DEFAULT_LISTEN_BACKLOG);
-
 		void do_dial(NRP<promise<int>> const& dialp, NRP<address> const& addr, fn_channel_initializer_t const& fn_initializer);
-		//NRP<promise<int>> dial(address const& addr, fn_channel_initializer_t const& initializer);
 
 		void _ch_do_close_read() {
 			if (m_chflag & (int(channel_flag::F_READ_SHUTDOWNING)|int(channel_flag::F_READ_SHUTDOWN)) ) { return; }
