@@ -42,8 +42,8 @@ namespace netp {
 			if (ec == netp::E_WSA_IO_PENDING) {
 				ec = netp::OK;
 			} else {
-				NETP_TRACE_IOE("[iocp][#%u]_do_accept_ex acceptex failed: %d", olctx->fd, netp_socket_get_last_errno());
-				NETP_CLOSE_SOCKET(olctx->accept_fd);
+				NETP_TRACE_SOCKET_OC("[iocp][#%u][_do_accept_ex][netp::close] acceptex failed: %d", olctx->fd, netp_socket_get_last_errno());
+				netp::close(olctx->accept_fd);
 			}
 		}
 		return ec;
@@ -74,8 +74,8 @@ namespace netp {
 			NRP<netp::address> laddr = netp::make_ref<netp::address>(laddr_in, sizeof(sockaddr_in));
 
 			if ( *raddr == *laddr) {
-				NETP_WARN("[socket][%s][accept]raddr == laddr, force close: %u", ch_info().c_str(), nfd);
-				NETP_CLOSE_SOCKET(nfd);
+				NETP_WARN("[socket][%s][do_accept_ex][netp::close]raddr == laddr, force close: %u", ch_info().c_str(), nfd);
+				netp::close(nfd);
 				return;
 			}
 			NETP_ASSERT(laddr->port() == m_laddr->port());
@@ -100,7 +100,8 @@ namespace netp {
 				NRP<socket_channel> ch;
 				std::tie(rt, ch) = create_socket_channel(cfg_);
 				if (rt != netp::OK) {
-					NETP_CLOSE_SOCKET(nfd);
+					NETP_TRACE_SOCKET_OC("[socket][%s][do_accept_ex][netp::close] error: %d", ch_info().c_str(), status);
+					netp::close(nfd);
 					return;
 				}
 				ch->__do_accept_fire(fn_initializer);
@@ -125,9 +126,9 @@ namespace netp {
 
 		//iocp need bind first, we've done it in socket_connect_impl
 
-		NETP_ASSERT(m_laddr && !m_laddr->is_empty());
+		NETP_ASSERT(m_laddr && !m_laddr->is_af_unspec());
 		WSAOVERLAPPED* ol = (WSAOVERLAPPED*)ol_;
-		NETP_ASSERT(!m_raddr->is_empty());
+		NETP_ASSERT(!m_raddr->is_af_unspec());
 		socklen_t socklen = sizeof(sockaddr_in);
 		const static LPFN_CONNECTEX fn_connectEx = (LPFN_CONNECTEX)netp::os::load_api_ex_address(netp::os::API_CONNECT_EX);
 		NETP_ASSERT(fn_connectEx != 0);

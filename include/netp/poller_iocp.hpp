@@ -170,7 +170,8 @@ namespace netp {
 					NETP_TRACE_IOE("[iocp][#%u]accept done, new fd: %u", olctx->fd, olctx->accept_fd);
 					olctx->fn_ol_done(ec, (io_ctx*)olctx->iocpctx);
 				} else {
-					NETP_CLOSE_SOCKET(olctx->accept_fd);
+					NETP_TRACE_SOCKET_OC("[iocp][#%u][netp::close]acceptex, new fd: %u", olctx->fd, olctx->accept_fd);
+					netp::close(olctx->accept_fd);
 				}
 			}
 			break;

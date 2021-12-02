@@ -105,7 +105,7 @@ namespace netp {
 					//FD_CLR(fd, &m_fds[i]);
 					--nready;
 
-					NETP_ASSERT(ctx->flag&io_flag::IO_READ);
+					NETP_ASSERT(ctx->flag&io_flag::IO_READ, "fd: %u, status: %d", ctx->fd, status );
 					IOM->io_notify_read(status, ctx);
 					continue;
 				}

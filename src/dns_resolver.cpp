@@ -45,6 +45,7 @@ namespace netp {
 			flag &= ~f_watch_write;
 		}
 		
+		NETP_TRACE_SOCKET_OC("[ares_fd_monitor][#%d][netp::close]", fd );
 		netp::close(fd);
 		dnsr.m_ares_fd_monitor_map.erase(fd);
 		dnsr.L->schedule([afm=NRP<ares_fd_monitor>(this),L_=dnsr.L, ctx_=ctx]() {

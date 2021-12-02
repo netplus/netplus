@@ -57,7 +57,7 @@ namespace netp {
 		netp::string_t to_string() const {
 			char _buf[1024] = { 0 };
 #ifdef _NETP_MSVC
-			int nbytes = snprintf(_buf, 1024, "#%zu:%s:L:%s-R:%s", fd, DEF_protocol_str[int(p)], laddr ? laddr->to_string().c_str():"", raddr ?raddr->to_string().c_str():"");
+			int nbytes = snprintf(_buf, 1024, "#%zu:%s:L:%s-R:%s", fd, DEF_protocol_str[int(p)], laddr ? laddr->to_string().c_str():"", raddr?raddr->to_string().c_str():"");
 #elif defined(_NETP_GCC)
 			int nbytes = snprintf(_buf, 1024, "#%d:%s:L:%s-R:%s", fd, DEF_protocol_str[int(p)], laddr ? laddr->to_string().c_str() : "", raddr ? raddr->to_string().c_str() : "");
 #else
@@ -133,6 +133,9 @@ namespace netp {
 		NRP<address> to;
 	};
 
+	//@note: 1kb for delta checker
+	#define _NETP_SOCKET_CHANNEL_LIMIT_MIN (1024)
+
 	class socket_channel:
 		public channel
 	{
@@ -180,8 +183,8 @@ namespace netp {
 			m_rcv_buf_ptr(cfg->L->channel_rcv_buf()->head()),
 			m_rcv_buf_size(u32_t(cfg->L->channel_rcv_buf()->left_right_capacity())),
 			m_tx_bytes(0),
-			m_tx_budget(cfg->tx_limit),
-			m_tx_limit(cfg->tx_limit),
+			m_tx_budget( (cfg->tx_limit != 0 && cfg->tx_limit < _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN : cfg->tx_limit ),
+			m_tx_limit( (cfg->tx_limit != 0 && cfg->tx_limit < _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN : cfg->tx_limit),
 			m_tx_limit_last_tp(0),
 			m_fn_read(nullptr),
 			m_fn_write(nullptr)
@@ -423,6 +426,7 @@ namespace netp {
 			return netp::OK;
 		}
 		virtual int socket_close_impl () {
+			NETP_TRACE_SOCKET_OC("[socket][%s][socket_close_impl][netp::close]", ch_info().c_str());
 			return netp::close(m_fd);
 		}
 		virtual int socket_shutdown_impl (int flag) {
@@ -441,8 +445,12 @@ namespace netp {
 			//patch for local addr
 			int rt = netp::getsockname(nfd, laddr);
 			if (rt != netp::OK) {
-				NETP_ERR("[socket][%s][accept]load local addr failed: %d", ch_info().c_str(), netp_socket_get_last_errno());
-				NETP_CLOSE_SOCKET(nfd);
+#ifdef _NETP_WIN
+				NETP_ERR("[socket][%s][accept][netp::close]load local addr failed: %d, nfd: %zu", ch_info().c_str(), netp_socket_get_last_errno(), nfd );
+#else
+				NETP_ERR("[socket][%s][accept][netp::close]load local addr failed: %d, nfd: %u", ch_info().c_str(), netp_socket_get_last_errno(), nfd);
+#endif
+				netp::close(nfd);
 				//quick return for retry
 				netp_socket_set_last_errno(netp::E_EINTR);
 				return (NETP_INVALID_SOCKET);
@@ -450,8 +458,12 @@ namespace netp {
 
 			NETP_ASSERT(laddr->family() == (m_family));
 			if ( *m_laddr == *raddr) {
-				NETP_ERR("[socket][%s][accept]laddr == raddr, force close", ch_info().c_str());
-				NETP_CLOSE_SOCKET(nfd);
+#ifdef _NETP_WIN
+				NETP_ERR("[socket][%s][accept][netp::close]laddr == raddr, force close, nfd: %zu", ch_info().c_str(), nfd);
+#else
+				NETP_ERR("[socket][%s][accept][netp::close]laddr == raddr, force close, nfd: %u", ch_info().c_str(), nfd);
+#endif
+				netp::close(nfd);
 				//quick return for retry
 				netp_socket_set_last_errno(netp::E_EINTR);
 				return (NETP_INVALID_SOCKET);
@@ -518,7 +530,7 @@ namespace netp {
 		int load_sockname() {
 			int rt = socket_getsockname_impl(m_laddr);
 			if (rt == netp::OK) {
-				NETP_ASSERT(m_laddr&&!m_laddr->is_empty());
+				NETP_ASSERT(m_laddr&&!m_laddr->is_af_unspec());
 				NETP_ASSERT(m_laddr->family() == m_family);
 				return netp::OK;
 			}
@@ -530,7 +542,7 @@ namespace netp {
 			int rt = socket_getpeername_impl(m_raddr);
 			if (rt == netp::OK) {
 				NETP_ASSERT(m_raddr->family() == NETP_AF_INET);
-				NETP_ASSERT(!m_laddr->is_null());
+				NETP_ASSERT(!m_laddr->is_af_unspec());
 				return netp::OK;
 			}
 			return netp_socket_get_last_errno();
@@ -594,9 +606,10 @@ namespace netp {
 					m_chflag |= int(channel_flag::F_READ_ERROR);
 					ch_errno() = rt;
 					ch_close_impl(nullptr);
+					return rt;
 				}
-				NETP_RETURN_V_IF_MATCH(rt, rt != netp::OK);
 			}
+			NETP_TRACE_SOCKET_OC("[socket][%s][ch_init][netp::open][socket]", ch_info().c_str());
 
 			NETP_ASSERT( (m_chflag & int(channel_flag::F_CLOSED))==0);
 			rt = _cfg_option(opt, kvals);
@@ -607,6 +620,7 @@ namespace netp {
 				ch_close_impl(nullptr);
 				return rt;
 			}
+
 			rt = _cfg_buffer(cbc);
 			if (rt != netp::OK) {
 				NETP_WARN("[socket][%s][ch_init]_cfg_buffer, errno: %d", ch_info().c_str(), rt);
@@ -903,15 +917,16 @@ namespace netp {
 			netp::string_t ch_info() const override {
 				return socketinfo{ m_fd, (m_family),(m_type),(m_protocol),local_addr(), remote_addr() }.to_string();
 			}
-			void ch_set_bdlimit(netp::u32_t limit) override {
+			void ch_set_tx_limit(netp::u32_t limit) override {
 				L->execute([s = NRP<socket_channel>(this), limit]() {
-					s->m_tx_limit = limit ;
-					s->m_tx_budget = limit ;
+					s->m_tx_limit = (limit != 0 && limit< _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN: limit;
+					s->m_tx_budget = (limit != 0 && limit < _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN : limit;
 				});
 			};
 	};
 
 	extern NRP<socket_channel> default_socket_channel_maker(NRP<netp::socket_cfg> const& cfg);
 	extern std::tuple<int, NRP<socket_channel>> create_socket_channel(NRP<netp::socket_cfg> const& cfg);
+	extern NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> dup_socket_channel(NRP<netp::socket_channel> const& ch, NRP<event_loop> const& LL);
 }
 #endif

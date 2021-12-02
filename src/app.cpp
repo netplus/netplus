@@ -77,13 +77,13 @@ namespace netp {
 		m_channel_read_buf_size = buf_in_kbytes * (1024);
 	}
 
-	void app::cfg_channel_bdlimit_clock(u32_t clock) {
+	void app::cfg_channel_tx_limit_clock(u32_t clock) {
 		if (clock < 1) {
 			clock = 1;
 		} else if (clock > 200) {
 			clock = 200;
 		}
-		m_channel_bdlimit_clock = clock;
+		m_channel_tx_limit_clock = clock;
 	}
 
 	void app::cfg_add_dns(std::string const& dns_ns) {
@@ -186,8 +186,8 @@ namespace netp {
 		if (cfg_json.find("netp_channel_read_buf") != cfg_json.end() && cfg_json["netp_channel_read_buf"].is_number()) {
 			cfg_channel_read_buf(cfg_json["netp_channel_read_buf"].get<int>());
 		}
-		if (cfg_json.find("netp_channel_bdlimit_clock") != cfg_json.end() && cfg_json["netp_channel_bdlimit_clock"].is_number()) {
-			cfg_channel_bdlimit_clock(cfg_json["netp_channel_bdlimit_clock"].get<int>());
+		if (cfg_json.find("netp_channel_tx_limit_clock") != cfg_json.end() && cfg_json["netp_channel_tx_limit_clock"].is_number()) {
+			cfg_channel_tx_limit_clock(cfg_json["netp_channel_tx_limit_clock"].get<int>());
 		}
 	}
 
@@ -242,7 +242,7 @@ namespace netp {
 			break;
 			case 7:
 			{
-				cfg_channel_bdlimit_clock(std::atoi(optarg));
+				cfg_channel_tx_limit_clock(std::atoi(optarg));
 			}
 			break;
 			}
@@ -253,7 +253,7 @@ namespace netp {
 		m_global_pool_aligned_allocator(nullptr),
 		m_loop_count(u32_t(std::thread::hardware_concurrency())),
 		m_channel_read_buf_size(128*1024),
-		m_channel_bdlimit_clock(30),/*resolution on windows is 15ms*/
+		m_channel_tx_limit_clock(30),/*resolution on windows is 15ms*/
 		m_is_cfg_json_checked(false),
 		m_should_exit(false), 
 		m_app_state(app_state::s_idle),

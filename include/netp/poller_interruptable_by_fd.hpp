@@ -82,6 +82,7 @@ namespace netp {
 			rt = netp::set_nodelay(fds[1], true);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 #endif
+			NETP_VERBOSE("[poller_interruptable_by_fd]init pipe done, fds[r]: %u, fds[w]: %u", fds[0], fds[1]);
 
 			rt = netp::set_nonblocking(fds[0],true);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
@@ -93,22 +94,22 @@ namespace netp {
 			io_ctx* ctx = io_begin(fds[0], m_fd_monitor_r);
 			NETP_ASSERT(ctx != 0);
 			rt = io_do(io_action::READ, ctx);
-			NETP_ASSERT(rt == netp::OK);
+			NETP_ASSERT(rt == netp::OK, "fd: %d, rt: %d, errno: %d", ctx->fd, rt, netp_socket_get_last_errno() );
 			m_fd_monitor_r->ctx = ctx;
 			m_fd_w = fds[1];
-			NETP_VERBOSE("[poller_interruptable_by_fd]__init_interrupt_fd done, fds[r], fds[w], fd_r: %u, m_fd_w: %u", fds[0], fds[1], m_fd_monitor_r->fd, m_fd_w);
+			NETP_VERBOSE("[poller_interruptable_by_fd]__init_interrupt_fd done, fds[r]: %u, fds[w]: %u, fd_r: %u, m_fd_w: %u", fds[0], fds[1], m_fd_monitor_r->fd, m_fd_w);
 		}
 
 		void __deinit_interrupt_fd() {
-			NETP_TRACE_IOE("[poller_interruptable_by_fd]__deinit_interrupt_fd begin, fd_r:%u, m_fd_w: %u", m_fd_monitor_r->fd, m_fd_w);
+			NETP_VERBOSE("[poller_interruptable_by_fd]__deinit_interrupt_fd begin, fd_r: %u, m_fd_w: %u", m_fd_monitor_r->fd, m_fd_w);
 			io_do(io_action::END_READ, m_fd_monitor_r->ctx);
 			io_end(m_fd_monitor_r->ctx);
 
-			NETP_CLOSE_SOCKET(m_fd_monitor_r->fd);
-			NETP_CLOSE_SOCKET(m_fd_w);
+			netp::close(m_fd_monitor_r->fd);
+			netp::close(m_fd_w);
 			m_fd_monitor_r->fd = (SOCKET)NETP_INVALID_SOCKET;
 			m_fd_w = (SOCKET)NETP_INVALID_SOCKET;
-			NETP_TRACE_IOE("[poller_interruptable_by_fd]__deinit_interrupt_fd done");
+			NETP_VERBOSE("[poller_interruptable_by_fd]__deinit_interrupt_fd done");
 
 			//NETP_ASSERT(m_ctxs.size() == 0);
 			NETP_ASSERT(NETP_LIST_IS_EMPTY(&m_io_ctx_list), "m_io_ctx_list not empty");

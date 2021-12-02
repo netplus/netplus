@@ -41,7 +41,7 @@ namespace netp {
 
 		u32_t m_loop_count;
 		u32_t m_channel_read_buf_size; //in bytes
-		u32_t m_channel_bdlimit_clock; //in millis
+		u32_t m_channel_tx_limit_clock; //in millis
 		bool m_is_cfg_json_checked;
 		bool m_should_exit;
 
@@ -87,9 +87,9 @@ namespace netp {
 		void cfg_channel_read_buf(u32_t buf_in_kbytes);
 
 		__NETP_FORCE_INLINE
-		u32_t channel_bdlimit_clock() const { return m_channel_bdlimit_clock; }
+		u32_t channel_tx_limit_clock() const { return m_channel_tx_limit_clock; }
 
-		void cfg_channel_bdlimit_clock(u32_t clock_in_millis);
+		void cfg_channel_tx_limit_clock(u32_t clock_in_millis);
 		void cfg_add_dns(std::string const& dns_ns);
 		void cfg_log_filepathname(std::string const& logfilepathname_);
 		void dns_hosts(std::vector<netp::string_t, netp::allocator<netp::string_t>>&) const ;

@@ -40,7 +40,7 @@ namespace netp {
 
 		int socket_connect_impl(NRP<netp::address> const& addr) override {
 			int rt = netp::OK;
-			if (!m_laddr || m_laddr->is_empty()) {
+			if (!m_laddr || m_laddr->is_af_unspec()) {
 				rt = bind_any();
 				NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
 			}
@@ -173,7 +173,7 @@ namespace netp {
 			iocp_ctx* ctx = (iocp_ctx*)m_io_ctx;
 
 			if (ctx->ol_r->accept_fd != NETP_INVALID_SOCKET) {
-				NETP_CLOSE_SOCKET(ctx->ol_r->accept_fd);
+				netp::close(ctx->ol_r->accept_fd);
 				ctx->ol_r->accept_fd = NETP_INVALID_SOCKET;
 			}
 			ch_io_end_read();

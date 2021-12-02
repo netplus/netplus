@@ -157,10 +157,11 @@ namespace netp {
 			return a;
 		}
 
+		//@removed on 2021-12-2
 		//@deprecated
-		inline bool is_null() const { return is_empty(); }
+		//inline bool is_null() const { return is_af_unspec(); }
 
-		inline bool is_empty() const {
+		inline bool is_af_unspec() const {
 			return m_in.sin_family== NETP_AF_UNSPEC && m_in6.sin6_family == NETP_AF_UNSPEC;
 		}
 

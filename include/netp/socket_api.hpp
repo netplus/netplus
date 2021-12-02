@@ -111,7 +111,7 @@ namespace netp {
 				}
 			}
 
-			if ( raddr && !raddr->is_null() && lipv4 != 0) {
+			if ( raddr && !raddr->is_af_unspec() && lipv4 != 0) {
 				ec_o = netp::OK;
 				return nbytes;
 			}
@@ -135,8 +135,13 @@ namespace netp {
 	}
 #endif
 
+
 	inline SOCKET open(int family, int type, int protocol) {
+#ifdef _NETP_WIN
+		return WSASocket(family, type, OS_DEF_protocol[protocol], NULL,0,WSA_FLAG_OVERLAPPED);
+#else
 		return ::socket(family, type, OS_DEF_protocol[protocol]);
+#endif
 	}
 
 	inline int close(SOCKET fd) {

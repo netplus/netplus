@@ -26,7 +26,7 @@ namespace netp {
 	}
 
 	int socket_channel::bind(NRP<address> const& addr) {
-		NETP_ASSERT(!m_laddr||m_laddr->is_null());
+		NETP_ASSERT(!m_laddr||m_laddr->is_af_unspec());
 		NETP_ASSERT((m_family) == addr->family());
 		int rt = socket_bind_impl(addr);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
@@ -53,7 +53,7 @@ namespace netp {
 		if (m_chflag & (int(channel_flag::F_CONNECTING) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_LISTENING) | int(channel_flag::F_CLOSED)) ) {
 			return netp::E_SOCKET_INVALID_STATE;
 		}
-		NETP_ASSERT( m_raddr == nullptr || m_raddr->is_null() );
+		NETP_ASSERT( m_raddr == nullptr || m_raddr->is_af_unspec() );
 		m_raddr = addr->clone();
 		return socket_connect_impl(m_raddr);
 	}
@@ -228,11 +228,11 @@ int socket_base::get_left_snd_queue() const {
 		}
 		//netp::now<bfr_duration_t, bfr_clock_t>().time_since_epoch().count()
 		long long usnow = netp::now<netp::microseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
-		long long bdlimit_delta = ( (usnow - m_tx_limit_last_tp));
-		NETP_ASSERT(bdlimit_delta>0);
+		long long txlimit_delta = ( (usnow - m_tx_limit_last_tp));
+		NETP_ASSERT(txlimit_delta >0);
 
 		m_tx_limit_last_tp = usnow;
-		u32_t tokens = u32_t((m_tx_limit*1.0f/1000000)*bdlimit_delta);
+		u32_t tokens = u32_t((m_tx_limit/1000000.0f)* txlimit_delta);
 		if ( m_tx_limit < (tokens+ m_tx_budget)) {
 			m_tx_budget = m_tx_limit;
 		} else {
@@ -472,9 +472,14 @@ int socket_base::get_left_snd_queue() const {
 				cfg_->tx_limit = listener_cfg->tx_limit;
 				int rt;
 				NRP<socket_channel> so;
-				std::tie(rt,  so) = create_socket_channel(cfg_);
+				std::tie(rt, so) = create_socket_channel(cfg_);
 				if (rt != netp::OK) {
-					NETP_CLOSE_SOCKET(nfd);
+#ifdef _NETP_WIN
+					NETP_TRACE_SOCKET_OC("[socket][__do_io_accept_impl][netp::close]error: %d, nfd: %zu, laddr: %s, raddr: %s", rt, nfd, laddr->to_string().c_str(), raddr->to_string().c_str() );
+#else
+					NETP_TRACE_SOCKET_OC("[socket][__do_io_accept_impl][netp::close]error: %d, nfd: %u, laddr: %s, raddr: %s", rt, nfd, laddr->to_string().c_str(), raddr->to_string().c_str());
+#endif
+					netp::close(nfd);
 					return;
 				}
 				NETP_ASSERT(so != nullptr);
@@ -586,11 +591,11 @@ int socket_base::get_left_snd_queue() const {
 				m_tx_bytes -= nbytes;
 				if (m_tx_limit != 0 ) {
 					m_tx_budget -= nbytes;
-
-					if (!(m_chflag & int(channel_flag::F_TX_LIMIT_TIMER)) && m_tx_budget < (m_tx_limit>>3)) {
+					u32_t __tx_limit_clock_ms = netp::app::instance()->channel_tx_limit_clock();
+					if (!(m_chflag & int(channel_flag::F_TX_LIMIT_TIMER)) && ( (m_tx_budget < ((m_tx_limit/(1000/__tx_limit_clock_ms))<<1) ) ) ) {
 						m_chflag |= int(channel_flag::F_TX_LIMIT_TIMER);
 						m_tx_limit_last_tp = netp::now<netp::microseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
-						L->launch(netp::make_ref<netp::timer>(std::chrono::milliseconds(netp::app::instance()->channel_bdlimit_clock()), &socket_channel::_tmcb_tx_limit, NRP<socket_channel>(this), std::placeholders::_1));
+						L->launch(netp::make_ref<netp::timer>(std::chrono::milliseconds(__tx_limit_clock_ms), &socket_channel::_tmcb_tx_limit, NRP<socket_channel>(this), std::placeholders::_1));
 					}
 				}
 

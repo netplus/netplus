@@ -102,6 +102,55 @@ namespace netp {
 		return p;
 	}
 
+	//@note: if u wanna to have independent read&write thread, use dup with a different L
+	//pay attention to r&w concurrent issue
+	//please do ch_io_begin by manual
+	NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> dup_socket_channel(NRP<netp::socket_channel> const& ch, NRP<event_loop> const& LL) {
+		NETP_ASSERT(!LL->in_event_loop());
+
+		int __errno = netp::OK;
+		NRP<socket_cfg> cfg_ = netp::make_ref<socket_cfg>();
+		NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> p = netp::make_ref<netp::promise<std::tuple<int, NRP<socket_channel>>>>();
+
+#if !defined(_NETP_WIN)
+		cfg_->fd = dup(ch->ch_id());
+#else
+		WSAPROTOCOL_INFO proto_info;
+		int rt = WSADuplicateSocket(ch->ch_id(), GetCurrentProcessId(), &proto_info);
+		if (rt != 0) {
+			__errno = netp_socket_get_last_errno();
+			goto __exit_with_errno;
+		}
+
+		cfg_->fd = WSASocket(ch->sock_family(), ch->sock_type(), OS_DEF_protocol[ch->sock_protocol()], &proto_info, 0, WSA_FLAG_OVERLAPPED);
+#endif
+		if (cfg_->fd == NETP_INVALID_SOCKET) {
+			__errno = netp_socket_get_last_errno();
+			goto __exit_with_errno;
+		}
+
+		cfg_->family = ch->sock_family();
+		cfg_->type = ch->sock_type();
+		cfg_->proto = ch->sock_protocol();
+		cfg_->laddr = ch->local_addr();
+		cfg_->raddr = ch->remote_addr();
+
+		cfg_->L = LL;
+		cfg_->option = ch->is_nonblocking() ? netp::OPTION_NON_BLOCKING : 0;
+
+		//@todo, save kvals for this option
+		cfg_->kvals = default_tcp_keep_alive_vals;//
+		cfg_->sock_buf = {};
+		cfg_->tx_limit = 0;
+		do_async_create_socket_channel(p, cfg_);
+		return p;
+
+	__exit_with_errno:
+		if (__errno == netp::OK) { __errno = netp::E_UNKNOWN; }
+		p->set(std::make_tuple(__errno, nullptr));
+		return p;
+	}
+
 	void do_dial(NRP<channel_dial_promise> const& ch_dialf, NRP<address> const& addr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
 		if (cfg->L == nullptr) {
 			NETP_ASSERT(cfg->type != NETP_AF_USER);
