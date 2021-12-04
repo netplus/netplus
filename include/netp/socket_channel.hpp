@@ -527,6 +527,28 @@ namespace netp {
 		__NETP_FORCE_INLINE int cfg_reuseaddr() { return _cfg_reuseaddr(true); }
 		__NETP_FORCE_INLINE int cfg_reuseport() { return _cfg_reuseport(true); }
 
+		//https://www.man7.org/linux/man-pages/man7/socket.7.html
+		int cfg_incoming_cpu(int cpu_affinity) {
+#ifdef __NETP_ENABLE_SO_INCOMING_CPU
+			int rt;
+			//int __cpu_affinity_old= -2;
+			//socklen_t __affinity_len = sizeof(__cpu_affinity_old);
+			//@note , if it is not specifed, __cpu_affinity_old would be set to -1 (undefined)
+			//rt = socket_getsockopt_impl(SOL_SOCKET, SO_INCOMING_CPU, &__cpu_affinity_old, &__affinity_len);
+
+			//NETP_VERBOSE("[socket][%s]cfg_incoming_cpu, previous: %d, read rt: %d", ch_info().c_str(), __cpu_affinity_old, rt);
+			rt = socket_setsockopt_impl(SOL_SOCKET, SO_INCOMING_CPU, &cpu_affinity, sizeof(cpu_affinity));
+			NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+
+			//rt = socket_getsockopt_impl(SOL_SOCKET, SO_INCOMING_CPU, &__cpu_affinity_old, &__affinity_len);
+			//NETP_VERBOSE("[socket][%s]cfg_incoming_cpu, now: %d, target: %d, read rt: %d", ch_info().c_str(), __cpu_affinity_old, cpu_affinity, rt);
+			return netp::OK;
+#else
+			(void)cpu_affinity;
+			return netp::OK;
+#endif
+		}
+
 		int load_sockname() {
 			int rt = socket_getsockname_impl(m_laddr);
 			if (rt == netp::OK) {

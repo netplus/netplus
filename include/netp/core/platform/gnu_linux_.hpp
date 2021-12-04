@@ -20,6 +20,12 @@
 #include <sys/uio.h>
 #include <sys/ioctl.h>
 
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
+	#define __NETP_ENABLE_SO_INCOMING_CPU
+#endif
+
 #define NETP_CLOSE_SOCKET	::close
 #define NETP_DUP						dup
 #define NETP_DUP2					dup2

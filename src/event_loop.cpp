@@ -126,7 +126,8 @@ namespace netp {
 	void event_loop::__run() {
 
 		if(m_cfg.flag&f_th_thread_affinity) {
-			m_th->set_affinity((m_cfg.thread_affinity) % std::thread::hardware_concurrency());
+			NETP_ASSERT(m_cfg.thread_affinity < std::thread::hardware_concurrency() );
+			m_th->set_affinity(m_cfg.thread_affinity);
 		}
 
 		if (m_cfg.flag & f_th_priority_time_critical) {
@@ -287,7 +288,10 @@ namespace netp {
 		m_io_ctx_count_before_running(0), 
 		m_internal_ref_count(0),
 		m_dns_hosts(cfg.dns_hosts.begin(), cfg.dns_hosts.end())
-	{}
+	{
+		//update affinity
+		m_cfg.thread_affinity = m_cfg.thread_affinity % std::thread::hardware_concurrency();
+	}
 
 	event_loop::~event_loop() {
 		NETP_ASSERT(m_tb == nullptr);

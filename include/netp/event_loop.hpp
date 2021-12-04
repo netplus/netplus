@@ -118,7 +118,6 @@ namespace netp {
 		std::atomic<long> m_internal_ref_count;
 		std::vector<netp::string_t, netp::allocator<netp::string_t>> m_dns_hosts;
 
-
 #ifdef NETP_DEBUG_LOOP_TIME
 		long long m_loop_last_tp;
 		long long m_last_wait;
@@ -178,6 +177,23 @@ namespace netp {
 	public:
 		event_loop(event_loop_cfg const& cfg, NRP<poller_abstract> const& poller);
 		~event_loop();
+
+		__NETP_FORCE_INLINE
+		u8_t thread_affinity() const { return m_cfg.thread_affinity; }
+
+		__NETP_FORCE_INLINE
+		u8_t poller_type() const { return m_cfg.type; }
+
+		__NETP_FORCE_INLINE
+		NRP<netp::packet> const& channel_rcv_buf() const {
+			return m_channel_rcv_buf;
+		}
+
+		__NETP_FORCE_INLINE
+		NRP<dns_query_promise> resolve(string_t const& domain) {
+			NETP_ASSERT(m_cfg.flag & f_enable_dns_resolver);
+			return m_dns_resolver->resolve(domain);
+		}
 
 //#define _NETP_DUMP_SCHEDULE_COST
 		/*win10 output
@@ -292,20 +308,6 @@ namespace netp {
 			} else {
 				(lf != nullptr) ? lf->set(netp::E_IO_EVENT_LOOP_TERMINATED) : NETP_THROW("DO NOT LAUNCH AFTER TERMINATED, OR PASS A PROMISE TO OVERRIDE THIS ERRO");
 			}
-		}
-
-		__NETP_FORCE_INLINE
-		NRP<dns_query_promise> resolve(string_t const& domain) {
-			NETP_ASSERT(m_cfg.flag& f_enable_dns_resolver);
-			return m_dns_resolver->resolve(domain);
-		}
-
-		__NETP_FORCE_INLINE
-		u8_t poller_type() const { return m_cfg.type; }
-
-		__NETP_FORCE_INLINE
-		NRP<netp::packet> const& channel_rcv_buf() const {
-			return m_channel_rcv_buf;
 		}
 
 		inline int io_do(io_action act, io_ctx* ctx) {
