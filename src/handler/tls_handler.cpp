@@ -11,8 +11,8 @@ namespace netp { namespace handler {
 	tls_handler::tls_handler(NRP<tls_context> const& tlsctx) :
 		channel_handler_abstract(CH_ACTIVITY_CONNECTED | CH_ACTIVITY_CLOSED | CH_ACTIVITY_READ_CLOSED | CH_ACTIVITY_WRITE_CLOSED | CH_INBOUND_READ | CH_OUTBOUND_WRITE | CH_OUTBOUND_CLOSE | CH_OUTBOUND_CLOSE_WRITE),
 		m_flag(f_ch_closed | f_ch_write_closed | f_ch_read_closed),
-		m_ctx(nullptr),
 		m_tls_channel(nullptr),
+		m_ctx(nullptr),
 		m_tls_ctx(tlsctx)
 	{}
 
