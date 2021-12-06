@@ -12,7 +12,6 @@
 	#define NETP_SOCKET_ERROR (-1)
 #endif
 
-
 namespace netp {
 
 	enum YesNo {

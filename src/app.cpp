@@ -599,7 +599,7 @@ namespace netp {
 			"192.168.0.0"
 		};
 
-		for (int i = 0; i < sizeof(loopback) / sizeof(loopback[0]); ++i) {
+		for (size_t i = 0; i < sizeof(loopback) / sizeof(loopback[0]); ++i) {
 			ipv4_t v4 = netp::dotiptonip(loopback[i]);
 			NETP_ASSERT(is_internal(v4));
 		}

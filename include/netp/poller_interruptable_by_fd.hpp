@@ -97,7 +97,7 @@ namespace netp {
 			NETP_ASSERT(rt == netp::OK, "fd: %d, rt: %d, errno: %d", ctx->fd, rt, netp_socket_get_last_errno() );
 			m_fd_monitor_r->ctx = ctx;
 			m_fd_w = fds[1];
-			NETP_VERBOSE("[poller_interruptable_by_fd]__init_interrupt_fd done, fds[r]: %u, fds[w]: %u, fd_r: %u, m_fd_w: %u", fds[0], fds[1], m_fd_monitor_r->fd, m_fd_w);
+			NETP_VERBOSE("[poller_interruptable_by_fd]__init_interrupt_fd done, fd_r: %u, m_fd_w: %u", fds[0], fds[1]);
 		}
 
 		void __deinit_interrupt_fd() {
@@ -107,8 +107,8 @@ namespace netp {
 
 			netp::close(m_fd_monitor_r->fd);
 			netp::close(m_fd_w);
-			m_fd_monitor_r->fd = (SOCKET)NETP_INVALID_SOCKET;
-			m_fd_w = (SOCKET)NETP_INVALID_SOCKET;
+			m_fd_monitor_r->fd = NETP_INVALID_SOCKET;
+			m_fd_w = NETP_INVALID_SOCKET;
 			NETP_VERBOSE("[poller_interruptable_by_fd]__deinit_interrupt_fd done");
 
 			//NETP_ASSERT(m_ctxs.size() == 0);
@@ -145,7 +145,7 @@ namespace netp {
 					continue;
 				}
 				NETP_WARN("[poller_interruptable_by_fd][##%u]interrupt pipe failed: %d", m_fd_w, ec);
-		} while (1);
+		} while (m_fd_w != NETP_INVALID_SOCKET);
 #else
 			const byte_t interrutp_a[1] = { (byte_t)'i' };
 			u32_t c = netp::send(m_fd_w, interrutp_a, 1, ec, 0);

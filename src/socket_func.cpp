@@ -56,31 +56,30 @@ namespace netp {
 	}
 
 	std::tuple<int, NRP<socket_channel>> create_socket_channel(NRP<netp::socket_cfg> const& cfg) {
-		NETP_ASSERT(cfg->L != nullptr);
-		NETP_ASSERT(cfg->L->in_event_loop());
+		NETP_ASSERT(cfg->L != nullptr && cfg->L->in_event_loop());
 
-		NRP<socket_channel> so;
+		NRP<socket_channel> __socketch;
 		if (cfg->proto == NETP_PROTOCOL_USER) {
 			NETP_ASSERT(cfg->L->poller_type() != NETP_DEFAULT_POLLER_TYPE);
 			if (cfg->ch_maker == nullptr) {
 				return std::make_tuple(netp::E_CHANNEL_MISSING_MAKER, nullptr);
 			}
-			so = cfg->ch_maker(cfg);
-		}
-		else {
+			__socketch = cfg->ch_maker(cfg);
+		} else {
 			NETP_ASSERT(cfg->L->poller_type() == NETP_DEFAULT_POLLER_TYPE);
 			NETP_ASSERT(cfg->ch_maker == nullptr);
-			so = default_socket_channel_maker(cfg);
+			__socketch = default_socket_channel_maker(cfg);
 		}
 
-		NETP_ASSERT(so != nullptr);
-		int rt = so->ch_init(cfg->option, cfg->kvals, cfg->sock_buf);
+		NETP_ASSERT(__socketch != nullptr);
+		int rt = __socketch->ch_init(cfg->option, cfg->kvals, cfg->sock_buf);
 		if (rt != netp::OK) {
+			__socketch->ch_close();
 			return std::make_tuple(rt, nullptr);
 		}
 
-		NETP_ASSERT(so->ch_errno() == netp::OK);
-		return std::make_tuple(netp::OK, so);
+		NETP_ASSERT(__socketch->ch_errno() == netp::OK);
+		return std::make_tuple(netp::OK, __socketch);
 	}
 
 	//we must make sure that the creation of the socket happens on its thead(L)
@@ -92,9 +91,9 @@ namespace netp {
 	}
 
 	NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> async_create_socket_channel(NRP<netp::socket_cfg> const& cfg) {
-		NRP <netp::promise<std::tuple<int, NRP<socket_channel>>>> p = netp::make_ref<netp::promise<std::tuple<int, NRP<socket_channel>>>>();
 		//can not be nullptr, as we don't know which group to use
-		NETP_ASSERT( cfg->L != nullptr );
+		NETP_ASSERT(cfg->L != nullptr);
+		NRP <netp::promise<std::tuple<int, NRP<socket_channel>>>> p = netp::make_ref<netp::promise<std::tuple<int, NRP<socket_channel>>>>();
 		do_async_create_socket_channel(p, cfg);
 		return p;
 	}
@@ -149,10 +148,11 @@ namespace netp {
 		_cfg->tx_limit = ch->m_tx_limit;
 
 		_dupch = default_socket_channel_maker(_cfg);
-
 		NETP_ASSERT(_dupch != nullptr);
+
 		__errno = _dupch->ch_init(0, { 0,0,0 }, { 0,0 });
 		if (__errno != netp::OK) {
+			_dupch->ch_close();//just double confirm
 			goto __exit_with_errno;
 		}
 
@@ -185,8 +185,8 @@ namespace netp {
 	//pay attention to r&w concurrent issue
 	//please do ch_io_begin by manual
 	NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> dup_socket_channel(NRP<netp::socket_channel> const& ch, NRP<event_loop> const& LL) {
-		NETP_ASSERT(!LL->in_event_loop());
-		NETP_ASSERT(ch->L->poller_type() == LL->poller_type());
+		NETP_ASSERT(LL && !LL->in_event_loop());
+		NETP_ASSERT(ch != nullptr && ch->L->poller_type() == LL->poller_type());
 		NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> p =
 			netp::make_ref<netp::promise<std::tuple<int, NRP<socket_channel>>>>();
 

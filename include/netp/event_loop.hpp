@@ -124,10 +124,13 @@ namespace netp {
 #endif
 
 	protected:
+		//the ref count is used by main thread usually,
+		//but if we run netp on a platform that the enter|exit thread is uncertain, we should pay attention on the start|stop of the grop
+		//
 		inline long internal_ref_count() { return m_internal_ref_count.load(std::memory_order_relaxed); }
 		inline void store_internal_ref_count( long count ) { m_internal_ref_count.store( count, std::memory_order_relaxed); }
 		inline void inc_internal_ref_count() { m_internal_ref_count.fetch_add(1, std::memory_order_relaxed); }
-		//inline void __internal_ref_count_inc() { netp::atomic_incre(&m_internal_ref_count); }
+
 		//0,	NO WAIT
 		//~0,	INFINITE WAIT
 		//>0,	WAIT nanosecond

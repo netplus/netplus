@@ -207,6 +207,7 @@ namespace netp {
 
 	void event_loop::__do_notify_terminating() {
 		NETP_ASSERT( in_event_loop() );
+		NETP_VERBOSE("[event_loop]__do_notify_terminating begin");
 
 		//dns resolver stop would result in dns socket be removed from io_ctx
 		//we keep m_dns_resolver instance until there is no event_loop reference outside
@@ -219,7 +220,6 @@ namespace netp {
 		if (m_io_ctx_count == m_io_ctx_count_before_running) {
 			__do_enter_terminated();
 		}
-	//	NETP_VERBOSE("[event_loop]__do_notify_terminating done");
 	}
 
 	void event_loop::__do_enter_terminated() {
@@ -418,7 +418,7 @@ namespace netp {
 		}
 
 		void event_loop_group::start(u32_t count ) {
-			NETP_VERBOSE("[event_loop_group]alloc poller: %u, count: %u, ch_buf_read_size: %u", m_cfg.type, count, m_cfg.channel_read_buf_size);
+			NETP_VERBOSE("[event_loop_group]start event_loop_group: %u, count: %u, ch_buf_read_size: %u", m_cfg.type, count, m_cfg.channel_read_buf_size);
 			lock_guard<shared_mutex> lg(m_loop_mtx);
 			m_curr_loop_idx = 0;
 			NETP_ASSERT( m_fn_loop_maker != nullptr );
@@ -431,7 +431,7 @@ namespace netp {
 				int rt = o->__launch();
 				NETP_ASSERT(rt == netp::OK);
 				o->store_internal_ref_count(o.ref_count());
-				m_loop.push_back(std::move(o));
+				m_loop.emplace_back(std::move(o));
 			}
 		}
 
@@ -487,7 +487,7 @@ namespace netp {
 			}
 			NRP<event_loop> __tmp = m_bye_event_loop;//may a copy first
 			if(m_bye_state.load(std::memory_order_acquire) != bye_event_loop_state::S_IDLE) {
-				NETP_ASSERT(__tmp != nullptr);
+				NETP_ASSERT(__tmp != nullptr, "m_bye_event_loop check");
 				NETP_VERBOSE("[event_loop][%u]return bye type", m_cfg.type);
 				return __tmp;
 			}
