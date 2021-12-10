@@ -104,8 +104,15 @@ namespace netp {
 		L_MAX
 	};
 
+#ifdef _NETP_DEBUG
+	std::atomic<bool> ___netp_global_allocator_init_done = false;
+#endif
+
 	static SLOT_ENTRIES_SIZE_LEVEL g_memory_pool_slot_entries_size_level = L_LARGE;
 	void cfg_memory_pool_slot_entries_size_level(int l) {
+#ifdef _NETP_DEBUG
+		NETP_ASSERT(___netp_global_allocator_init_done.load(std::memory_order_acquire) == false);
+#endif
 		if (l < L_DISABLED) {
 			l = L_DISABLED;
 		}
@@ -476,6 +483,9 @@ __fast_path:
 	global_pool_aligned_allocator::global_pool_aligned_allocator():
 		pool_aligned_allocator(false)
 	{
+#ifdef _NETP_DEBUG
+		___netp_global_allocator_init_done.store(true);
+#endif
 		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
 			m_table_slots_mtx[t] = ::new spin_mutex[NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t)];
 		}
@@ -486,6 +496,9 @@ __fast_path:
 		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
 			::delete[] m_table_slots_mtx[t];
 		}
+#ifdef _NETP_DEBUG
+		___netp_global_allocator_init_done.store(false);
+#endif
 	}
 
 	//default: one thread -- main thread
