@@ -105,7 +105,7 @@ namespace netp {
 	};
 
 #ifdef _NETP_DEBUG
-	std::atomic<bool> ___netp_global_allocator_init_done = false;
+	std::atomic<bool> ___netp_global_allocator_init_done(false);
 #endif
 
 	static SLOT_ENTRIES_SIZE_LEVEL g_memory_pool_slot_entries_size_level = L_LARGE;
