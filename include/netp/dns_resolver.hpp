@@ -28,6 +28,10 @@ namespace netp {
 	{
 		NRP<dns_resolver> dnsr;
 		NRP<dns_query_promise> dnsquery_p;
+
+#ifdef _NETP_DEBUG
+		netp::string_t host;
+#endif
 	};
 
 #ifdef _NETP_USE_C_ARES

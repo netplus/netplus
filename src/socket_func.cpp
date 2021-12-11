@@ -280,6 +280,7 @@ namespace netp {
 		NRP<dns_query_promise> dnsp = cfg_->L->resolve(info.host);
 		dnsp->if_done([host=info.host,port = info.port, initializer, ch_dialf, _dcfg](std::tuple<int, std::vector<ipv4_t, netp::allocator<ipv4_t>>> const& tupdns) {
 			if (std::get<0>(tupdns) != netp::OK) {
+				NETP_WARN("[socket]dns resolve failed, host: %s, rt: %d", host.c_str(), std::get<0>(tupdns));
 				ch_dialf->set(std::make_tuple(std::get<0>(tupdns), nullptr));
 				return;
 			}

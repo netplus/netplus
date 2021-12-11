@@ -375,7 +375,7 @@ namespace netp {
 				{
 					char addr_buf[32] = {0};
 					ares_inet_ntop(hostent->h_addrtype, *lpSrc, addr_buf, sizeof(addr_buf));
-					ipv4s.push_back( dotiptoip(addr_buf));
+					ipv4s.emplace_back( dotiptoip(addr_buf));
 					//u_long nip = u32_t(*lpSrc);
 					//ipv4s.push_back( ntohl(nip) );
 				}
@@ -394,7 +394,12 @@ namespace netp {
 				adq->dnsquery_p->set(std::make_tuple(netp::E_DNS_DOMAIN_NO_DATA, ipv4s));
 			}
 		} else {
-			adq->dnsquery_p->set(std::make_tuple( NETP_NEGATIVE(status), std::vector<netp::ipv4_t, netp::allocator<netp::ipv4_t>>()));
+#ifdef _NETP_DEBUG
+			NETP_WARN("[dns_resolver]resolve status: %d, host: %s", status, adq->host.c_str() );
+#else
+			NETP_WARN("[dns_resolver]resolve status: %d", status);
+#endif
+			adq->dnsquery_p->set(std::make_tuple( NETP_NEGATIVE(NETP_ABS(netp::E_DNS_CARES_ERRNO_BEGIN)+NETP_ABS(status)), std::vector<netp::ipv4_t, netp::allocator<netp::ipv4_t>>()));
 		}
 		if (status == ARES_ECONNREFUSED) {
 			NETP_WARN("[dns_resolver]resolve status: %d", ARES_ECONNREFUSED);
@@ -417,6 +422,9 @@ namespace netp {
 		async_dns_query* adq = netp::allocator<async_dns_query>::make();
 		adq->dnsr = NRP<dns_resolver>(this);
 		adq->dnsquery_p = p;
+		#ifdef _NETP_DEBUG
+		adq->host = netp::string_t(domain.c_str(), domain.length());
+		#endif
 
 #ifdef _NETP_USE_C_ARES
 		++m_ares_active_query;

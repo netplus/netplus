@@ -531,10 +531,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_CHANNEL_MISSING_MAKER = -34018;//custom socket channel must have its own maker
 	const int E_CHANNEL_HANDLER_INVALID_STATE = -34019;
 
-	const int E_FORWARDER_DOMAIN_LEN_EXCEED	= -35001;
-	const int E_FORWARDER_INVALID_IPV4					= -35002;
-	const int E_FORWARDER_DIAL_DST_FAILED			= -35003;
-
+	const int E_DNS_CARES_ERRNO_BEGIN				= -35000;
 	const int E_DNS_LOOKUP_RETURN_NO_IP			= -36001;
 	const int E_DNS_TEMPORARY_ERROR				= -36002;
 	const int E_DNS_PROTOCOL_ERROR					= -36003;
