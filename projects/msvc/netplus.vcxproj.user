@@ -7,4 +7,8 @@
     <LocalDebuggerCommandArguments>--config=./config.tpl.json</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_comm|x64'">
+    <LocalDebuggerCommandArguments>--config=./config.tpl.json</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
 </Project>
