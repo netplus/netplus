@@ -310,9 +310,14 @@ namespace netp {
 		size_t i;
 		for (i = 0; i < (item_count); ++i) {
 			aligned_hdr* a_hdr = (aligned_hdr*)std::malloc(sizeof(aligned_hdr) + size);
-			NETP_ASSERT(a_hdr != 0);
-			NETP_ASSERT((std::size_t(a_hdr) % alignof(std::max_align_t)) == 0);
 
+			if (a_hdr == 0) {
+				NETP_THROW("[preallocate_table_slot_item]std::malloc falied");
+			}
+
+#ifdef _NETP_DEBUG
+			NETP_ASSERT((std::size_t(a_hdr) % alignof(std::max_align_t)) == 0);
+#endif
 			a_hdr->hdr.AH_4_7.t = t;
 			a_hdr->hdr.AH_4_7.s = s;
 			u8_t offset = __AH_UPDATE_OFFSET__(a_hdr, NETP_DEFAULT_ALIGN);
@@ -366,8 +371,10 @@ namespace netp {
 	}
 
 	void* pool_aligned_allocator::malloc(size_t size, size_t alignment) {
+#ifdef _NETP_DEBUG
 		NETP_ASSERT( size < _NETP_ALIGN_MALLOC_SIZE_MAX );
 		NETP_ASSERT( (alignment%alignof(std::max_align_t)) == 0 && alignment >= alignof(std::max_align_t) );
+#endif
 
 		//assume that the std::malloc always return address aligned to alignof(std::max_align_t)
 		size_t slot_size = NETP_IS_DEFAULT_ALIGN(alignment) ? ((alignment<=(sizeof(aligned_hdr)))?size: (size + alignment - sizeof(aligned_hdr)))
@@ -399,8 +406,9 @@ __fast_path:
 				 //update new size
 				 __AH_UPDATE_SIZE(a_hdr, size);
 				const u8_t offset = __AH_UPDATE_OFFSET__(a_hdr, alignment);
-
+#ifdef _NETP_DEBUG
 				NETP_ASSERT((sizeof(aligned_hdr) + calc_SIZE_by_TABLE_SLOT(t, f, s) - offset) >= size);
+#endif
 				 return (u8_t*)a_hdr + offset ;
 			}
 
@@ -408,7 +416,9 @@ __fast_path:
 				//tst->max ==0 means no pool object allowed in this slot
 				//borrow
 				size_t c = netp::app::instance()->global_allocator()->borrow(t, s, tst, (tst->max) >> 1);
+#ifdef _NETP_DEBUG
 				NETP_ASSERT(c == tst->count);
+#endif
 				if (c != 0) {
 					goto __fast_path;
 				}
@@ -420,19 +430,22 @@ __fast_path:
 
 		//std::malloc always return ptr aligned to alignof(std::max_align_t), so ,we do not need to worry about the hdr access
 		a_hdr = (aligned_hdr*)std::malloc( sizeof(aligned_hdr)+ slot_size );
-		NETP_ASSERT( (std::size_t(a_hdr) % alignof(std::max_align_t))  == 0);
-
 		if (NETP_UNLIKELY(a_hdr == 0)) {
 			return 0;
 		}
+
+#ifdef _NETP_DEBUG
+		NETP_ASSERT((std::size_t(a_hdr) % alignof(std::max_align_t)) == 0);
+#endif
 
 		//size is used by realloc
 		__AH_UPDATE_SIZE(a_hdr, size);
 		a_hdr->hdr.AH_4_7.t = t;
 		a_hdr->hdr.AH_4_7.s = s;
 		u8_t offset = __AH_UPDATE_OFFSET__(a_hdr, alignment);
-
+#ifdef _NETP_DEBUG
 		NETP_ASSERT( (sizeof(aligned_hdr) + slot_size - offset ) >= size );
+#endif
 		return (u8_t*)a_hdr + offset;
 	}
 
@@ -441,7 +454,9 @@ __fast_path:
 
 		u8_t offset = *(reinterpret_cast<u8_t*>(ptr) - 1);
 		aligned_hdr* a_hdr = (aligned_hdr*)((u8_t*)ptr - offset);
+#ifdef _NETP_DEBUG
 		NETP_ASSERT( a_hdr->hdr.AH_4_7.offset == offset );
+#endif
 		u8_t t = a_hdr->hdr.AH_4_7.t;
 		u8_t s = a_hdr->hdr.AH_4_7.s;
 		table_slot_t*& tst = (m_tables[t][s]);
@@ -463,21 +478,30 @@ __fast_path:
 		//align_alloc first
 		if (old_ptr == 0) { return pool_aligned_allocator::malloc(size, alignment); }
 
-		u8_t* newptr = (u8_t*)pool_aligned_allocator::malloc(size, alignment);
+		u8_t* n_ptr = (u8_t*)pool_aligned_allocator::malloc(size, alignment);
+
+		if (NETP_UNLIKELY(n_ptr == 0)) {
+			return 0;
+		}
+
 		//we would never get old ptr, cuz old ptr have not yet been returned
-		NETP_ASSERT(newptr != old_ptr);
+#ifdef _NETP_DEBUG
+		NETP_ASSERT(n_ptr != old_ptr);
+#endif
 
 		u8_t old_offset = *(reinterpret_cast<u8_t*>(old_ptr) - 1);
 		aligned_hdr* old_a_hdr = (aligned_hdr*)((u8_t*)old_ptr - old_offset);
-		NETP_ASSERT(old_a_hdr->hdr.AH_4_7.offset == old_offset);
 
+#ifdef _NETP_DEBUG
+		NETP_ASSERT(old_a_hdr->hdr.AH_4_7.offset == old_offset);
+#endif
 		size_t old_size = __AH_SIZE(old_a_hdr);
 		//do copy
-		std::memcpy(newptr, old_ptr, NETP_MIN(size, old_size));
+		std::memcpy(n_ptr, old_ptr, NETP_MIN(size, old_size));
 
 		//free ptr
 		pool_aligned_allocator::free(old_ptr);
-		return newptr;
+		return n_ptr;
 	}
 
 	global_pool_aligned_allocator::global_pool_aligned_allocator():
@@ -507,7 +531,9 @@ __fast_path:
 			for (size_t s = 0; s < NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t); ++s) {
 				lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s] );
 				if (TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s] == 0) {
+#ifdef _NETP_DEBUG
 					NETP_ASSERT(m_tables[t][s]->max == 0);
+#endif
 					continue;
 				}
 				u32_t max_n = (m_tables[t][s]->max + TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]);
@@ -525,16 +551,22 @@ __fast_path:
 				//NETP_ASSERT(TABLE_SLOT_ENTRIES_INIT_LIMIT[t][s] > 0);
 				lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
 				if (TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s] == 0) {
+#ifdef _NETP_DEBUG
 					NETP_ASSERT(m_tables[t][s]->max == 0);
+#endif
 					continue;
 				}
 
+#ifdef _NETP_DEBUG
 				NETP_ASSERT(m_tables[t][s]->max >= TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]);
+#endif
 				u32_t max_n = (m_tables[t][s]->max - TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]);
 				u32_t& _gcount = m_tables[t][s]->count;
 				//purge exceed count first
 				while (_gcount > max_n) {
+#ifdef _NETP_DEBUG
 					NETP_ASSERT(m_tables[t][s]->count != 0);
+#endif
 					std::free((void*)(m_tables[t][s]->ptr[--_gcount]));
 				}
 				u8_t* __ptr = (u8_t*)(std::realloc(m_tables[t][s], sizeof(table_slot_t) + sizeof(u8_t*) * max_n));
@@ -546,7 +578,9 @@ __fast_path:
 	}
 
 	u32_t global_pool_aligned_allocator::commit(u8_t t, u8_t s, table_slot_t* tst, u32_t commit_count) {
+#ifdef _NETP_DEBUG
 		NETP_ASSERT( commit_count <= tst->count );
+#endif
 		lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
 		u32_t& _gcount = m_tables[t][s]->count;
 		u32_t& _tcount = tst->count;
@@ -559,8 +593,11 @@ __fast_path:
 	}
 
 	u32_t global_pool_aligned_allocator::borrow(u8_t t, u8_t s, table_slot_t* tst, u32_t borrow_count) {
+#ifdef _NETP_DEBUG
 		NETP_ASSERT(tst->count ==0 );
 		NETP_ASSERT(tst->max > 0);
+#endif
+
 		lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
 		u32_t& _gcount = m_tables[t][s]->count;
 		u32_t& _tcount = tst->count;

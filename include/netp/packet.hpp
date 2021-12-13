@@ -139,13 +139,13 @@ namespace netp {
 		}
 
 		inline void write(void const* const buf, netp::u32_t len) {
-			NETP_ASSERT(left_right_capacity() >= len);
+			NETP_ASSERT(left_right_capacity() >= len, "left_right_capacity: %u, len: %u", left_right_capacity(), len);
 			std::memcpy(m_buffer + m_write_idx, buf, len);
 			m_write_idx += len;
 		}
 
 		inline void fill(u8_t b, netp::u32_t len) {
-			NETP_ASSERT(left_right_capacity() >= len);
+			NETP_ASSERT(left_right_capacity() >= len, "left_right_capacity: %u, len: %u", left_right_capacity(), len );
 			std::memset(m_buffer + m_write_idx, b, len);
 			m_write_idx += len;
 		}
