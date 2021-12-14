@@ -43,9 +43,9 @@ namespace netp {
 			struct epoll_event epEvent =
 			{
 #ifdef NETP_IO_POLLER_EPOLL_USE_ET
-				EPOLLET|EPOLLPRI|EPOLLHUP|EPOLLERR,
+				EPOLLET|EPOLLPRI|EPOLLRDHUP|EPOLLHUP|EPOLLERR,
 #else
-				EPOLLLT|EPOLLPRI|EPOLLHUP|EPOLLERR,
+				EPOLLLT|EPOLLPRI|EPOLLRDHUP|EPOLLHUP|EPOLLERR,
 #endif
 				{(void*)ctx}
 			};
@@ -71,16 +71,16 @@ namespace netp {
 			struct epoll_event epEvent =
 			{
 #ifdef NETP_IO_POLLER_EPOLL_USE_ET
-				EPOLLET|EPOLLPRI|EPOLLHUP|EPOLLERR|EPOLLIN|EPOLLOUT,
+				EPOLLET|EPOLLPRI|EPOLLRDHUP|EPOLLHUP|EPOLLERR|EPOLLIN|EPOLLOUT,
 #else
-				EPOLLLT|EPOLLPRI|EPOLLHUP|EPOLLERR|EPOLLIN|EPOLLOUT,
+				EPOLLLT|EPOLLPRI|EPOLLRDHUP|EPOLLHUP|EPOLLERR|EPOLLIN|EPOLLOUT,
 #endif
 				{(void*)ctx}
 			};
 
 			int epoll_op = EPOLL_CTL_MOD;
 			if ( 0 == (ctx->flag & (~flag)) ) {
-				epEvent.events &= ~(EPOLLIN | EPOLLOUT);
+				epEvent.events &= ~(EPOLLIN|EPOLLOUT);
 				epoll_op = EPOLL_CTL_DEL;
 			} else {
 				const static int _s_flag_epollin_epollout_map[] = {
@@ -146,15 +146,16 @@ namespace netp {
 				//@note:
 				// 1) FIN_SENT&FIN_RECV result  in hub
 				// 2) FIN_RECV result rdhub
-				// 3) if RDHUB is set ,we'll always could have a chance to get read()==0
-				// 4) for EPOLLERR, just notify read|write, if there is a error ,let read|write to handle it
+				// 3) for EPOLLERR, just notify read|write, if there is a error ,let read|write to handle it
+				// 4) EPOLLRDHUP|EPOLLIN would arrive at the same time (but it's not sometimes), keep reading until read() return 0 to avoid a miss
+				//		4.1) alternative solution is to ignore read if we get EPOLLRDHUB, in this case, we might miss some pending data in rcvbuf 
 				int ec = (events&EPOLLHUP) ? netp::E_SOCKET_EPOLLHUP : netp::OK;
 				NRP<io_monitor>& iom = ctx->iom;
-				if ((ctx->flag & u8_t(io_flag::IO_READ)) && ((events&(EPOLLERR|EPOLLIN)) || (ec != netp::OK)) ) {
+				if ((ctx->flag&u8_t(io_flag::IO_READ)) && ((events&(EPOLLRDHUP|EPOLLERR|EPOLLIN)) || (ec != netp::OK)) ) {
 					iom->io_notify_read(ec, ctx);
 				}
 				//read error might result in write act be cancelled, just cancel it 
-				if ((ctx->flag & u8_t(io_flag::IO_WRITE)) && ((events&(EPOLLERR|EPOLLOUT)) || (ec != netp::OK)) ) {
+				if ((ctx->flag&u8_t(io_flag::IO_WRITE)) && ((events&(EPOLLERR|EPOLLOUT)) || (ec != netp::OK)) ) {
 					iom->io_notify_write(ec, ctx);
 				}
 				if (events&EPOLLPRI) {
@@ -163,7 +164,7 @@ namespace netp {
 				}
 
 #ifdef _NETP_DEBUG
-				events &= ~(EPOLLHUP | EPOLLERR | EPOLLOUT | EPOLLIN | EPOLLPRI);
+				events &= ~(EPOLLPRI|EPOLLERR|EPOLLRDHUP|EPOLLHUP|EPOLLIN|EPOLLOUT);
 				NETP_ASSERT( events == 0, "evt: %d", events );
 #endif
 			}
