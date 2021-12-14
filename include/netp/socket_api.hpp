@@ -320,7 +320,9 @@ namespace netp {
 		} while (true);
 
 		//NETP_TRACE_SOCKET_API("[netp::recv][#%d]recv bytes, %u, ec: %d", fd, R, ec_o);
+#ifdef _NETP_DEBUG
 		NETP_ASSERT(R <= size);
+#endif
 		return R;
 	}
 

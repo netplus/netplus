@@ -762,7 +762,9 @@ namespace netp {
 			break;
 			case netp::E_SOCKET_GRACE_CLOSE:
 			{
+#ifdef _NETP_DEBUG
 				NETP_ASSERT(m_protocol != u8_t(NETP_PROTOCOL_UDP));
+#endif
 				m_chflag |= int(channel_flag::F_FIN_RECEIVED);
 				ch_close_read_impl(nullptr);
 			}

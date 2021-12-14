@@ -118,6 +118,7 @@ namespace netp {
 					continue;
 				}
 
+				//patch for status not netp::OK, we can not place this block in FD_ISSET {},,,
 				if (status != netp::OK) {
 					if(ctx->flag&io_flag::IO_READ) IOM->io_notify_read(status, ctx);
 					if(ctx->flag&io_flag::IO_WRITE ) IOM->io_notify_write(status, ctx) ;

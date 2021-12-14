@@ -132,53 +132,40 @@ namespace netp {
 			}
 
 			for( int i=0;i<nEvents;++i) {
-
+#ifdef _NETP_DEBUG
 				NETP_ASSERT( epEvents[i].data.ptr != nullptr );
+#endif
 				io_ctx* ctx =(static_cast<io_ctx*> (epEvents[i].data.ptr)) ;
+#ifdef _NETP_DEBUG
 				NETP_ASSERT(ctx->fd != NETP_INVALID_SOCKET);
-
+#endif
 				uint32_t events = ((epEvents[i].events) & 0xFFFFFFFF) ;
 				//NETP_TRACE_IOE( "[EPOLL][##%u][#%d]EVT: events(%d)", m_epfd, ctx->fd, events );
-
-				int ec = netp::OK;
-				if( NETP_UNLIKELY(events&(EPOLLERR|EPOLLHUP)) ) {
-					//TRACE_IOE( "[EPOLL][##%d][#%d]EVT: (EPOLLERR|EPOLLHUB), post IOE_ERROR", m_epfd, ctx->fd );
-					//refer to https://stackoverflow.com/questions/52976152/tcp-when-is-epollhup-generated
-
-					if ((events&EPOLLERR) != 0) {
-						socklen_t optlen = sizeof(int);
-						int getrt = ::getsockopt(ctx->fd, SOL_SOCKET, SO_ERROR, (char*)&ec, &optlen);
-						if (getrt == -1) {
-							ec = netp_socket_get_last_errno();
-						} else {
-							ec = NETP_NEGATIVE(ec);
-						}
-					} else {
-						//if((events & EPOLLHUP) != 0)
-						ec = netp::E_SOCKET_EPOLLHUP;
-					}
-					NETP_ASSERT(ec != netp::OK);
-					events &= ~(EPOLLERR | EPOLLHUP);
-				}
-
+				//TRACE_IOE( "[EPOLL][##%d][#%d]EVT: (EPOLLERR|EPOLLHUB), post IOE_ERROR", m_epfd, ctx->fd );
+				//refer to https://stackoverflow.com/questions/52976152/tcp-when-is-epollhup-generated
+				//@note:
+				// 1) FIN_SENT&FIN_RECV result  in hub
+				// 2) FIN_RECV result rdhub
+				// 3) if RDHUB is set ,we'll always could have a chance to get read()==0
+				// 4) for EPOLLERR, just notify read|write, if there is a error ,let read|write to handle it
+				int ec = (events&EPOLLHUP) ? netp::E_SOCKET_EPOLLHUP : netp::OK;
 				NRP<io_monitor>& iom = ctx->iom;
-				if ( ((events&EPOLLIN) || (ec != netp::OK)) && (ctx->flag&u8_t(io_flag::IO_READ)) ) {
+				if ((ctx->flag & u8_t(io_flag::IO_READ)) && ((events&(EPOLLERR|EPOLLIN)) || (ec != netp::OK)) ) {
 					iom->io_notify_read(ec, ctx);
 				}
-
 				//read error might result in write act be cancelled, just cancel it 
-				if ( ((events&EPOLLOUT) || (ec != netp::OK)) && (ctx->flag&u8_t(io_flag::IO_WRITE)) ) {
+				if ((ctx->flag & u8_t(io_flag::IO_WRITE)) && ((events&(EPOLLERR|EPOLLOUT)) || (ec != netp::OK)) ) {
 					iom->io_notify_write(ec, ctx);
 				}
-				events &= ~(EPOLLOUT|EPOLLIN);
-
 				if (events&EPOLLPRI) {
-					events &= ~EPOLLPRI;
 					NETP_ERR("[EPOLL][##%d][#%d]EVT: EPOLLPRI", m_epfd, ctx->fd);
 					//NETP_THROW("EPOLLPRI arrive!!!");
 				}
 
+#ifdef _NETP_DEBUG
+				events &= ~(EPOLLHUP | EPOLLERR | EPOLLOUT | EPOLLIN | EPOLLPRI);
 				NETP_ASSERT( events == 0, "evt: %d", events );
+#endif
 			}
 		}
 	};
