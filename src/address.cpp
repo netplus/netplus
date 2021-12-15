@@ -249,7 +249,7 @@ namespace netp {
 
 	string_t address::to_string() const {
 		char info[32] = { 0 };
-		int rtval = snprintf(const_cast<char*>(info), sizeof(info) / sizeof(info[0]), "%s:%d", dotip().c_str(), hport());
+		int rtval = snprintf(const_cast<char*>(info), sizeof(info) / sizeof(info[0]), "%s:%d", dotip().c_str(), port());
 		NETP_ASSERT(rtval > 0);
 		(void)rtval;
 		return string_t(info, netp::strlen(info));

@@ -815,7 +815,7 @@ namespace netp {
 				//NETP_TRACE_SOCKET("[socket][%s]__do_io_write, write block", info().c_str());
 			}
 			break;
-			case netp::E_CHANNEL_BDLIMIT:
+			case netp::E_CHANNEL_TXLIMIT:
 			{
 				m_chflag |= int(channel_flag::F_TX_LIMIT);
 				ch_io_end_write();

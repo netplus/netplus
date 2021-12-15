@@ -509,7 +509,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_SOCKET_NO_AVAILABLE_ADDR = -31009;
 	const int E_SOCKET_OP_ALREADY		 = -31010;
 
-	const int E_CHANNEL_BDLIMIT							= -34001;
+	const int E_CHANNEL_TXLIMIT							= -34001;
 	const int E_CHANNEL_READ_BLOCK					= -34002;
 	const int E_CHANNEL_WRITE_BLOCK					= -34003;
 	const int E_CHANNEL_READ_CLOSED					= -34004;

@@ -266,6 +266,16 @@ int socket_base::get_left_snd_queue() const {
 			return;
 		}
 
+		//udp socket do not support this kinds of operation
+		//only tcp or user defined protocol that that has implement accept feature by custom channel
+		if (m_protocol == NETP_PROTOCOL_UDP) {
+			m_chflag |= int(channel_flag::F_READ_ERROR);
+			ch_errno() = netp::E_INVALID_OPERATION;
+			ch_close_impl(nullptr);
+			intp->set(netp::E_INVALID_OPERATION);
+			return;
+		}
+
 		//int rt = -10043;
 		int rt = socket_channel::bind(addr);
 		if (rt != netp::OK) {
@@ -509,9 +519,19 @@ int socket_base::get_left_snd_queue() const {
 		while (status == netp::OK) {
 			NETP_ASSERT((m_chflag & (int(channel_flag::F_READ_SHUTDOWNING))) == 0);
 			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN) | int(channel_flag::F_CLOSE_PENDING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
-			netp::u32_t nbytes = socket_recvfrom_impl(m_rcv_buf_ptr, m_rcv_buf_size, m_raddr, status);
-			if (NETP_LIKELY(nbytes > 0)) {
-				channel::ch_fire_readfrom(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes), m_raddr) ;
+			if (m_chflag & int(channel_flag::F_CONNECTED)) {
+				NETP_ASSERT(m_raddr != nullptr && !m_raddr->is_af_unspec());
+				static NRP<netp::address> __address_nullptr_;
+				netp::u32_t nbytes = socket_recvfrom_impl(m_rcv_buf_ptr, m_rcv_buf_size, __address_nullptr_, status);
+				if (NETP_LIKELY(nbytes > 0)) {
+					channel::ch_fire_readfrom(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes), m_raddr);
+				}
+			} else {
+				NRP<netp::address> __address_nonnullptr_ = netp::make_ref<netp::address>();
+				netp::u32_t nbytes = socket_recvfrom_impl(m_rcv_buf_ptr, m_rcv_buf_size, __address_nonnullptr_, status);
+				if (NETP_LIKELY(nbytes > 0)) {
+					channel::ch_fire_readfrom(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes), __address_nonnullptr_);
+				}
 			}
 		}
 		___do_io_read_done(status);
@@ -581,7 +601,7 @@ int socket_base::get_left_snd_queue() const {
 				wlen =m_tx_budget;
 				if (wlen == 0) {
 					NETP_ASSERT(m_chflag& int(channel_flag::F_TX_LIMIT_TIMER));
-					return netp::E_CHANNEL_BDLIMIT;
+					return netp::E_CHANNEL_TXLIMIT;
 				}
 			}
 
