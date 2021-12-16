@@ -43,7 +43,8 @@ namespace netp { namespace handler {
 			S_UPGRADE_REQ_MESSAGE_DONE,
 			S_MESSAGE_BEGIN,
 			S_FRAME_BEGIN,
-			S_FRAME_READ_H,
+			S_FRAME_READ_H_B1,
+			S_FRAME_READ_H_B2,
 			S_FRAME_READ_PAYLOAD_LEN,
 			S_FRAME_READ_MASKING_KEY,
 			S_FRAME_READ_PAYLOAD,
@@ -122,11 +123,17 @@ namespace netp { namespace handler {
 				appdata->reset();
 			}
 		};
+
+		using in_packet_q_t = netp::packet_queue_t;
 		
 		std::string m_tmp_for_field;
 		NRP<netp::http::message> m_upgrade_req;
 		NRP<netp::http::parser> m_http_parser;
-		NRP<netp::packet> m_income_prev;
+
+		in_packet_q_t m_in_q;
+		u32_t m_in_q_nbytes;
+
+		//NRP<netp::packet> m_income_prev;
 		NSP<ws_frame> m_tmp_frame;
 
 		NRP<packet> m_tmp_message; //for fragmented message
@@ -150,6 +157,7 @@ namespace netp { namespace handler {
 				websocket(websocket_type t) :
 					channel_handler_abstract(CH_ACTIVITY_CONNECTED|CH_ACTIVITY_CLOSED | CH_INBOUND_READ | CH_OUTBOUND_WRITE|CH_OUTBOUND_CLOSE),
 					m_http_parser(nullptr),
+					m_in_q_nbytes(0),
 					m_type(t),
 					m_state(state::S_IDLE),
 					m_message_opcode(OP_TEXT),
