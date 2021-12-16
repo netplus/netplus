@@ -53,21 +53,22 @@ namespace netp { namespace handler {
 		(void)ctx;
 	}
 
-	void websocket::read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income)
+	void websocket::read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income_)
 	{
-		if (income->len() == 0) {
+		if (income_->len() == 0) {
 			NETP_WARN("[websocket][#%u]empty message, return", ctx->ch->ch_id() );
 			return;
 		}
 
+		NRP<packet> _income = income_;
 		if ( m_income_prev->len() ) {
-			income->write_left(m_income_prev->head(), m_income_prev->len());
-			m_income_prev->reset();
+			m_income_prev->write(_income->head(), _income->len());
+			_income.swap(m_income_prev);
+			m_income_prev->reset(0);
 		}
 
 _CHECK:
 		switch (m_state) {
-
 		case state::S_WAIT_CLIENT_HANDSHAKE_REQ:
 			{
 				NETP_ASSERT( m_http_parser == nullptr );
@@ -88,18 +89,18 @@ _CHECK:
 		break;
 		case state::S_HANDSHAKING:
 			{
-				int http_parse_ec = m_http_parser->parse( (char*) income->head(), income->len() );
+				int http_parse_ec = m_http_parser->parse( (char*)_income->head(), _income->len() );
 				if(http_parse_ec == HPE_OK) {
 					//NETP_ASSERT(nparsed == income->len());
-					income->skip(income->len());
+					_income->skip(_income->len());
 				} else {
-					income->skip(m_http_parser->calc_parsed_bytes((char*)income->head()));
+					_income->skip(m_http_parser->calc_parsed_bytes((char*)_income->head()));
 					if (NETP_HTTP_IS_PARSE_ERROR(http_parse_ec)) {
 						NETP_WARN("[websocket][#%u]handshake, parse handshake message failed: %d", ctx->ch->ch_id(), http_parse_ec);
 						ctx->close();
 						return;
 					} else if (http_parse_ec == HPE_PAUSED_UPGRADE) {
-						NETP_ASSERT( income->len() ==0 );
+						NETP_ASSERT(_income->len() ==0 );
 					}
 					goto _CHECK;
 				}
@@ -191,10 +192,10 @@ _CHECK:
 			{
 				//NETP_INFO("<<< %u", income->len());
 				NETP_ASSERT(sizeof(ws_frame::H) == 2, "%u", sizeof(ws_frame::H));
-				if (income->len() >= sizeof(ws_frame::H)) {
+				if (_income->len() >= sizeof(ws_frame::H)) {
 
-					m_tmp_frame->H.B1.B = income->read<u8_t>();
-					m_tmp_frame->H.B2.B = income->read<u8_t>();
+					m_tmp_frame->H.B1.B = _income->read<u8_t>();
+					m_tmp_frame->H.B2.B = _income->read<u8_t>();
 
 					//@Note: refer to RFC6455
 					//frame with a control opcode would not be fragmented
@@ -209,21 +210,21 @@ _CHECK:
 					m_state = state::S_FRAME_READ_PAYLOAD_LEN;
 					goto _CHECK;
 				}
-				m_income_prev = income;
+				m_income_prev = _income;
 			}
 			break;
 		case state::S_FRAME_READ_PAYLOAD_LEN:
 			{
 				//NETP_INFO("<<< %u", income->len());
 				if (m_tmp_frame->H.B2.Bit.len == 126) {
-					if (income->len() >= sizeof(u16_t)) {
-						m_tmp_frame->payload_len = income->read<u16_t>();
+					if (_income->len() >= sizeof(u16_t)) {
+						m_tmp_frame->payload_len = _income->read<u16_t>();
 						m_state = state::S_FRAME_READ_MASKING_KEY;
 						goto _CHECK;
 					}
 				} else if (m_tmp_frame->H.B2.Bit.len == 127) {
-					if (income->len() >= sizeof(u64_t)) {
-						m_tmp_frame->payload_len = income->read<u64_t>();
+					if (_income->len() >= sizeof(u64_t)) {
+						m_tmp_frame->payload_len = _income->read<u64_t>();
 						m_state = state::S_FRAME_READ_MASKING_KEY;
 						goto _CHECK;
 					}
@@ -232,7 +233,7 @@ _CHECK:
 					m_state = state::S_FRAME_READ_MASKING_KEY;
 					goto _CHECK;
 				}
-				m_income_prev = income;
+				m_income_prev = _income;
 			}
 			break;
 		case state::S_FRAME_READ_MASKING_KEY:
@@ -248,8 +249,8 @@ _CHECK:
 						return;
 					}
 
-					if (income->len() >= sizeof(u32_t)) {
-						const u32_t key = income->read<u32_t>();
+					if (_income->len() >= sizeof(u32_t)) {
+						const u32_t key = _income->read<u32_t>();
 
 						m_tmp_frame->masking_key_arr[0] = (key >> 24) & 0xff;
 						m_tmp_frame->masking_key_arr[1] = (key >> 16) & 0xff;
@@ -259,7 +260,7 @@ _CHECK:
 						m_state = state::S_FRAME_READ_PAYLOAD;
 						goto _CHECK;
 					}
-					m_income_prev = income;
+					m_income_prev = _income;
 				} else {
 					m_state = state::S_FRAME_READ_PAYLOAD;
 					goto _CHECK;
@@ -269,23 +270,23 @@ _CHECK:
 		case state::S_FRAME_READ_PAYLOAD:
 			{
 				const u32_t left_to_fill = (m_tmp_frame->payload_len - m_tmp_frame->appdata->len());
-				if (income->len() < left_to_fill) {
-					m_income_prev = income;
+				if (_income->len() < left_to_fill) {
+					m_income_prev = _income;
 					return;
 				}
 
 				if (m_tmp_frame->H.B2.Bit.mask == 0x1) {
 					u32_t i = 0;
 					while (i < left_to_fill) {
-						const u8_t _byte = ( *((netp::u8_t*)income->head() + (i)) ^ m_tmp_frame->masking_key_arr[i % 4]);
+						const u8_t _byte = ( *((netp::u8_t*)_income->head() + (i)) ^ m_tmp_frame->masking_key_arr[i % 4]);
 						++i;
 						m_tmp_frame->appdata->write<u8_t>(_byte);
 					}
 				} else {
-					m_tmp_frame->appdata->write(income->head(), left_to_fill);
+					m_tmp_frame->appdata->write(_income->head(), left_to_fill);
 				}
 
-				income->skip(left_to_fill);
+				_income->skip(left_to_fill);
 				m_state = state::S_FRAME_END;
 				goto _CHECK;
 			}
@@ -383,9 +384,9 @@ _CHECK:
 		case state::S_MESSAGE_END:
 			{
 				NETP_ASSERT(m_message_opcode == OP_BINARY || m_message_opcode == OP_TEXT);
-				ctx->fire_read(m_tmp_message);
-				m_tmp_message->reset();
-
+				NRP<netp::packet> _m_tmp_message = netp::make_ref<netp::packet>();
+				_m_tmp_message.swap(m_tmp_message);
+				ctx->fire_read(_m_tmp_message);
 				m_state = state::S_MESSAGE_BEGIN;
 				goto _CHECK;
 			}

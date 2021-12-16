@@ -156,8 +156,8 @@ namespace netp {
 		NRP<address> m_raddr;
 
 		io_ctx* m_io_ctx;
-		byte_t* m_rcv_buf_ptr;
-		u32_t m_rcv_buf_size;
+		byte_t* const m_rcv_buf_ptr; //note: set this value to const& the object size increase to 192 compared non- const&'s 184
+		u32_t const m_rcv_buf_size;
 
 		u32_t m_tx_bytes;
 		socket_outbound_entry_t m_tx_entry_q;

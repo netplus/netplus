@@ -463,7 +463,7 @@ namespace netp {
 		NETP_TRACE_APP("sizeof(std::function<void(int)>): %u", sizeof(std::function<void(int)>));
 		NETP_TRACE_APP("sizeof(std::function<void(int, int)>): %u", sizeof(std::function<void(int, int)>));
 		NETP_TRACE_APP("sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>): %u", sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>));
-		NETP_TRACE_APP("sizeof(netp::socket): %u", sizeof(netp::socket_channel));
+		NETP_TRACE_APP("sizeof(netp::socket_channel): %u", sizeof(netp::socket_channel));
 		NETP_TRACE_APP("sizeof(std::vector<int>): %u", sizeof(std::vector<int>));
 		NETP_TRACE_APP("sizeof(std::vector<std::function<void(int)>): %u", sizeof(std::vector<std::function<void(int)>>));
 		NETP_TRACE_APP("sizeof(std::vector<std::function<void(int, int)>>): %u", sizeof(std::vector<std::function<void(int, int)>>));

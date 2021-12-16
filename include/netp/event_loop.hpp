@@ -81,6 +81,9 @@ namespace netp {
 		S_EXIT //exit..
 	};
 
+	using loop_rcv_buf_packet_t = netp::cap_fix_packet<netp::non_atomic_ref_base, 0, 0xffff, NETP_DEFAULT_ALIGN>;
+	//using loop_rcv_buf_packet_t = packet;
+
 	class dns_resolver;
 	class timer_broker;
 	class thread;
@@ -88,7 +91,7 @@ namespace netp {
 		public ref_base
 	{
 		enum LOOP_WAIT_FLAG {
-			F_LOOP_WAIT_NONE_ZERO_TIME_WAIT =1,
+			F_LOOP_WAIT_NONE_ZERO_TIME_WAIT =1<<0,
 			F_LOOP_WAIT_ENTER_WAITING = 1<<1
 		};
 		friend class event_loop_group;
@@ -111,7 +114,7 @@ namespace netp {
 		io_task_q_t m_tq_standby;
 		io_task_q_t m_tq;
 
-		NRP<netp::packet> m_channel_rcv_buf;
+		NRP<netp::loop_rcv_buf_packet_t> m_channel_rcv_buf;
 		NRP<netp::thread> m_th;
 
 		//timer_timepoint_t m_wait_until;
@@ -188,8 +191,13 @@ namespace netp {
 		u8_t poller_type() const { return m_cfg.type; }
 
 		__NETP_FORCE_INLINE
-		NRP<netp::packet> const& channel_rcv_buf() const {
+		NRP<netp::loop_rcv_buf_packet_t> const& channel_rcv_buf() const {
 			return m_channel_rcv_buf;
+		}
+
+		__NETP_FORCE_INLINE
+		u32_t channel_rcv_buf_size() const {
+			return m_cfg.channel_read_buf_size;
 		}
 
 		__NETP_FORCE_INLINE

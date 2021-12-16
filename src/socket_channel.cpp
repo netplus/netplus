@@ -539,8 +539,10 @@ int socket_base::get_left_snd_queue() const {
 
 	void socket_channel::__do_io_read(int status, io_ctx*) {
 		//NETP_INFO("READ IN");
+#ifdef _NETP_DEBUG
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(!ch_is_listener());
+#endif
 
 		//in case socket object be destructed during ch_read
 		while (status == netp::OK) {

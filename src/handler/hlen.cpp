@@ -4,6 +4,7 @@
 namespace netp { namespace handler {
 
 	void hlen::connected(NRP<channel_handler_context> const& ctx) {
+		m_tmp = netp::make_ref<netp::packet>( ctx->L->channel_rcv_buf()->left_right_capacity(),0 );
 		m_read_closed = false;
 		ctx->fire_connected();
 	}
@@ -12,20 +13,14 @@ namespace netp { namespace handler {
 		ctx->fire_read_closed();
 	}
 
-	void hlen::read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income) {
-		NETP_ASSERT(income != nullptr);
+	void hlen::read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income_) {
+		NETP_ASSERT(income_ != nullptr);
 
-		NRP<packet> _income = income;
-		if (NETP_UNLIKELY(m_tmp != nullptr)) {
-			if (m_tmp->len() < _income->left_left_capacity()) {
-				_income->write_left(m_tmp->head(), m_tmp->len());
-			} else {
-				NRP<netp::packet> __income = netp::make_ref<netp::packet>(m_tmp->len() + income->len() );
-				__income->write(m_tmp->head(), m_tmp->len());
-				__income->write(income->head(), income->len());
-				_income = __income;
-			}
-			m_tmp = nullptr;
+		NRP<packet> _income = income_;
+		if (NETP_UNLIKELY(m_tmp->len())) {
+			m_tmp->write(_income->head(), _income->len());
+			m_tmp.swap(_income);
+			m_tmp->reset(0);
 		}
 
 		bool bExit = false;
@@ -34,8 +29,10 @@ namespace netp { namespace handler {
 			case parse_state::S_READ_LEN:
 			{
 				if (_income->len() < sizeof(u32_t)) {
-					NETP_ASSERT(m_tmp == nullptr);
-					m_tmp = netp::make_ref<netp::packet>(_income->head(), _income->len());
+#ifdef _NETP_DEBUG
+					NETP_ASSERT(m_tmp->len() == 0);
+#endif
+					m_tmp.swap(_income);
 					bExit = true;
 					break;
 				}
@@ -51,8 +48,10 @@ namespace netp { namespace handler {
 					ctx->fire_read(__income_for_fire);
 					m_state = parse_state::S_READ_LEN;
 				} else {
-					NETP_ASSERT(m_tmp == nullptr);
-					m_tmp = netp::make_ref<netp::packet>(_income->head(), _income->len());
+#ifdef _NETP_DEBUG
+					NETP_ASSERT(m_tmp->len() == 0);
+#endif
+					m_tmp.swap(_income);
 					bExit = true;
 				}
 			}

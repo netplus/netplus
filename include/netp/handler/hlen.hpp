@@ -19,7 +19,7 @@ namespace netp { namespace handler {
 		parse_state m_state;
 		u32_t m_size;
 		NRP<packet> m_tmp;
-		bool m_read_closed;
+		bool m_read_closed; //fire_read might result in read closed, we've to drop all the pending data
 	public:
 		hlen() :
 			channel_handler_abstract(CH_INBOUND_READ| CH_OUTBOUND_WRITE|CH_ACTIVITY_CONNECTED|CH_ACTIVITY_READ_CLOSED),

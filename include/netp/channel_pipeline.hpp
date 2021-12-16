@@ -18,6 +18,8 @@
 		m_head->fire_##NAME(i); \
 	}\
 
+//packet_'s owership should transmit to the under layer
+//please do not keep a copy of this packets after a fire action, the under-layer might modify it's memory layout for some purposes
 #define PIPELINE_VOID_FIRE_PACKET_1(NAME) \
 	__NETP_FORCE_INLINE void fire_##NAME(NRP<packet> const& packet_) const {\
 		m_head->fire_##NAME(packet_); \
@@ -111,6 +113,7 @@ namespace netp {
 		PIPELINE_VOID_FIRE_INT_1(error)
 		PIPELINE_VOID_FIRE_VOID(read_closed)
 		PIPELINE_VOID_FIRE_VOID(write_closed)
+
 		PIPELINE_VOID_FIRE_PACKET_1(read)
 
 		PIPELINE_VOID_FIRE_PACKET_ADDR(readfrom)
