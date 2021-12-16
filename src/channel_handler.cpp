@@ -10,7 +10,7 @@
 #define VOID_FIRE_HANDLER_DEFAULT_IMPL_0(NAME,FLAG,HANDLER_NAME) \
 	void HANDLER_NAME::NAME(NRP<channel_handler_context> const& ctx) { \
 		/*ctx->fire_##NAME();*/ \
-		NETP_ASSERT(CH_H_FLAG & FLAG); \
+		_NETP_HANDLER_CONTEXT_ASSERT(CH_H_FLAG & FLAG); \
 		NETP_THROW(#FLAG "MUST IMPL ITS OWN "#NAME); \
 		(void)ctx; \
 	}
@@ -18,7 +18,7 @@
 #define VOID_FIRE_HANDLER_DEFAULT_IMPL_INT_1(NAME,FLAG,HANDLER_NAME) \
 	void HANDLER_NAME::NAME(NRP<channel_handler_context> const& ctx, int err) { \
 		/*ctx->fire_##NAME(err); */\
-		NETP_ASSERT(CH_H_FLAG & FLAG); \
+		_NETP_HANDLER_CONTEXT_ASSERT(CH_H_FLAG & FLAG); \
 		NETP_THROW(#FLAG"MUST IMPL ITS OWN "#NAME); \
 		(void)ctx; \
 		(void)err; \
@@ -27,7 +27,7 @@
 #define VOID_HANDLER_DEFAULT_IMPL_0(NAME,FLAG,HANDLER_NAME) \
 	void HANDLER_NAME::NAME(NRP<channel_handler_context> const& ctx) { \
 		/*ctx->NAME(); */\
-		NETP_ASSERT(CH_H_FLAG & FLAG); \
+		_NETP_HANDLER_CONTEXT_ASSERT(CH_H_FLAG & FLAG); \
 		NETP_THROW(#FLAG"MUST IMPL ITS OWN "#NAME); \
 		(void)ctx; \
 	}
@@ -35,7 +35,7 @@
 #define VOID_HANDLER_DEFAULT_IMPL_PROMISE(NAME,FLAG, HANDLER_NAME) \
 	void HANDLER_NAME::NAME(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx) { \
 		/*ctx->NAME(chp); */\
-		NETP_ASSERT(CH_H_FLAG & FLAG); \
+		_NETP_HANDLER_CONTEXT_ASSERT(CH_H_FLAG & FLAG); \
 		NETP_THROW(#FLAG"MUST IMPL ITS OWN "#NAME); \
 		(void)intp; \
 		(void)ctx; \
@@ -54,14 +54,14 @@ namespace netp {
 	//VOID_FIRE_HANDLER_DEFAULT_IMPL_0(write_unblock, CH_ACTIVITY_WRITE_UNBLOCK, channel_handler_abstract)
 
 	void channel_handler_abstract::read(NRP<channel_handler_context> const& ctx, NRP<packet> const& income) {
-		NETP_ASSERT(CH_H_FLAG & CH_INBOUND_READ);
+		_NETP_HANDLER_CONTEXT_ASSERT(CH_H_FLAG & CH_INBOUND_READ);
 		NETP_THROW("CH_INBOUND_READ MUST IMPL ITS OWN read");
 		(void)ctx;
 		(void)income;
 	}
 
 	void channel_handler_abstract::readfrom(NRP<channel_handler_context> const& ctx, NRP<packet> const& income, NRP<address> const& from) {
-		NETP_ASSERT(CH_H_FLAG & CH_INBOUND_READ_FROM);
+		_NETP_HANDLER_CONTEXT_ASSERT(CH_H_FLAG & CH_INBOUND_READ_FROM);
 		NETP_THROW("CH_INBOUND_READ_FROM MUST IMPL ITS OWN readfrom");
 		(void)ctx;
 		(void)income;
@@ -69,7 +69,7 @@ namespace netp {
 	}
 	
 	void channel_handler_abstract::write(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet) {
-		NETP_ASSERT(CH_H_FLAG & CH_OUTBOUND_WRITE);
+		_NETP_HANDLER_CONTEXT_ASSERT(CH_H_FLAG & CH_OUTBOUND_WRITE);
 		NETP_THROW("CH_OUTBOUND_WRITE MUST IMPL ITS OWN write");
 		(void)intp;
 		(void)ctx;
@@ -83,7 +83,7 @@ namespace netp {
 
 
 	void channel_handler_abstract::write_to(NRP<promise<int>> const& intp, NRP<channel_handler_context> const& ctx, NRP<packet> const& outlet, NRP<address> const& to) {
-		NETP_ASSERT(CH_H_FLAG & CH_OUTBOUND_WRITE_TO);
+		_NETP_HANDLER_CONTEXT_ASSERT(CH_H_FLAG & CH_OUTBOUND_WRITE_TO);
 		NETP_THROW("CH_OUTBOUND_WRITE_TO MUST IMPL ITS OWN write_to");
 		(void)intp;
 		(void)ctx;

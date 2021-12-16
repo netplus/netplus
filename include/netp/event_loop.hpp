@@ -314,7 +314,9 @@ namespace netp {
 		}
 
 		inline int io_do(io_action act, io_ctx* ctx) {
+#ifdef _NETP_DEBUG
 			NETP_ASSERT(in_event_loop());
+#endif
 			if (((u8_t(act) & u8_t(io_action::READ_WRITE)) == 0) || m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
 				return m_poller->io_do(act, ctx);
 			} else {
@@ -322,7 +324,9 @@ namespace netp {
 			}
 		}
 		inline io_ctx* io_begin(SOCKET fd, NRP<io_monitor> const& iom) {
+#ifdef _NETP_DEBUG
 			NETP_ASSERT(in_event_loop());
+#endif
 			if (m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATING)) {
 				io_ctx* _ctx= m_poller->io_begin(fd, iom);
 				if (NETP_LIKELY(_ctx != nullptr)) {
@@ -333,7 +337,9 @@ namespace netp {
 			return 0;
 		}
 		inline void io_end(io_ctx* ctx) {
+#ifdef _NETP_DEBUG
 			NETP_ASSERT(in_event_loop());
+#endif
 			m_poller->io_end(ctx);
 
 			if ( (--m_io_ctx_count == m_io_ctx_count_before_running) && m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_TERMINATING)) {
