@@ -7,7 +7,7 @@
 #include <netp/smart_ptr.hpp>
 #include <netp/bytes_helper.hpp>
 
-#define PACK_DEF_LEFT_CAPACITY (48)
+#define PACK_DEF_LEFT_CAPACITY (32)
 #define PACK_DEF_RIGHT_CAPACITY (2048-(PACK_DEF_LEFT_CAPACITY)-32)
 #define PACK_MAX_CAPACITY (netp::u32::MAX)
 #define PACK_INCREMENT_SIZE_RIGHT ((1024*4)-32)

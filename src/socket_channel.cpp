@@ -250,7 +250,7 @@ int socket_base::get_left_snd_queue() const {
 
 #ifdef NETP_ENABLE_FAST_WRITE
 			m_chflag |= int(channel_flag::F_WRITE_BARRIER);
-			__do_io_write(netp::OK, m_io_ctx);
+			ch_is_connected() ? __do_io_write(netp::OK, m_io_ctx) : __do_io_write_to(netp::OK, m_io_ctx);
 			m_chflag &= ~int(channel_flag::F_WRITE_BARRIER);
 #else
 			ch_io_write();
@@ -335,8 +335,9 @@ int socket_base::get_left_snd_queue() const {
 				so->ch_io_connect(fn_connect_done);
 				return;
 			}
-
+#ifdef _NETP_DEBUG
 			NETP_ASSERT( (so->ch_flag() &( int(channel_flag::F_CONNECTING)|int(channel_flag::F_CONNECTED) )) ==0 );
+#endif
 			so->ch_flag() |= int(channel_flag::F_WRITE_ERROR);
 			so->ch_errno() = rt;
 			so->ch_close_impl(nullptr);
@@ -412,8 +413,8 @@ int socket_base::get_left_snd_queue() const {
 				fn_initializer(NRP<channel>(this));
 			}
 
-			ch_set_connected();
 			ch_io_end_connect();
+			ch_set_connected();
 			dialp->set(netp::OK);
 		} catch(netp::exception const& e) {
 			NETP_ASSERT(e.code() != netp::OK );
@@ -519,19 +520,10 @@ int socket_base::get_left_snd_queue() const {
 		while (status == netp::OK) {
 			NETP_ASSERT((m_chflag & (int(channel_flag::F_READ_SHUTDOWNING))) == 0);
 			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN) | int(channel_flag::F_CLOSE_PENDING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
-			if (m_chflag & int(channel_flag::F_CONNECTED)) {
-				NETP_ASSERT(m_raddr != nullptr && !m_raddr->is_af_unspec());
-				static NRP<netp::address> __address_nullptr_;
-				netp::u32_t nbytes = socket_recvfrom_impl(m_rcv_buf_ptr, m_rcv_buf_size, __address_nullptr_, status);
-				if (NETP_LIKELY(nbytes > 0)) {
-					channel::ch_fire_readfrom(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes), m_raddr);
-				}
-			} else {
-				NRP<netp::address> __address_nonnullptr_ = netp::make_ref<netp::address>();
-				netp::u32_t nbytes = socket_recvfrom_impl(m_rcv_buf_ptr, m_rcv_buf_size, __address_nonnullptr_, status);
-				if (NETP_LIKELY(nbytes > 0)) {
-					channel::ch_fire_readfrom(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes), __address_nonnullptr_);
-				}
+			NRP<netp::address> __address_nonnullptr_ = netp::make_ref<netp::address>();
+			netp::u32_t nbytes = socket_recvfrom_impl(m_rcv_buf_ptr, m_rcv_buf_size, __address_nonnullptr_, status);
+			if (NETP_LIKELY(nbytes > 0)) {
+				channel::ch_fire_readfrom(netp::make_ref<netp::packet>(m_rcv_buf_ptr, nbytes), __address_nonnullptr_);
 			}
 		}
 		___do_io_read_done(status);
@@ -561,23 +553,20 @@ int socket_base::get_left_snd_queue() const {
 		NETP_ASSERT( (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWNING)|int(channel_flag::F_TX_LIMIT)|int(channel_flag::F_CLOSING) | int(channel_flag::F_WRITE_ERROR) |int(channel_flag::F_WRITE_SHUTDOWN) )) == 0 );
 		//NETP_TRACE_SOCKET("[socket][%s]__do_io_write, write begin: %d, flag: %u", ch_info().c_str(), status , m_chflag );
 		if (status == netp::OK) {
+			status = socket_channel::___do_io_write();
+		}
+		__do_io_write_done(status);
+	}
 
-//#ifdef NETP_ENABLE_FAST_WRITE
-//			if (m_chflag&int(channel_flag::F_WRITE_ERROR)) {//bdlimit cb, if fast_write enabled
-//				NETP_ASSERT( (m_fn_write == nullptr) ? m_tx_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
-//				NETP_ASSERT(ch_errno() != netp::OK);
-//				NETP_VERBOSE("[socket][%s]__do_io_write(), but socket error already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
-//				return ;
-//			} else if (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWN))) {//bdlimit cb, if fast_write enabled
-//				NETP_ASSERT((m_fn_write == nullptr) ? m_tx_entry_q.size() == 0 : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
-//				NETP_VERBOSE("[socket][%s]__do_io_write(), but socket write closed already: %d, m_chflag: %u", ch_info().c_str(), ch_errno(), m_chflag);
-//				return;
-//			} else {
-//#endif
-				status = is_udp() ? socket_channel::___do_io_write_to():socket_channel::___do_io_write();
-//#ifdef NETP_ENABLE_FAST_WRITE
-//			}
-//#endif
+	//we always do ch_io_end for close_write_impl, so if we're here, there must be no (WRITE_ERROR|F_WRITE_SHUTDOWN)
+	void socket_channel::__do_io_write_to(int status, io_ctx*) {
+#ifdef _NETP_DEBUG
+		NETP_ASSERT(is_udp());
+#endif
+		NETP_ASSERT((m_chflag & (int(channel_flag::F_WRITE_SHUTDOWNING) | int(channel_flag::F_TX_LIMIT) | int(channel_flag::F_CLOSING) | int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_WRITE_SHUTDOWN))) == 0);
+		//NETP_TRACE_SOCKET("[socket][%s]__do_io_write, write begin: %d, flag: %u", ch_info().c_str(), status , m_chflag );
+		if (status == netp::OK) {
+			status = socket_channel::___do_io_write_to();
 		}
 		__do_io_write_done(status);
 	}
@@ -676,7 +665,7 @@ int socket_base::get_left_snd_queue() const {
 
 		//NETP_ASSERT((m_chflag & int(channel_flag::F_CLOSED)) == 0);
 		m_chflag |= int(channel_flag::F_CLOSING);
-		m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CONNECTED));
+		m_chflag &= ~(int(channel_flag::F_CLOSE_PENDING));
 		NETP_TRACE_SOCKET("[socket][%s]ch_do_close_read_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
 
 		_ch_do_close_read();
@@ -686,7 +675,7 @@ int socket_base::get_left_snd_queue() const {
 		NETP_ASSERT(m_tx_bytes == 0);
 
 		//close read, close write might result in F_CLOSED
-		m_chflag &= ~int(channel_flag::F_CLOSING);
+		m_chflag &= ~(int(channel_flag::F_CLOSING)|int(channel_flag::F_CONNECTED));
 		ch_rdwr_shutdown_check();
 	}
 
@@ -758,7 +747,6 @@ int socket_base::get_left_snd_queue() const {
 			_ch_do_close_listener();
 		} else if (m_chflag & (int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))) {
 			NETP_ASSERT( ch_errno() != netp::OK );
-			NETP_ASSERT(m_chflag & (int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR) | (int(channel_flag::F_FIRE_ACT_EXCEPTION))));
 			NETP_ASSERT(((m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_USE_DEFAULT_WRITE))) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_USE_DEFAULT_WRITE))) ?
 				m_tx_entry_q.size() :
 				true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
@@ -824,7 +812,8 @@ __act_label_close_read_write:
 		NETP_ASSERT( (m_chflag& (int(channel_flag::F_WATCH_WRITE) | int(channel_flag::F_TX_LIMIT))) ? m_tx_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 		m_tx_entry_q.push_back({
 			netp::make_ref<netp::non_atomic_ref_packet>(outlet->head(), outlet_len,0),
-			intp
+			intp,
+			nullptr
 		});
 		m_tx_bytes += outlet_len;
 
@@ -849,7 +838,7 @@ __act_label_close_read_write:
 		m_tx_entry_q.push_back({
 			netp::make_ref<netp::non_atomic_ref_packet>(outlet->head(), outlet_len,0),
 			intp,
-			to,
+			to
 		});
 		m_tx_bytes += outlet_len;
 
@@ -860,7 +849,7 @@ __act_label_close_read_write:
 #ifdef NETP_ENABLE_FAST_WRITE
 		//fast write
 		m_chflag |= int(channel_flag::F_WRITE_BARRIER);
-		__do_io_write(netp::OK,m_io_ctx);
+		__do_io_write_to(netp::OK,m_io_ctx);
 		m_chflag &= ~int(channel_flag::F_WRITE_BARRIER);
 #else
 		ch_io_write();
@@ -887,7 +876,7 @@ __act_label_close_read_write:
 	void socket_channel::io_notify_read(int status, io_ctx* ctx) {
 		NETP_ASSERT(m_chflag & int(channel_flag::F_WATCH_READ), "[socket][%s]", ch_info().c_str() );
 		if (m_chflag & int(channel_flag::F_USE_DEFAULT_READ)) {
-			!is_udp() ? __do_io_read(status, ctx): __do_io_read_from(status, ctx);
+			ch_is_connected() ? __do_io_read(status, ctx) : __do_io_read_from(status, ctx);
 			return;
 		}
 		NETP_ASSERT( m_fn_read != nullptr );
@@ -898,7 +887,7 @@ __act_label_close_read_write:
 		NETP_ASSERT( m_chflag&int(channel_flag::F_WATCH_WRITE), "[socket][%s]", ch_info().c_str() );
 		if (m_chflag & int(channel_flag::F_USE_DEFAULT_WRITE)) {
 			m_chflag |= int(channel_flag::F_WRITE_BARRIER);
-			__do_io_write(status, ctx);
+			ch_is_connected() ? __do_io_write(status, ctx) : __do_io_write_to(status, ctx);
 			m_chflag &= ~int(channel_flag::F_WRITE_BARRIER);
 			return;
 		}
@@ -1033,7 +1022,6 @@ __act_label_close_read_write:
 
 			if (m_chflag & int(channel_flag::F_WATCH_WRITE)) {
 				//for udp socket, it might be in non-connected state
-				NETP_ASSERT( is_udp() ? true: m_chflag & int(channel_flag::F_CONNECTED));
 				if (fn_write != nullptr) {
 					fn_write(netp::E_SOCKET_OP_ALREADY, 0);
 				}

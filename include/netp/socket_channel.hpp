@@ -832,6 +832,7 @@ namespace netp {
 			}
 		}
 		void __do_io_write(int status, io_ctx* ctx);
+		void __do_io_write_to(int status, io_ctx* ctx);
 
 		//@note, we need simulate a async write, so for write operation, we'll flush outbound buffer in the next loop
 		//flush until error
