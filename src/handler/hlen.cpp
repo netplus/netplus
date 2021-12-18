@@ -21,7 +21,7 @@ namespace netp { namespace handler {
 		m_in_q_nbytes += income->len();
 
 		bool bExit = false;
-__check_m_in_q:
+__label_m_in_q:
 		while (!bExit && !m_read_closed && m_in_q_nbytes !=0 ) {
 #ifdef _NETP_DEBUG
 			NETP_ASSERT(m_in_q.size());
@@ -42,7 +42,7 @@ __check_m_in_q:
 					NETP_ASSERT(m_in_q.size());
 #endif
 					m_in_q.front()->write_left(_in->head(), _in->len());
-					goto __check_m_in_q;
+					goto __label_m_in_q;
 				}
 
 				m_size = in->read<u32_t>();
@@ -58,35 +58,35 @@ __check_m_in_q:
 				m_tmp_for_fire = netp::make_ref<netp::packet>(m_size);
 				if (in->len() == 0) {
 					m_in_q.pop();
-					goto __check_m_in_q;
+					goto __label_m_in_q;
 				}
-				goto __read_content;
+				goto __label_read_content;
 			}
 			break;
 			case HLEN_PARSE_S_READ_CONTENT:
 			{
-			__read_content:
+			__label_read_content:
 #ifdef _NETP_DEBUG
 				NETP_ASSERT(m_tmp_for_fire != nullptr);
 #endif
-				if (m_in_q_nbytes >= m_size) {
-					const u32_t to_write = in->len() > m_size ? m_size : in->len();
-					m_tmp_for_fire->write(in->head(), to_write);
-					in->skip(to_write);
-
-					if (in->len() == 0) {
-						m_in_q.pop();
-					}
-					m_in_q_nbytes -= to_write;
-					m_size -= to_write;
-
-					if (m_size == 0) {
-						ctx->fire_read(m_tmp_for_fire);
-						m_tmp_for_fire = nullptr;
-						m_state = HLEN_PARSE_S_READ_LEN;
-					}
-				} else {
+				if (m_in_q_nbytes < m_size) {
 					bExit = true;
+					break;
+				}
+				const u32_t to_write = in->len() > m_size ? m_size : in->len();
+				m_tmp_for_fire->write(in->head(), to_write);
+				in->skip(to_write);
+
+				if (in->len() == 0) {
+					m_in_q.pop();
+				}
+				m_in_q_nbytes -= to_write;
+				m_size -= to_write;
+
+				if (m_size == 0) {
+					ctx->fire_read(m_tmp_for_fire);
+					m_tmp_for_fire = nullptr;
+					m_state = HLEN_PARSE_S_READ_LEN;
 				}
 			}
 			break;

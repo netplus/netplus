@@ -329,12 +329,15 @@ int socket_base::get_left_snd_queue() const {
 			}
 
 			rt = netp_socket_get_last_errno();
-			if (netp::E_EINPROGRESS==(rt)) {
+			if (netp::E_EINPROGRESS==rt) {
+				//@note 
+				NETP_ASSERT(so->sock_protocol() != NETP_PROTOCOL_UDP);
 				so->ch_flag() |= int(channel_flag::F_CONNECTING);
 				auto fn_connect_done = std::bind(&socket_channel::__do_io_dial_done, so, fn_initializer, dialp, std::placeholders::_1, std::placeholders::_2);
 				so->ch_io_connect(fn_connect_done);
 				return;
 			}
+
 #ifdef _NETP_DEBUG
 			NETP_ASSERT( (so->ch_flag() &( int(channel_flag::F_CONNECTING)|int(channel_flag::F_CONNECTED) )) ==0 );
 #endif
@@ -379,7 +382,12 @@ int socket_base::get_left_snd_queue() const {
 			goto _set_fail_and_return;
 		}
 
-		status = load_sockname();
+		if (sock_protocol() == NETP_PROTOCOL_UDP) {
+			status = bind_any();
+		} else {
+			status = load_sockname();
+		}
+
 		if (status != netp::OK ) {
 			goto _set_fail_and_return;
 		}
@@ -391,6 +399,7 @@ int socket_base::get_left_snd_queue() const {
 			goto _set_fail_and_return;
 		}
 #endif
+
 		NRP<netp::address> raddr;
 		status = socket_getpeername_impl(raddr);
 		if (status != netp::OK ) {

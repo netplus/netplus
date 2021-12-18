@@ -26,23 +26,23 @@ namespace netp {
 		u8_t family;
 		u8_t stype;
 		switch (sproto) {
-		case (NETP_PROTOCOL_TCP):
-		{
-			family = NETP_AF_INET;
-			stype = NETP_SOCK_STREAM;
-		}
-		break;
-		case (NETP_PROTOCOL_UDP):
-		{
-			family = NETP_AF_INET;
-			stype = NETP_SOCK_DGRAM;
-		}
-		break;
-		default:
-		{
-			family = (NETP_AF_USER);
-			stype = NETP_SOCK_USERPACKET;
-		}
+			case (NETP_PROTOCOL_TCP):
+			{
+				family = NETP_AF_INET;
+				stype = NETP_SOCK_STREAM;
+			}
+			break;
+			case (NETP_PROTOCOL_UDP):
+			{
+				family = NETP_AF_INET;
+				stype = NETP_SOCK_DGRAM;
+			}
+			break;
+			default:
+			{
+				family = NETP_AF_USER;
+				stype = NETP_SOCK_USERPACKET;
+			}
 		}
 
 		return std::make_tuple(netp::OK, family, stype, sproto);
@@ -230,7 +230,6 @@ namespace netp {
 	}
 
 	void do_dial(NRP<channel_dial_promise> const& ch_dialf, netp::size_t idx, std::vector< NRP<address>> const& addrs, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
-
 		NETP_ASSERT( idx<addrs.size() );
 
 		NRP<channel_dial_promise> _dp = netp::make_ref<channel_dial_promise>();
