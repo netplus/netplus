@@ -7,6 +7,50 @@
 #include <botan/tls_exceptn.h>
 
 namespace netp { namespace handler {
+	//reset_close_p_if_exception
+#define TLSCH_CLOSE_WITH_TRY_CATCH(tlsch, chctx, p_to_reset) { \
+		try { \
+			tlsch->close();\
+		} catch (Botan::TLS::TLS_Exception& e) {\
+			NETP_ERR("[tls_handler][#%s][tlsch_close]Botan::TLS::TLS_Exception: %d:%s", chctx->ch->ch_info().c_str(), e.error_code(), e.what());\
+			if(p_to_reset==nullptr) {\
+				chctx->close(); \
+			} else { \
+				decltype(p_to_reset) __p_cpy = p_to_reset; \
+				p_to_reset = nullptr;\
+				chctx->close(__p_cpy); \
+			}\
+		} catch (netp::exception& e) {\
+			NETP_ERR("[tls_handler][#%s][tlsch_close]netp::exception: [%d]%s\n%s(%d) %s\ncallstack: \n%s", chctx->ch->ch_info().c_str(),\
+				e.code(), e.what(), e.file(), e.line(), e.function(), e.callstack());\
+			if(p_to_reset==nullptr) {\
+				chctx->close(); \
+			} else { \
+				decltype(p_to_reset) __p_cpy = p_to_reset; \
+				p_to_reset = nullptr;\
+				chctx->close(__p_cpy); \
+			}\
+		} catch (std::exception& e) {\
+			NETP_ERR("[tls_handler][#%s][tlsch_close]std::exception: %s", chctx->ch->ch_info().c_str(), e.what());\
+			if(p_to_reset==nullptr) {\
+				chctx->close(); \
+			} else { \
+				decltype(p_to_reset) __p_cpy = p_to_reset; \
+				p_to_reset = nullptr;\
+				chctx->close(__p_cpy); \
+			}\
+		} catch (...) {\
+			NETP_ERR("[tls_handler][#%s][tlsch_close]unknown exception", chctx->ch->ch_info().c_str());\
+			if(p_to_reset==nullptr) {\
+				chctx->close(); \
+			} else { \
+				decltype(p_to_reset) __p_cpy = p_to_reset; \
+				p_to_reset = nullptr;\
+				chctx->close(__p_cpy); \
+			}\
+		}\
+	} /*endof TLSCH_CLOSE_WITH_TRY_CATCH*/
+	
 
 	tls_handler::tls_handler(NRP<tls_context> const& tlsctx) :
 		channel_handler_abstract(CH_ACTIVITY_CONNECTED | CH_ACTIVITY_CLOSED | CH_ACTIVITY_READ_CLOSED | CH_ACTIVITY_WRITE_CLOSED | CH_INBOUND_READ | CH_OUTBOUND_WRITE | CH_OUTBOUND_CLOSE | CH_OUTBOUND_CLOSE_WRITE),
@@ -63,7 +107,7 @@ namespace netp { namespace handler {
 
 		while (m_tls_outlets_user_data.size()) {
 			tls_ch_outlet& outlet = m_tls_outlets_user_data.front();
-			NETP_WARN("[tls]cancel write, nbytes: %u", outlet.data->len());
+			NETP_WARN("[tls_handler]cancel write, nbytes: %u", outlet.data->len());
 			outlet.write_p->set(netp::E_CHANNEL_CLOSED);
 			m_tls_outlets_user_data.pop();
 		}
@@ -92,20 +136,23 @@ namespace netp { namespace handler {
 		NETP_ASSERT(m_ctx != nullptr);
 		NETP_ASSERT(m_tls_channel != nullptr);
 
-		NNASP<Botan::TLS::Channel> tls_ch = m_tls_channel;
+		NNASP<Botan::TLS::Channel> tlsch = m_tls_channel;
 		//receive_data might reusult in tls_emit , tls_emit might result in ch close, ch close result in a operation of set m_tls_channel to null, so we have to keep one ref first
 
 		try {
-			tls_ch->received_data((uint8_t*)income->head(), income->len());
+			tlsch->received_data((uint8_t*)income->head(), income->len());
 		} catch (Botan::TLS::TLS_Exception& e) {
-			NETP_ERR("[tls_handler][#%s]tls excepton, code: %d, err: %s", ctx->ch->ch_info().c_str(), e.error_code(), e.what());
+			NETP_ERR("[tls_handler][#%s][read]Botan::TLS_Exception: %d:%s", ctx->ch->ch_info().c_str(), e.error_code(), e.what());
+			ctx->close();
+		} catch (netp::exception& e) {
+			NETP_ERR("[tls_handler][#%s][read]netp::excepton: [%d]%s\n%s(%d) %s\ncallstack: \n%s", ctx->ch->ch_info().c_str(),
+				e.code(), e.what(), e.file(), e.line(), e.function(), e.callstack());
 			ctx->close();
 		} catch (std::exception& e) {
-			NRP<netp::socket_channel> ch_ = netp::static_pointer_cast<netp::socket_channel>( ctx->ch );
-			NETP_ERR("[tls_handler][#%s]tls excepton, err: %s", ctx->ch->ch_info().c_str(), e.what() );
+			NETP_ERR("[tls_handler][#%s][read]std::excepton: %s", ctx->ch->ch_info().c_str(), e.what() );
 			ctx->close();
 		} catch (...) {
-			NETP_ERR("[tls_handler][#%s]unknown tls exception", ctx->ch->ch_info().c_str() );
+			NETP_ERR("[tls_handler][#%s][read]unknown exception", ctx->ch->ch_info().c_str() );
 			ctx->close();
 		}
 	}
@@ -124,7 +171,6 @@ namespace netp { namespace handler {
 			_try_tls_user_data_flush();
 		}
 	}
-
 
 	//close/close_write strategy
 	//1) user call close, set a tls_close_pending
@@ -163,17 +209,13 @@ namespace netp { namespace handler {
 			return;
 		}
 
-		try {
-			m_flag |= (f_tls_channel_close_notified | f_ch_close_pending);
-			m_close_p = chp; //not in f_ch_closed, we shall have a chance to set
-			tlsch->close();
-			return;
-		} catch (std::exception& e) {
-			NETP_ERR("[tls]tls record write failed: %s", e.what());
-			m_close_p = nullptr; 
-			ctx->close(chp);
-			return;
-		}
+		m_flag |= (f_tls_channel_close_notified | f_ch_close_pending);
+		m_close_p = chp; //not in f_ch_closed, we shall have a chance to set
+
+#ifdef _NETP_DEBUG
+		NETP_ASSERT(NRP<netp::promise<int>>() == nullptr, "static check TEST");
+#endif
+		TLSCH_CLOSE_WITH_TRY_CATCH(tlsch, ctx, m_close_p);
 	}
 
 	void tls_handler::close_write(NRP<promise<int>> const& chp, NRP<channel_handler_context> const& ctx) {
@@ -195,9 +237,6 @@ namespace netp { namespace handler {
 			m_close_write_p = chp;
 			return;
 		}
-
-		NETP_ASSERT(m_tls_channel != nullptr);
-		NNASP<Botan::TLS::Channel> tlsch = m_tls_channel;
 		NETP_ASSERT(m_tls_outlets_user_data.size() == 0);
 
 		if (m_flag & f_tls_channel_close_notified) {
@@ -205,29 +244,26 @@ namespace netp { namespace handler {
 			return;
 		}
 
-		try {
-			m_flag |= (f_tls_channel_close_notified |f_ch_close_write_pending);
-			m_close_write_p = chp;
-			tlsch->close();
-			return;
-		} catch (std::exception& e) {
-			NETP_ERR("[tls]tls record write failed: %s", e.what());
-			//tls exception, close under-layer transport anyway
-			m_close_write_p = nullptr;
-			ctx->close(chp);
-			return;
-		}
+		NETP_ASSERT(m_tls_channel != nullptr);
+		NNASP<Botan::TLS::Channel> tlsch = m_tls_channel;
+		m_flag |= (f_tls_channel_close_notified | f_ch_close_write_pending);
+		m_close_write_p = chp;
+		TLSCH_CLOSE_WITH_TRY_CATCH(tlsch, ctx, m_close_write_p);
 	}
 
 	void tls_handler::_try_tls_user_data_flush() {
 
+#ifdef _NETP_DEBUG
 		NETP_ASSERT( (m_flag&f_ch_write_closed) == 0);
-		NETP_ASSERT(m_tls_outlets_user_data.size());
+		NETP_ASSERT( m_tls_outlets_user_data.size() );
 		NETP_ASSERT( (m_flag&f_tls_ch_writing) == 0 );
+		NETP_ASSERT( m_ctx != nullptr );
+#endif
 		m_flag |= f_tls_ch_writing;
 
 		NETP_ASSERT(m_tls_channel != nullptr);
 		NNASP<Botan::TLS::Channel> tlsch = m_tls_channel;
+		NRP<netp::channel_handler_context> chctx = m_ctx;
 		try {
 			//send would result in multi tls_emit_data call
 			NETP_ASSERT((m_flag & f_tls_ch_writing_user_data) == 0);
@@ -237,10 +273,23 @@ namespace netp { namespace handler {
 			m_flag &= ~f_tls_ch_writing_user_data;
 
 			_try_tls_record_data_flush();
-		} catch (std::exception& e) {
-			NETP_ERR("[tls]tls record write failed: %s, close socket channel", e.what());
+		} catch (Botan::TLS::TLS_Exception& e) {
+			NETP_ERR("[tls_handler][#%s][try_tls_user_data_flush]std::exception: %d: %s", chctx->ch->ch_info().c_str(), e.error_code(), e.what());
 			m_flag &= ~(f_tls_ch_writing_user_data);
-			m_ctx->close();
+			chctx->close();
+		} catch (netp::exception& e) {
+			NETP_ERR("[tls_handler][#%s][try_tls_user_data_flush]netp::exception: [%d]%s\n%s(%d) %s\ncallstack: \n%s", chctx->ch->ch_info().c_str(),
+				e.code(), e.what(), e.file(), e.line(), e.function(), e.callstack());
+			m_flag &= ~(f_tls_ch_writing_user_data);
+			chctx->close();
+		} catch (std::exception& e) {
+			NETP_ERR("[tls_handler][#%s][try_tls_user_data_flush]std::exception: %s", chctx->ch->ch_info().c_str(), e.what());
+			m_flag &= ~(f_tls_ch_writing_user_data);
+			chctx->close();
+		} catch (...) {
+			NETP_ERR("[tls_handler][#%s][try_tls_user_data_flush]unknown exception", chctx->ch->ch_info().c_str());
+			m_flag &= ~(f_tls_ch_writing_user_data);
+			chctx->close();
 		}
 	}
 
@@ -277,18 +326,21 @@ namespace netp { namespace handler {
 			m_flag |= (f_tls_channel_close_notified|f_ch_close_pending);
 
 			NETP_ASSERT(m_tls_channel != nullptr);
+			NETP_ASSERT(m_ctx != nullptr);
+
 			NNASP<Botan::TLS::Channel> tlsch = m_tls_channel;
-			tlsch->close();
-			return;
-		}
-		else if (m_flag & f_tls_ch_close_write_pending) {
+			NRP<netp::channel_handler_context> chctx = m_ctx;
+			TLSCH_CLOSE_WITH_TRY_CATCH(tlsch, chctx, NRP<netp::promise<int>>(nullptr));
+		} else if (m_flag & f_tls_ch_close_write_pending) {
 			m_flag &= ~f_tls_ch_close_write_pending;
 			m_flag |= (f_tls_channel_close_notified | f_ch_close_write_pending);
 
 			NETP_ASSERT(m_tls_channel != nullptr);
+			NETP_ASSERT(m_ctx != nullptr);
+
 			NNASP<Botan::TLS::Channel> tlsch = m_tls_channel;
-			tlsch->close();
-			return;
+			NRP<netp::channel_handler_context> chctx = m_ctx;
+			TLSCH_CLOSE_WITH_TRY_CATCH(tlsch, chctx, NRP<netp::promise<int>>(nullptr));
 		}
 	}
 
@@ -400,10 +452,10 @@ namespace netp { namespace handler {
 			NETP_WARN("[tls_handler]tls_session_activated, but ch in closed state already: session: %s" , m_session_id.c_str() );
 			return; 
 		}
-
+#ifdef _NETP_DEBUG
 		NETP_ASSERT(m_ctx != nullptr, "flag: %d", m_flag );
+#endif
 		m_flag |= (f_tls_ch_activated|f_ch_connected);
-
 		m_ctx->fire_connected();
 	}
 
@@ -430,8 +482,9 @@ namespace netp { namespace handler {
 			NETP_ASSERT( m_tls_outlets_records_data.empty() );
 			return;
 		}
-
+#ifdef _NETP_DEBUG
 		NETP_ASSERT(m_ctx != nullptr);
+#endif
 		if (!m_tls_outlets_records_data.empty()) {
 			_try_tls_record_data_flush();
 			return;
@@ -476,8 +529,9 @@ namespace netp { namespace handler {
 			NETP_WARN("[tls]handler shutdown already, ignore write, nbytes: %u", length);
 			return;
 		}
-
+#ifdef _NETP_DEBUG
 		NETP_ASSERT(m_ctx != nullptr);
+#endif
 		if ((m_flag&f_tls_ch_writing_user_data)) {
 			NETP_ASSERT( m_tls_outlets_user_data.size() );
 			tls_ch_outlet& front_ = m_tls_outlets_user_data.front();
@@ -498,7 +552,9 @@ namespace netp { namespace handler {
 
 		//NETP_VERBOSE("Alert: %s", alert.type_string().c_str());
 		if (m_flag & f_ch_closed) {
+#ifdef _NETP_DEBUG
 			NETP_ASSERT(m_ctx == nullptr);
+#endif
 			return;
 		}
 
@@ -512,11 +568,10 @@ namespace netp { namespace handler {
 		break;
 		default:
 		{
-			NETP_INFO("Alert: %s", alert.type_string().c_str() );
-
+			NETP_VERBOSE("Alert: %u:%s", alert.type(), alert.type_string().c_str() );
 			if (alert.is_fatal()) {
 				//https://datatracker.ietf.org/doc/html/rfc5246#section-7.2.2, upon fatal alert, both side close transport immediately
-				NETP_WARN("[tls_handler]fatal Alert: %s, do handler::close()", alert.type_string().c_str());
+				NETP_WARN("[tls_handler]fatal Alert: %u:%s, do handler::close()", alert.type(), alert.type_string().c_str());
 				NETP_ASSERT(m_ctx != nullptr);
 				if ((m_flag & (f_tls_ch_activated | f_ch_connected)) == (f_tls_ch_activated | f_ch_connected)) {
 					close(netp::make_ref<netp::promise<int>>(), m_ctx);
@@ -535,7 +590,9 @@ namespace netp { namespace handler {
 			NETP_WARN("[tls_handler]received bytes after read closed, bytes: %d", buf_size);
 			return;
 		}
+#ifdef _NETP_DEBUG
 		NETP_ASSERT(m_ctx != nullptr);
+#endif
 		if (netp::u32_t(buf_size) > 0) {
 			m_ctx->fire_read(netp::make_ref<netp::packet>(buf, netp::u32_t(buf_size)));
 		}

@@ -42,6 +42,7 @@ namespace netp {
     #pragma warning(disable:4389)
 #endif
 			void poll(i64_t wait_in_nano, std::atomic<bool>& W) override {
+
 				FD_ZERO(&m_fds[fds_r]);
 				FD_ZERO(&m_fds[fds_w]);
 				FD_ZERO(&m_fds[fds_e]);

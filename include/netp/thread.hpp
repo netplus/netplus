@@ -20,9 +20,15 @@ namespace netp {
 		//use atomic type to sure that the address tearing of load/store operation not happen, cuz we have to access these two variable in other threads
 		std::atomic<std::thread*> m_th;
 		std::atomic<impl::thread_data*> m_th_data;
-
+		enum thead_th_data_state {
+			th_data_state_not_set, //initial state
+			th_data_state_idle, //idle state
+			th_data_state_borrowed, //borrowed by interrupt opeation
+			th_data_state_reset_already //reset operation can only be done on idle state
+		};
+		std::atomic<thead_th_data_state> m_th_data_state;
+		
 		NRP<impl::_th_run_base> m_th_run;
-
 		void __PRE_RUN_PROXY__();
 		void __RUN_PROXY__();
 		void __POST_RUN_PROXY__();
@@ -38,14 +44,11 @@ namespace netp {
 		{ \
 			NETP_ASSERT(m_th_data.load(std::memory_order_relaxed) == nullptr); \
 			NETP_ASSERT(m_th.load(std::memory_order_relaxed) == nullptr); \
-			m_th_data.store(netp::allocator<impl::thread_data>::make(), std::memory_order_relaxed); \
-			NETP_ASSERT(m_th_data.load(std::memory_order_relaxed) != nullptr); \
 			try { \
 				m_th_run = impl::_M_make_routine(std::bind(std::forward<_Fn>(_Fx) COMMA LIST(_FORWARD_ARG))); \
 				m_th = new std::thread(&thread::__RUN_PROXY__, this); \
 			} catch (...) { \
-				netp::allocator<impl::thread_data>::trash(m_th_data.load(std::memory_order_relaxed));\
-				m_th_data.store(nullptr, std::memory_order_relaxed);\
+				NETP_ASSERT(m_th_data_state.load(std::memory_order_acquire) == th_data_state_not_set);
 				::delete (m_th.load(std::memory_order_relaxed));\
 				m_th.store(nullptr, std::memory_order_relaxed);\
 				int _eno = netp_last_errno();\
@@ -62,10 +65,6 @@ _VARIADIC_EXPAND_0X(_THREAD_CONS, , , , )
 
 			NETP_ASSERT(m_th_data.load(std::memory_order_relaxed) == nullptr);
 			NETP_ASSERT(m_th.load(std::memory_order_relaxed) == nullptr);
-			//th_data should be prior to m_th, in case we call interrupt immediately after calling start
-			m_th_data.store(netp::allocator<impl::thread_data>::make(), std::memory_order_relaxed);
-			NETP_ASSERT(m_th_data.load(std::memory_order_relaxed) != nullptr);
-
 			try {
 				m_th_run = impl::_M_make_routine(std::bind(std::forward<typename std::remove_reference<_Fun_t>::type>(__fun), std::forward<_Args>(__args)...));
 
@@ -79,12 +78,9 @@ _VARIADIC_EXPAND_0X(_THREAD_CONS, , , , )
 				//if either of its members join or detach has been called.
 				m_th = ::new std::thread(&thread::__RUN_PROXY__, this);
 			} catch (...) {
-				netp::allocator<impl::thread_data>::trash(m_th_data.load(std::memory_order_relaxed));
-				m_th_data.store(nullptr, std::memory_order_relaxed);
-
+				NETP_ASSERT(m_th_data_state.load(std::memory_order_acquire) == th_data_state_not_set);
 				::delete m_th.load(std::memory_order_relaxed);
 				m_th.store(nullptr, std::memory_order_relaxed);
-
 				int _eno = netp_last_errno();
 				NETP_ERR("[thread]new std::thread(&thread::__RUN_PROXY__, _THH_) failed: %d", _eno);
 				return (_eno);
@@ -104,31 +100,67 @@ _VARIADIC_EXPAND_0X(_THREAD_CONS, , , , )
 				th = m_th.load(std::memory_order_acquire);
 			}
 
-			//the failed thread shhoul be blocked until the other thread's join done
+			//note: failed join thread blocked here
+			//the failed thread should be blocked until the other thread's join done
 			NETP_ASSERT(m_th.load(std::memory_order_acquire) == nullptr);
 			while (m_th_data.load(std::memory_order_acquire) != nullptr) {
-				netp::this_thread::no_interrupt_usleep(8);
+				netp::this_thread::no_interrupt_usleep(1);
 			}
 			return;
+			
+			//join thread: only one thread get here
 		__join_begin:
-			NETP_ASSERT( m_th.load(std::memory_order_acquire) == nullptr );
-
+			NETP_ASSERT(m_th.load(std::memory_order_acquire) == nullptr );
 			NETP_ASSERT(th->joinable());
 			th->join();
 			::delete th;
-
-			impl::thread_data* th_data = m_th_data.load( std::memory_order_relaxed );
-			m_th_data.store(nullptr, std::memory_order_relaxed);
-			netp::allocator<impl::thread_data>::trash(th_data);
+			
+			NETP_ASSERT(m_th_data.load(std::memory_order_acquire) == nullptr);
+			NETP_ASSERT(m_th_data_state.load(std::memory_order_acquire) == thead_th_data_state::th_data_state_reset_already);
 		}
 
+		//if start return non-ok, this operation has no means
 		void interrupt() {
-			impl::thread_data* th_data = m_th_data.load(std::memory_order_relaxed);
+			//there is a concurrent get|set here
+			//fetch lock first
+			//then release the lock once interrupt done
+
+			//borrow begin
+			bool challenge_rt = false;
+			thead_th_data_state __idle = th_data_state_idle;
+			do {
+				challenge_rt = m_th_data_state.compare_exchange_weak(__idle, thead_th_data_state::th_data_state_borrowed, std::memory_order_acq_rel, std::memory_order_acquire);
+				if (__idle == thead_th_data_state::th_data_state_reset_already) {
+					//no interrupt needed anymore, just return
+					return;
+				}
+				if (__idle == thead_th_data_state::th_data_state_not_set) {
+					/*it might be if the os schedule is busy*/
+					//try again
+				}
+				__idle = thead_th_data_state::th_data_state_idle;
+			} while (!challenge_rt);
+			NETP_ASSERT(m_th_data_state.load(std::memory_order_acquire) == thead_th_data_state::th_data_state_borrowed);
+
+			impl::thread_data* th_data = m_th_data.load(std::memory_order_acquire);
 			if (NETP_UNLIKELY(th_data != nullptr)) {
 				th_data->interrupt();
 			}
+
+			//borrow end, return
+			challenge_rt = false;
+			thead_th_data_state __borrow = thead_th_data_state::th_data_state_borrowed;
+			do {
+				challenge_rt = m_th_data_state.compare_exchange_weak(__borrow, thead_th_data_state::th_data_state_idle, std::memory_order_acq_rel, std::memory_order_acquire);
+				if (challenge_rt == false) {
+					NETP_ASSERT(__borrow == thead_th_data_state::th_data_state_borrowed);
+				}
+			} while (!challenge_rt);
+			//a store to reset might be followed right after the compare_exchange_weak opeation
+			NETP_ASSERT(m_th_data_state.load(std::memory_order_acquire) != thead_th_data_state::th_data_state_borrowed);
 		}
 
+		//becare to use this ptr, it's not thread safe, the thread might be destructed right after the ptr is returned
 		std::thread* thread_ptr() const { return m_th.load(std::memory_order_acquire); }
 
 		//please do it in between starst and join

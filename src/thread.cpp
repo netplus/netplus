@@ -18,14 +18,20 @@ namespace netp {
 	void thread::__PRE_RUN_PROXY__() {
 		netp::random_init_seed();
 
-		impl::thread_data* th_data = m_th_data.load(std::memory_order_relaxed);
-		NETP_ASSERT(th_data != nullptr);
-		tls_set<impl::thread_data>(th_data);
-
 #ifdef NETP_MEMORY_USE_ALLOCATOR_POOL
 		netp::app::instance()->global_allocator()->incre_thread_count();
 		tls_create<netp::pool_aligned_allocator_t>();
 #endif
+
+		impl::thread_data* th_data = m_th_data.load(std::memory_order_relaxed);
+#ifdef _NETP_DEBUG
+		NETP_ASSERT(th_data == nullptr && m_th_data_state.load(std::memory_order_acquire) == th_data_state_not_set);
+#endif
+		th_data = netp::allocator<impl::thread_data>::make();
+		//th_data should be prior to m_th, in case we call interrupt immediately after calling start
+		tls_set<impl::thread_data>(th_data);
+		m_th_data.store(th_data, std::memory_order_release);
+		m_th_data_state.store(th_data_state_idle, std::memory_order_release);
 
 #if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
 		mutex_set_t* mtxset = tls_create<mutex_set_t>();
@@ -55,18 +61,20 @@ namespace netp {
 		m_th_data->record_stack_address(&__run_proxy_begin);
 #endif
 
-		__PRE_RUN_PROXY__();
 		NETP_ASSERT(m_th_run != nullptr);
 		try {
+			__PRE_RUN_PROXY__();
 			m_th_run->_W_run();
 		} catch (impl::interrupt_exception&) {
 			NETP_WARN("[thread]__RUN_PROXY__ thread interrupt catch" );
 		} catch (netp::exception& e) {
 			NETP_ERR("[thread]__RUN_PROXY__, netp::exception: [%d]%s\n%s(%d) %s\ncallstack: \n%s", 
 				e.code(), e.what(), e.file(), e.line(), e.function(), e.callstack());
+			__POST_RUN_PROXY__();
 			throw;
 		} catch (std::exception& e) {
 			NETP_ERR("[thread]__RUN_PROXY__, std::exception: %s", e.what());
+			__POST_RUN_PROXY__();
 			throw;
 		} catch (...) {
 			NETP_ERR("[thread]__RUN_PROXY__ thread unknown exception");
@@ -79,8 +87,22 @@ namespace netp {
 #if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
 		tls_destroy<mutex_set_t>();
 #endif
-
+		thead_th_data_state __idle = th_data_state_idle;
+		bool challenge_rt = false;
+		do {
+			challenge_rt = m_th_data_state.compare_exchange_weak(__idle,thead_th_data_state::th_data_state_reset_already,
+				std::memory_order_acq_rel, std::memory_order_acquire);
+			if (challenge_rt == false) {
+				NETP_ASSERT(__idle == thead_th_data_state::th_data_state_borrowed);
+				netp::this_thread::no_interrupt_yield();
+			}
+		} while (!challenge_rt);
+		NETP_ASSERT(m_th_data_state.load(std::memory_order_acquire) == thead_th_data_state::th_data_state_reset_already);
+		
 		tls_set<impl::thread_data>(nullptr);
+		netp::allocator<impl::thread_data>::trash(m_th_data.load(std::memory_order_relaxed));
+		m_th_data.store(nullptr, std::memory_order_release); //start thread have load on this var
+
 		NETP_TRACE_THREAD("[thread]__POST_RUN_PROXY__");
 #ifdef NETP_MEMORY_USE_ALLOCATOR_POOL
 		tls_destroy<netp::pool_aligned_allocator_t>();
@@ -91,6 +113,7 @@ namespace netp {
 	thread::thread() :
 		m_th(nullptr),
 		m_th_data(nullptr),
+		m_th_data_state(th_data_state_not_set),
 		m_th_run(nullptr)
 	{
 	}

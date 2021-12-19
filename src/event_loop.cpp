@@ -185,7 +185,7 @@ namespace netp {
 			//@NOTE: we should terminate our process in this case
 			//m_state = S_EXIT;
 			//deinit();
-			NETP_WARN("[event_loop]__run reach exception------------------------------------------");
+			NETP_WARN("[event_loop]__run reach exception-----------------");
 			throw;
 		}
 		{
