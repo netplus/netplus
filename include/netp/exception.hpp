@@ -14,12 +14,17 @@
 
 namespace netp {
 
-	extern void stack_trace( char stack_buffer[], u32_t const& s );
+	extern void stack_trace( char* stack_buffer, u32_t s );
 
 	class exception;
-	void __NETP_EXCEPTION_INIT__(netp::exception* e, int code_, char const* const sz_message_, char const* const sz_file_, int line_, char const* const sz_func_, char const* const stack_info_);
+	void __NETP_EXCEPTION_INIT__(netp::exception* e, int code_, char const* const sz_message_, char const* const sz_file_, int line_, char const* const sz_func_, char* stack_info_);
 
-	class exception {
+	//@note
+	//impl consideration
+	//netp::exception, std::exception must not use netp::allocator to alloc memory (refer to: __RUN_PROXY__)
+	class exception : 
+		public std::exception 
+	{
 	protected:
 		int _code;
 		int _line;
@@ -29,7 +34,7 @@ namespace netp {
 
 		char* _callstack;
 
-		friend void __NETP_EXCEPTION_INIT__(netp::exception* e, int code_, char const* const sz_message_, char const* const sz_file_, int line_, char const* const sz_func_, char const* const stack_info_);
+		friend void __NETP_EXCEPTION_INIT__(netp::exception* e, int code_, char const* const sz_message_, char const* const sz_file_, int line_, char const* sz_func_, char* stack_info_);
 	public:
 		explicit exception(int code, char const* const sz_message_, char const* const sz_file_ , int const& line_ , char const* const sz_func_ );
 		virtual ~exception();
@@ -43,7 +48,8 @@ namespace netp {
 		inline const int line() const {
 			return _line;
 		}
-		inline const char* what() const {
+		//compatible for std::exception::what
+		const char* what() const noexcept override {
 			return _message;
 		}
 		inline const char* file() const {

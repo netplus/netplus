@@ -14,13 +14,13 @@
 namespace netp {
 
 #if defined(_NETP_ANDROID)
-	void stack_trace(char stack_buffer[], u32_t const& s) {
+	void stack_trace(char* stack_buffer, u32_t s) {
 		__android_log_print(ANDROID_LOG_FATAL, "NETP", "exception ..." );
 	}
 
 #elif defined(_NETP_HAS_EXECINFO_H)
 	#define BUFFER_SIZE 128
-	void stack_trace(char stack_buffer[], u32_t const& s) {
+	void stack_trace(char* stack_buffer, u32_t s) {
 		void* callstack[BUFFER_SIZE];
 		int i, frames = backtrace(callstack, BUFFER_SIZE);
 		char** strs = backtrace_symbols(callstack, frames);
@@ -80,101 +80,141 @@ namespace netp {
 	}
 
 #elif defined(_NETP_WIN)
-	class stack_walker : public StackWalker {
+
+	class stack_walker : 
+		public StackWalker 
+	{
+		//WARN: do not embed any complex object, such as std::string, this could affact the callstack, I don't know why
 	public:
-		std::string stack_info;
-		stack_walker() : StackWalker(RetrieveNone), stack_info() {
-		}
+		char* output_str;
+		u32_t output_str_len;
+		u32_t buf_size;
+		stack_walker( char* output_str_, u32_t buf_size_ ) :
+			StackWalker(RetrieveNone),
+			output_str(output_str_),
+			output_str_len(0),
+			buf_size(buf_size_)
+		{}
+
 	protected:
 		virtual void OnOutput(LPCSTR szText)
 		{
-			stack_info += std::string(szText);
+			u32_t szlen = u32_t(netp::strlen(szText));
+			u32_t to_copy = szlen > (buf_size - output_str_len-1) ? (buf_size - output_str_len - 1) : szlen;
+			std::memcpy(output_str + output_str_len, szText, to_copy);
+			output_str_len += to_copy;
 			StackWalker::OnOutput(szText);
 		}
 	};
 
-	void stack_trace(char stack_buffer[], netp::u32_t const& s) {
-		stack_walker sw;
-		sw.ShowCallstack();
-		NETP_ASSERT(sw.stack_info.length() > 0);
-		if (sw.stack_info.length() > (s - 1)) {
-			::memcpy(stack_buffer, sw.stack_info.c_str(), s - 1);
-			stack_buffer[s - 1] = '\0';
-		} else {
-			::memcpy(stack_buffer, sw.stack_info.c_str(), sw.stack_info.length());
-			stack_buffer[sw.stack_info.length()] = '\0';
+	/*
+	//bug version
+	class stack_walker : public StackWalker {
+	public:
+		std::string __stack_info;
+		stack_walker() : StackWalker(RetrieveNone), __stack_info() {
 		}
+	protected:
+		virtual void OnOutput(LPCSTR szText)
+		{
+			__stack_info += std::string(szText);
+			//StackWalker::OnOutput(szText);
+		}
+	};*/	
+
+
+	void stack_trace(char* stack_buffer, netp::u32_t s) {
+		stack_walker sw(stack_buffer, s);
+		sw.ShowCallstack();
+		*(stack_buffer + sw.output_str_len) = '\0';
+
+		//bug version
+//		StackWalker sw;
+		//stack_walker sw;
+		//sw.ShowCallstack();
+		/*
+		* StackWalker related issues:
+		* if we uncommet ss = s-1, it's ok, 
+		* if we comment ss = s-1, callstack is always empty
+		//NETP_ASSERT(sw.stack_info.length() > 0);
+		if (sw.__stack_info.length() > (s - 1)) {
+			//u32_t ss = s - 1;
+			std::memcpy(stack_buffer, sw.__stack_info.c_str(), (s - 1));
+			//stack_buffer[s - 1] = '\0';
+		} else {
+			//std::strncpy(stack_buffer, sw.ON_OUTPUT_STR.c_str(), sw.ON_OUTPUT_STR.length());
+			//stack_buffer[sw.ON_OUTPUT_STR.length()] = '\0';
+		}
+		*/
 	}
 #endif
 }
 
 namespace netp {
-	void __NETP_EXCEPTION_INIT__(netp::exception* e, int code_, char const* const sz_message_, char const* const sz_file_, int line_, char const* const sz_func_, char const* const stack_info_) {
+	void __NETP_EXCEPTION_INIT__(netp::exception* e, int code_, char const* const sz_message_, char const* const sz_file_, int line_, char const* const sz_func_, char* stack_info_) {
 		e->_code = code_;
 		if (sz_message_ != 0) {
-			netp::size_t len_1 = ::strlen(sz_message_);
+			netp::size_t len_1 = std::strlen(sz_message_);
 			netp::size_t len_2 = sizeof(e->_message) / sizeof(e->_message[0]) - 1;
 			netp::size_t copy_len = len_1 > len_2 ? len_2 : len_1;
-			::memcpy(e->_message, sz_message_, copy_len);
+			std::memcpy(e->_message, sz_message_, copy_len);
 			e->_message[copy_len] = '\0';
 		} else {
 			e->_message[0] = '\0';
 		}
 
 		if (sz_file_ != 0) {
-			netp::size_t len_1 = ::strlen(sz_file_);
+			netp::size_t len_1 = std::strlen(sz_file_);
 			netp::size_t len_2 = sizeof(e->_file) / sizeof(e->_file[0]) - 1;
 			netp::size_t copy_len = len_1 > len_2 ? len_2 : len_1;
-			::memcpy(e->_file, sz_file_, copy_len);
+			std::memcpy(e->_file, sz_file_, copy_len);
 			e->_file[copy_len] = '\0';
 		} else {
 			e->_file[0] = '\0';
 		}
 		e->_line = line_;
 		if (sz_func_ != 0) {
-			netp::size_t len_1 = ::strlen(sz_func_);
+			netp::size_t len_1 = std::strlen(sz_func_);
 			netp::size_t len_2 = sizeof(e->_func) / sizeof(e->_func[0]) - 1;
 			netp::size_t copy_len = len_1 > len_2 ? len_2 : len_1;
-			::memcpy(e->_func, sz_func_, copy_len);
+			std::memcpy(e->_func, sz_func_, copy_len);
 			e->_func[copy_len] = '\0';
 		} else {
 			e->_func[0] = '\0';
 		}
-		if (stack_info_ != 0) {
-			if (e->_callstack != 0) {
-				netp::allocator<char>::free(e->_callstack);
-			}
 
-			netp::size_t info_len = ::strlen(stack_info_);
-			e->_callstack = netp::allocator<char>::malloc(info_len + 1);
-			::memcpy(e->_callstack, stack_info_, info_len);
+		if (stack_info_ != 0 && stack_info_ != e->_callstack) {
+			if (e->_callstack != 0) {
+				std::free(e->_callstack);
+			}
+			netp::size_t info_len = std::strlen(stack_info_);
+			e->_callstack = (char*) std::malloc(info_len + 1);
+			std::memcpy(e->_callstack, stack_info_, info_len);
 			*((e->_callstack) + info_len) = '\0';
-		} else {
-			e->_callstack = 0;
 		}
 	}
 
+#define NETP_EXCEPTION_STACK_INFO_SIZE_MAX (32*1024)
 	exception::exception(int code_, char const* const sz_message_, char const* const sz_file_, int const& line_, char const* const sz_func_) :
+		std::exception(),
 		_code(code_),
 		_line(line_),
 		_callstack(0)
 	{
-		const u32_t info_size = 1024*64;
-		char info[info_size] = {0};
-		stack_trace(info, info_size);
-		__NETP_EXCEPTION_INIT__(this, code_, sz_message_, sz_file_, line_, sz_func_, info);
-
-		//__android_log_print(ANDROID_LOG_INFO, "aaa", "zzzz");
+		_callstack = (char*) std::malloc( sizeof(char)*NETP_EXCEPTION_STACK_INFO_SIZE_MAX);
+		stack_trace(_callstack, NETP_EXCEPTION_STACK_INFO_SIZE_MAX);
+		__NETP_EXCEPTION_INIT__(this, code_, sz_message_, sz_file_, line_, sz_func_, _callstack);
 	}
 
 	exception::~exception() {
 		if (_callstack != 0) {
-			netp::allocator<char>::free(_callstack);
+			std::free(_callstack);
 			_callstack = 0;
 		}
 	}
 
 	exception::exception(exception const& other) :
+		std::exception(),
 		_code(other._code),
 		_line(other._line),
 		_callstack(0)
