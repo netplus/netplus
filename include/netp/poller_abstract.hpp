@@ -24,7 +24,8 @@ namespace netp {
 
 	enum io_flag {
 		IO_READ = 1,
-		IO_WRITE = 1 << 1
+		IO_WRITE = 1 << 1,
+		IO_ADD_PENDING = 1<<2 //USED BY SELECT ONLY
 	};
 
 	enum class io_action {

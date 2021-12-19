@@ -495,7 +495,8 @@ const int  E_ERANGE = -34;         /* Result too large */
 
 	//30000 - 30999 //system level socket error
 	const int E_SOCKET_EPOLLHUP			= -30001;
-	const int E_SOCKET_GRACE_CLOSE	= -30002;
+	const int E_SOCKET_SELECT_EXCEPT	= -30002;
+	const int E_SOCKET_GRACE_CLOSE	= -30003;
 
 	//31000 - 31999 //user custom socket error
 	const int E_SOCKET_INVALID_FAMILY		= -31001;

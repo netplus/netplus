@@ -17,11 +17,12 @@ namespace netp {
 			fds_e = 2
 		};
 		fd_set m_fds[3];
-
+		bool m_polling;
 	private:
 		public:
 			poller_select():
-				poller_interruptable_by_fd()
+				poller_interruptable_by_fd(),
+				m_polling(false)
 			{
 			}
 
@@ -37,19 +38,42 @@ namespace netp {
 				return netp::OK;
 			}
 
+			//@note: ctx be removed right after the loop of close(fd)
+			// edge case a:
+			//for the following case:
+			//1) for_each(cur_ctx: ctx_list) (
+			//2) cur_ctx->fd poll error 
+			//3) close(cur_ctx->fd), schedule uninstall for cur_ctx
+			//4) nfd = socket(), append to new ctx list tail
+			//5) cur_ctx->fd == nfd, FD_ISSET(fd, read_fd_list) (we get here: if this line happens before ch_io_read(new ctx)
+
+			//the solution for edge case a is skip the pending ctx
+			//1) add a pending flag if in polling state
+			//2) remove this flag at the polling beginning
+			//3) check flag for evt
+
+			virtual io_ctx* io_begin(SOCKET fd, NRP<io_monitor> const& iom) override {
+				io_ctx* ctx = poller_interruptable_by_fd::io_begin(fd, iom);
+				if (m_polling) {
+					ctx->flag |= io_flag::IO_ADD_PENDING;
+				}
+				return ctx;
+			}
+
 #ifdef _NETP_WIN
     #pragma warning(push)
     #pragma warning(disable:4389)
 #endif
 			void poll(i64_t wait_in_nano, std::atomic<bool>& W) override {
-
 				FD_ZERO(&m_fds[fds_r]);
 				FD_ZERO(&m_fds[fds_w]);
 				FD_ZERO(&m_fds[fds_e]);
 
 				SOCKET max_fd_v = (SOCKET)0;
 				io_ctx* ctx;
+				m_polling = true;
 				for (ctx = m_io_ctx_list.next; ctx != &m_io_ctx_list; ctx = ctx->next) {
+					ctx->flag &= ~io_flag::IO_ADD_PENDING;
 					if (ctx->flag & io_flag::IO_READ) {
 						FD_SET((ctx->fd), &m_fds[fds_r]);
 						if (ctx->fd > max_fd_v) {
@@ -76,55 +100,50 @@ namespace netp {
 			NETP_POLLER_WAIT_EXIT(wait_in_nano, W);
 
 			if (nready == 0) {
+				m_polling = false;
 				return;
 			} else if (nready == -1) {
 				//notice 10038
+				m_polling = false;
 				NETP_ERR("[event_loop][select]select error, errno: %d", netp_socket_get_last_errno());
 				return;
 			}
 
 			io_ctx* ctx_n;
 			for (ctx = (m_io_ctx_list.next), ctx_n = ctx->next; ctx != &m_io_ctx_list && nready>0; ctx = ctx_n, ctx_n = ctx->next) {
+				if (ctx->flag & io_flag::IO_ADD_PENDING) {
+					//newly added 
+					continue;
+				}
+				bool hit = false;
 				int status = netp::OK;
 				//it's safe to do reference, cuz io_end would be scheduled on the next loop
 				NRP<io_monitor>& IOM = ctx->iom;
 				if (FD_ISSET(ctx->fd, &m_fds[fds_e])) {
-					//FD_CLR(fd, &m_fds[fds_e]);
-					--nready;
-
 					socklen_t optlen = sizeof(int);
 					int getrt = ::getsockopt(ctx->fd, SOL_SOCKET, SO_ERROR, (char*)&status, &optlen);
 					if (getrt == -1) {
 						status = netp_socket_get_last_errno();
+						NETP_VERBOSE("[select]socket getsockopt failed, fd: %d, errno: %d", ctx->fd, status);
 					} else {
 						status = NETP_NEGATIVE(status);
 					}
-					NETP_VERBOSE("[select]socket getsockopt failed, fd: %d, errno: %d", ctx->fd, status);
-					NETP_ASSERT(status != netp::OK);
+					if (status == netp::OK) { status = netp::E_SOCKET_SELECT_EXCEPT; }
+					//status = netp::E_SOCKET_SELECT_EXCEPT;
 				}
-				if (FD_ISSET(ctx->fd, &m_fds[fds_r])) {
-					//FD_CLR(fd, &m_fds[i]);
-					--nready;
 
-					NETP_ASSERT(ctx->flag&io_flag::IO_READ, "fd: %u, status: %d", ctx->fd, status );
+				if ( (ctx->flag&io_flag::IO_READ) && ((status != netp::OK) || FD_ISSET(ctx->fd, &m_fds[fds_r])) ) {
+					hit = true;
 					IOM->io_notify_read(status, ctx);
-					continue;
 				}
-
-				if (FD_ISSET(ctx->fd, &m_fds[fds_w])) {
-					//FD_CLR(fd, &m_fds[i]);
- 					--nready;
+				if ( (ctx->flag & io_flag::IO_WRITE) && ((status != netp::OK) ||FD_ISSET(ctx->fd, &m_fds[fds_w])) ) {
 					//fn_read might result in fn_write be reset
-					if(ctx->flag&io_flag::IO_WRITE) IOM->io_notify_write(status, ctx);
-					continue;
+					hit = true;
+					IOM->io_notify_write(status, ctx);
 				}
-
-				//patch for status not netp::OK, we can not place this block in FD_ISSET {},,,
-				if (status != netp::OK) {
-					if(ctx->flag&io_flag::IO_READ) IOM->io_notify_read(status, ctx);
-					if(ctx->flag&io_flag::IO_WRITE ) IOM->io_notify_write(status, ctx) ;
-				}
+				if (hit) { --nready; }
 			}
+			m_polling = false;
 		}
 
 #ifdef _NETP_WIN
