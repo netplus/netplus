@@ -34,16 +34,33 @@ namespace netp {
 		return netp::OK;
 	}
 
+#define __NETP_UDP_PORT_MIN (netp::u16_t(32768))
+#define __NETP_UDP_PORT_MAX (netp::u16_t(65535))
+
 	int socket_channel::bind_any() {
 		NRP<address >_any_ = netp::make_ref<address>();
 		NETP_ASSERT(m_family != NETP_AF_UNSPEC);
 		_any_->setfamily(m_family);
 		_any_->setipv4(dotiptoip("0.0.0.0"));
+		int rt;
+		if (m_protocol == NETP_PROTOCOL_UDP) {
+			do {
+				_any_->setport(netp::port_t(netp::random(__NETP_UDP_PORT_MIN, __NETP_UDP_PORT_MAX)));
+				rt = bind(_any_);
+				if (rt == netp::E_EADDRINUSE || rt == netp::E_EACCESS) {
+					netp::this_thread::yield();
+					continue;
+				}
+				break;
+			} while (true);
+		} else {
+			rt = bind(_any_);
+		}
 
-		int rt = bind(_any_);
 		if (rt != netp::OK) {
 			return rt;
 		}
+
 		rt = load_sockname();
 		NETP_TRACE_SOCKET("[socket][%s]socket bind rt: %d", ch_info().c_str(), rt);
 		return rt;
@@ -53,6 +70,16 @@ namespace netp {
 		if (m_chflag & (int(channel_flag::F_CONNECTING) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_LISTENING) | int(channel_flag::F_CLOSED)) ) {
 			return netp::E_SOCKET_INVALID_STATE;
 		}
+
+		
+		if ( (sock_protocol() == NETP_PROTOCOL_UDP) && (!m_laddr||m_laddr->is_af_unspec())) {
+			//@note: if bind happens after connect, it shall always fail with 10022 on win
+			int status = bind_any();
+			if (status != netp::OK) {
+				return status;
+			}
+		}
+
 		NETP_ASSERT( m_raddr == nullptr || m_raddr->is_af_unspec() );
 		m_raddr = addr->clone();
 		return socket_connect_impl(m_raddr);
@@ -382,11 +409,7 @@ int socket_base::get_left_snd_queue() const {
 			goto _set_fail_and_return;
 		}
 
-		if (sock_protocol() == NETP_PROTOCOL_UDP) {
-			status = bind_any();
-		} else {
-			status = load_sockname();
-		}
+		status = load_sockname();
 
 		if (status != netp::OK ) {
 			goto _set_fail_and_return;
