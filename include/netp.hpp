@@ -49,6 +49,8 @@
 #include <netp/socket.hpp>
 #include <netp/icmp.hpp>
 
+#include <netp/util_hlen.hpp>
+
 #include <netp/handler/hlen.hpp>
 #include <netp/handler/fragment.hpp>
 #include <netp/handler/symmetric_encrypt.hpp>

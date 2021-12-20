@@ -540,6 +540,9 @@
     <ClInclude Include="..\..\include\netp\thread_impl\thread_basic.hpp">
       <Filter>Header Files\netp\thread_impl</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\util_hlen.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">

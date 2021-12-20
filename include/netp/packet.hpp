@@ -332,7 +332,7 @@ namespace netp {
 	using packet = cap_expandable_packet<netp::ref_base, PACK_DEF_LEFT_CAPACITY, PACK_DEF_RIGHT_CAPACITY,NETP_DEFAULT_ALIGN>;
 	using non_atomic_ref_packet = cap_expandable_packet<netp::non_atomic_ref_base, PACK_DEF_LEFT_CAPACITY, PACK_DEF_RIGHT_CAPACITY, NETP_DEFAULT_ALIGN>;
 
+	typedef std::deque<NRP<netp::packet>, netp::allocator<NRP<netp::packet>>> packet_deque_t;
 	typedef std::queue<NRP<netp::packet>, std::deque<NRP<netp::packet>, netp::allocator<NRP<netp::packet>>>> packet_queue_t;
-
 }
 #endif
