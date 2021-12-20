@@ -222,8 +222,8 @@ namespace netp { namespace security {
 			if (k == nullptr || klen == 0) {
 				NETP_THROW("invalid xxtea key");
 			}
-			::memcpy(m_key, k, klen );
-			::memset(m_key + klen, 'z', sizeof(m_key) - klen);
+			std::memcpy(m_key, k, klen );
+			std::memset(m_key + klen, 'z', sizeof(m_key) - klen);
 		}
 
 		int encrypt(NRP<packet> const& in, NRP<packet>& out ) const {
@@ -244,11 +244,9 @@ namespace netp { namespace security {
 				return netp::E_XXTEA_ENCRYPT_FAILED;
 			}
 
-			NRP<packet> encrypted = netp::make_ref<packet>(tea->encrypted_data_length);
-			encrypted->write(tea->encrypted_data, tea->encrypted_data_length);
+			out = netp::make_ref<packet>(tea->encrypted_data_length);
+			out->write(tea->encrypted_data, tea->encrypted_data_length);
 			xxtea_free(tea);
-			out.swap(encrypted);
-
 			return ec;
 		}
 
@@ -270,11 +268,9 @@ namespace netp { namespace security {
 				return netp::E_XXTEA_DECRYPT_FAILED;
 			}
 
-			NRP<packet> decrypted = netp::make_ref<packet>(tea->decrypted_data_length);
-			decrypted->write(tea->decrypted_data, tea->decrypted_data_length);
+			out = netp::make_ref<packet>(tea->decrypted_data_length);
+			out->write(tea->decrypted_data, tea->decrypted_data_length);
 			xxtea_free(tea);
-			out.swap(decrypted);
-
 			return ec;
 		}
 	};

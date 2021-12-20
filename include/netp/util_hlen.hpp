@@ -14,12 +14,14 @@ namespace netp {
 		typedef size_type hlen_util_size_t;
 		hlen_util_parse_state m_state;
 		hlen_util_size_t m_size;
+		NRP<netp::packet> m_pkt_tmp;
 		netp::u32_t m_in_q_nbytes;
 		netp::packet_deque_t m_in_q;
 
 		util_hlen() :
 			m_state(hlen_util_parse_state::HLEN_UTIL_PARSE_S_READ_LEN),
 			m_size(0),
+			m_pkt_tmp(nullptr),
 			m_in_q_nbytes(0)
 		{}
 
@@ -31,10 +33,6 @@ namespace netp {
 				m_in_q_nbytes += in_->len();
 				m_in_q.emplace_back(std::move(in_));
 			}
-#ifdef _NETP_DEBUG
-			NETP_ASSERT(in_ == nullptr);
-#endif
-
 		__label_m_in_q:
 			while (m_in_q_nbytes != 0) {
 #ifdef _NETP_DEBUG
@@ -65,7 +63,7 @@ namespace netp {
 					m_in_q_nbytes -= sizeof(hlen_util_size_t);
 					m_state = hlen_util_parse_state::HLEN_UTIL_PARSE_S_READ_CONTENT;
 
-					out = netp::make_ref<netp::packet>(m_size);
+					m_pkt_tmp = netp::make_ref<netp::packet>(m_size);
 					if (in->len() == 0) {
 						m_in_q.pop_front();
 						goto __label_m_in_q;
@@ -77,13 +75,13 @@ namespace netp {
 				{
 				__label_read_content:
 #ifdef _NETP_DEBUG
-					NETP_ASSERT(out != nullptr);
+					NETP_ASSERT(m_pkt_tmp != nullptr);
 #endif
 					if (m_in_q_nbytes < m_size) {
 						return false;
 					}
 					const netp::u32_t to_write = in->len() > m_size ? m_size : in->len();
-					out->write(in->head(), to_write);
+					m_pkt_tmp->write(in->head(), to_write);
 					in->skip(to_write);
 
 					if (in->len() == 0) {
@@ -93,6 +91,7 @@ namespace netp {
 					m_size -= to_write;
 
 					if (m_size == 0) {
+						m_pkt_tmp.swap(out);
 						m_state = hlen_util_parse_state::HLEN_UTIL_PARSE_S_READ_LEN;
 						return (m_in_q_nbytes > sizeof(hlen_util_size_t));
 					}

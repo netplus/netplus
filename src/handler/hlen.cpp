@@ -20,7 +20,6 @@ namespace netp { namespace handler {
 			if (m_tmp_for_fire) {
 #ifdef _NETP_DEBUG
 				NETP_ASSERT(m_tmp_for_fire->len());
-				NETP_ASSERT(in == nullptr);
 #endif
 				ctx->fire_read(m_tmp_for_fire);
 				m_tmp_for_fire = nullptr;
