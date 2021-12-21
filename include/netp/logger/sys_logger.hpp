@@ -23,7 +23,7 @@
 
 		private:
 			static void Syslog( int level, char const* log, netp::u32_t len );
-			char m_ident[NETP_IDENT_LENGTH] ;
+			char m_ident[NETP_IDENT_LENGTH+1] ;
 		};
 	}}
 
