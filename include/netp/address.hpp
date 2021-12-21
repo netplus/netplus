@@ -121,7 +121,7 @@ namespace netp {
 		address(const char* ip, unsigned short port, int f );
 		address(const struct sockaddr_in* sockaddr_in_, size_t slen);
 		address(const struct sockaddr_in6* sockaddr_in6_, size_t slen);
-
+		address(ipv4_t ip, port_t port, int f);
 		~address();
 
 		inline bool is_loopback() {
@@ -166,6 +166,8 @@ namespace netp {
 		}
 
 		inline u64_t hash() const {
+			//@TODO ipv6 todo
+			NETP_ASSERT( m_in.sin_family != AF_INET6);
 			return (u64_t(m_in.sin_addr.s_addr) << 24 | u64_t(m_in.sin_port) << 8 | u64_t(m_in.sin_family));
 		}
 

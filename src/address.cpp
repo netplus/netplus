@@ -241,6 +241,15 @@ namespace netp {
 		std::memcpy(&m_in6, sockaddr_in6_, slen);
 	}
 
+	address::address(ipv4_t ip, port_t port, int f)
+	{
+		NETP_ASSERT(f < 255);
+		m_in.sin_port = htons(port);
+		m_in.sin_family = u8_t(f);
+		m_in.sin_addr.s_addr = ipv4tonipv4(ip);
+	}
+	
+
 	address::~address() {}
 
 	const string_t address::dotip() const {
