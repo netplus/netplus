@@ -1,0 +1,3 @@
+list, set, map, multiset, or multimap allocate storage on an "exactly-as-needed"
+
+deque,vecotr do not 

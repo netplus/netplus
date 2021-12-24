@@ -792,8 +792,8 @@ namespace netp {
 			break;
 			default:
 			{
-				NETP_ASSERT(status < 0);
 				NETP_VERBOSE("[socket][%s]___do_io_read_done, _ch_do_close_read_write, read error: %d, close, flag: %u", ch_info().c_str(), status, m_chflag);
+				NETP_ASSERT(status < 0);
 				m_chflag |= int(channel_flag::F_READ_ERROR);
 				ch_errno() = (status);
 				ch_close_impl(nullptr);

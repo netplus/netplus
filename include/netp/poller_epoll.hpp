@@ -140,6 +140,22 @@ namespace netp {
 				NETP_ASSERT(ctx->fd != NETP_INVALID_SOCKET);
 #endif
 				uint32_t events = ((epEvents[i].events) & 0xFFFFFFFF) ;
+				int sockerr = netp::OK;
+				if (events&(EPOLLERR|EPOLLHUP)) {
+					//WE NEED THESE ERR INFO
+					socklen_t optlen = sizeof(int);
+					int readsockfderr = ::getsockopt(ctx->fd, SOL_SOCKET, SO_ERROR, (char*)&sockerr, &optlen);
+					(void)readsockfderr;
+					if (sockerr == -1) {
+						if (events & EPOLLHUP) {
+							sockerr = netp::E_SOCKET_EPOLLHUP;
+						} else {
+							sockerr = netp::E_UNKNOWN;
+						}
+					}
+					else { sockerr=NETP_NEGATIVE(sockerr); }
+				}
+
 				//NETP_TRACE_IOE( "[EPOLL][##%u][#%d]EVT: events(%d)", m_epfd, ctx->fd, events );
 				//TRACE_IOE( "[EPOLL][##%d][#%d]EVT: (EPOLLERR|EPOLLHUB), post IOE_ERROR", m_epfd, ctx->fd );
 				//refer to https://stackoverflow.com/questions/52976152/tcp-when-is-epollhup-generated
@@ -149,14 +165,15 @@ namespace netp {
 				// 3) for EPOLLERR, just notify read|write, if there is a error ,let read|write to handle it
 				// 4) EPOLLRDHUP|EPOLLIN would arrive at the same time (but it's not sometimes), keep reading until read() return 0 to avoid a miss
 				//		4.1) alternative solution is to ignore read if we get EPOLLRDHUB, in this case, we might miss some pending data in rcvbuf 
-				int ec = (events&EPOLLHUP) ? netp::E_SOCKET_EPOLLHUP : netp::OK;
+
 				NRP<io_monitor>& iom = ctx->iom;
-				if ((ctx->flag&u8_t(io_flag::IO_READ)) && ((events&(EPOLLRDHUP|EPOLLERR|EPOLLIN)) || (ec != netp::OK)) ) {
-					iom->io_notify_read(ec, ctx);
+				//do not check EPOLLERR|EPOLLHUP for read/write, as we has checked before, if they are set, sockerr must not be netp::OK
+				if ((ctx->flag&u8_t(io_flag::IO_READ)) && ((events&(EPOLLRDHUP|EPOLLIN)) || (sockerr != netp::OK)) ) {
+					iom->io_notify_read(sockerr, ctx);
 				}
 				//read error might result in write act be cancelled, just cancel it 
-				if ((ctx->flag&u8_t(io_flag::IO_WRITE)) && ((events&(EPOLLERR|EPOLLOUT)) || (ec != netp::OK)) ) {
-					iom->io_notify_write(ec, ctx);
+				if ((ctx->flag&u8_t(io_flag::IO_WRITE)) && ((events&EPOLLOUT) || (sockerr != netp::OK)) ) {
+					iom->io_notify_write(sockerr, ctx);
 				}
 				if (events&EPOLLPRI) {
 					NETP_ERR("[EPOLL][##%d][#%d]EVT: EPOLLPRI", m_epfd, ctx->fd);

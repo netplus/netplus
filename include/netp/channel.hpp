@@ -18,7 +18,7 @@
 
 #define _CH_FIRE_ACTION_CLOSE_AND_RETURN_IF_EXCEPTION( _ACTION, _CH, _ACT_NAME ) \
 		do { \
-				int __fire_act_status__ = 0; \
+				int __fire_act_status__ = netp::OK; \
 				try { \
 					_ACTION; \
 				} catch (netp::exception const& e) { \
@@ -38,7 +38,7 @@
 					} \
 					NETP_ERR("[channel][%s][%s]unknown exception, %d",_CH->ch_info().c_str(), _ACT_NAME, __fire_act_status__ ); \
 				} \
-				if(__fire_act_status__!= netp::OK) { \
+				if(__fire_act_status__ != netp::OK) { \
 					_CH->ch_errno() = __fire_act_status__; \
 					_CH->ch_flag() |= int(channel_flag::F_FIRE_ACT_EXCEPTION); \
 					_CH->ch_close_impl(nullptr); \
@@ -187,7 +187,8 @@ namespace netp {
 				if ( ((m_chflag&(int(channel_flag::F_CLOSED)|int(channel_flag::F_CLOSING)))==0) && ((m_chflag & (int(channel_flag::F_READWRITE_SHUTDOWN))) == int(channel_flag::F_READWRITE_SHUTDOWN)) ) {
 					NETP_TRACE_CHANNEL("[channel][%s]ch_rdwr_shutdown_check trigger ch_close_impl()", ch_info().c_str() );
 					NETP_ASSERT( 0 == (m_chflag& (int(channel_flag::F_READ_SHUTDOWNING)|int(channel_flag::F_WRITE_SHUTDOWNING) )) );
-					m_chflag |= (int(channel_flag::F_CLOSED)|int(channel_flag::F_CONNECTED));
+					m_chflag |= int(channel_flag::F_CLOSED);
+					m_chflag &= ~(int(channel_flag::F_CONNECTED));
 					ch_io_end();
 				}
 			}

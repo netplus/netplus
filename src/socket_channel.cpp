@@ -840,6 +840,7 @@ __act_label_close_read_write:
 	{
 #ifdef _NETP_DEBUG
 		NETP_ASSERT(L->in_event_loop());
+		NETP_ASSERT(ch_is_connected());
 		NETP_ASSERT(intp != nullptr);
 		NETP_ASSERT(outlet->len() > 0);
 #endif
@@ -870,6 +871,7 @@ __act_label_close_read_write:
 	void socket_channel::ch_write_to_impl( NRP<promise<int>> const& intp, NRP<packet> const& outlet,NRP<netp::address >const& to) {
 #ifdef _NETP_DEBUG
 		NETP_ASSERT(L->in_event_loop());
+		NETP_ASSERT(!ch_is_connected());
 		NETP_ASSERT(intp != nullptr);
 		NETP_ASSERT(outlet->len() > 0);
 #endif
@@ -973,7 +975,7 @@ __act_label_close_read_write:
 			NETP_ASSERT(m_tx_bytes == 0);
 			NETP_ASSERT(m_tx_entry_q.empty() && m_tx_entry_to_q.empty(), "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 			NETP_ASSERT(m_chflag & int(channel_flag::F_CLOSED));
-			NETP_ASSERT((m_chflag & (int(channel_flag::F_WATCH_READ) | int(channel_flag::F_WATCH_WRITE))) == 0);
+			NETP_ASSERT((m_chflag & (int(channel_flag::F_WATCH_READ) | int(channel_flag::F_WATCH_WRITE) | int(channel_flag::F_CONNECTED) )) == 0);
 			NETP_TRACE_SOCKET("[socket][%s]io_action::END, flag: %d", ch_info().c_str(), m_chflag);
 
 			ch_fire_closed(close());
