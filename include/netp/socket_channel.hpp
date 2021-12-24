@@ -165,6 +165,8 @@ namespace netp {
 		u32_t const m_rcv_buf_size;
 
 		u32_t m_tx_bytes;
+
+		//@note: for long term session, we should better release the q if necessary
 		socket_outbound_entry_t m_tx_entry_q;
 		socket_outbound_entry_to_t m_tx_entry_to_q;
 
