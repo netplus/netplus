@@ -609,7 +609,10 @@ int socket_base::get_left_snd_queue() const {
 	//this api would be called right after a check of writeable of the current socket
 	int socket_channel::___do_io_write() {
 
-		NETP_ASSERT(m_tx_entry_q.size(), "%s, flag: %u", ch_info().c_str(), m_chflag);
+#ifdef _NETP_DEBUG
+		NETP_ASSERT( ch_is_connected() && m_tx_entry_q.size(), "%s, flag: %u", ch_info().c_str(), m_chflag);
+#endif
+
 		NETP_ASSERT( m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)) );
 		NETP_ASSERT( (m_chflag&int(channel_flag::F_TX_LIMIT)) ==0);
 
@@ -657,22 +660,25 @@ int socket_base::get_left_snd_queue() const {
 
 	int socket_channel::___do_io_write_to() {
 
-		NETP_ASSERT(m_tx_entry_q.size(), "%s, flag: %u", ch_info().c_str(), m_chflag);
+#ifdef _NETP_DEBUG
+		NETP_ASSERT( !ch_is_connected() && m_tx_entry_to_q.size() && m_tx_entry_q.empty(), "%s, flag: %u", ch_info().c_str(), m_chflag);
+#endif
+
 		NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)));
 
 		//there might be a chance to be blocked a while in this loop, if set trigger another write
 		int _errno = netp::OK;
-		while (_errno == netp::OK && m_tx_entry_q.size() ) {
+		while (_errno == netp::OK && m_tx_entry_to_q.size() ) {
 			NETP_ASSERT(m_tx_bytes > 0);
 
-			socket_outbound_entry& entry = m_tx_entry_q.front();
+			socket_outbound_entry_to& entry = m_tx_entry_to_q.front();
 			NETP_ASSERT((entry.data->len() > 0) && (entry.data->len() <= m_tx_bytes));
 			netp::u32_t nbytes = socket_sendto_impl(entry.data->head(), (u32_t)entry.data->len(), entry.to, _errno);
 			//hold a copy before we do pop it from queue
 			nbytes == entry.data->len() ? NETP_ASSERT(_errno == netp::OK):NETP_ASSERT(_errno != netp::OK);
 			m_tx_bytes -= u32_t(entry.data->len());
 			entry.write_promise->set(_errno);
-			m_tx_entry_q.pop_front();
+			m_tx_entry_to_q.pop_front();
 		}
 		return _errno;
 	}
@@ -703,11 +709,11 @@ int socket_base::get_left_snd_queue() const {
 		_ch_do_close_read();
 		_ch_do_close_write();
 
-		NETP_ASSERT(m_tx_entry_q.size() == 0);
+		NETP_ASSERT(m_tx_entry_q.empty() && m_tx_entry_to_q.empty() );
 		NETP_ASSERT(m_tx_bytes == 0);
 
 		//close read, close write might result in F_CLOSED
-		m_chflag &= ~(int(channel_flag::F_CLOSING)|int(channel_flag::F_CONNECTED));
+		m_chflag &= ~(int(channel_flag::F_CLOSING));
 		ch_rdwr_shutdown_check();
 	}
 
@@ -741,20 +747,20 @@ int socket_base::get_left_snd_queue() const {
 			//if we have a write_error, a immediate ch_close_impl would be take out
 			NETP_ASSERT((m_chflag&int(channel_flag::F_WRITE_ERROR)) == 0);
 			NETP_ASSERT(m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)|int(channel_flag::F_TX_LIMIT)) );
-			NETP_ASSERT((m_fn_write == nullptr) ? m_tx_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
+			NETP_ASSERT((m_fn_write == nullptr) ? (m_tx_entry_q.size()||m_tx_entry_to_q.size()): true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 			prt = (netp::E_CHANNEL_WRITE_SHUTDOWNING);
 		} else if (m_chflag & (int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)|int(channel_flag::F_TX_LIMIT)) ) {
 			//write set ok might result in ch_close_write|ch_close
 			//the pending action would be scheduled right in _do_write_done() which is right after every _io_do_write action
 			//if a user defined write function is used, user have to take care of it by user self
-			NETP_ASSERT((m_fn_write==nullptr) ? m_tx_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno );
+			NETP_ASSERT((m_fn_write==nullptr) ? (m_tx_entry_q.size()||m_tx_entry_to_q.size()): true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno );
 			m_chflag |= int(channel_flag::F_WRITE_SHUTDOWN_PENDING);
 			prt = (netp::E_CHANNEL_WRITE_SHUTDOWNING);
 		} else {
 			//connecting channel would only be closed by ch_close_impl
 			NETP_ASSERT( (m_chflag&int(channel_flag::F_CONNECTING)) ==0 );
 			NETP_ASSERT(((m_chflag&(int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) )) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_USE_DEFAULT_WRITE))) ?
-				m_tx_entry_q.size():
+				(m_tx_entry_q.size()||m_tx_entry_to_q.size()):
 				true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 
 			_ch_do_close_write();
@@ -780,19 +786,19 @@ int socket_base::get_left_snd_queue() const {
 		} else if (m_chflag & (int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))) {
 			NETP_ASSERT( ch_errno() != netp::OK );
 			NETP_ASSERT(((m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_USE_DEFAULT_WRITE))) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_USE_DEFAULT_WRITE))) ?
-				m_tx_entry_q.size() :
+				(m_tx_entry_q.size()||m_tx_entry_to_q.size()):
 				true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 
 			goto __act_label_close_read_write;
 		} else if ( m_chflag & (int(channel_flag::F_CLOSE_PENDING)| int(channel_flag::F_WRITE_SHUTDOWN_PENDING)) ) {
 			NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER) | int(channel_flag::F_WATCH_WRITE) | int(channel_flag::F_TX_LIMIT)));
-			NETP_ASSERT( m_chflag&(int(channel_flag::F_USE_DEFAULT_WRITE)) ? m_tx_entry_q.size() : true, "[#%s]chflag: %d, cherrno: %d", ch_info().c_str(), m_chflag, m_cherrno);
+			NETP_ASSERT(m_chflag&(int(channel_flag::F_USE_DEFAULT_WRITE)) ? (m_tx_entry_q.size()||m_tx_entry_to_q.size()) : true, "[#%s]chflag: %d, cherrno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 			prt = (netp::E_OP_INPROCESS);
 		} else if (m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)|int(channel_flag::F_TX_LIMIT)) ) {
 			//wait for write done event, we might in a write barrier
 			//for a non-error close, do grace shutdown
 			//for error close, we would not reach here
-			NETP_ASSERT((m_fn_write == nullptr) ? m_tx_entry_q.size() : true, "[#%s]chflag: %d, cherrno: %d", ch_info().c_str(),  m_chflag, m_cherrno);
+			NETP_ASSERT((m_fn_write == nullptr) ? (m_tx_entry_q.size()||m_tx_entry_to_q.size()) : true, "[#%s]chflag: %d, cherrno: %d", ch_info().c_str(),  m_chflag, m_cherrno);
 			m_chflag |= int(channel_flag::F_CLOSE_PENDING);
 			prt = (netp::E_CHANNEL_CLOSING);
 		} else {
@@ -808,25 +814,19 @@ __act_label_close_read_write:
 		if (closep) { closep->set(prt); }
 	}
 
-#define __CH_WRITEABLE_CHECK__( outlet, chp)  \
-		NETP_ASSERT(outlet->len() > 0); \
-		NETP_ASSERT(chp != nullptr); \
- \
+#define __CH_WRITEABLE_CHECK__( outlet, chp) \
 		if (m_chflag&(int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR))) { \
 			chp->set(netp::E_CHANNEL_READ_WRITE_ERROR); \
 			return ; \
 		} \
- \
 		if ((m_chflag&int(channel_flag::F_WRITE_SHUTDOWN)) != 0) { \
 			chp->set(netp::E_CHANNEL_WRITE_CLOSED); \
 			return; \
 		} \
- \
 		if (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWN_PENDING)|int(channel_flag::F_WRITE_SHUTDOWNING) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING)) ) { \
 			chp->set(netp::E_CHANNEL_WRITE_SHUTDOWNING); \
 			return ; \
 		} \
- \
 		const u32_t outlet_len = (u32_t)outlet->len(); \
 		/*set the threshold arbitrarily high, the writer have to check the return value if */ \
 		if ( (m_tx_bytes > 0) && ( (m_tx_bytes + outlet_len) > /*m_sock_buf.sndbuf_size,*/u32_t(channel_buf_range::CH_BUF_SND_MAX_SIZE))) { \
@@ -838,14 +838,18 @@ __act_label_close_read_write:
 
 	void socket_channel::ch_write_impl(NRP<promise<int>> const& intp, NRP<packet> const& outlet)
 	{
+#ifdef _NETP_DEBUG
 		NETP_ASSERT(L->in_event_loop());
+		NETP_ASSERT(intp != nullptr);
+		NETP_ASSERT(outlet->len() > 0);
+#endif
+
 		__CH_WRITEABLE_CHECK__(outlet, intp)
 
 		NETP_ASSERT( (m_chflag& (int(channel_flag::F_WATCH_WRITE) | int(channel_flag::F_TX_LIMIT))) ? m_tx_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 		m_tx_entry_q.push_back({
 			netp::make_ref<netp::non_atomic_ref_packet>(outlet->head(), outlet_len,0),
-			intp,
-			nullptr
+			intp
 		});
 		m_tx_bytes += outlet_len;
 
@@ -864,10 +868,14 @@ __act_label_close_read_write:
 	}
 
 	void socket_channel::ch_write_to_impl( NRP<promise<int>> const& intp, NRP<packet> const& outlet,NRP<netp::address >const& to) {
+#ifdef _NETP_DEBUG
 		NETP_ASSERT(L->in_event_loop());
+		NETP_ASSERT(intp != nullptr);
+		NETP_ASSERT(outlet->len() > 0);
+#endif
 
 		__CH_WRITEABLE_CHECK__(outlet, intp)
-		m_tx_entry_q.push_back({
+		m_tx_entry_to_q.push_back({
 			netp::make_ref<netp::non_atomic_ref_packet>(outlet->head(), outlet_len,0),
 			intp,
 			to
@@ -962,8 +970,8 @@ __act_label_close_read_write:
 
 		void socket_channel::ch_io_end() {
 			NETP_ASSERT(L->in_event_loop());
-			NETP_ASSERT(m_tx_entry_q.size() == 0, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 			NETP_ASSERT(m_tx_bytes == 0);
+			NETP_ASSERT(m_tx_entry_q.empty() && m_tx_entry_to_q.empty(), "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 			NETP_ASSERT(m_chflag & int(channel_flag::F_CLOSED));
 			NETP_ASSERT((m_chflag & (int(channel_flag::F_WATCH_READ) | int(channel_flag::F_WATCH_WRITE))) == 0);
 			NETP_TRACE_SOCKET("[socket][%s]io_action::END, flag: %d", ch_info().c_str(), m_chflag);

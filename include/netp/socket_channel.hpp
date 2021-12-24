@@ -129,6 +129,10 @@ namespace netp {
 	struct socket_outbound_entry final {
 		NRP<non_atomic_ref_packet> data;
 		NRP<promise<int>> write_promise;
+	};
+	struct socket_outbound_entry_to final {
+		NRP<non_atomic_ref_packet> data;
+		NRP<promise<int>> write_promise;
 		NRP<address> to;
 	};
 
@@ -142,6 +146,7 @@ namespace netp {
 		friend void do_dial(NRP<channel_dial_promise> const& ch_dialf, NRP<address> const& addr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg);
 		friend void do_listen_on(NRP<channel_listen_promise> const& listenp, NRP<address> const& laddr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg, int backlog);
 		typedef std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>> socket_outbound_entry_t;
+		typedef std::deque<socket_outbound_entry_to, netp::allocator<socket_outbound_entry_to>> socket_outbound_entry_to_t;
 
 		template <class _Ref_ty, typename... _Args>
 		friend ref_ptr<_Ref_ty> make_ref(_Args&&... args);
@@ -161,6 +166,7 @@ namespace netp {
 
 		u32_t m_tx_bytes;
 		socket_outbound_entry_t m_tx_entry_q;
+		socket_outbound_entry_to_t m_tx_entry_to_q;
 
 		u32_t m_tx_budget;
 		u32_t m_tx_limit; //in byte
@@ -683,18 +689,31 @@ namespace netp {
 			m_chflag &= ~int(channel_flag::F_WRITE_SHUTDOWN_PENDING);
 			ch_io_end_write();
 
-			while (m_tx_entry_q.size()) {
-				NETP_ASSERT( (ch_errno() != 0) && (m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_READ_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))) );
-				socket_outbound_entry& entry = m_tx_entry_q.front();
-				NETP_WARN("[socket][%s]cancel outbound, nbytes:%u, errno: %d", ch_info().c_str(), entry.data->len(), ch_errno());
-				//hold a copy before we do pop it from queue
-				NRP<promise<int>> wp = entry.write_promise;
-				m_tx_bytes -= u32_t(entry.data->len());
-				m_tx_entry_q.pop_front();
-				NETP_ASSERT(wp->is_idle());
-				wp->set(ch_errno());
+			if (ch_is_connected()) {
+				while (m_tx_entry_q.size()) {
+					NETP_ASSERT((ch_errno() != 0) && (m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_READ_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))));
+					socket_outbound_entry& entry = m_tx_entry_q.front();
+					NETP_WARN("[socket][%s]cancel outbound, nbytes:%u, errno: %d", ch_info().c_str(), entry.data->len(), ch_errno());
+					//hold a copy before we do pop it from queue
+					NRP<promise<int>> wp = entry.write_promise;
+					m_tx_bytes -= u32_t(entry.data->len());
+					m_tx_entry_q.pop_front();
+					NETP_ASSERT(wp->is_idle());
+					wp->set(ch_errno());
+				}
+			} else {
+				while (m_tx_entry_to_q.size()) {
+					NETP_ASSERT((ch_errno() != 0) && (m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_READ_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))));
+					socket_outbound_entry_to& entry = m_tx_entry_to_q.front();
+					NETP_WARN("[socket][%s]cancel outbound, nbytes:%u, errno: %d, to: %s", ch_info().c_str(), entry.data->len(), ch_errno(), entry.to && !entry.to->is_af_unspec() ? entry.to->to_string().c_str() : "");
+					//hold a copy before we do pop it from queue
+					NRP<promise<int>> wp = entry.write_promise;
+					m_tx_bytes -= u32_t(entry.data->len());
+					m_tx_entry_to_q.pop_front();
+					NETP_ASSERT(wp->is_idle());
+					wp->set(ch_errno());
+				}
 			}
-
 			socket_shutdown_impl(SHUT_WR);
 			//unset boundary
 			ch_fire_write_closed();
@@ -787,8 +806,10 @@ namespace netp {
 			switch (status) {
 			case netp::OK:
 			{
+#ifdef _NETP_DEBUG
+				NETP_ASSERT(ch_is_connected() ? m_tx_entry_q.empty() : m_tx_entry_to_q.empty(), "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
+#endif
 				NETP_ASSERT((m_chflag & int(channel_flag::F_TX_LIMIT)) == 0);
-				NETP_ASSERT(m_tx_entry_q.size() == 0, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 				if (m_chflag & int(channel_flag::F_CLOSE_PENDING)) {
 					_ch_do_close_read_write();
 					NETP_TRACE_SOCKET("[socket][%s]IO_WRITE, end F_CLOSE_PENDING, _ch_do_close_read_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
@@ -796,7 +817,6 @@ namespace netp {
 					_ch_do_close_write();
 					NETP_TRACE_SOCKET("[socket][%s]IO_WRITE, end F_WRITE_SHUTDOWN_PENDING, ch_close_write, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
 				} else {
-					std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>().swap(m_tx_entry_q);
 					ch_io_end_write();
 				}
 
@@ -805,7 +825,10 @@ namespace netp {
 			break;
 			case netp::E_EWOULDBLOCK:
 			{
-				NETP_ASSERT(m_tx_entry_q.size(), "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
+#ifdef _NETP_DEBUG
+				NETP_ASSERT(ch_is_connected() ? m_tx_entry_q.size() : m_tx_entry_to_q.size(), "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
+#endif
+
 #ifdef NETP_ENABLE_FAST_WRITE
 				NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER)) );
 				ch_io_write();
@@ -831,6 +854,7 @@ namespace netp {
 			break;
 			}
 		}
+
 		void __do_io_write(int status, io_ctx* ctx);
 		void __do_io_write_to(int status, io_ctx* ctx);
 
