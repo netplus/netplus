@@ -475,6 +475,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_OP_TIMEOUT								= -20018;	
 	const int E_OP_ALREADY = -20019;
 	const int E_OP_NOT_SUPPORTED = -20020;
+	const int E_OP_INVALID_ARG = -20021;
 
 	const int E_EVENT_BROKER_BINDED_ALREADY = -21001;
 	const int E_EVENT_BROKER_NO_LISTENER			= -21002;
