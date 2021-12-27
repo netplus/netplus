@@ -57,6 +57,7 @@ namespace netp {
 #define NETP_ABS2(A,B)		(((A)>(B))?((A)-(B)):((B)-(A)))
 #define NETP_ABS(A)			(NETP_ABS2(A,0))
 #define NETP_NEGATIVE(A)	((A<0)?(A):(-(A)))
+#define NETP_FLOAT_EQUAL(A,B) (NETP_ABS(((A)-(B)))<=0.000001f)
 
 #define NETP_STRINGIFY( x ) #x
 #define NETP_QUOTE( x ) NETP_STRINGIFY( x )
