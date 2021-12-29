@@ -21,7 +21,7 @@ namespace netp {
 		} hdr;
 		u8_t __bytes_0_7[16];
 	};
-	static_assert(sizeof(aligned_hdr) == 16, "check sizeof(aligned_hdr) failed");
+	static_assert(sizeof(aligned_hdr::_aligned_hdr) == 16 && sizeof(aligned_hdr) == 16, "check sizeof(aligned_hdr) failed");
 
 	/*note
 	* gcc&ubuntu20 (64 bit) on x86_64 alignof(std::max_align_t) == 16
@@ -63,9 +63,8 @@ namespace netp {
 			NETP_IS_DEFAULT_ALIGN(alignment) ? ((alignment <= (sizeof(aligned_hdr))) ? offset == sizeof(aligned_hdr) : offset == (alignment))
 			: (offset <= (sizeof(aligned_hdr)+alignment))
 		, "alignment: %u, alignof(std::max_align_t): %u, sizeof(aligned_hdr): %u, a_hdr: %ull", alignment, alignof(std::max_align_t), sizeof(aligned_hdr), std::size_t(a_hdr));
-#endif
-
 		NETP_ASSERT(((std::size_t(a_hdr) + std::size_t(offset)) % alignment) == 0);
+#endif
 
 		a_hdr->hdr.AH_4_7.alignment = u8_t(alignment);
 		a_hdr->hdr.AH_4_7.offset = (offset);
