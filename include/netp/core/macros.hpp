@@ -100,4 +100,7 @@ namespace netp {
 
 #define NETP_RETURN_IF_NOT_MATCH(v,condition) NETP_RETURN_IF_MATCH(v, (!(condition)) )
 
+
+#define NETP_ARR_ELEMENTS(_array_) (sizeof(_array_) / sizeof(_array_[0]))
+
 #endif
