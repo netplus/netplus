@@ -116,16 +116,25 @@ namespace netp {
 		condition_variable_any* m_cond;
 		int m_waiter;
 
-		__NETP_FORCE_INLINE void __cond_allocate_check() {
-			if (m_cond == 0) {
-				m_cond = netp::allocator<condition_variable_any>::make();
-			}
-		}
+#define __COND_ALLOCATE_CHECK(cond_var) \
+	if(cond_var==0) { \
+		cond_var = netp::allocator<condition_variable_any>::make(); \
+	} \
 
-		__NETP_FORCE_INLINE void __cond_deallocate_check() {
-			netp::allocator<condition_variable_any>::trash(m_cond);
-			m_cond = 0;
-		}
+#define __COND_DEALLOCATE_CHECK(cond_var) \
+		netp::allocator<condition_variable_any>::trash(cond_var); \
+		cond_var = 0; \
+
+
+		//__NETP_FORCE_INLINE void __cond_allocate_check() {
+		//	if (m_cond == 0) {
+		//		m_cond = netp::allocator<condition_variable_any>::make();
+		//	}
+		//}
+		//__NETP_FORCE_INLINE void __cond_deallocate_check() {
+		//	netp::allocator<condition_variable_any>::trash(m_cond);
+		//	m_cond = 0;
+		//}
 
 	public:
 		promise():
@@ -136,7 +145,7 @@ namespace netp {
 		{}
 
 		~promise() {
-			__cond_deallocate_check();
+			__COND_DEALLOCATE_CHECK(m_cond);
 		}
 
 		const __NETP_FORCE_INLINE bool is_idle() const {
@@ -155,7 +164,7 @@ namespace netp {
 				lock_guard<spin_mutex> lg(m_mutex);
 				if (!is_done()) {
 					++promise_t::m_waiter;
-					__cond_allocate_check();
+					__COND_ALLOCATE_CHECK(m_cond);
 					m_cond->wait(m_mutex);
 					--promise_t::m_waiter;
 				}
@@ -173,7 +182,7 @@ namespace netp {
 						break;
 					}
 					++promise_t::m_waiter;
-					__cond_allocate_check();
+					__COND_ALLOCATE_CHECK(m_cond);
 					m_cond->wait_for<_Rep, _Period>(m_mutex, now- tp_expire);
 					--promise_t::m_waiter;
 				}

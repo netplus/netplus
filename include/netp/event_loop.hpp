@@ -282,6 +282,12 @@ namespace netp {
 
 		__NETP_FORCE_INLINE
 		bool in_event_loop() const {
+			/*
+			* @note: 
+			* linux: The thread ID returned by pthread_self() is not the same thing as the kernel thread ID returned by a call to gettid(2). pthread_self just return the relative address to thre process address
+			* win: The KPCR of the current CPU is always accessible at fs:[0] on the x86 systems and gs:[0] on x64 systems. Commonly used kernel functions like PsGetCurrentProcess() and KeGetCurrentThread() retrieve information from the KPCR using the FS/GS relative accesses.
+			*/
+
 			return std::this_thread::get_id() == m_tid;
 		}
 
