@@ -691,32 +691,35 @@ namespace netp {
 			m_chflag &= ~int(channel_flag::F_WRITE_SHUTDOWN_PENDING);
 			ch_io_end_write();
 
-			if (ch_is_connected()) {
-				while (m_tx_entry_q.size()) {
-					NETP_ASSERT((ch_errno() != 0) && (m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_READ_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))));
-					socket_outbound_entry& entry = m_tx_entry_q.front();
-					NETP_WARN("[socket][%s]cancel outbound, nbytes:%u, errno: %d", ch_info().c_str(), entry.data->len(), ch_errno());
-					//hold a copy before we do pop it from queue
-					NRP<promise<int>> wp = entry.write_promise;
-					m_tx_bytes -= u32_t(entry.data->len());
-					m_tx_entry_q.pop_front();
-					NETP_ASSERT(wp->is_idle());
-					wp->set(ch_errno());
-				}
-			} else {
-				while (m_tx_entry_to_q.size()) {
-					NETP_ASSERT((ch_errno() != 0) && (m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_READ_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))));
-					socket_outbound_entry_to& entry = m_tx_entry_to_q.front();
-					NETP_WARN("[socket][%s]cancel outbound, nbytes:%u, errno: %d, to: %s", ch_info().c_str(), entry.data->len(), ch_errno(), entry.to && !entry.to->is_af_unspec() ? entry.to->to_string().c_str() : "");
-					//hold a copy before we do pop it from queue
-					NRP<promise<int>> wp = entry.write_promise;
-					m_tx_bytes -= u32_t(entry.data->len());
-					m_tx_entry_to_q.pop_front();
-					NETP_ASSERT(wp->is_idle());
-					wp->set(ch_errno());
-				}
+#ifdef _NETP_DEBUG
+			NETP_ASSERT( ch_is_connected() ? m_tx_entry_to_q.empty() : m_tx_entry_q.empty(), "flag: %u", m_chflag );
+#endif
+
+			while (m_tx_entry_q.size()) {
+				NETP_ASSERT((ch_errno() != 0) && (m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_READ_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))));
+				socket_outbound_entry& entry = m_tx_entry_q.front();
+				NETP_WARN("[socket][%s]cancel outbound, nbytes:%u, errno: %d", ch_info().c_str(), entry.data->len(), ch_errno());
+				//hold a copy before we do pop it from queue
+				NRP<promise<int>> wp = entry.write_promise;
+				m_tx_bytes -= u32_t(entry.data->len());
+				m_tx_entry_q.pop_front();
+				NETP_ASSERT(wp->is_idle());
+				wp->set(ch_errno());
+			}
+
+			while (m_tx_entry_to_q.size()) {
+				NETP_ASSERT((ch_errno() != 0) && (m_chflag & (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_READ_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))));
+				socket_outbound_entry_to& entry = m_tx_entry_to_q.front();
+				NETP_WARN("[socket][%s]cancel outbound, nbytes:%u, errno: %d, to: %s", ch_info().c_str(), entry.data->len(), ch_errno(), entry.to && !entry.to->is_af_unspec() ? entry.to->to_string().c_str() : "");
+				//hold a copy before we do pop it from queue
+				NRP<promise<int>> wp = entry.write_promise;
+				m_tx_bytes -= u32_t(entry.data->len());
+				m_tx_entry_to_q.pop_front();
+				NETP_ASSERT(wp->is_idle());
+				wp->set(ch_errno());
 			}
 			socket_shutdown_impl(SHUT_WR);
+
 			//unset boundary
 			ch_fire_write_closed();
 			NETP_TRACE_SOCKET("[socket][%s]ch_do_close_write end, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);

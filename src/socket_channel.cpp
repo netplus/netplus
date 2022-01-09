@@ -840,12 +840,15 @@ __act_label_close_read_write:
 	{
 #ifdef _NETP_DEBUG
 		NETP_ASSERT(L->in_event_loop());
-		NETP_ASSERT(ch_is_connected());
 		NETP_ASSERT(intp != nullptr);
 		NETP_ASSERT(outlet->len() > 0);
 #endif
 
-		__CH_WRITEABLE_CHECK__(outlet, intp)
+		__CH_WRITEABLE_CHECK__(outlet, intp);
+
+#ifdef _NETP_DEBUG
+			NETP_ASSERT(ch_is_connected(),"socket[%s]flag: %u", ch_info().c_str(), m_chflag );
+#endif
 
 		NETP_ASSERT( (m_chflag& (int(channel_flag::F_WATCH_WRITE) | int(channel_flag::F_TX_LIMIT))) ? m_tx_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 		m_tx_entry_q.push_back({
@@ -871,12 +874,16 @@ __act_label_close_read_write:
 	void socket_channel::ch_write_to_impl( NRP<promise<int>> const& intp, NRP<packet> const& outlet,NRP<netp::address >const& to) {
 #ifdef _NETP_DEBUG
 		NETP_ASSERT(L->in_event_loop());
-		NETP_ASSERT(!ch_is_connected());
 		NETP_ASSERT(intp != nullptr);
 		NETP_ASSERT(outlet->len() > 0);
 #endif
 
-		__CH_WRITEABLE_CHECK__(outlet, intp)
+		__CH_WRITEABLE_CHECK__(outlet, intp);
+
+#ifdef _NETP_DEBUG
+			NETP_ASSERT(!ch_is_connected(), "socket[%s]flag: %u", ch_info().c_str(), m_chflag);
+#endif
+
 		m_tx_entry_to_q.push_back({
 			netp::make_ref<netp::non_atomic_ref_packet>(outlet->head(), outlet_len,0),
 			intp,
