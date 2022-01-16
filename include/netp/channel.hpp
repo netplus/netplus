@@ -137,12 +137,18 @@ namespace netp {
 			__NETP_FORCE_INLINE void ch_fire_##_NAME(NRP<packet> const& _IN) const { \
 				m_pipeline->fire_##_NAME(_IN); \
 			} \
+			__NETP_FORCE_INLINE void ch_fire_##_NAME(NRP<packet>&& _IN) const { \
+				m_pipeline->fire_##_NAME(std::move(_IN)); \
+			} \
 
 			CH_FIRE_ACTION_IMPL_PACKET_1(read, income)
 
 	#define CH_FIRE_ACTION_IMPL_PACKET_ADDR(_NAME,_IN,_ADDR) \
 			__NETP_FORCE_INLINE void ch_fire_##_NAME(NRP<packet> const& _IN, NRP<address> const& _ADDR) const { \
 				m_pipeline->fire_##_NAME(_IN, _ADDR); \
+			} \
+			__NETP_FORCE_INLINE void ch_fire_##_NAME(NRP<packet>&& _IN, NRP<address> const& _ADDR) const { \
+				m_pipeline->fire_##_NAME(std::move(_IN), _ADDR); \
 			} \
 
 			CH_FIRE_ACTION_IMPL_PACKET_ADDR(readfrom, income, from)

@@ -81,7 +81,7 @@ namespace netp {
 		S_EXIT //exit..
 	};
 
-	using loop_rcv_buf_packet_t = netp::cap_fix_packet<netp::non_atomic_ref_base, 0, 0xffff, NETP_DEFAULT_ALIGN>;
+//	using loop_rcv_buf_packet_t = netp::cap_fix_packet<netp::non_atomic_ref_base, 0, 0xffff, NETP_DEFAULT_ALIGN>;
 	//using loop_rcv_buf_packet_t = packet;
 
 	class dns_resolver;
@@ -114,7 +114,7 @@ namespace netp {
 		io_task_q_t m_tq_standby;
 		io_task_q_t m_tq;
 
-		NRP<netp::loop_rcv_buf_packet_t> m_channel_rcv_buf;
+		NRP<netp::packet> m_channel_rcv_buf;
 		NRP<netp::thread> m_th;
 
 		//timer_timepoint_t m_wait_until;
@@ -191,7 +191,7 @@ namespace netp {
 		u8_t poller_type() const { return m_cfg.type; }
 
 		__NETP_FORCE_INLINE
-		NRP<netp::loop_rcv_buf_packet_t> const& channel_rcv_buf() const {
+		NRP<netp::packet>& channel_rcv_buf() {
 			return m_channel_rcv_buf;
 		}
 

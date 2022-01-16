@@ -331,7 +331,7 @@ namespace netp {
 		NETP_ASSERT(buf != nullptr);
 		NETP_ASSERT(len > 0);
 
-	sendto:
+	_label_sendto:
 		int nbytes;
 		if (addr_to != nullptr) {
 			struct sockaddr_in addr_in;
@@ -357,7 +357,7 @@ namespace netp {
 		int ec = netp_socket_get_last_errno();
 		//NETP_TRACE_SOCKET_API("[netp::sendto][#%d]send failed, error code: %d", fd, ec);
 		if (ec == netp::E_EINTR) {
-			goto sendto;
+			goto _label_sendto;
 		} else {
 			_NETP_REFIX_EWOULDBLOCK(ec);
 			ec_o = ec;
@@ -366,7 +366,7 @@ namespace netp {
 	}
 
 	inline netp::u32_t recvfrom( SOCKET fd, byte_t* const buff_o, netp::u32_t size, NRP<address>& addr_o, int& ec_o, int const& flag) {
-	recvfrom:
+	_label_recvfrom:
 		int nbytes;
 		if (addr_o != nullptr) {
 			::memset((void*)addr_o->sockaddr_v4(), 0, sizeof(struct sockaddr_in));
@@ -387,7 +387,7 @@ namespace netp {
 		int ec = netp_socket_get_last_errno();
 		//NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom, ERROR: %d", fd, ec);
 		if (ec == netp::E_EINTR) {
-			goto recvfrom;
+			goto _label_recvfrom;
 		} else {
 			_NETP_REFIX_EWOULDBLOCK(ec);
 			ec_o = ec;

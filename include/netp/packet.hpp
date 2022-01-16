@@ -7,10 +7,16 @@
 #include <netp/smart_ptr.hpp>
 #include <netp/bytes_helper.hpp>
 
-#define PACK_DEF_LEFT_CAPACITY (32)
-#define PACK_DEF_RIGHT_CAPACITY (2048-(PACK_DEF_LEFT_CAPACITY)-32)
+//Caches consist of lines, each holding multiple adjacent words.
+//On Core i7, cache lines hold 64 bytes.
+//64-byte lines common for Intel/AMD processors.
+//64 bytes = 16 32-bit values, 8 64-bit values, etc.
+//E.g., 16 32-bit array elements.
+
+#define PACK_DEF_LEFT_CAPACITY (64)
+#define PACK_DEF_RIGHT_CAPACITY (2048-(PACK_DEF_LEFT_CAPACITY)-64)
 #define PACK_MAX_CAPACITY (netp::u32::MAX)
-#define PACK_INCREMENT_SIZE_RIGHT ((1024*4)-32)
+#define PACK_INCREMENT_SIZE_RIGHT ((1024*4)-64)
 #define PACK_INCREMENT_SIZE_LEFT (64)
 
 namespace netp {
@@ -114,10 +120,14 @@ namespace netp {
 			m_read_idx -= bytes;
 		}
 
-		const inline netp::u32_t left_left_capacity() const { return (NETP_UNLIKELY(m_buffer == nullptr)) ? 0 : m_read_idx; }
-		const inline netp::u32_t left_right_capacity() const { return (NETP_UNLIKELY(m_buffer == nullptr)) ? 0 : m_capacity - m_write_idx; }
+		const __NETP_FORCE_INLINE
+		netp::u32_t left_left_capacity() const { return (NETP_UNLIKELY(m_buffer == nullptr)) ? 0 : m_read_idx; }
+		
+		const __NETP_FORCE_INLINE
+		netp::u32_t left_right_capacity() const { return (NETP_UNLIKELY(m_buffer == nullptr)) ? 0 : m_capacity - m_write_idx; }
 
-		inline void write_left(byte_t const* buf, netp::u32_t len) {
+		__NETP_FORCE_INLINE
+		void write_left(byte_t const* buf, netp::u32_t len) {
 			NETP_ASSERT(m_read_idx >= len);
 			m_read_idx -= len;
 			std::memcpy(m_buffer + m_read_idx, buf, len);

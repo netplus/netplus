@@ -161,8 +161,9 @@ namespace netp {
 		NRP<address> m_raddr;
 
 		io_ctx* m_io_ctx;
-		byte_t* const m_rcv_buf_ptr; //note: set this value to const& the object size increase to 192 compared non- const&'s 184
-		u32_t const m_rcv_buf_size;
+		//NRP<netp::packet> m_loop_buf;
+		//byte_t* const m_rcv_buf_ptr; //note: set this value to const& the object size increase to 192 compared non- const&'s 184
+		//u32_t const m_rcv_buf_size;
 
 		u32_t m_tx_bytes;
 
@@ -188,8 +189,7 @@ namespace netp {
 			m_laddr(cfg->laddr),
 			m_raddr(cfg->raddr),
 			m_io_ctx(0),
-			m_rcv_buf_ptr(cfg->L->channel_rcv_buf()->head()),
-			m_rcv_buf_size(u32_t(cfg->L->channel_rcv_buf()->left_right_capacity())),
+//			m_loop_buf(cfg->L->channel_rcv_buf()),
 			m_tx_bytes(0),
 			m_tx_budget( (cfg->tx_limit != 0 && cfg->tx_limit < _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN : cfg->tx_limit ),
 			m_tx_limit( (cfg->tx_limit != 0 && cfg->tx_limit < _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN : cfg->tx_limit),
