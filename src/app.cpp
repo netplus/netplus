@@ -303,7 +303,7 @@ namespace netp {
 
 #ifdef NETP_DEBUG_OBJECT_SIZE
 		_dump_sizeof();
-#endif		
+#endif
 		
 		NRP<app_test_unit> apptest = netp::make_ref<app_test_unit>();
 		if (!apptest->run()) {
@@ -438,8 +438,7 @@ namespace netp {
 
 		support_message(arch_info, "NEON", netp::CPUID::NEON());
 
-		NETP_TRACE_APP("ARCH INFO: %s\n", arch_info.c_str());
-		NETP_TRACE_APP("alignof(std::max_align_t): %d\n", alignof(std::max_align_t) );
+		NETP_TRACE_APP("ARCH: %s\nalignof(std::max_align_t): %d\ncore: %u\n", arch_info.c_str(), alignof(std::max_align_t), std::thread::hardware_concurrency() );
 	}
 
 #if defined(NETP_DEBUG_OBJECT_SIZE)
