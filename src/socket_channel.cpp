@@ -254,13 +254,12 @@ int socket_base::get_left_snd_queue() const {
 			return;
 		}
 		//netp::now<bfr_duration_t, bfr_clock_t>().time_since_epoch().count()
-		long long usnow = netp::now<netp::microseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
-		long long txlimit_delta = ( (usnow - m_tx_limit_last_tp));
-		NETP_ASSERT(txlimit_delta >0);
+		const long long usnow = netp::now<netp::microseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
+		const long long txlimit_delta = ( (usnow - m_tx_limit_last_tp));
 
 		m_tx_limit_last_tp = usnow;
 		u32_t tokens = u32_t((m_tx_limit/1000000.0f)* txlimit_delta);
-		if ( m_tx_limit < (tokens+ m_tx_budget)) {
+		if ( m_tx_limit < (tokens+m_tx_budget)) {
 			m_tx_budget = m_tx_limit;
 		} else {
 			m_chflag |= int(channel_flag::F_TX_LIMIT_TIMER);
@@ -824,22 +823,13 @@ __act_label_close_read_write:
 	}
 
 #define __CH_WRITEABLE_CHECK__( outlet, chp) \
-		if (m_chflag&(int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR))) { \
-			chp->set(netp::E_CHANNEL_READ_WRITE_ERROR); \
-			return ; \
-		} \
-		if ((m_chflag&int(channel_flag::F_WRITE_SHUTDOWN)) != 0) { \
-			chp->set(netp::E_CHANNEL_WRITE_CLOSED); \
-			return; \
-		} \
-		if (m_chflag&(int(channel_flag::F_WRITE_SHUTDOWN_PENDING)|int(channel_flag::F_WRITE_SHUTDOWNING) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING)) ) { \
-			chp->set(netp::E_CHANNEL_WRITE_SHUTDOWNING); \
+		if (m_chflag&(int(channel_flag::F_READ_ERROR)|int(channel_flag::F_WRITE_ERROR)|int(channel_flag::F_WRITE_SHUTDOWN)|int(channel_flag::F_WRITE_SHUTDOWN_PENDING)|int(channel_flag::F_WRITE_SHUTDOWNING)|int(channel_flag::F_CLOSE_PENDING)|int(channel_flag::F_CLOSING) ) ) { \
+			chp->set(netp::E_CHANNEL_WRITE_ABORT); \
 			return ; \
 		} \
 		const u32_t outlet_len = (u32_t)outlet->len(); \
 		/*set the threshold arbitrarily high, the writer have to check the return value if */ \
 		if ( (m_tx_bytes > 0) && ( (m_tx_bytes + outlet_len) > /*m_sock_buf.sndbuf_size,*/u32_t(channel_buf_range::CH_BUF_SND_MAX_SIZE))) { \
-			NETP_ASSERT(m_tx_bytes > 0); \
 			NETP_ASSERT(m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE))); \
 			chp->set(netp::E_CHANNEL_WRITE_BLOCK); \
 			return; \
@@ -857,9 +847,9 @@ __act_label_close_read_write:
 
 #ifdef _NETP_DEBUG
 			NETP_ASSERT(ch_is_connected(),"socket[%s]flag: %u", ch_info().c_str(), m_chflag );
+			NETP_ASSERT((m_chflag & (int(channel_flag::F_WATCH_WRITE) | int(channel_flag::F_TX_LIMIT))) ? m_tx_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 #endif
 
-		NETP_ASSERT( (m_chflag& (int(channel_flag::F_WATCH_WRITE) | int(channel_flag::F_TX_LIMIT))) ? m_tx_entry_q.size() : true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
 		m_tx_entry_q.push_back({
 			netp::make_ref<netp::non_atomic_ref_packet>(outlet->head(), outlet_len,0),
 			intp

@@ -159,23 +159,18 @@ namespace netp {
 
 		NRP<address> m_laddr;
 		NRP<address> m_raddr;
+		fn_io_event_t* m_fn_read;
+		fn_io_event_t* m_fn_write;
 
 		io_ctx* m_io_ctx;
-		//NRP<netp::packet> m_loop_buf;
-		//byte_t* const m_rcv_buf_ptr; //note: set this value to const& the object size increase to 192 compared non- const&'s 184
-		//u32_t const m_rcv_buf_size;
-
+		long long m_tx_limit_last_tp;
+		u32_t m_tx_limit; //in byte
+		u32_t m_tx_budget;
 		u32_t m_tx_bytes;
 
 		//@note: for long term session, we should better release the q if necessary
 		socket_outbound_entry_t m_tx_entry_q;
 		socket_outbound_entry_to_t m_tx_entry_to_q;
-
-		u32_t m_tx_budget;
-		u32_t m_tx_limit; //in byte
-		long long m_tx_limit_last_tp;
-		fn_io_event_t* m_fn_read;
-		fn_io_event_t* m_fn_write;
 
 		void _tmcb_tx_limit(NRP<timer> const& t);
 
@@ -188,14 +183,13 @@ namespace netp {
 			m_option(0),
 			m_laddr(cfg->laddr),
 			m_raddr(cfg->raddr),
-			m_io_ctx(0),
-//			m_loop_buf(cfg->L->channel_rcv_buf()),
-			m_tx_bytes(0),
-			m_tx_budget( (cfg->tx_limit != 0 && cfg->tx_limit < _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN : cfg->tx_limit ),
-			m_tx_limit( (cfg->tx_limit != 0 && cfg->tx_limit < _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN : cfg->tx_limit),
-			m_tx_limit_last_tp(0),
 			m_fn_read(nullptr),
-			m_fn_write(nullptr)
+			m_fn_write(nullptr),
+			m_io_ctx(0),
+			m_tx_limit_last_tp(0),
+			m_tx_limit((cfg->tx_limit != 0 && cfg->tx_limit < _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN : cfg->tx_limit),
+			m_tx_budget( (cfg->tx_limit != 0 && cfg->tx_limit < _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN : cfg->tx_limit ),
+			m_tx_bytes(0)
 		{
 			NETP_ASSERT(cfg->L != nullptr);
 			if (cfg->fd != NETP_INVALID_SOCKET) {

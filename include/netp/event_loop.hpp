@@ -97,35 +97,31 @@ namespace netp {
 		friend class event_loop_group;
 
 	protected:
-		
 		std::thread::id m_tid;
 		std::atomic<bool> m_waiting;
 		std::atomic<u8_t> m_state;
-		event_loop_cfg m_cfg;
 
 		const NRP<poller_abstract> m_poller;
 		NRP<timer_broker> m_tb;
 		NRP<dns_resolver> m_dns_resolver;
-
-		int m_io_ctx_count;
-		int m_io_ctx_count_before_running;
-
-		spin_mutex m_tq_mutex;
-		io_task_q_t m_tq_standby;
-		io_task_q_t m_tq;
-
 		NRP<netp::packet> m_channel_rcv_buf;
 		NRP<netp::thread> m_th;
 
-		//timer_timepoint_t m_wait_until;
+		int m_io_ctx_count;
+		int m_io_ctx_count_before_running;
 		std::atomic<long> m_internal_ref_count;
-		std::vector<netp::string_t, netp::allocator<netp::string_t>> m_dns_hosts;
-
 #ifdef NETP_DEBUG_LOOP_TIME
 		long long m_loop_last_tp;
 		long long m_last_wait;
 #endif
 
+		spin_mutex m_tq_mutex;
+		io_task_q_t m_tq_standby;
+		io_task_q_t m_tq;
+
+		//timer_timepoint_t m_wait_until;
+		event_loop_cfg m_cfg;
+		std::vector<netp::string_t, netp::allocator<netp::string_t>> m_dns_hosts;
 	protected:
 		//the ref count is used by main thread usually,
 		//but if we run netp on a platform that the enter|exit thread is uncertain, we should pay attention on the start|stop of the grop
@@ -281,7 +277,7 @@ namespace netp {
 		}
 
 		__NETP_FORCE_INLINE
-		bool in_event_loop() const {
+		const bool in_event_loop() const {
 			/*
 			* @note: 
 			* linux: The thread ID returned by pthread_self() is not the same thing as the kernel thread ID returned by a call to gettid(2). pthread_self just return the relative address to thre process address

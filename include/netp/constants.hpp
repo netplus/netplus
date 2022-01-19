@@ -524,8 +524,8 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_CHANNEL_WRITE_SHUTDOWNING	= -34011;
 	const int E_CHANNEL_WRITING							= -34012;
 	const int E_CHANNEL_OUTGO_LIST_EMPTY		= -34013; //FOR IOCP
+	const int E_CHANNEL_WRITE_ABORT = -34014; //ch_write_impl error for invalid state
 
-	const int E_CHANNEL_READ_WRITE_ERROR		= -34014;
 	const int E_CHANNEL_ABORT								= -34015;
 	const int E_CHANNEL_CONTEXT_DEATTACHED		= -34016;
 

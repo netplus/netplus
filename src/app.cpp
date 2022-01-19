@@ -445,6 +445,8 @@ namespace netp {
 	void app::_dump_sizeof() {
 
 		NETP_TRACE_APP("sizeof(void*): %u", sizeof(void*));
+		NETP_TRACE_APP("sizeof(std::atomic<u8_t>): %u", sizeof(std::atomic<u8_t>));
+		NETP_TRACE_APP("sizeof(std::atomic<bool>): %u", sizeof(std::atomic<bool>));
 
 		NETP_TRACE_APP("sizeof(std::atomic<long>): %u", sizeof(std::atomic<long>));
 		NETP_TRACE_APP("sizeof(netp::__atomic_counter): %u", sizeof(netp::__atomic_counter));
@@ -462,6 +464,7 @@ namespace netp {
 		NETP_TRACE_APP("sizeof(std::function<void(int)>): %u", sizeof(std::function<void(int)>));
 		NETP_TRACE_APP("sizeof(std::function<void(int, int)>): %u", sizeof(std::function<void(int, int)>));
 		NETP_TRACE_APP("sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>): %u", sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>));
+		NETP_TRACE_APP("sizeof(std::deque<socket_outbound_entry_to, netp::allocator<socket_outbound_entry_to>>): %u", sizeof(std::deque<socket_outbound_entry_to, netp::allocator<socket_outbound_entry_to>>));
 		NETP_TRACE_APP("sizeof(netp::socket_channel): %u", sizeof(netp::socket_channel));
 		NETP_TRACE_APP("sizeof(std::vector<int>): %u", sizeof(std::vector<int>));
 		NETP_TRACE_APP("sizeof(std::vector<std::function<void(int)>): %u", sizeof(std::vector<std::function<void(int)>>));
