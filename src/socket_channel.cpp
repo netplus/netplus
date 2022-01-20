@@ -62,7 +62,7 @@ namespace netp {
 		}
 
 		rt = load_sockname();
-		NETP_TRACE_SOCKET("[socket][%s]socket bind rt: %d", ch_info().c_str(), rt);
+		NETP_TRACE_SOCKET("[socket][%s]bind rt: %d", ch_info().c_str(), rt);
 		return rt;
 	}
 
@@ -94,7 +94,7 @@ namespace netp {
 		NETP_ASSERT((m_fd > 0) && (m_chflag & int(channel_flag::F_LISTENING)) == 0);
 		m_chflag |= int(channel_flag::F_LISTENING);
 		int rt = socket_listen_impl(backlog);
-		NETP_TRACE_SOCKET("[socket][%s]socket listen rt: %d", ch_info().c_str(), rt);
+		NETP_TRACE_SOCKET("[socket][%s]listen rt: %d", ch_info().c_str(), rt);
 		return rt;
 	}
 
@@ -305,7 +305,7 @@ int socket_base::get_left_snd_queue() const {
 		//int rt = -10043;
 		int rt = socket_channel::bind(addr);
 		if (rt != netp::OK) {
-			NETP_WARN("[socket]socket::bind(): %d, addr: %s", rt, addr->to_string().c_str());
+			NETP_WARN("[socket][#%d]bind(%s): %d", m_fd, addr->to_string().c_str(), rt );
 			m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
 			ch_errno() = rt;
 			ch_close_impl(nullptr);
@@ -315,7 +315,7 @@ int socket_base::get_left_snd_queue() const {
 
 		rt = socket_channel::listen(backlog);
 		if (rt != netp::OK) {
-			NETP_WARN("[socket]socket::listen(%u): %d, addr: %s", backlog, rt, addr->to_string().c_str());
+			NETP_WARN("[socket][#%d]listen(%u): %d, addr: %s", m_fd, backlog, rt, addr->to_string().c_str());
 			m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
 			ch_errno() = rt;
 			ch_close_impl(nullptr);
@@ -349,7 +349,7 @@ int socket_base::get_left_snd_queue() const {
 			so->ch_set_active();
 			int rt = so->connect(addr);
 			if (rt == netp::OK) {
-				NETP_TRACE_SOCKET("[socket][%s]socket connected directly", so->ch_info().c_str());
+				NETP_TRACE_SOCKET("[socket][%s]connected directly", so->ch_info().c_str());
 				so->__do_io_dial_done(fn_initializer, dialp, netp::OK, so->m_io_ctx);
 				return;
 			}
@@ -397,13 +397,13 @@ int socket_base::get_left_snd_queue() const {
 			m_cherrno = status;
 			ch_io_end_connect();
 			ch_close_impl(netp::make_ref<netp::promise<int>>());
-			NETP_ERR("[socket][%s]socket dial error: %d", ch_info().c_str(), status);
+			NETP_ERR("[socket][%s]dial error: %d", ch_info().c_str(), status);
 			dialp->set(status);
 			return;
 		}
 
 		if( m_chflag& int(channel_flag::F_CLOSED)) {
-			NETP_ERR("[socket][%s]socket closed already, dial promise set abort, errno: %d", ch_info().c_str(), ch_errno() );
+			NETP_ERR("[socket][%s]closed already, dial promise set abort, errno: %d", ch_info().c_str(), ch_errno() );
 			status = netp::E_ECONNABORTED;
 			goto _set_fail_and_return;
 		}
@@ -435,7 +435,7 @@ int socket_base::get_left_snd_queue() const {
 
 		if ( *(local_addr()) == *(remote_addr()) ) {
 			status = netp::E_SOCKET_SELF_CONNCTED;
-			NETP_WARN("[socket][%s]socket selfconnected", ch_info().c_str());
+			NETP_WARN("[socket][%s]selfconnected", ch_info().c_str());
 			goto _set_fail_and_return;
 		}
 

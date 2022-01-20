@@ -137,7 +137,7 @@ namespace netp {
 		if (connrt == FALSE) {
 			ec = netp_socket_get_last_errno();
 			if (ec == netp::E_WSA_IO_PENDING) {
-				NETP_VERBOSE("[socket][iocp][#%u]socket __connectEx E_WSA_IO_PENDING", m_fd, connrt);
+				NETP_VERBOSE("[socket][iocp][#%u]__connectEx E_WSA_IO_PENDING", m_fd, connrt);
 				ec = netp::OK;
 			}
 		}

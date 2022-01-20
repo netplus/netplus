@@ -300,7 +300,6 @@ namespace netp {
 				ec_o = netp::OK;
 				break;
 			} else if (r == 0) {
-				//NETP_TRACE_SOCKET_API("[netp::recv][#%d]socket closed by remote side gracefully[detected by recv]", fd);
 				ec_o = netp::E_SOCKET_GRACE_CLOSE;
 				break;
 			} else {
