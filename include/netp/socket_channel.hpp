@@ -907,7 +907,7 @@ namespace netp {
 
 		void ch_io_connect(fn_io_event_t const& fn = nullptr) override {
 			NETP_ASSERT(fn != nullptr);
-			if (m_chflag & int(channel_flag::F_WATCH_WRITE)) {
+			if (m_chflag&int(channel_flag::F_WATCH_WRITE)) {
 				return;
 			}
 			ch_io_write(fn);
