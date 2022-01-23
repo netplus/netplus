@@ -648,7 +648,9 @@ int socket_base::get_left_snd_queue() const {
 				wlen = m_tx_budget;
 			}
 
+#ifdef _NETP_DEBUG
 			NETP_ASSERT((wlen > 0) && (wlen <= m_tx_bytes));
+#endif
 			netp::u32_t nbytes = socket_send_impl( entry.data->head(), u32_t(wlen), _errno);
 			if (NETP_LIKELY(nbytes > 0)) {
 				m_tx_bytes -= nbytes;
