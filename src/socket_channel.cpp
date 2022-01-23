@@ -632,16 +632,20 @@ int socket_base::get_left_snd_queue() const {
 		//there might be a chance to be blocked a while in this loop, if set trigger another write
 		int _errno = netp::OK;
 		while ( _errno == netp::OK && m_tx_entry_q.size() ) {
+#ifdef _NETP_DEBUG
 			NETP_ASSERT( (m_tx_bytes) > 0);
+#endif
 			socket_outbound_entry& entry = m_tx_entry_q.front();
 			u32_t dlen = u32_t(entry.data->len());
 			u32_t wlen = (dlen);
 			if (m_tx_limit !=0 && (m_tx_budget<wlen)) {
-				wlen =m_tx_budget;
-				if (wlen == 0) {
-					NETP_ASSERT(m_chflag& int(channel_flag::F_TX_LIMIT_TIMER));
+				if (m_tx_budget == 0) {
+#ifdef _NETP_DEBUG
+					NETP_ASSERT(m_chflag&int(channel_flag::F_TX_LIMIT_TIMER));
+#endif
 					return netp::E_CHANNEL_TXLIMIT;
 				}
+				wlen = m_tx_budget;
 			}
 
 			NETP_ASSERT((wlen > 0) && (wlen <= m_tx_bytes));
@@ -659,12 +663,16 @@ int socket_base::get_left_snd_queue() const {
 				}
 
 				if (NETP_LIKELY(nbytes == dlen)) {
+#ifdef _NETP_DEBUG
 					NETP_ASSERT(_errno == netp::OK);
+#endif
 					entry.write_promise->set(netp::OK);
 					m_tx_entry_q.pop_front();
 				} else {
 					entry.data->skip(nbytes); //ewouldblock or bdlimit
+#ifdef _NETP_DEBUG
 					NETP_ASSERT(entry.data->len());
+#endif
 				}
 			}
 		}
