@@ -54,7 +54,7 @@ namespace netp {
 
 		__NETP_FORCE_INLINE void __check_dy() {
 			if (__callees_idx == (INTERNAL_SLOTS + __callees_dy_max)) {
-				__callees_dy_max = NETP_MAX((INTERNAL_SLOTS + __callees_dy_max), INTERNAL_SLOTS);
+				__callees_dy_max += INTERNAL_SLOTS;
 				__callees_dy = (fn_promise_callee_t**)netp::allocator<fn_promise_callee_t>::realloc((fn_promise_callee_t*)__callees_dy, __callees_dy_max*sizeof(fn_promise_callee_t*));
 				NETP_ALLOC_CHECK(__callees_dy, sizeof(fn_promise_callee_t*)*__callees_dy_max);
 			}
