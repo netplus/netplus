@@ -123,7 +123,7 @@ namespace netp {
 
 	int socket_channel::get_snd_buffer_size() const {
 		NETP_ASSERT(m_fd > 0);
-		int size;
+		int size=0;
 		socklen_t opt_length = sizeof(u32_t);
 		int rt = socket_getsockopt_impl(SOL_SOCKET, SO_SNDBUF, (char*)&size, &opt_length);
 		if (rt == NETP_SOCKET_ERROR) {
@@ -176,7 +176,7 @@ int socket_base::get_left_snd_queue() const {
 
 	int socket_channel::get_rcv_buffer_size() const {
 		NETP_ASSERT(m_fd > 0);
-		int size;
+		int size=0;
 		socklen_t opt_length = sizeof(size);
 		int rt = socket_getsockopt_impl(SOL_SOCKET, SO_RCVBUF, (char*)&size, &opt_length);
 		if (rt == NETP_SOCKET_ERROR) {
@@ -227,7 +227,7 @@ int socket_base::get_left_snd_queue() const {
 
 	int socket_channel::get_tos(u8_t& tos) const {
 		u8_t _tos;
-		socklen_t length;
+		socklen_t length=sizeof(u8_t);
 
 		int rt = socket_getsockopt_impl(IPPROTO_IP, IP_TOS, (char*)&_tos, &length);
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
@@ -235,9 +235,9 @@ int socket_base::get_left_snd_queue() const {
 		return netp::OK;
 	}
 
-	int socket_channel::set_tos(u8_t tos) {
+	int socket_channel::cfg_tos(u8_t tos) {
 		NETP_ASSERT(m_fd > 0);
-		u8_t _tos = IPTOS_TOS(tos) | 0xe0;
+		u8_t _tos = (IPTOS_TOS(tos) | 0xe0);
 		int rt = socket_setsockopt_impl(IPPROTO_IP, IP_TOS, (char*)&_tos, sizeof(_tos));
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
 		return netp::OK;

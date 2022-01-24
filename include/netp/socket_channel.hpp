@@ -27,7 +27,8 @@ namespace netp {
 		OPTION_REUSEPORT = 1 << 2,
 		OPTION_NON_BLOCKING = 1 << 3,
 		OPTION_NODELAY = 1 << 4, //only for TCP
-		OPTION_KEEP_ALIVE = 1 << 5
+		OPTION_KEEP_ALIVE = 1 << 5,
+		OPTION_NOCHECK = 1<<6
 	};
 
 	const static int default_socket_option = (int(socket_option::OPTION_NON_BLOCKING) | int(socket_option::OPTION_KEEP_ALIVE));
@@ -201,6 +202,69 @@ namespace netp {
 		{
 		}
 
+		//default off
+		int _cfg_nocheck(bool nocheckon) {
+			NETP_ASSERT(is_udp());
+			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_fd == NETP_INVALID_SOCKET);
+			//bool setornot = ((m_option&netp::u16_t(socket_option::OPTION_NOCHECK)) && (!nocheckon)) ||
+			//	(((m_option&netp::u16_t(socket_option::OPTION_NOCHECK)) == 0) && (nocheckon));
+
+			//if (!setornot) {
+			//	return netp::OK;
+			//}
+			int optval = nocheckon ? 1 : 0;
+#if defined(_NETP_WIN)
+			int rt = socket_setsockopt_impl(IPPROTO_UDP, UDP_NOCHECKSUM, &optval, sizeof(optval));
+#elif defined(_NETP_GNU_LINUX)|| defined(_NETP_ANDROID) 
+			int rt = socket_setsockopt_impl(SOL_SOCKET, SO_NO_CHECK, &optval, sizeof(optval));
+#elif defined(_NETP_APPLE)
+			int rt = socket_setsockopt_impl(IPPROTO_UDP, UDP_NOCKSUM, &optval, sizeof(optval));
+#endif
+
+			NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+			if (nocheckon) {
+				m_option |= u16_t(socket_option::OPTION_NOCHECK);
+			} else {
+				m_option &= ~u16_t(socket_option::OPTION_NOCHECK);
+			}
+			return netp::OK;
+		}
+
+	public:
+		//return 1 if nocheck on
+		//return 0 if nocheck off
+		//return <0 if any getsockopt error
+		int is_nocheck_on() {
+			NETP_ASSERT(is_udp());
+
+			int rt;
+			int optval = 0;
+			socklen_t optlen = sizeof(int);
+#if defined(_NETP_WIN)
+			rt = socket_getsockopt_impl(IPPROTO_UDP, UDP_NOCHECKSUM, &optval, &optlen);
+#elif defined(_NETP_GNU_LINUX)|| defined(_NETP_ANDROID)
+			rt = socket_getsockopt_impl(SOL_SOCKET, SO_NO_CHECK, &optval, &optlen);
+#elif defined(_NETP_APPLE)
+			rt = socket_getsockopt_impl(IPPROTO_UDP, UDP_NOCKSUM, &optval, &optlen);
+#endif
+			NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+			return (optval == 1) ? 1: 0;
+		}
+
+		int cfg_force_nocheck_off() {
+			NETP_ASSERT(is_udp());
+
+//			_cfg_nocheck(true);
+//			NETP_ASSERT(is_nocheck_on());
+
+			int onoff = is_nocheck_on();
+			if (onoff == 0) {
+				return netp::OK;
+			}
+			return _cfg_nocheck(false);
+		}
+
+protected:
 		int _cfg_reuseaddr(bool onoff) {
 			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_fd == NETP_INVALID_SOCKET);
 
@@ -374,7 +438,7 @@ namespace netp {
 			NETP_RETURN_V_IF_NOT_MATCH(netp::E_INVALID_OPERATION, m_protocol == u8_t(NETP_PROTOCOL_UDP));
 
 			bool setornot = ((m_option & u16_t(socket_option::OPTION_BROADCAST)) && (!onoff)) ||
-				(((m_option & u16_t(socket_option::OPTION_BROADCAST)) == 0) && (onoff));
+				(((m_option&u16_t(socket_option::OPTION_BROADCAST)) == 0) && (onoff));
 
 			if (!setornot) {
 				return netp::OK;
@@ -391,6 +455,7 @@ namespace netp {
 		}
 
 		int _cfg_option(u16_t opt, keep_alive_vals const& kvals) {
+
 			//force nonblocking
 			int rt = _cfg_nonblocking((opt & u16_t(socket_option::OPTION_NON_BLOCKING)) != 0);
 			NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
@@ -404,6 +469,9 @@ namespace netp {
 #endif
 
 			if (is_udp()) {
+				rt = _cfg_nocheck((opt & u16_t(socket_option::OPTION_NOCHECK)) != 0);
+				NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
+
 				rt = _cfg_broadcast((opt & u16_t(socket_option::OPTION_BROADCAST)) != 0);
 				NETP_RETURN_V_IF_NOT_MATCH(rt, rt == netp::OK);
 			}
@@ -604,14 +672,14 @@ namespace netp {
 		int get_linger(bool& on_off, int& linger_t) const;
 		int set_linger(bool on_off, int linger_t = 30 /* in seconds */);
 
-		__NETP_FORCE_INLINE int turnon_keep_alive() { return _cfg_keepalive(true, default_tcp_keep_alive_vals); }
-		__NETP_FORCE_INLINE int turnoff_keep_alive() { return _cfg_keepalive(false, default_tcp_keep_alive_vals); }
+		__NETP_FORCE_INLINE int cfg_keep_alive_on() { return _cfg_keepalive(true, default_tcp_keep_alive_vals); }
+		__NETP_FORCE_INLINE int cfg_keep_alive_off() { return _cfg_keepalive(false, default_tcp_keep_alive_vals); }
 
 		//@hint windows do not provide ways to retrieve idle time and interval ,and probes has been disabled by programming since vista
 		int set_keep_alive_vals(bool onoff, keep_alive_vals const& vals) { return _cfg_keepalive(onoff, vals); }
 
 		int get_tos(u8_t& tos) const;
-		int set_tos(u8_t tos);
+		int cfg_tos(u8_t tos);
 
 		int ch_init(u16_t opt, keep_alive_vals const& kvals, channel_buf_cfg const& cbc) {
 			NETP_ASSERT(L->in_event_loop());
@@ -918,56 +986,56 @@ namespace netp {
 			ch_io_end_write();
 		}
 
-			NRP<promise<int>> ch_set_read_buffer_size(u32_t size) override {
-				NRP<promise<int>> chp = make_ref<promise<int>>();
-				L->execute([S = NRP<socket_channel>(this), size, chp]() {
-					chp->set(S->set_rcv_buffer_size(size));
-				});
-				return chp;
-			}
+		NRP<promise<int>> ch_set_read_buffer_size(u32_t size) override {
+			NRP<promise<int>> chp = make_ref<promise<int>>();
+			L->execute([S = NRP<socket_channel>(this), size, chp]() {
+				chp->set(S->set_rcv_buffer_size(size));
+			});
+			return chp;
+		}
 
-			NRP<promise<int>> ch_get_read_buffer_size() override {
-				NRP<promise<int>> chp = make_ref<promise<int>>();
-				L->execute([S = NRP<socket_channel>(this), chp]() {
-					chp->set(S->get_rcv_buffer_size());
-				});
-				return chp;
-			}
+		NRP<promise<int>> ch_get_read_buffer_size() override {
+			NRP<promise<int>> chp = make_ref<promise<int>>();
+			L->execute([S = NRP<socket_channel>(this), chp]() {
+				chp->set(S->get_rcv_buffer_size());
+			});
+			return chp;
+		}
 
-			NRP<promise<int>> ch_set_write_buffer_size(u32_t size) override {
-				NRP<promise<int>> chp = make_ref<promise<int>>();
-				L->execute([S = NRP<socket_channel>(this), size, chp]() {
-					chp->set(S->set_snd_buffer_size(size));
-				});
-				return chp;
-			}
+		NRP<promise<int>> ch_set_write_buffer_size(u32_t size) override {
+			NRP<promise<int>> chp = make_ref<promise<int>>();
+			L->execute([S = NRP<socket_channel>(this), size, chp]() {
+				chp->set(S->set_snd_buffer_size(size));
+			});
+			return chp;
+		}
 
-			NRP<promise<int>> ch_get_write_buffer_size() override {
-				NRP<promise<int>> chp = make_ref<promise<int>>();
-				L->execute([S = NRP<socket_channel>(this), chp]() {
-					chp->set(S->get_snd_buffer_size());
-				});
-				return chp;
-			}
+		NRP<promise<int>> ch_get_write_buffer_size() override {
+			NRP<promise<int>> chp = make_ref<promise<int>>();
+			L->execute([S = NRP<socket_channel>(this), chp]() {
+				chp->set(S->get_snd_buffer_size());
+			});
+			return chp;
+		}
 
-			NRP<promise<int>> ch_set_nodelay() override {
-				NRP<promise<int>> chp = make_ref<promise<int>>();
-				L->execute([s = NRP<socket_channel>(this), chp]() {
-					chp->set(s->cfg_nodelay(true));
-				});
-				return chp;
-			}
+		NRP<promise<int>> ch_set_nodelay() override {
+			NRP<promise<int>> chp = make_ref<promise<int>>();
+			L->execute([s = NRP<socket_channel>(this), chp]() {
+				chp->set(s->cfg_nodelay(true));
+			});
+			return chp;
+		}
 
-			__NETP_FORCE_INLINE channel_id_t ch_id() const override { return m_fd; }
-			netp::string_t ch_info() const override {
-				return socketinfo{ m_fd, (m_family),(m_type),(m_protocol),local_addr(), remote_addr() }.to_string();
-			}
-			void ch_set_tx_limit(netp::u32_t limit) override {
-				L->execute([s = NRP<socket_channel>(this), limit]() {
-					s->m_tx_limit = (limit != 0 && limit< _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN: limit;
-					s->m_tx_budget = (limit != 0 && limit < _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN : limit;
-				});
-			};
+		__NETP_FORCE_INLINE channel_id_t ch_id() const override { return m_fd; }
+		netp::string_t ch_info() const override {
+			return socketinfo{ m_fd, (m_family),(m_type),(m_protocol),local_addr(), remote_addr() }.to_string();
+		}
+		void ch_set_tx_limit(netp::u32_t limit) override {
+			L->execute([s = NRP<socket_channel>(this), limit]() {
+				s->m_tx_limit = (limit != 0 && limit< _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN: limit;
+				s->m_tx_budget = (limit != 0 && limit < _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN : limit;
+			});
+		};
 	};
 
 	extern NRP<socket_channel> default_socket_channel_maker(NRP<netp::socket_cfg> const& cfg);
