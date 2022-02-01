@@ -7,7 +7,7 @@ int main(int argc, char** argv) {
 	netp::app::instance()->init(argc, argv);
 	netp::app::instance()->start_loop();
 
-	std::string listenurl = "tcp://0.0.0.0:8010";
+	std::string listenurl = "tcp://0.0.0.0:18040";
 	NRP<netp::channel_listen_promise> lch = netp::listen_on(listenurl, [](NRP<netp::channel> const& ch) {
 
 		NRP<netp::channel_handler_abstract> ws = netp::make_ref<netp::handler::websocket>(netp::handler::websocket_type::T_SERVER);
@@ -16,8 +16,8 @@ int main(int argc, char** argv) {
 		//NRP<netp::channel_handler_abstract> dump_ilen = netp::make_ref<netp::handler::dump_in_len>();
 		//ch->pipeline()->add_last( dump_ilen);
 
-		//NRP<netp::channel_handler_abstract> dump_olen = netp::make_ref<netp::handler::dump_out_len>();
-		//ch->pipeline()->add_last(dump_olen);
+		NRP<netp::channel_handler_abstract> dump_olen = netp::make_ref<netp::handler::dump_out_len>();
+		ch->pipeline()->add_last(dump_olen);
 		
 		ch->pipeline()->add_last( netp::make_ref<netp::handler::echo>() );
 	});
