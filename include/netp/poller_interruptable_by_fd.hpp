@@ -181,7 +181,9 @@ namespace netp {
 			case io_action::READ:
 			{
 				NETP_TRACE_IOE("[poller_interruptable_by_fd][#%d]io_action::READ", ctx->fd);
+#ifdef _NETP_DEBUG
 				NETP_ASSERT((ctx->flag & io_flag::IO_READ) == 0);
+#endif
 				int rt = watch(io_flag::IO_READ, ctx);
 				if (netp::OK == rt) {
 					ctx->flag |= io_flag::IO_READ;
@@ -203,7 +205,9 @@ namespace netp {
 			case io_action::WRITE:
 			{
 				NETP_TRACE_IOE("[poller_interruptable_by_fd][type:%d][#%d]io_action::WRITE", ctx->fd);
+#ifdef _NETP_DEBUG
 				NETP_ASSERT((ctx->flag & io_flag::IO_WRITE) == 0);
+#endif
 				int rt = watch(io_flag::IO_WRITE, ctx);
 				if (netp::OK == rt) {
 					ctx->flag |= io_flag::IO_WRITE;
