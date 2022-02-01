@@ -4,8 +4,7 @@ namespace netp {
 	void timer_broker::expire_all() {
 		while (!m_tq.empty()) {
 			NRP<timer>& tm = m_tq.front();
-			NETP_ASSERT(tm->delay.count() >= 0);
-			NETP_ASSERT(tm->expiration > timer_timepoint_t());
+			NETP_ASSERT(tm->delay.count() >= 0&&tm->expiration > timer_timepoint_t());
 			m_heap.push(std::move(tm));
 			m_tq.pop_front();
 		}
@@ -21,8 +20,7 @@ namespace netp {
 		const bool shrink_or_not = m_tq.size() > NETP_TM_INIT_CAPACITY;
 		while (!m_tq.empty()) {
 			NRP<timer>& tm = m_tq.front();
-			NETP_ASSERT(tm->delay.count() >= 0);
-			NETP_ASSERT(tm->expiration > timer_timepoint_t());
+			NETP_ASSERT(tm->delay.count() >= 0 && tm->expiration > timer_timepoint_t());
 			m_heap.push(std::move(tm));
 			m_tq.pop_front();
 		}
@@ -37,7 +35,7 @@ namespace netp {
 				m_heap.pop();
 			}
 		}
-		NETP_ASSERT(m_heap.size() == 0);
+		//NETP_ASSERT(m_heap.size() == 0);
 		//wait infinite
 		ndelay = _TIMER_DURATION_INFINITE;
 	_recalc_nexpire:

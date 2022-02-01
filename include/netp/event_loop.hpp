@@ -294,7 +294,7 @@ namespace netp {
 					netp::timer_clock_t::time_point inner_loop_tp = netp::timer_clock_t::now();
 					timer_duration_t tdur = t->get_delay();
 					tdur = tdur - (inner_loop_tp - outer_loop_tp);
-					if (tdur <= timer_duration_t(0)) { tdur = timer_duration_t(1); }
+					if (tdur < timer_duration_t(0)) { tdur = timer_duration_t(0); }
 					t->set_delay(tdur);
 					L->launch(t, lf);
 				});
