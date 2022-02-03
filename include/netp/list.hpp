@@ -5,6 +5,7 @@
 
 namespace netp {
 	/*
+	//disable offset feature in c++ mode
 	struct list_t {
 		list_t* next;
 		list_t *prev;
@@ -32,7 +33,6 @@ namespace netp {
 		item->prev = 0;
 	}
 	*/
-
 
 	//embed next,prev in your own class to use these api
 	template<class list_t>
@@ -75,6 +75,23 @@ namespace netp {
 //safe for means it's safe to del node other than the right nxt one..if we del nxt, we get crashed while dereference nxt (1, assign nxt -> cur, 2, dereference cur)
 #define NETP_LIST_SAFE_FOR(cur, nxt, list) for (cur = (list)->next, nxt = cur->next; cur != (list); cur = nxt, nxt = cur->next)
 
+	//slist could not be removed in between head---tail
+	//allowed opeation
+	//1, init a empty slist
+	//2, append a item to slist->next
+	//3, iterator over from head to tail
+	//4, no prepend|delete operation
+	template<class slist_t>
+	inline static void slist_init(slist_t* slist) {
+		slist->next = 0;
+	}
+	template<class slist_t>
+	inline static void list_append(slist_t* slist, slist_t* item) {
+		item->next = 0;
+		slist->next = item;
+	}
+	#define NETP_SLIST_IS_EMPTY(slist) ( ((0) == (slist)->next) )
+	#define NETP_SLIST_FOR(cur, slist) for (cur = (slist)->next; cur != (0); cur = cur->next)
 }
 
 #endif
