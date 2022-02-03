@@ -447,8 +447,11 @@ namespace netp {
 		NETP_TRACE_APP("sizeof(void*): %u", sizeof(void*));
 		NETP_TRACE_APP("sizeof(std::atomic<u8_t>): %u", sizeof(std::atomic<u8_t>));
 		NETP_TRACE_APP("sizeof(std::atomic<bool>): %u", sizeof(std::atomic<bool>));
-
 		NETP_TRACE_APP("sizeof(std::atomic<long>): %u", sizeof(std::atomic<long>));
+		NETP_TRACE_APP("sizeof(std::forward_list<long>): %u", sizeof(std::forward_list<long>));
+		NETP_TRACE_APP("sizeof(std::forward_list<long>::const_iterator): %u", sizeof(std::forward_list<long>::const_iterator));
+		NETP_TRACE_APP("sizeof(std::forward_list<long>::iterator): %u", sizeof(std::forward_list<long>::iterator));
+
 		NETP_TRACE_APP("sizeof(netp::__atomic_counter): %u", sizeof(netp::__atomic_counter));
 		NETP_TRACE_APP("sizeof(netp::__non_atomic_counter): %u", sizeof(netp::__non_atomic_counter));
 		NETP_TRACE_APP("sizeof(netp::ref_base): %u", sizeof(netp::ref_base));
