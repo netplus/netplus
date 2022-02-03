@@ -54,6 +54,12 @@ namespace netp {
 		f_delete_pending = 1 << 1
 	};
 
+#ifdef _NETP_DEBUG
+	#define NETP_EVT_BROKER_ASSERT NETP_ASSERT
+#else
+	#define NETP_EVT_BROKER_ASSERT(...)
+#endif
+
 	template <class _callable>
 	class event_handler_any : public evt_node_list
 	{
@@ -65,7 +71,7 @@ namespace netp {
 		void* address_of_callee() const { return (void*)&__callee; }
 
 		void destroy(void* node) {
-			NETP_ASSERT(((_this_type_t*)node) == this);
+			NETP_EVT_BROKER_ASSERT(((_this_type_t*)node) == this);
 			netp::allocator<_this_type_t>::trash((_this_type_t*)node);
 		}
 #ifdef __NETP_DEBUG_BROKER_INVOKER_
@@ -170,13 +176,13 @@ namespace netp {
 				evt_node_list* evt_hl = it->second;
 				evt_node_list* cur, *nxt;
 				NETP_LIST_SAFE_FOR(cur, nxt, evt_hl) {
-					NETP_ASSERT( (cur->flag&(evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending)) == 0);
-					NETP_ASSERT(evt_hl->cnt >0 );
+					NETP_EVT_BROKER_ASSERT( (cur->flag&(evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending)) == 0);
+					NETP_EVT_BROKER_ASSERT(evt_hl->cnt >0 );
 					--evt_hl->cnt;
 					netp::list_delete(cur);
 					evt_node_deallocate(cur);
 				}
-				NETP_ASSERT( evt_hl->cnt == 0 );
+				NETP_EVT_BROKER_ASSERT( evt_hl->cnt == 0 );
 				evt_node_deallocate_head(evt_hl);
 				event_map_t::iterator it_cur = it++;
 				m_handlers.erase(it_cur);
@@ -203,7 +209,7 @@ namespace netp {
 					cur->flag |= evt_node_flag::f_delete_pending;
 					evt_hl->flag |= evt_node_flag::f_delete_pending;
 				} else {
-					NETP_ASSERT(evt_hl->cnt > 0);
+					NETP_EVT_BROKER_ASSERT(evt_hl->cnt > 0);
 					--evt_hl->cnt;
 					netp::list_delete(cur);
 					evt_node_deallocate(cur);
@@ -235,7 +241,7 @@ namespace netp {
 					cur->flag |= evt_node_flag::f_delete_pending;
 					evt_hl->flag |= evt_node_flag::f_delete_pending;
 				} else {
-					NETP_ASSERT(evt_hl->cnt > 0);
+					NETP_EVT_BROKER_ASSERT(evt_hl->cnt > 0);
 					--evt_hl->cnt;
 					netp::list_delete(cur);
 					evt_node_deallocate(cur);
@@ -311,8 +317,6 @@ namespace netp {
 			// should we enable h2 in call (2) ? NO for the current impl
 			// 
 			
-
-			
 			//head->flag works as a invoking/insert/delete barrier to simplify insert/delete operation of the list
 			evt_node_list* ev_hl = it->second;
 			if (ev_hl->invoking_nest_level == u8_t(0x3F) /*6 bit len*/) {
@@ -339,7 +343,7 @@ namespace netp {
 			 if (ev_hl->flag & (evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending)) {
 				 NETP_LIST_SAFE_FOR(cur,nxt, ev_hl) {
 					 if (cur->flag & evt_node_flag::f_delete_pending) {
-						 NETP_ASSERT(ev_hl->cnt > 0);
+						 NETP_EVT_BROKER_ASSERT(ev_hl->cnt > 0);
 						 --ev_hl->cnt;
 
 						 netp::list_delete(cur);
