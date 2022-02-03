@@ -86,7 +86,7 @@ namespace netp {
 		slist->next = 0;
 	}
 	template<class slist_t>
-	inline static void list_append(slist_t* slist, slist_t* item) {
+	inline static void slist_append(slist_t* slist, slist_t* item) {
 		item->next = 0;
 		slist->next = item;
 	}
