@@ -8,7 +8,8 @@
 #include <netp/logger_broker.hpp>
 #include <netp/event_loop.hpp>
 
-//#define NETP_DEBUG_OBJECT_SIZE
+#define NETP_DEBUG_OBJECT_SIZE
+#define NETP_DEBUG_ARCH_INFO
 namespace netp {
 
 	//typedef std::function<void()> fn_app_hook_t;
@@ -62,7 +63,7 @@ namespace netp {
 		void _log_init();
 		void _log_deinit();
 
-#ifndef NETP_DISABLE_INSTRUCTION_SET_DETECTOR
+#ifdef NETP_DEBUG_ARCH_INFO
 		void _dump_arch_info();
 #endif
 

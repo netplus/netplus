@@ -297,7 +297,7 @@ namespace netp {
 		filelogger->set_mask_by_level(NETP_FILE_LOGGER_LEVEL);
 		m_logger_broker->add(filelogger);
 
-#ifdef _NETP_DEBUG
+#ifdef NETP_DEBUG_ARCH_INFO
 		_dump_arch_info();
 #endif
 
@@ -363,6 +363,8 @@ namespace netp {
 		m_logger_broker->deinit();
 		m_logger_broker = nullptr;
 	}
+
+#ifdef NETP_DEBUG_ARCH_INFO
 
 	void app::_dump_arch_info() {
 		const char bob[2] = { 0x01, 0x02 };
@@ -441,6 +443,8 @@ namespace netp {
 		NETP_TRACE_APP("ARCH: %s\nalignof(std::max_align_t): %d\ncore: %u\n", arch_info.c_str(), alignof(std::max_align_t), std::thread::hardware_concurrency() );
 	}
 
+#endif
+
 #if defined(NETP_DEBUG_OBJECT_SIZE)
 	void app::_dump_sizeof() {
 
@@ -456,8 +460,9 @@ namespace netp {
 		NETP_TRACE_APP("sizeof(netp::__non_atomic_counter): %u", sizeof(netp::__non_atomic_counter));
 		NETP_TRACE_APP("sizeof(netp::ref_base): %u", sizeof(netp::ref_base));
 		NETP_TRACE_APP("sizeof(netp::non_atomic_ref_base): %u", sizeof(netp::non_atomic_ref_base));
-		NETP_TRACE_APP("sizeof(netp::packet): %u", sizeof(netp::packet));
 		NETP_TRACE_APP("sizeof(ref_ptr<netp::packet>): %u", sizeof(NRP<netp::packet>));
+		NETP_TRACE_APP("sizeof(netp::packet): %u", sizeof(netp::packet));
+		NETP_TRACE_APP("sizeof(netp::non_atomic_ref_packet_u16len): %u", sizeof(netp::non_atomic_ref_u16packet));
 
 		NETP_TRACE_APP("sizeof(address): %u", sizeof(netp::address));
 

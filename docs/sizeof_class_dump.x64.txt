@@ -1,0 +1,119 @@
+vender: GenuineIntel
+brand: Intel(R) Core(TM) i7-8850H CPU @ 2.60GHz
+instructions: ADX AES AVX AVX2 BMI1 BMI2 CLFSH CMPXCHG16B CX8 ERMS F16C FMA FSGSBASE FXSR HLE INVPCID LAHF LZCNT MMX MOVBE MSR OSXSAVE PCLMULQDQ POPCNT RDRAND RDSEED RDTSCP RTM SEP SSE SSE2 SSE3 SSSE3 SSE4.1 SSE4.2 SYSCALL XSAVE
+alignof(std::max_align_t): 8
+core: 12
+
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[441] netp::app::_dump_arch_info
+[2022-02-06 13:17:53.873][I][572]sizeof(void*): 8
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[447] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.873][I][572]sizeof(std::atomic<u8_t>): 1
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[448] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.873][I][572]sizeof(std::atomic<bool>): 1
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[449] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.873][I][572]sizeof(std::atomic<long>): 4
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[450] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.873][I][572]sizeof(std::forward_list<long>): 16
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[451] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.874][I][572]sizeof(std::forward_list<long>::const_iterator): 24
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[452] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.874][I][572]sizeof(std::forward_list<long>::iterator): 24
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[453] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.875][I][572]sizeof(netp::__atomic_counter): 4
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[455] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.876][I][572]sizeof(netp::__non_atomic_counter): 4
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[456] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.876][I][572]sizeof(netp::ref_base): 16
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[457] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.877][I][572]sizeof(netp::non_atomic_ref_base): 16
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[458] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.877][I][572]sizeof(ref_ptr<netp::packet>): 8
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[459] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.879][I][572]sizeof(netp::packet): 40
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[460] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.880][I][572]sizeof(netp::non_atomic_ref_packet_u16len): 32
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[461] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.880][I][572]sizeof(address): 64
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[463] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.881][I][572]sizeof(netp::channel): 56
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[465] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.885][I][572]sizeof(netp::io_ctx): 40
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[466] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.885][I][572]sizeof(netp::fn_io_event_t): 64
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[467] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.887][I][572]sizeof(std::function<void(int)>): 64
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[468] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.888][I][572]sizeof(std::function<void(int, int)>): 64
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[469] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.889][I][572]sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>): 40
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[470] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.889][I][572]sizeof(std::deque<socket_outbound_entry_to, netp::allocator<socket_outbound_entry_to>>): 40
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[471] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.890][I][572]sizeof(netp::socket_channel): 216
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[472] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.890][I][572]sizeof(std::vector<int>): 32
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[473] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.891][I][572]sizeof(std::vector<std::function<void(int)>): 32
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[474] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.891][I][572]sizeof(std::vector<std::function<void(int, int)>>): 32
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[475] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.891][I][572]sizeof(netp::promise<int>): 80
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[476] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.892][I][572]sizeof(netp::promise<tuple<int,NRP<socket>>>): 96
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[477] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.892][I][572]sizeof(netp::event_broker_promise): 32
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[478] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.893][I][572]sizeof(netp::spin_mutex): 4
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[479] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.893][I][572]sizeof(netp::mutex): 80
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[480] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.894][I][572]sizeof(netp::condition): 152
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[481] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.894][I][572]sizeof(std::condition_variable): 72
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[482] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.895][I][572]sizeof(netp::condition_any): 96
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[483] netp::app::_dump_sizeof
+[2022-02-06 13:17:53.895][I][572]sizeof(std::condition_variable_any): 88
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\src\app.cpp:[484] netp::app::_dump_sizeof
+
+vender: GenuineIntel
+brand: Intel(R) Core(TM) i7-8850H CPU @ 2.60GHz
+instructions: ADX AES AVX AVX2 BMI1 BMI2 CLFSH CMPXCHG16B CX8 ERMS F16C FMA FSGSBASE FXSR HLE INVPCID LAHF LZCNT MMX MOVBE MSR OSXSAVE PCLMULQDQ POPCNT RDRAND RDSEED RDTSCP RTM SEP SSE SSE2 SSE3 SSSE3 SSE4.1 SSE4.2 SYSCALL XSAVE
+alignof(std::max_align_t): 8
+core: 12
+
+[2022-02-06 13:35:42.467][I][30976]sizeof(void*): 8
+[2022-02-06 13:35:42.467][I][30976]sizeof(std::atomic<u8_t>): 1
+[2022-02-06 13:35:42.467][I][30976]sizeof(std::atomic<bool>): 1
+[2022-02-06 13:35:42.467][I][30976]sizeof(std::atomic<long>): 4
+[2022-02-06 13:35:42.467][I][30976]sizeof(std::forward_list<long>): 8
+[2022-02-06 13:35:42.467][I][30976]sizeof(std::forward_list<long>::const_iterator): 8
+[2022-02-06 13:35:42.467][I][30976]sizeof(std::forward_list<long>::iterator): 8
+[2022-02-06 13:35:42.467][I][30976]sizeof(netp::__atomic_counter): 4
+[2022-02-06 13:35:42.467][I][30976]sizeof(netp::__non_atomic_counter): 4
+[2022-02-06 13:35:42.467][I][30976]sizeof(netp::ref_base): 16
+[2022-02-06 13:35:42.467][I][30976]sizeof(netp::non_atomic_ref_base): 16
+[2022-02-06 13:35:42.468][I][30976]sizeof(ref_ptr<netp::packet>): 8
+[2022-02-06 13:35:42.468][I][30976]sizeof(netp::packet): 40
+[2022-02-06 13:35:42.468][I][30976]sizeof(netp::non_atomic_ref_packet_u16len): 32
+[2022-02-06 13:35:42.468][I][30976]sizeof(address): 64
+[2022-02-06 13:35:42.468][I][30976]sizeof(netp::channel): 56
+[2022-02-06 13:35:42.468][I][30976]sizeof(netp::io_ctx): 40
+[2022-02-06 13:35:42.468][I][30976]sizeof(netp::fn_io_event_t): 64
+[2022-02-06 13:35:42.468][I][30976]sizeof(std::function<void(int)>): 64
+[2022-02-06 13:35:42.468][I][30976]sizeof(std::function<void(int, int)>): 64
+[2022-02-06 13:35:42.468][I][30976]sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>): 40
+[2022-02-06 13:35:42.468][I][30976]sizeof(std::deque<socket_outbound_entry_to, netp::allocator<socket_outbound_entry_to>>): 40
+[2022-02-06 13:35:42.469][I][30976]sizeof(netp::socket_channel): 216
+[2022-02-06 13:35:42.469][I][30976]sizeof(std::vector<int>): 24
+[2022-02-06 13:35:42.469][I][30976]sizeof(std::vector<std::function<void(int)>): 24
+[2022-02-06 13:35:42.469][I][30976]sizeof(std::vector<std::function<void(int, int)>>): 24
+[2022-02-06 13:35:42.469][I][30976]sizeof(netp::promise<int>): 80
+[2022-02-06 13:35:42.469][I][30976]sizeof(netp::promise<tuple<int,NRP<socket>>>): 96
+[2022-02-06 13:35:42.469][I][30976]sizeof(netp::event_broker_promise): 32
+[2022-02-06 13:35:42.469][I][30976]sizeof(netp::spin_mutex): 4
+[2022-02-06 13:35:42.469][I][30976]sizeof(netp::mutex): 80
+[2022-02-06 13:35:42.469][I][30976]sizeof(netp::condition): 152
+[2022-02-06 13:35:42.470][I][30976]sizeof(std::condition_variable): 72
+[2022-02-06 13:35:42.470][I][30976]sizeof(netp::condition_any): 96
+[2022-02-06 13:35:42.470][I][30976]sizeof(std::condition_variable_any): 88

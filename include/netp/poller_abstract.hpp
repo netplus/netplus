@@ -37,7 +37,7 @@ namespace netp {
 
 		NOTIFY_TERMINATING = 1 << 4,
 
-		READ_WRITE = (READ | WRITE)
+		READ_WRITE = (READ|WRITE)
 	};
 
 	struct io_ctx

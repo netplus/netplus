@@ -5,13 +5,13 @@
 
 namespace netp {
 
-	template <typename size_type>
+	template <typename size_width_t>
 	struct util_hlen {
 		enum class hlen_util_parse_state {
 			HLEN_UTIL_PARSE_S_READ_LEN,
 			HLEN_UTIL_PARSE_S_READ_CONTENT
 		};
-		typedef size_type hlen_util_size_t;
+		typedef size_width_t hlen_util_size_t;
 		hlen_util_parse_state m_state;
 		hlen_util_size_t m_size;
 		NRP<netp::packet> m_pkt_tmp;
@@ -80,7 +80,7 @@ namespace netp {
 					if (m_in_q_nbytes < m_size) {
 						return false;
 					}
-					const netp::u32_t to_write = in->len() > m_size ? m_size : in->len();
+					const hlen_util_size_t to_write = in->len() > m_size ? m_size : hlen_util_size_t(in->len());
 					m_pkt_tmp->write(in->head(), to_write);
 					in->skip(to_write);
 
@@ -110,7 +110,10 @@ namespace netp {
 
 		__NETP_FORCE_INLINE
 			void encode(NRP<netp::packet> const& pkt) {
-			pkt->write_left<hlen_util_size_t>(pkt->len());
+#ifdef _NETP_DEBUG
+			NETP_ASSERT(pkt->len() <= hlen_util_size_t(-1));
+#endif
+			pkt->write_left<hlen_util_size_t>(hlen_util_size_t(pkt->len()));
 		}
 	};
 }
