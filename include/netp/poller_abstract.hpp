@@ -42,10 +42,10 @@ namespace netp {
 
 	struct io_ctx
 	{
-		io_ctx* prev, * next;
 		SOCKET fd;
 		u8_t flag;
 		NRP<io_monitor> iom;
+		io_ctx* prev, * next;
 	};
 	typedef std::function<void(int status, io_ctx* ctx)> fn_io_event_t;
 	inline static io_ctx* io_ctx_allocate(SOCKET fd, NRP<io_monitor> const& iom) {
