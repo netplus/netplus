@@ -1,3 +1,80 @@
+brand:        Intel(R) Xeon(R) CPU E5-2690 0 @ 2.90GHz
+instructions: AES AVX CLFSH CMPXCHG16B CX8 FXSR LAHF MMX MSR OSXSAVE PCLMULQDQ POPCNT RDTSCP SEP SSE SSE2 SSE3 SSSE3 SSE4.1 SSE4.2 SYSCALL XSAVE
+alignof(std::max_align_t): 16
+core: 2
+
+TRACE: ../../src/app.cpp:[443] _dump_arch_info
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(void*): 8
+TRACE: ../../src/app.cpp:[451] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(std::atomic<u8_t>): 1
+TRACE: ../../src/app.cpp:[452] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(std::atomic<bool>): 1
+TRACE: ../../src/app.cpp:[453] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(std::atomic<long>): 8
+TRACE: ../../src/app.cpp:[454] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(std::forward_list<long>): 8
+TRACE: ../../src/app.cpp:[455] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(std::forward_list<long>::const_iterator): 8
+TRACE: ../../src/app.cpp:[456] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(std::forward_list<long>::iterator): 8
+TRACE: ../../src/app.cpp:[457] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::__atomic_counter): 8
+TRACE: ../../src/app.cpp:[459] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::__non_atomic_counter): 8
+TRACE: ../../src/app.cpp:[460] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::ref_base): 16
+TRACE: ../../src/app.cpp:[461] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::non_atomic_ref_base): 16
+TRACE: ../../src/app.cpp:[462] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(ref_ptr<netp::packet>): 8
+TRACE: ../../src/app.cpp:[463] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::packet): 40
+TRACE: ../../src/app.cpp:[464] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::non_atomic_ref_packet_u16len): 32
+TRACE: ../../src/app.cpp:[465] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(address): 64
+TRACE: ../../src/app.cpp:[467] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::channel): 56
+TRACE: ../../src/app.cpp:[469] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::io_ctx): 32
+TRACE: ../../src/app.cpp:[470] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::fn_io_event_t): 32
+TRACE: ../../src/app.cpp:[471] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(std::function<void(int)>): 32
+TRACE: ../../src/app.cpp:[472] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(std::function<void(int, int)>): 32
+TRACE: ../../src/app.cpp:[473] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>): 80
+TRACE: ../../src/app.cpp:[474] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(std::deque<socket_outbound_entry_to, netp::allocator<socket_outbound_entry_to>>): 80
+TRACE: ../../src/app.cpp:[475] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::socket_channel): 296
+TRACE: ../../src/app.cpp:[476] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(std::vector<int>): 24
+TRACE: ../../src/app.cpp:[477] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(std::vector<std::function<void(int)>): 24
+TRACE: ../../src/app.cpp:[478] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(std::vector<std::function<void(int, int)>>): 24
+TRACE: ../../src/app.cpp:[479] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::promise<int>): 72
+TRACE: ../../src/app.cpp:[480] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::promise<tuple<int,NRP<socket>>>): 88
+TRACE: ../../src/app.cpp:[481] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::event_broker_promise): 32
+TRACE: ../../src/app.cpp:[482] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::spin_mutex): 1
+TRACE: ../../src/app.cpp:[483] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::mutex): 40
+TRACE: ../../src/app.cpp:[484] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::condition): 88
+TRACE: ../../src/app.cpp:[485] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(std::condition_variable): 48
+TRACE: ../../src/app.cpp:[486] _dump_sizeof
+[2022-02-06 00:59:56.385][I][140502114178240]sizeof(netp::condition_any): 72
+TRACE: ../../src/app.cpp:[487] _dump_sizeof
+[2022-02-06 00:59:56.386][I][140502114178240]sizeof(std::condition_variable_any): 64
+
+
 vender: GenuineIntel
 brand:        Intel(R) Xeon(R) CPU E5-2690 0 @ 2.90GHz
 instructions: AES AVX CLFSH CMPXCHG16B CX8 FXSR LAHF MMX MSR OSXSAVE PCLMULQDQ POPCNT RDTSCP SEP SSE SSE2 SSE3 SSSE3 SSE4.1 SSE4.2 SYSCALL XSAVE
