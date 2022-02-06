@@ -1,0 +1,79 @@
+vender:
+brand:
+instructions: NEON
+alignof(std::max_align_t): 8
+core: 4
+
+TRACE: ../../src/app.cpp:[443] _dump_arch_info
+[2022-02-06 05:41:43.763][I][3069698112]sizeof(void*): 4
+TRACE: ../../src/app.cpp:[451] _dump_sizeof
+[2022-02-06 05:41:43.763][I][3069698112]sizeof(std::atomic<u8_t>): 1
+TRACE: ../../src/app.cpp:[452] _dump_sizeof
+[2022-02-06 05:41:43.763][I][3069698112]sizeof(std::atomic<bool>): 1
+TRACE: ../../src/app.cpp:[453] _dump_sizeof
+[2022-02-06 05:41:43.763][I][3069698112]sizeof(std::atomic<long>): 4
+TRACE: ../../src/app.cpp:[454] _dump_sizeof
+[2022-02-06 05:41:43.763][I][3069698112]sizeof(std::forward_list<long>): 4
+TRACE: ../../src/app.cpp:[455] _dump_sizeof
+[2022-02-06 05:41:43.763][I][3069698112]sizeof(std::forward_list<long>::const_iterator): 4
+TRACE: ../../src/app.cpp:[456] _dump_sizeof
+[2022-02-06 05:41:43.763][I][3069698112]sizeof(std::forward_list<long>::iterator): 4
+TRACE: ../../src/app.cpp:[457] _dump_sizeof
+[2022-02-06 05:41:43.763][I][3069698112]sizeof(netp::__atomic_counter): 4
+TRACE: ../../src/app.cpp:[459] _dump_sizeof
+[2022-02-06 05:41:43.763][I][3069698112]sizeof(netp::__non_atomic_counter): 4
+TRACE: ../../src/app.cpp:[460] _dump_sizeof
+[2022-02-06 05:41:43.763][I][3069698112]sizeof(netp::ref_base): 8
+TRACE: ../../src/app.cpp:[461] _dump_sizeof
+[2022-02-06 05:41:43.763][I][3069698112]sizeof(netp::non_atomic_ref_base): 8
+TRACE: ../../src/app.cpp:[462] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(ref_ptr<netp::packet>): 4
+TRACE: ../../src/app.cpp:[463] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(netp::packet): 24
+TRACE: ../../src/app.cpp:[464] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(netp::non_atomic_ref_packet_u16len): 20
+TRACE: ../../src/app.cpp:[465] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(address): 52
+TRACE: ../../src/app.cpp:[467] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(netp::channel): 32
+TRACE: ../../src/app.cpp:[469] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(netp::io_ctx): 20
+TRACE: ../../src/app.cpp:[470] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(netp::fn_io_event_t): 16
+TRACE: ../../src/app.cpp:[471] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(std::function<void(int)>): 16
+TRACE: ../../src/app.cpp:[472] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(std::function<void(int, int)>): 16
+TRACE: ../../src/app.cpp:[473] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>): 40
+TRACE: ../../src/app.cpp:[474] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(std::deque<socket_outbound_entry_to, netp::allocator<socket_outbound_entry_to>>): 40
+TRACE: ../../src/app.cpp:[475] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(netp::socket_channel): 168
+TRACE: ../../src/app.cpp:[476] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(std::vector<int>): 12
+TRACE: ../../src/app.cpp:[477] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(std::vector<std::function<void(int)>): 12
+TRACE: ../../src/app.cpp:[478] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(std::vector<std::function<void(int, int)>>): 12
+TRACE: ../../src/app.cpp:[479] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(netp::promise<int>): 44
+TRACE: ../../src/app.cpp:[480] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(netp::promise<tuple<int,NRP<socket>>>): 48
+TRACE: ../../src/app.cpp:[481] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(netp::event_broker_promise): 16
+TRACE: ../../src/app.cpp:[482] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(netp::spin_mutex): 1
+TRACE: ../../src/app.cpp:[483] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(netp::mutex): 24
+TRACE: ../../src/app.cpp:[484] _dump_sizeof
+[2022-02-06 05:41:43.764][I][3069698112]sizeof(netp::condition): 72
+TRACE: ../../src/app.cpp:[485] _dump_sizeof
+[2022-02-06 05:41:43.765][I][3069698112]sizeof(std::condition_variable): 48
+TRACE: ../../src/app.cpp:[486] _dump_sizeof
+[2022-02-06 05:41:43.765][I][3069698112]sizeof(netp::condition_any): 64
+TRACE: ../../src/app.cpp:[487] _dump_sizeof
+[2022-02-06 05:41:43.765][I][3069698112]sizeof(std::condition_variable_any): 56
+TRACE: ../../src/app.cpp:[488] _dump_sizeof
+
+

@@ -1,0 +1,41 @@
+vender: GenuineIntel
+brand:        Intel(R) Xeon(R) CPU E5-2690 0 @ 2.90GHz
+instructions: AES AVX CLFSH CMPXCHG16B CX8 FXSR LAHF MMX MSR OSXSAVE PCLMULQDQ POPCNT RDTSCP SEP SSE SSE2 SSE3 SSSE3 SSE4.1 SSE4.2 SYSCALL XSAVE
+alignof(std::max_align_t): 16
+core: 2
+
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(void*): 8
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::atomic<u8_t>): 1
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::atomic<bool>): 1
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::atomic<long>): 8
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::forward_list<long>): 8
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::forward_list<long>::const_iterator): 8
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::forward_list<long>::iterator): 8
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::__atomic_counter): 8
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::__non_atomic_counter): 8
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::ref_base): 16
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::non_atomic_ref_base): 16
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(ref_ptr<netp::packet>): 8
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::packet): 40
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::non_atomic_ref_packet_u16len): 32
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(address): 64
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::channel): 56
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::io_ctx): 32
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::fn_io_event_t): 32
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::function<void(int)>): 32
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::function<void(int, int)>): 32
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>>): 80
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::deque<socket_outbound_entry_to, netp::allocator<socket_outbound_entry_to>>): 80
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::socket_channel): 296
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::vector<int>): 24
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::vector<std::function<void(int)>): 24
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::vector<std::function<void(int, int)>>): 24
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::promise<int>): 72
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::promise<tuple<int,NRP<socket>>>): 88
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::event_broker_promise): 32
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::spin_mutex): 1
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::mutex): 40
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::condition): 88
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::condition_variable): 48
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(netp::condition_any): 72
+[2022-02-06 00:47:05.321][I][140224210158784]sizeof(std::condition_variable_any): 64
