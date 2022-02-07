@@ -36,7 +36,7 @@ namespace netp {
 		T9,
 		T10,
 		T11,
-//		T12,
+		T12,
 //		T13,
 		//T14,
 		T_COUNT

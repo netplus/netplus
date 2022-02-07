@@ -9,7 +9,6 @@ namespace netp {
 //1<<40 should be ok | 1000G
 	union aligned_hdr {
 		struct _aligned_hdr {
-			u64_t ptr;//pointer to a debug object
 			u32_t size_L;
 			struct __AH_4_7__ {
 				u8_t size_H;
@@ -19,9 +18,9 @@ namespace netp {
 				u8_t offset;
 			} AH_4_7;
 		} hdr;
-		u8_t __bytes_0_7[16];
+		u8_t __bytes_0_7[8];
 	};
-	static_assert(sizeof(aligned_hdr::_aligned_hdr) == 16 && sizeof(aligned_hdr) == 16, "check sizeof(aligned_hdr) failed");
+	static_assert(sizeof(aligned_hdr::_aligned_hdr) == 8 && sizeof(aligned_hdr) == 8, "check sizeof(aligned_hdr) failed");
 
 	/*note
 	* gcc&ubuntu20 (64 bit) on x86_64 alignof(std::max_align_t) == 16
@@ -89,10 +88,6 @@ namespace netp {
 		return size_;
 	}
 
-//#define NETP_ALIGNED_ALLOCATOR_16_SLOT_EDGE_T size_t(T3)
-//#define NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t) ( (t < NETP_ALIGNED_ALLOCATOR_16_SLOT_EDGE_T) ? 16 : 8)
-#define NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t) (8)
-
 	enum SLOT_ENTRIES_SIZE_LEVEL {
 		L_DISABLED,
 		L_EXTREM_LOW,
@@ -125,126 +120,137 @@ namespace netp {
 	//@note: tls default record size 16kb
 	const u32_t TABLE_SLOT_ENTRIES_INIT_LIMIT[SLOT_ENTRIES_SIZE_LEVEL::L_MAX][TABLE::T_COUNT][8] = {
 		{//L_DISABLED
-			{0,0,0,0,0,0,0,0}, //(0--128] 128/8 Byte
-			{0,0,0,0,0,0,0,0}, //(128--128+256]  256/8 Byte
-			{0,0,0,0,0,0,0,0}, //(128+256--128+256+512] 512/16
-			{0,0,0,0,0,0,0,0},//(128+256+512--128+256+512+1024] [zzz] 1024/8
-			{0,0,0,0,0,0,0,0},//128+256+512+1024--128+256+512+1024+2048 2048/8
-			{0,0,0,0,0,0,0,0},//4--8K /8
-			{0,0,0,0,0,0,0,0},//8-16K
-			{0,0,0,0,0,0,0,0},//16-32K
-			{0,0,0,0,0,0,0,0},//32-64K
-			{0,0,0,0,0,0,0,0},//64-128K
-			{0,0,0,0,0,0,0,0},//128-256K
-			{0,0,0,0,0,0,0,0},//256-512K
+			{0,0,0,0,0,0,0,0}, //
+			{0,0,0,0,0,0,0,0}, //
+			{0,0,0,0,0,0,0,0}, //
+			{0,0,0,0,0,0,0,0},//
+			{0,0,0,0,0,0,0,0},//
+			{0,0,0,0,0,0,0,0},//
+			{0,0,0,0,0,0,0,0},//
+			{0,0,0,0,0,0,0,0},//
+			{0,0,0,0,0,0,0,0},//
+			{0,0,0,0,0,0,0,0},//
+			{0,0,0,0,0,0,0,0},//
+			{0,0,0,0,0,0,0,0},//
+			{0,0,0,0,0,0,0,0},//
 			//4,//512-1M
 			//2,//1M-2M
 			//1//
 		},
 		{//L_EXTREM_LOW
-			{512,256,128,128,128,128,128,128}, //(0--128] 128/8 Byte
-			{64,64,64,64,32,32,32,32}, //(128--128+256]  256/8 Byte
-			{32,32,32,32,32,32,32,32}, //(128+256--128+256+512] 512/16
-			{16,16,16,128,128,128,16,16},//(128+256+512--128+256+512+1024] [zzz] 1024/8
-			{16,16,16,16,8,8,8,8},//128+256+512+1024--128+256+512+1024+2048 2048/8
-			{8,8,8,8,8,8,8,8},//4--8K /8
-			{8,8,8,8,8,8,8,8},//8-16K
-			{4,4,4,4,4,4,4,4},//16-32K
-			{0,0,0,0,0,0,0,0,},//32-64K
-			{0,0,0,0,0,0,0,0,},//64-128K
-			{0,0,0,0,0,0,0,0,},//128-256K
-			{0,0,0,0,0,0,0,0,},//256-512K
+			{512,256,256,128,128,128,128,128}, //
+			{128,128,128,128,64,64,64,64}, //
+			{64,64,64,64,32,32,32,32}, //
+			{32,32,32,32,32,32,32,32}, //
+			{16,16,16,128,128,128,16,16},//
+			{16,16,16,16,8,8,8,8},//
+			{8,8,8,8,8,8,8,8},//
+			{8,8,8,8,8,8,8,8},//
+			{4,4,4,4,4,4,4,4},//
+			{0,0,0,0,0,0,0,0,},//
+			{0,0,0,0,0,0,0,0,},//
+			{0,0,0,0,0,0,0,0,},//
+			{0,0,0,0,0,0,0,0,},//
 		},
 		{//L_LOW
-			{1024,512,256,256,256,256,256,256}, //(0--128] 128/8 Byte
-			{128,128,128,128,64,64,64,64}, //(128--128+256]  256/8 Byte
-			{32,32,32,32,32,32,32,32}, //(128+256--128+256+512] 512/8
-			{16,16,16,256,256,256,16,16},//(128+256+512--128+256+512+1024] [zzz] 1024/8
-			{16,16,16,16,16,16,16,16},//128+256+512+1024--128+256+512+1024+2048 2048/8
-			{16,16,16,16,8,8,8,8},//4--8K /8
-			{8,8,8,8,8,8,8,8},//8-16K
-			{4,4,4,4,4,4,4,4},//16-32K
-			{2,2,2,2,0,0,0,0},//32-64K
-			{0,0,0,0,0,0,0,0},//64-128K
-			{0,0,0,0,0,0,0,0},//128-256K
-			{0,0,0,0,0,0,0,0},//256-512K
+			{1024,512,256,256,256,256,256,256}, //
+			{256,256,256,256,128,128,128,128}, //
+			{128,128,128,128,64,64,64,64}, //
+			{32,32,32,32,32,32,32,32}, //
+			{16,16,16,256,256,256,16,16},//
+			{16,16,16,16,16,16,16,16},//
+			{16,16,16,16,8,8,8,8},//
+			{8,8,8,8,8,8,8,8},//
+			{4,4,4,4,4,4,4,4},//
+			{2,2,2,2,0,0,0,0},//
+			{0,0,0,0,0,0,0,0},//
+			{0,0,0,0,0,0,0,0},//
+			{0,0,0,0,0,0,0,0},//
 		},
 		{//L_MEDIUM
-			{2048,1024,512,512,256,256,256,256}, //(0--128]  128/8 Byte
-			{128,128,128,128,128,128,128,128}, //(128--128+256]  256/8 Byte
-			{64,64,64,64,64,64,64,64}, //(128+256--128+256+512] 512/8
-			{64,64,64,512,512,512,32,32},//(128+256+512--128+256+512+1024] [zzz] 1024/8
-			{32,32,32,32,16,16,16,16},//128+256+512+1024--128+256+512+1024+2048 2048/8
-			{16,16,16,16,16,16,16,16},//4--8K /8
-			{16,16,16,16,16,16,16,16},//8-16K
-			{8,8,8,8,8,8,8,8},//16-32K
-			{8,8,8,8,4,4,4,4},//32-64K
-			{4,4,4,4,4,4,4,4},//64-128K
-			{0,0,0,0,0,0,0,0},//128-256K
-			{0,0,0,0,0,0,0,0},//256-512K
+			{2048,1024,512,512,256,256,256,256}, //
+			{256,256,256,256,128,128,128,128}, //
+			{128,128,128,128,128,128,128,128}, //
+			{64,64,64,64,64,64,64,64}, //
+			{64,64,64,512,512,512,32,32},//
+			{32,32,32,32,16,16,16,16},//
+			{16,16,16,16,16,16,16,16},//
+			{16,16,16,16,16,16,16,16},//
+			{8,8,8,8,8,8,8,8},//
+			{8,8,8,8,4,4,4,4},//
+			{4,4,4,4,4,4,4,4},//
+			{0,0,0,0,0,0,0,0},//
+			{0,0,0,0,0,0,0,0},//
 		},
 		{//L_LARGE
-			{4096,2048,1024,1024,512,512,512,512}, //(0--128]  128/8 Byte
-			{256,256,256,256,256,256,256,256}, //(128--128+256]  256/8 Byte
-			{128,128,128,128,128,128,128,128}, //(128+256--128+256+512] 512/8
-			{128,128,128,1024,1024,1024,64,64},//(128+256+512--128+256+512+1024] [zzz] 1024/8
-			{64,64,64,64,64,64,64,64},//128+256+512+1024--128+256+512+1024+2048 2048/8
-			{32,32,32,32,32,32,32,32},//4--8K /8
-			{32,32,32,32,32,32,32,32},//8-16K
-			{16,16,16,16,16,16,16,16},//16-32K
-			{16,16,16,16,8,8,8,8},//32-64K
-			{8,8,8,8,4,4,4,4},//64-128K
-			{4,4,4,4,4,4,4,4},//128-256K
-			{0,0,0,0,0,0,0,0},//256-512K
+			{4096,2048,1024,1024,512,512,512,512}, //
+			{512,512,512,512,256,256,256,256}, //
+			{256,256,256,256,256,256,256,256}, //
+			{128,128,128,128,128,128,128,128}, //
+			{128,128,128,1024,1024,1024,64,64},//
+			{64,64,64,64,64,64,64,64},//
+			{32,32,32,32,32,32,32,32},//
+			{32,32,32,32,32,32,32,32},//
+			{16,16,16,16,16,16,16,16},//
+			{16,16,16,16,8,8,8,8},//
+			{8,8,8,8,4,4,4,4},//
+			{4,4,4,4,4,4,4,4},//
+			{0,0,0,0,0,0,0,0},//
 		},
 		{//L_EXTREM_LARGE
-			{4096,4096,2048,2048,1024,1024,1024,1024}, //(0--128] /8 Byte
-			{512,512,512,512,512,512,512,512}, //(128--128+256] /8 Byte
-			{256,256,256,256,256,256,256,256}, //(128+256--128+256+512] /8
-			{256,256,256,2048,2048,2048,128,128},//(128+256+512--128+256+512+1024] [zzz] /8
-			{128,128,128,128,128,128,128,128},//128+256+512+1024--128+256+512+1024+2048 /8
-			{128,128,128,128,64,64,64,64},//4--8K /8
-			{64,64,64,64,32,32,32,32},//8-16K
-			{32,32,32,32,32,32,32,32},//16-32K
-			{32,32,32,32,16,16,16,16},//32-64K
-			{16,16,16,16,8,8,8,8},//64-128K
-			{8,8,8,8,4,4,4,4},//128-256K
-			{4,4,4,4,4,4,4,4},//256-512K
+			{8192,4096,4096,2048,1024,1024,1024,1024}, //(0--64] /8 Byte/s
+			{1024,1024,1024,1024,512,512,512,512}, //(64--64+128] /16 Byte/s
+			{512,512,512,512,512,512,512,512}, //(192--64+128+256] /32 Byte/s
+			{256,256,256,256,256,256,256,256}, //(448--64+128+256+512] 64 Byte/s
+			{256,256,256,2048,2048,2048,128,128},//(960--64+128+256+512+1024] [zzz] 128 Byte/s
+			{128,128,128,128,128,128,128,128},//1984--64+128+256+512+1024+2048 256 Byte/s
+			{128,128,128,128,64,64,64,64},//4032--4032+4096 /8
+			{64,64,64,64,32,32,32,32},//8128--8128+8192
+			{32,32,32,32,32,32,32,32},//16320--16320
+			{32,32,32,32,16,16,16,16},//32704--32704+32768
+			{16,16,16,16,8,8,8,8},//65472--65472+65536
+			{8,8,8,8,4,4,4,4},//131008-131008+131072
+			{4,4,4,4,4,4,4,4},//262080-262080+262144K
 		}
 	};
 
-	 const u32_t TABLE_BOUND[TABLE::T_COUNT+1] = {
+	const u32_t TABLE_BOUND[TABLE::T_COUNT + 1] = {
 		0,
-		128, //
-		128 + 256, //
-		128 + 256 + 512,//
-		128 + 256 + 512 + 1024,//
-		128 + 256 + 512 + 1024 + 2048,//
-		128 + 256 + 512 + 1024 + 2048 + 4096,//
-		128 + 256 + 512 + 1024 + 2048 + 4096 + 8192,//
-		128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384,//
-		128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768,//
-		128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536,//
-		128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072,//
-		128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072 + 262144//
+		64 + 0, //T0_MAX: 64
+		64 + 128, //T1_MAX: 192
+		64 + 128 + 256, //T2_MAX: 448
+		64 + 128 + 256 + 512,//T3_MAX:  960
+		64 + 128 + 256 + 512 + 1024,//T4_MAX: 1984
+		64 + 128 + 256 + 512 + 1024 + 2048,//
+		64 + 128 + 256 + 512 + 1024 + 2048 + 4096,//
+		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192,//
+		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384,//
+		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768,//
+		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536,//
+		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072,//
+		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072 + 262144 //
 	 };
 
-	//#define calc_F_by_slot(s) ((s<NETP_ALIGNED_ALLOCATOR_16_SLOT_EDGE_T)?3:4)
-	#define calc_F_by_slot(s) (4)
-	#define calc_SIZE_by_TABLE_SLOT(t,f,s) (TABLE_BOUND[t] + ((1<<((t) + (f)))) * (((s) + 1)))
+	//#define NETP_ALIGNED_ALLOCATOR_16_SLOT_EDGE_T size_t(T3)
+	//#define NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t) ( (t < NETP_ALIGNED_ALLOCATOR_16_SLOT_EDGE_T) ? 16 : 8)
+	#define NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t) (8)
 
-	#define calc_TABLE__(size, t) do { \
-		for (u8_t ti = 1; ti < (TABLE::T_COUNT+1); ++ti) { \
-			if (size <= TABLE_BOUND[ti]) { \
-				t = (--ti); \
-				break; \
-			} \
-		} \
-	}while(false);\
+	#define _netp_memory_calc_F_by_TABLE(t) (t+3)
+	#define _netp_memory_calc_SIZE_by_TABLE_SLOT(t,s) (TABLE_BOUND[t] + ((1<<(_netp_memory_calc_F_by_TABLE(t)))) * (((s) + 1)))
 
-#define calc_TABLE(size,t) do { \
-	size_t div128 = (size>>7); \
-	switch (div128) { \
+	
+	#ifdef _NETP_DEBUG
+		#define NETP_ASSERT_calc_TABLE NETP_ASSERT
+	#else
+		#define NETP_ASSERT_calc_TABLE(...) 
+	#endif
+
+#define _netp_memory_calc_size_div_TABLE(size) (size>>6)
+#define _netp_memory_calc_size_mod_TABLE(size) ((size%64))
+
+	//update t,s if match range 
+#define _netp_memory_calc_TABLE(size,t,s) do { \
+	switch (_netp_memory_calc_size_div_TABLE(size)) { \
 	case 0: \
 	{ \
 		t = T0; \
@@ -252,8 +258,9 @@ namespace netp {
 	break; \
 	case 1: \
 	{ \
+		/*64*/ \
 		t = T1; \
-		(size % 128) == 0 ? --t : 0; \
+		s = _netp_memory_calc_size_mod_TABLE(size);\
 	} \
 	break; \
 	case 2: \
@@ -263,8 +270,9 @@ namespace netp {
 	break; \
 	case 3: \
 	{ \
+		/*192*/ \
 		t = T2; \
-		(size % 128) == 0 ? --t : 0; \
+		s = _netp_memory_calc_size_mod_TABLE(size);\
 	} \
 	break; \
 	case 4:case 5:case 6: \
@@ -274,28 +282,47 @@ namespace netp {
 	break; \
 	case 7: \
 	{ \
+		/*64*7=448*/ \
 		t = T3; \
-		(size % 128) == 0 ? --t : 0; \
 	} \
 	break; \
-	case 8:case 9:case 10: 	case 11:case 12:case 13: case 14: \
+	case 8: case 9: case 10: \
+	case 11:case 12: case 13: case 14: \
 	{ \
 		t = T3; \
 	} \
 	break; \
 	case 15: \
 	{ \
-		/*1920*/ \
+		/*64*15=960*/ \
 		t = T4; \
-		(size % 128) == 0 ? --t : 0; \
+		s = _netp_memory_calc_size_mod_TABLE(size);\
 	} \
 	break; \
+	case 16: case 17: case 18: case 19:case 20:case 21: case 22: \
+	case 23: case 24: case 25: case 26:case 27:case 28: case 29: case 30:\
+	{ \
+		t = T4; \
+	} \
+	break; \
+	case 31: \
+	{ \
+		/*64*31=1984*/ \
+		t = T5; \
+		s = _netp_memory_calc_size_mod_TABLE(size);\
+	}\
+	break;\
 	default: \
 	{ \
-		for (u8_t ti = T5; ti < (TABLE::T_COUNT + 1); ++ti) { \
-			if (size <= TABLE_BOUND[ti]) { \
+		NETP_ASSERT_calc_TABLE(size>TABLE_BOUND[T5]); \
+		for (u8_t ti = T6; ti < (TABLE::T_COUNT+1); ++ti) { \
+			if (size<TABLE_BOUND[ti]) { \
 				t = (--ti); \
 				break; \
+			} else if(size == TABLE_BOUND[ti]) { \
+				t = ti; \
+				s = _netp_memory_calc_size_mod_TABLE(0);\
+				break;\
 			} \
 		} \
 	} \
@@ -305,7 +332,7 @@ namespace netp {
 
 	void pool_aligned_allocator::preallocate_table_slot_item(table_slot_t* tst, u8_t t, u8_t s, size_t item_count) {
 		(void)tst;
-		size_t size = calc_SIZE_by_TABLE_SLOT(t, calc_F_by_slot(t), s);
+		size_t size = _netp_memory_calc_SIZE_by_TABLE_SLOT(t, s);
 		size_t i;
 		for (i = 0; i < (item_count); ++i) {
 			aligned_hdr* a_hdr = (aligned_hdr*)std::malloc(sizeof(aligned_hdr) + size);
@@ -374,26 +401,29 @@ namespace netp {
 		NETP_ASSERT( size < _NETP_ALIGN_MALLOC_SIZE_MAX );
 		NETP_ASSERT( (alignment%alignof(std::max_align_t)) == 0 && alignment >= alignof(std::max_align_t) );
 #endif
-
+		aligned_hdr* a_hdr;
+		u8_t t = T_COUNT;
+		u8_t s = u8_t(-1);
 		//assume that the std::malloc always return address aligned to alignof(std::max_align_t)
 		size_t slot_size = NETP_IS_DEFAULT_ALIGN(alignment) ? ((alignment<=(sizeof(aligned_hdr)))?size: (size + alignment - sizeof(aligned_hdr)))
 			: (size+alignment);
+		_netp_memory_calc_TABLE(slot_size,t,s);
 
-		u8_t t = T_COUNT;
-		u8_t s = u8_t(-1);
+		if (NETP_LIKELY(t < T_COUNT) ) {
 
-		aligned_hdr* a_hdr;
-		calc_TABLE(slot_size,t);
-
-		if (NETP_LIKELY(t<T_COUNT) ) {
-
-			slot_size -= TABLE_BOUND[t];
-			u8_t f = calc_F_by_slot(t);
-			s = u8_t(slot_size >> (t + f));
-			(slot_size % ((1ULL << (t + f)))) == 0 ? --s : 0;
+			if (s==0) {
+				--t;
+				s = (NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t) - 1);
+			} else {
+				s = u8_t( (slot_size-TABLE_BOUND[t]) >> (_netp_memory_calc_F_by_TABLE(t)));
+				slot_size = _netp_memory_calc_SIZE_by_TABLE_SLOT(t, s);
+		
+				#ifdef _NETP_DEBUG
+					NETP_ASSERT(s < NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t) );
+				#endif
+			}
 
 			table_slot_t*& tst = (m_tables[t][s]);
-
 			if (tst->count) {
 __fast_path:
 	#ifdef _NETP_DEBUG
@@ -406,12 +436,13 @@ __fast_path:
 				 __AH_UPDATE_SIZE(a_hdr, size);
 				const u8_t offset = __AH_UPDATE_OFFSET__(a_hdr, alignment);
 #ifdef _NETP_DEBUG
-				NETP_ASSERT((sizeof(aligned_hdr) + calc_SIZE_by_TABLE_SLOT(t, f, s) - offset) >= size);
+				NETP_ASSERT((sizeof(aligned_hdr) + _netp_memory_calc_SIZE_by_TABLE_SLOT(t,s) - offset) >= size);
 #endif
 				 return (u8_t*)a_hdr + offset ;
 			}
 
 			if (tst->max) {
+				//check global
 				//tst->max ==0 means no pool object allowed in this slot
 				//borrow
 				size_t c = netp::app::instance()->global_allocator()->borrow(t, s, tst, (tst->max) >> 1);
@@ -422,13 +453,11 @@ __fast_path:
 					goto __fast_path;
 				}
 			}
-
-			//apply to upper edge of that slot
-			slot_size = calc_SIZE_by_TABLE_SLOT(t,f,s);
 		}
 
+		//borrow failed || t == T_COUNT, continue with malloc
 		//std::malloc always return ptr aligned to alignof(std::max_align_t), so ,we do not need to worry about the hdr access
-		a_hdr = (aligned_hdr*)std::malloc( sizeof(aligned_hdr)+ slot_size );
+		a_hdr = (aligned_hdr*)std::malloc( sizeof(aligned_hdr)+slot_size );
 		if (NETP_UNLIKELY(a_hdr == 0)) {
 			return 0;
 		}
@@ -470,7 +499,6 @@ __fast_path:
 		}
 		std::free((void*)a_hdr);
 	}
-
 
 	//alloc, then copy
 	void* pool_aligned_allocator::realloc(void* old_ptr, size_t size, size_t alignment) {
