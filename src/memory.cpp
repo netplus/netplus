@@ -267,7 +267,7 @@ namespace netp {
 			break; \
 		} else if (size == TABLE_BOUND[ti]) { \
 			t = ti; \
-			s = _netp_memory_calc_size_mod_64step(0); \
+			s = (0); \
 			break; \
 		} \
 	} \
@@ -282,17 +282,17 @@ namespace netp {
 		t = TABLE_FROM_DIV64[step];\
 		s=(step&(step+1))|(_netp_memory_calc_size_mod_64step(size)) ;\
 	} else if(size<=TABLE_BOUND[T12]/*262080*/) { \
-		const u8_t step = _netp_memory_calc_size_4096step(size); \
+		const u8_t step = u8_t(_netp_memory_calc_size_4096step(size)); \
 		t = (T6+TABLE_FROM_DIV64[step]);\
 		s=(step&(step+1))|(_netp_memory_calc_size_mod_4096step(size)!=0?u8_t(-1):0) ;\
-	} else { \
+	} else if(size<=TABLE_BOUND[T_COUNT]) { \
 		for (u8_t ti = (T12+1); ti < (TABLE::T_COUNT + 1); ++ti) {\
 			if (size < TABLE_BOUND[ti]) {\
 				t = (--ti); \
 				break; \
 			} else if (size == TABLE_BOUND[ti]) {\
 				t = ti; \
-				s = _netp_memory_calc_size_mod_64step(0); \
+				s = (0); \
 				break; \
 			} \
 		}\
