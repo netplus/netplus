@@ -11,6 +11,7 @@ namespace netp {
 		public netp::test_unit
 	{
 		bool run();
+
 		void test_memory();
 		void test_packet();
 		void test_netp_allocator(size_t loop);

@@ -33,7 +33,7 @@ namespace netp {
 
 	//@note: msvc debug compiler would not inline these func, but release version do
 	__NETP_FORCE_INLINE
-	static u8_t __AH_UPDATE_OFFSET__(aligned_hdr* a_hdr, size_t alignment) {		
+	static u8_t __AH_UPDATE_OFFSET__(aligned_hdr* a_hdr, size_t alignment) {
 		//@ (2's complement) https://zh.wikipedia.org/wiki/%E4%BA%8C%E8%A3%9C%E6%95%B8 
 		//@note: pls refer to https://en.wikipedia.org/wiki/Data_structure_alignment
 		/*
@@ -80,12 +80,12 @@ namespace netp {
 #endif
 	}
 
-	__NETP_FORCE_INLINE static size_t __AH_SIZE(aligned_hdr* a_hdr) {
-		size_t size_ = a_hdr->hdr.size_L;
+	__NETP_FORCE_INLINE const static size_t __AH_SIZE(aligned_hdr* a_hdr) {
 #ifdef _NETP_AM64
-		size_ |= (size_t(a_hdr->hdr.AH_4_7.size_H)<<32);
+		return a_hdr->hdr.size_L|(size_t(a_hdr->hdr.AH_4_7.size_H)<<32);
+#else
+		return a_hdr->hdr.size_L;
 #endif
-		return size_;
 	}
 
 	enum SLOT_ENTRIES_SIZE_LEVEL {
@@ -118,7 +118,7 @@ namespace netp {
 
 	//object pool does not suit for large memory gap objects
 	//@note: tls default record size 16kb
-	const u32_t TABLE_SLOT_ENTRIES_INIT_LIMIT[SLOT_ENTRIES_SIZE_LEVEL::L_MAX][TABLE::T_COUNT][8] = {
+	constexpr static u32_t TABLE_SLOT_ENTRIES_INIT_LIMIT[SLOT_ENTRIES_SIZE_LEVEL::L_MAX][TABLE::T_COUNT][8] = {
 		{//L_DISABLED
 			{0,0,0,0,0,0,0,0}, //
 			{0,0,0,0,0,0,0,0}, //
@@ -214,21 +214,32 @@ namespace netp {
 		}
 	};
 
-	const u32_t TABLE_BOUND[TABLE::T_COUNT + 1] = {
+	constexpr static u8_t TABLE_FROM_DIV64[64] = {
+		T0,T1,T1,T2,T2,T2,T2,T3,
+		T3,T3,T3,T3,T3,T3,T3,T4,
+		T4,T4,T4,T4,T4,T4,T4,T4,
+		T4,T4,T4,T4,T4,T4,T4,T5,
+		T5,T5,T5,T5,T5,T5,T5,T5,
+		T5,T5,T5,T5,T5,T5,T5,T5,
+		T5,T5,T5,T5,T5,T5,T5,T5,
+		T5,T5,T5,T5,T5,T5,T5,T6
+	};
+
+	constexpr static u32_t TABLE_BOUND[TABLE::T_COUNT + 1] = {
 		0,
 		64 + 0, //T0_MAX: 64
 		64 + 128, //T1_MAX: 192
 		64 + 128 + 256, //T2_MAX: 448
 		64 + 128 + 256 + 512,//T3_MAX:  960
 		64 + 128 + 256 + 512 + 1024,//T4_MAX: 1984
-		64 + 128 + 256 + 512 + 1024 + 2048,//
-		64 + 128 + 256 + 512 + 1024 + 2048 + 4096,//
-		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192,//
-		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384,//
-		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768,//
-		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536,//
-		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072,//
-		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072 + 262144 //
+		64 + 128 + 256 + 512 + 1024 + 2048,//T5_MAX: 4032
+		64 + 128 + 256 + 512 + 1024 + 2048 + 4096,//T6_MAX: 8128
+		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192,//T7_MAX
+		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384,//T8_MAX
+		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768,//T9_MAX
+		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536,//T10_MAX
+		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072,//T11: 262080
+		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072 + 262144 //T12: 524214
 	 };
 
 	//#define NETP_ALIGNED_ALLOCATOR_16_SLOT_EDGE_T size_t(T3)
@@ -237,7 +248,6 @@ namespace netp {
 
 	#define _netp_memory_calc_F_by_TABLE(t) (t+3)
 	#define _netp_memory_calc_SIZE_by_TABLE_SLOT(t,s) (TABLE_BOUND[t] + ((1<<(_netp_memory_calc_F_by_TABLE(t)))) * (((s) + 1)))
-
 	
 	#ifdef _NETP_DEBUG
 		#define NETP_ASSERT_calc_TABLE NETP_ASSERT
@@ -245,90 +255,65 @@ namespace netp {
 		#define NETP_ASSERT_calc_TABLE(...) 
 	#endif
 
-#define _netp_memory_calc_size_div_TABLE(size) (size>>6)
-#define _netp_memory_calc_size_mod_TABLE(size) ((size%64))
+#define _netp_memory_calc_size_64step(size) (size>>6)
+#define _netp_memory_calc_size_mod_64step(size) ((size%64))
+#define _netp_memory_calc_size_4096step(size) ((size-4032)>>12)
+#define _netp_memory_calc_size_mod_4096step(size) (((size-4032)%4096))
 
-	//update t,s if match range 
-#define _netp_memory_calc_TABLE(size,t,s) do { \
-	switch (_netp_memory_calc_size_div_TABLE(size)) { \
-	case 0: \
-	{ \
-		t = T0; \
-	} \
-	break; \
-	case 1: \
-	{ \
-		/*64*/ \
-		t = T1; \
-		s = _netp_memory_calc_size_mod_TABLE(size);\
-	} \
-	break; \
-	case 2: \
-	{ \
-		t = T1; \
-	} \
-	break; \
-	case 3: \
-	{ \
-		/*192*/ \
-		t = T2; \
-		s = _netp_memory_calc_size_mod_TABLE(size);\
-	} \
-	break; \
-	case 4:case 5:case 6: \
-	{ \
-		t = T2; \
-	} \
-	break; \
-	case 7: \
-	{ \
-		/*64*7=448*/ \
-		t = T3; \
-	} \
-	break; \
-	case 8: case 9: case 10: \
-	case 11:case 12: case 13: case 14: \
-	{ \
-		t = T3; \
-	} \
-	break; \
-	case 15: \
-	{ \
-		/*64*15=960*/ \
-		t = T4; \
-		s = _netp_memory_calc_size_mod_TABLE(size);\
-	} \
-	break; \
-	case 16: case 17: case 18: case 19:case 20:case 21: case 22: \
-	case 23: case 24: case 25: case 26:case 27:case 28: case 29: case 30:\
-	{ \
-		t = T4; \
-	} \
-	break; \
-	case 31: \
-	{ \
-		/*64*31=1984*/ \
-		t = T5; \
-		s = _netp_memory_calc_size_mod_TABLE(size);\
-	}\
-	break;\
-	default: \
-	{ \
-		NETP_ASSERT_calc_TABLE(size>TABLE_BOUND[T5]); \
-		for (u8_t ti = T6; ti < (TABLE::T_COUNT+1); ++ti) { \
-			if (size<TABLE_BOUND[ti]) { \
-				t = (--ti); \
-				break; \
-			} else if(size == TABLE_BOUND[ti]) { \
-				t = ti; \
-				s = _netp_memory_calc_size_mod_TABLE(0);\
-				break;\
-			} \
+#define _netp_memory_calc_TABLE_full_search(size,t,s) do { \
+	for (u8_t ti = T1; ti < (TABLE::T_COUNT + 1); ++ti) {\
+		if (size < TABLE_BOUND[ti]) {\
+			t = (--ti); \
+			break; \
+		} else if (size == TABLE_BOUND[ti]) { \
+			t = ti; \
+			s = _netp_memory_calc_size_mod_64step(0); \
+			break; \
 		} \
 	} \
-	break;\
-	} \
-}while(false);\
+	}while (false)
+
+	static_assert(_netp_memory_calc_size_64step(TABLE_BOUND[T6]) <= 63, "table bound check");
+	static_assert(_netp_memory_calc_size_4096step(TABLE_BOUND[T12]) <= 63, "table bound check");
+
+#define _netp_memory_calc_TABLE(size,t,s) do { \
+	if(size<=TABLE_BOUND[T6]/*4032*/) {\
+		const u8_t step = u8_t(_netp_memory_calc_size_64step(size));\
+		t = TABLE_FROM_DIV64[step];\
+		s=(step&(step+1))|(_netp_memory_calc_size_mod_64step(size)) ;\
+	} else if(size<=TABLE_BOUND[T12]/*262080*/) { \
+		const u8_t step = _netp_memory_calc_size_4096step(size); \
+		t = (T6+TABLE_FROM_DIV64[step]);\
+		s=(step&(step+1))|(_netp_memory_calc_size_mod_4096step(size)!=0?u8_t(-1):0) ;\
+	} else { \
+		for (u8_t ti = (T12+1); ti < (TABLE::T_COUNT + 1); ++ti) {\
+			if (size < TABLE_BOUND[ti]) {\
+				t = (--ti); \
+				break; \
+			} else if (size == TABLE_BOUND[ti]) {\
+				t = ti; \
+				s = _netp_memory_calc_size_mod_64step(0); \
+				break; \
+			} \
+		}\
+	}\
+}while(false);
+
+#ifdef _NETP_DEBUG_MEMORY_TABLE
+	void 	memory_test_table() {
+		for (u32_t size = 1; (size < TABLE_BOUND[T_COUNT-1]+1000); ++size) {
+			u8_t t = T_COUNT;
+			u8_t s = u8_t(-1);
+			u8_t t_fullsearch = T_COUNT;
+			u8_t s_fullsearch = u8_t(-1);
+			_netp_memory_calc_TABLE(size, t, s);
+			_netp_memory_calc_TABLE_full_search(size, t_fullsearch, s_fullsearch);
+			NETP_ASSERT(t == t_fullsearch, "size: %u,t: %u, s: %u, t_fullsearch:%u, s_fullsearch: %u", size, t, s, t_fullsearch, s_fullsearch);
+			NETP_ASSERT(s ==0 ? s == s_fullsearch:true, "size: %u,t: %u, s: %u, t_fullsearch:%u, s_fullsearch:%u",size, t,s, t_fullsearch,s_fullsearch);
+		}
+	}
+#endif
+	
 
 	void pool_aligned_allocator::preallocate_table_slot_item(table_slot_t* tst, u8_t t, u8_t s, size_t item_count) {
 		(void)tst;

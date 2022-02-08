@@ -14,7 +14,12 @@ namespace netp {
 		return true;
 	}
 
+
 	void memory_test_unit::test_memory() {
+#ifdef _NETP_DEBUG_MEMORY_TABLE
+		memory_test_table();
+#endif
+
 		NRP<packet>* p = netp::allocator<NRP<packet>>::make();
 		netp::allocator<NRP<packet>>::trash(p);
 
@@ -27,15 +32,13 @@ namespace netp {
 
 	void memory_test_unit::test_packet() {
 		NRP<netp::packet> p = netp::make_ref<netp::packet>();
-		for (size_t i = 0; i <= TABLE_BOUND[T_COUNT] + 128; ++i) {
+		for (size_t i = 0; i <= 512*1024+128; ++i) {
 			p->write<u8_t>(u8_t(1));
 		}
-
 		NRP<netp::packet> p2 = netp::make_ref<netp::packet>();
-		for (size_t i = 0; i <= TABLE_BOUND[T_COUNT] + 128; ++i) {
+		for (size_t i = 0; i <= 512*1024+128; ++i) {
 			p2->write_left<u8_t>(u8_t(1));
 		}
-
 		NETP_ASSERT(*p == *p2);
 	}
 

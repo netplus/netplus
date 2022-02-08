@@ -18,10 +18,14 @@
 
 #define NETP_MEMORY_USE_ALLOCATOR_POOL 1
 //#define NETP_MEMORY_USE_ALLOCATOR_STD
+//#define _NETP_DEBUG_MEMORY_TABLE
 
 namespace netp {
 
 	extern void cfg_memory_pool_slot_entries_size_level(int l);
+	#ifdef	_NETP_DEBUG_MEMORY_TABLE
+		extern void memory_test_table();
+	#endif
 
 	enum TABLE {
 		T0 = 0,
@@ -41,8 +45,6 @@ namespace netp {
 		//T14,
 		T_COUNT
 	};
-
-	extern const u32_t TABLE_BOUND[TABLE::T_COUNT + 1];
 
 	//be careful, ptr should better aligned to 8bytes
 	struct table_slot_t {
