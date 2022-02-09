@@ -245,8 +245,7 @@ int socket_base::get_left_snd_queue() const {
 
 	void socket_channel::_tmcb_tx_limit(NRP<timer> const& t) {
 		NETP_ASSERT(L->in_event_loop());
-		NETP_ASSERT(m_tx_limit > 0);
-		NETP_ASSERT(m_chflag&int(channel_flag::F_TX_LIMIT_TIMER) );
+		NETP_ASSERT( (m_tx_limit>0) && (m_chflag&int(channel_flag::F_TX_LIMIT_TIMER)) );
 
 		m_chflag &= ~int(channel_flag::F_TX_LIMIT_TIMER);
 		if (m_chflag & (int(channel_flag::F_WRITE_SHUTDOWN)|int(channel_flag::F_WRITE_ERROR))) {
@@ -258,7 +257,7 @@ int socket_base::get_left_snd_queue() const {
 
 		m_tx_limit_last_tp = usnow;
 		u32_t tokens = u32_t((m_tx_limit/1000000.0f)* txlimit_delta);
-		if ( m_tx_limit < (tokens+m_tx_budget)) {
+		if ( m_tx_limit <= (tokens+m_tx_budget)) {
 			m_tx_budget = m_tx_limit;
 		} else {
 			m_chflag |= int(channel_flag::F_TX_LIMIT_TIMER);
@@ -657,7 +656,7 @@ int socket_base::get_left_snd_queue() const {
 				if (m_tx_limit != 0 ) {
 					m_tx_budget -= nbytes;
 					u32_t __tx_limit_clock_ms = netp::app::instance()->channel_tx_limit_clock();
-					if (!(m_chflag & int(channel_flag::F_TX_LIMIT_TIMER)) && ( (m_tx_budget < ((m_tx_limit/(1000/__tx_limit_clock_ms))<<1) ) ) ) {
+					if (!(m_chflag & int(channel_flag::F_TX_LIMIT_TIMER)) && ( (m_tx_budget < ((m_tx_limit/(1000/__tx_limit_clock_ms))) ) ) ) {
 						m_chflag |= int(channel_flag::F_TX_LIMIT_TIMER);
 						m_tx_limit_last_tp = netp::now<netp::microseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
 						L->launch(netp::make_ref<netp::timer>(std::chrono::milliseconds(__tx_limit_clock_ms), &socket_channel::_tmcb_tx_limit, NRP<socket_channel>(this), std::placeholders::_1));
@@ -844,8 +843,7 @@ __act_label_close_read_write:
 	{
 #ifdef _NETP_DEBUG
 		NETP_ASSERT(L->in_event_loop());
-		NETP_ASSERT(intp != nullptr);
-		NETP_ASSERT(outlet->len() > 0);
+		NETP_ASSERT((intp != nullptr) && (outlet->len() > 0));
 #endif
 
 		__CH_WRITEABLE_CHECK__(outlet, intp);
