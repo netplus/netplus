@@ -13,8 +13,9 @@ namespace netp {
 	typedef std::function<void(int signo)> fn_signal_handler_t;
 
 	class signal_broker:
-		public netp::event_broker_any,
-		public netp::ref_base {
+		public netp::ref_base,
+		public netp::event_broker_any
+	{
 
 	public:
 		signal_broker();

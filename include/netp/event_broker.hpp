@@ -26,23 +26,24 @@ namespace netp {
 	//	}ID_INTERNAL;
 	//	i64_t ID;
 	//};
+	using event_handle_id_t = i64_t;
 
 	struct evt_node_list 
 	{
 		evt_node_list *prev, *next;
-		int invoking_nest_level:6;
-		int flag:2;
-		int cnt : 24;
-		//H:32 would be updated when insert happens
 		//H:32 -> evt_id
-		//L:32 -> handler_id
-		i64_t id;
+		//L:32 -> evt_handler_id
+		event_handle_id_t id;
+		u16_t invoking_nest_level;
+		u16_t flag;
+		int cnt;
+		//H:32 would be updated when insert happens
 		evt_node_list() :
 			prev(0),
 			next(0),
+			id(i32_t(s_event_handler_id.fetch_add(1, std::memory_order_relaxed))),
 			invoking_nest_level(0),
-			flag(0),
-			id(i32_t(s_event_handler_id.fetch_add(1, std::memory_order_relaxed)))
+			flag(0)
 		{}
 		virtual ~evt_node_list() {}
 		virtual void* address_of_callee() const { return 0; };
@@ -50,8 +51,9 @@ namespace netp {
 	};
 
 	enum evt_node_flag {
-		f_insert_pending = 1 << 0,
-		f_delete_pending = 1 << 1
+		f_insert_pending = 1<<0,
+		f_delete_pending = 1<<1,
+		f_oneshot = 1<<2
 	};
 
 #ifdef _NETP_DEBUG
@@ -134,9 +136,10 @@ namespace netp {
 	};
 
 	typedef std::unordered_map<int, evt_node_list*, id_hash, id_equal, netp::allocator<std::pair<const int, evt_node_list*>>> event_map_t;
-
 	class event_broker_any
 	{
+		//note: no thread safe
+		//@TODO: impl oneshot invoke feature
 	protected:
 		event_map_t m_handlers;
 		void __insert_into_evt_map(int evt_id, evt_node_list* evt_node) {
@@ -218,12 +221,12 @@ namespace netp {
 		}
 
 		//only delete the specific node that exactly equal to handler_id
-		inline void unbind_by_handle_id(i64_t handler_id) {
+		inline void unbind_by_handle_id(event_handle_id_t handler_id) {
 			if (m_handlers.size() == 0) {
 				return;
 			}
 
-			int evt_id = int(handler_id >> 32);
+			int evt_id = int(handler_id>>32);
 			event_map_t::iterator&& it = m_handlers.find(evt_id);
 			if (it == m_handlers.end()) {
 				return;
@@ -241,7 +244,7 @@ namespace netp {
 					cur->flag |= evt_node_flag::f_delete_pending;
 					evt_hl->flag |= evt_node_flag::f_delete_pending;
 				} else {
-					NETP_EVT_BROKER_ASSERT(evt_hl->cnt > 0);
+					NETP_EVT_BROKER_ASSERT(evt_hl->cnt>0);
 					--evt_hl->cnt;
 					netp::list_delete(cur);
 					evt_node_deallocate(cur);
@@ -251,29 +254,59 @@ namespace netp {
 		}
 
 		template<class _callable>
-		inline i64_t bind(int evt_id, _callable&& callee ) {
+		inline event_handle_id_t bind(int evt_id, _callable&& callee ) {
 			static_assert(std::is_class<std::remove_reference<_callable>>::value, "_callable must be lambda or std::function type");
 			evt_node_list* evt_node = evt_node_allocate<typename std::decay<_callable>::type,_callable>(std::forward<_callable>(callee));
-			evt_node->id |= (i64_t(evt_id) << 32);
+			evt_node->id |= (event_handle_id_t(evt_id)<<32);
+			__insert_into_evt_map(evt_id, evt_node);
+			return evt_node->id;
+		}
+
+		template<class _callable>
+		inline event_handle_id_t bind_oneshot(int evt_id, _callable&& callee) {
+			static_assert(std::is_class<std::remove_reference<_callable>>::value, "_callable must be lambda or std::function type");
+			evt_node_list* evt_node = evt_node_allocate<typename std::decay<_callable>::type, _callable>(std::forward<_callable>(callee));
+			evt_node->id |= (event_handle_id_t(evt_id)<<32);
+			evt_node->flag |= evt_node_flag::f_oneshot;
 			__insert_into_evt_map(evt_id, evt_node);
 			return evt_node->id;
 		}
 
 		template<class _callable_conv_to, class _callable
 			, class = typename std::enable_if<std::is_convertible<_callable, _callable_conv_to>::value>::type>
-		inline i64_t bind(int evt_id, _callable&& evt_callee) {
+		inline event_handle_id_t bind(int evt_id, _callable&& evt_callee) {
 			static_assert(std::is_class<std::remove_reference<_callable>>::value, "_callable must be lambda or std::function type");
 			evt_node_list* evt_node = evt_node_allocate<_callable_conv_to,_callable>(std::forward<_callable>(evt_callee));
-			evt_node->id |= (i64_t(evt_id) << 32);
+			evt_node->id |= (event_handle_id_t(evt_id)<<32);
+			__insert_into_evt_map(evt_id, evt_node);
+			return evt_node->id;
+		}
+
+		template<class _callable_conv_to, class _callable
+			, class = typename std::enable_if<std::is_convertible<_callable, _callable_conv_to>::value>::type>
+			inline event_handle_id_t bind_oneshot(int evt_id, _callable&& evt_callee) {
+			static_assert(std::is_class<std::remove_reference<_callable>>::value, "_callable must be lambda or std::function type");
+			evt_node_list* evt_node = evt_node_allocate<_callable_conv_to, _callable>(std::forward<_callable>(evt_callee));
+			evt_node->id |= (event_handle_id_t(evt_id) << 32);
+			evt_node->flag |= evt_node_flag::f_oneshot;
 			__insert_into_evt_map(evt_id, evt_node);
 			return evt_node->id;
 		}
 
 		template<class _callable_conv_to, class _Fx, class... _Args>
-		inline i64_t bind(int evt_id, _Fx&& _func, _Args&&... _args) {
+		inline event_handle_id_t bind(int evt_id, _Fx&& _func, _Args&&... _args) {
 			evt_node_list* evt_node = evt_node_allocate<_callable_conv_to>(std::bind(std::forward<_Fx>(_func), std::forward<_Args>(_args)...));
-			evt_node->id |= (i64_t(evt_id) << 32);
+			evt_node->id |= (event_handle_id_t(evt_id)<<32);
 			__insert_into_evt_map(evt_id, evt_node );
+			return evt_node->id;
+		}
+
+		template<class _callable_conv_to, class _Fx, class... _Args>
+		inline event_handle_id_t bind_oneshot(int evt_id, _Fx&& _func, _Args&&... _args) {
+			evt_node_list* evt_node = evt_node_allocate<_callable_conv_to>(std::bind(std::forward<_Fx>(_func), std::forward<_Args>(_args)...));
+			evt_node->id |= (event_handle_id_t(evt_id) << 32);
+			evt_node->flag |= evt_node_flag::f_oneshot;
+			__insert_into_evt_map(evt_id, evt_node);
 			return evt_node->id;
 		}
 
@@ -300,7 +333,6 @@ namespace netp {
 
 			//(5) bind/unbind has no thread safe gurantee
 
-
 			//edge case:
 			// 1: 
 			// invoke [evt_id_a] {call (1)}
@@ -319,30 +351,35 @@ namespace netp {
 			
 			//head->flag works as a invoking/insert/delete barrier to simplify insert/delete operation of the list
 			evt_node_list* ev_hl = it->second;
-			if (ev_hl->invoking_nest_level == u8_t(0x3F) /*6 bit len*/) {
-				NETP_THROW("invoking nest level reach (0x3F)");
+			if (ev_hl->invoking_nest_level == u8_t(0xff) ) {
+				NETP_THROW("invoking nest level reach (0xff)");
 			}
 
 			//@NOTE: stop compiler optimization (++ --) == 0
 			//should we use WRITE_ONCE for invoking_nest_level ?
-			++ev_hl->invoking_nest_level;
+			++(ev_hl->invoking_nest_level);
 			//ev_hl->flag |= evt_node_flag::f_invoking;
 			evt_node_list* cur, *nxt;
 			 NETP_LIST_SAFE_FOR(cur, nxt, ev_hl) {
-				 if ((cur->flag & (evt_node_flag::f_insert_pending/*skip this invoking*/|evt_node_flag::f_delete_pending)) == 0 ) {
+				 if ((cur->flag&(evt_node_flag::f_insert_pending/*skip this invoking*/|evt_node_flag::f_delete_pending)) == 0 ) {
+					 if (cur->flag&evt_node_flag::f_oneshot) {//preceed invoke to prevent self invoke
+						 cur->flag &= ~evt_node_flag::f_oneshot;
+						 cur->flag |= evt_node_flag::f_delete_pending;
+						 ev_hl->flag |= evt_node_flag::f_delete_pending;
+					 }
 					 (*((_callable_conv_to*)(cur->address_of_callee())))(std::forward<_Args>(_args)...);
 				 }
 			 }
-			 --ev_hl->invoking_nest_level;
+			 --(ev_hl->invoking_nest_level);
 			 //full scan for deallocating
 			 //@NOTE: conside the following case
 			 //1) call invoke [a]
 			 //2) insert a new evt handler right after the list
 			 //3) delete the newly insert handle, before [a] done
 			 //4) we get both (evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending) for that handle
-			 if (ev_hl->flag & (evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending)) {
+			 if (ev_hl->flag&(evt_node_flag::f_insert_pending|evt_node_flag::f_delete_pending)) {
 				 NETP_LIST_SAFE_FOR(cur,nxt, ev_hl) {
-					 if (cur->flag & evt_node_flag::f_delete_pending) {
+					 if (cur->flag&evt_node_flag::f_delete_pending) {
 						 NETP_EVT_BROKER_ASSERT(ev_hl->cnt > 0);
 						 --ev_hl->cnt;
 
