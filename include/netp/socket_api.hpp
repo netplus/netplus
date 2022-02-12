@@ -253,8 +253,7 @@ namespace netp {
 		return netp::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval));
 	}
 	inline netp::u32_t send( SOCKET fd, byte_t const* const buf, netp::u32_t len, int& ec_o, int flag) {
-		NETP_ASSERT(buf != nullptr);
-		NETP_ASSERT(len > 0);
+		NETP_ASSERT(buf != nullptr && len>0);
 
 		netp::u32_t R = 0;
 
@@ -275,12 +274,11 @@ namespace netp {
 				int ec = netp_socket_get_last_errno();
 				if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
 					continue;
-				} else {
-					//NETP_TRACE_SOCKET_API("[netp::send][#%d]send failed: %d", fd, ec);
-					_NETP_REFIX_EWOULDBLOCK(ec);
-					ec_o = ec;
-					break;
 				}
+				//NETP_TRACE_SOCKET_API("[netp::send][#%d]send failed: %d", fd, ec);
+				_NETP_REFIX_EWOULDBLOCK(ec);
+				ec_o = ec;
+				break;
 			}
 		} while (true);
 
@@ -288,9 +286,14 @@ namespace netp {
 		return R;
 	}
 
+
+	//@note: 
+	//Datagram sockets in various domains(e.g., the UNIXand Internet
+	//	domains) permit zero - length datagrams.When such a datagram is
+	//	received, the return value is 0
+
 	inline netp::u32_t recv(SOCKET fd, byte_t* const buffer_o, netp::u32_t size, int& ec_o, int flag) {
-		NETP_ASSERT(buffer_o != nullptr);
-		NETP_ASSERT(size > 0);
+		NETP_ASSERT(buffer_o != nullptr && size>0);
 
 		netp::u32_t R = 0;
 		do {
@@ -309,12 +312,11 @@ namespace netp {
 				int ec = netp_socket_get_last_errno();
 				if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
 					continue;
-				} else {
-					_NETP_REFIX_EWOULDBLOCK(ec);
-					ec_o = ec;
-					//NETP_TRACE_SOCKET_API("[netp::recv][#%d]recv: %d", fd, ec);
-					break;
 				}
+				_NETP_REFIX_EWOULDBLOCK(ec);
+				ec_o = ec;
+				//NETP_TRACE_SOCKET_API("[netp::recv][#%d]recv: %d", fd, ec);
+				break;
 			}
 		} while (true);
 
@@ -327,8 +329,7 @@ namespace netp {
 
 	inline netp::u32_t sendto(SOCKET fd, netp::byte_t const* const buf, netp::u32_t len, NRP<address> const& addr_to, int& ec_o, int const& flag) {
 
-		NETP_ASSERT(buf != nullptr);
-		NETP_ASSERT(len > 0);
+		NETP_ASSERT(buf != nullptr && len>0);
 
 	_label_sendto:
 		int nbytes;
@@ -345,7 +346,6 @@ namespace netp {
 
 		if (NETP_LIKELY(nbytes > 0)) {
 			//sometimes, we got nbytes != len (happens on rpi )
-			//NETP_ASSERT((u32_t)nbytes == len);
 			ec_o = netp::OK;
 			//NETP_TRACE_SOCKET_API("[netp::sendto][#%d]sendto() == %d", fd, nbytes);
 			return nbytes;
@@ -357,10 +357,9 @@ namespace netp {
 		//NETP_TRACE_SOCKET_API("[netp::sendto][#%d]send failed, error code: %d", fd, ec);
 		if (ec == netp::E_EINTR) {
 			goto _label_sendto;
-		} else {
-			_NETP_REFIX_EWOULDBLOCK(ec);
-			ec_o = ec;
 		}
+		_NETP_REFIX_EWOULDBLOCK(ec);
+		ec_o = ec;
 		return 0;
 	}
 
@@ -387,10 +386,9 @@ namespace netp {
 		//NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom, ERROR: %d", fd, ec);
 		if (ec == netp::E_EINTR) {
 			goto _label_recvfrom;
-		} else {
-			_NETP_REFIX_EWOULDBLOCK(ec);
-			ec_o = ec;
 		}
+		_NETP_REFIX_EWOULDBLOCK(ec);
+		ec_o = ec;
 		return 0;
 	}
 

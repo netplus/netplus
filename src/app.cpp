@@ -269,6 +269,10 @@ namespace netp {
 
 		_deinit();
 		_app_thread_deinit();
+
+#ifdef _NETP_DEBUG
+		cfg_memory_pool_alloc_dealloc_check();
+#endif
 	}
 
 	void app::init( int argc, char** argv ) {

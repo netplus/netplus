@@ -8,39 +8,92 @@
 #include <netp/io_monitor.hpp>
 #include <netp/socket_api.hpp>
 
+#define _NETP_DEBUG_INTERRUPT_
+
 namespace netp {
-	struct interrupt_fd_monitor final: 
+	struct fdinterrupt_monitor final:
 		public io_monitor
 	{
-		SOCKET fd;
+		SOCKET fdr;
+		SOCKET fdw;
 		io_ctx* ctx;
-		interrupt_fd_monitor(SOCKET fd_):
-			fd(fd_),
-			ctx(0)
+		std::atomic<bool> is_sigset;
+		fdinterrupt_monitor(SOCKET fdr_, SOCKET fdw_):
+			fdr(fdr_),
+			fdw(fdw_),
+			ctx(0),
+			is_sigset(false)
 		{}
 
-		virtual void io_notify_terminating(int, io_ctx*) override {
-		}
+		virtual void io_notify_terminating(int, io_ctx*) override {}
+		virtual void io_notify_write(int, io_ctx*) override {}
 		virtual void io_notify_read(int status, io_ctx*) override {
 			if (status == netp::OK) {
-				byte_t tmp[8] = {0};
+#ifdef _NETP_DEBUG_INTERRUPT_
+				NETP_ASSERT(is_sigset.load(std::memory_order_acquire));
+				size_t nbytes = 0;
+#endif
+				byte_t tmp[4] = { 0 };
 				int ec = netp::OK;
+
 				do {
 #ifdef NETP_HAS_PIPE
-					u32_t c = ::read(ctx->fd, tmp, 8);
-					ec = netp_socket_get_last_errno();
+					ssize_t c = ::read(fdr, tmp, 4);
+					if (c == ssize_t(-1)) {
+						ec = netp_socket_get_last_errno();
+						_NETP_REFIX_EWOULDBLOCK(ec);
+					} else if (c == 0) {
+						//Is the following case possible ? 
+						//c ==0 && ec == E_EINTR
+						ec = netp_socket_get_last_errno();
+						if (ec == 0) {
+							ec = netp::E_PIPE_CLOSED;
+						}
+					}
 #else
-					u32_t c = netp::recv(ctx->fd, tmp, 8, ec, 0);
-					//if (c == 1) {
-					//	NETP_ASSERT(ec == netp::OK);
-					//	NETP_ASSERT(tmp[0] == 'i', "c: %d", tmp[0]);
-					//}
+					u32_t c = netp::recv(fdr, tmp, 4, ec, 0);
 					(void)c;
 #endif
+
+#ifdef _NETP_DEBUG_INTERRUPT_
+					nbytes += c;
 				} while (ec == netp::OK);
+#else
+				} while (ec == netp::E_EINTR);
+#endif
+
+				is_sigset.store(false, std::memory_order_release);
+#ifdef _NETP_DEBUG_INTERRUPT_
+				NETP_ASSERT(nbytes <= 1, "nbytes: %u", nbytes );
+#endif
 			}
 		}
-		virtual void io_notify_write(int , io_ctx* ) override {
+
+		inline void interrupt_wait() {
+			bool f = false;
+			if (!is_sigset.compare_exchange_strong(f, true, std::memory_order_acq_rel, std::memory_order_acquire)) {
+				//save one write
+				return;
+			}
+
+			int ec;
+			const char interrutp_i = 'i';
+			#ifdef NETP_HAS_PIPE
+			do {
+				int c = ::write(fdw, (const void*)&interrutp_i, 1);
+				if (c == 1) {
+					break;
+				}
+				ec = netp_socket_get_last_errno();
+				NETP_WARN("[poller_interruptable_by_fd][##%u]interrupt pipe failed: %d", m_fd_w, ec);
+			} while ((ec == netp::E_EINTR)&&(fdw != NETP_INVALID_SOCKET));
+#else
+			u32_t c = netp::send(fdw, (byte_t const* const)&interrutp_i, 1, ec, 0);
+			(void)c;
+			if (NETP_UNLIKELY(ec != netp::OK)) {
+				NETP_WARN("[poller_interruptable_by_fd][##u]interrupt send failed: %d", fdw, ec);
+			}
+#endif
 		}
 	};
 
@@ -49,8 +102,7 @@ namespace netp {
 	{
 	public:
 		io_ctx m_io_ctx_list;
-		NRP<interrupt_fd_monitor> m_fd_monitor_r;
-		SOCKET m_fd_w;
+		NRP<fdinterrupt_monitor> m_fdintr;
 
 #ifdef NETP_DEBUG_IO_CTX_
 		long m_io_ctx_count_alloc;
@@ -59,8 +111,7 @@ namespace netp {
 
 		poller_interruptable_by_fd() :
 			poller_abstract(),
-			m_fd_monitor_r(nullptr),
-			m_fd_w(NETP_INVALID_SOCKET)
+			m_fdintr(nullptr)
 #ifdef NETP_DEBUG_IO_CTX_
 			,m_io_ctx_count_alloc(0),
 			m_io_ctx_count_free(0)
@@ -90,28 +141,27 @@ namespace netp {
 			rt = netp::set_nonblocking(fds[1],true);
 			NETP_ASSERT(rt == netp::OK, "rt: %d", rt);
 
-			m_fd_monitor_r = netp::make_ref<interrupt_fd_monitor>(fds[0]);
-			io_ctx* ctx = io_begin(fds[0], m_fd_monitor_r);
+			m_fdintr = netp::make_ref<fdinterrupt_monitor>(fds[0],fds[1]);
+			io_ctx* ctx = io_begin(fds[0], m_fdintr);
 			NETP_ASSERT(ctx != 0);
 			rt = io_do(io_action::READ, ctx);
 			NETP_ASSERT(rt == netp::OK, "fd: %d, rt: %d, errno: %d", ctx->fd, rt, netp_socket_get_last_errno() );
-			m_fd_monitor_r->ctx = ctx;
-			m_fd_w = fds[1];
+			m_fdintr->ctx = ctx;
 			NETP_VERBOSE("[poller_interruptable_by_fd]__init_interrupt_fd done, fd_r: %u, m_fd_w: %u", fds[0], fds[1]);
 		}
 
 		void __deinit_interrupt_fd() {
-			NETP_VERBOSE("[poller_interruptable_by_fd]__deinit_interrupt_fd begin, fd_r: %u, m_fd_w: %u", m_fd_monitor_r->fd, m_fd_w);
-			io_do(io_action::END_READ, m_fd_monitor_r->ctx);
-			io_end(m_fd_monitor_r->ctx);
+			NETP_VERBOSE("[poller_interruptable_by_fd]__deinit_interrupt_fd begin, fd_r: %u, m_fd_w: %u", m_fdintr->fdr, m_fdintr->fdw);
+			io_do(io_action::END_READ, m_fdintr->ctx);
+			io_end(m_fdintr->ctx);
+			m_fdintr->ctx = nullptr;
 
-			netp::close(m_fd_monitor_r->fd);
-			netp::close(m_fd_w);
-			m_fd_monitor_r->fd = NETP_INVALID_SOCKET;
-			m_fd_w = NETP_INVALID_SOCKET;
+			netp::close(m_fdintr->fdr);
+			netp::close(m_fdintr->fdw);
+			m_fdintr->fdr = NETP_INVALID_SOCKET;
+			m_fdintr->fdw = NETP_INVALID_SOCKET;
 			NETP_VERBOSE("[poller_interruptable_by_fd]__deinit_interrupt_fd done");
 
-			//NETP_ASSERT(m_ctxs.size() == 0);
 			NETP_ASSERT(NETP_LIST_IS_EMPTY(&m_io_ctx_list), "m_io_ctx_list not empty");
 		}
 
@@ -132,28 +182,7 @@ namespace netp {
 		}
 
 		virtual void interrupt_wait() override {
-			int ec;
-#ifdef NETP_HAS_PIPE
-			do {
-				char buf = 1;
-				int c = write(m_fd_w, &buf, 1);
-				if (c == 1) {
-					break;
-				}
-				int ec = netp_socket_get_last_errno();
-				if (ec == netp::E_EINTR) {
-					continue;
-				}
-				NETP_WARN("[poller_interruptable_by_fd][##%u]interrupt pipe failed: %d", m_fd_w, ec);
-		} while (m_fd_w != NETP_INVALID_SOCKET);
-#else
-			const byte_t interrutp_a[1] = { (byte_t)'i' };
-			u32_t c = netp::send(m_fd_w, interrutp_a, 1, ec, 0);
-			if (NETP_UNLIKELY(ec != netp::OK)) {
-				NETP_WARN("[poller_interruptable_by_fd][##u]interrupt send failed: %d", m_fd_w, ec);
-			}
-			(void)c;
-#endif
+			m_fdintr->interrupt_wait();
 		}
 
 		virtual io_ctx* io_begin(SOCKET fd, NRP<io_monitor> const& iom) override {
@@ -231,13 +260,7 @@ namespace netp {
 				NETP_VERBOSE("[poller_interruptable_by_fd]notify terminating...");
 				io_ctx* _ctx, * _ctx_n;
 				for (_ctx = (m_io_ctx_list.next), _ctx_n = _ctx->next; _ctx != &(m_io_ctx_list); _ctx = _ctx_n, _ctx_n = _ctx->next) {
-					if (_ctx->fd == m_fd_monitor_r->fd) {
-						continue;
-					}
-
-					NETP_ASSERT(_ctx->fd > 0);
-					NETP_ASSERT(_ctx->iom != nullptr);
-
+					NETP_ASSERT((_ctx->fd > 0) && (_ctx->iom != nullptr));
 					_ctx->iom->io_notify_terminating(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
 				}
 				NETP_VERBOSE("[poller_interruptable_by_fd]notify terminating done");

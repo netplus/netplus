@@ -100,7 +100,19 @@ namespace netp {
 
 #ifdef _NETP_DEBUG
 	std::atomic<bool> ___netp_global_allocator_init_done(false);
+
+	std::atomic<long long> ___netp_global_alloc(0);
+	std::atomic<long long> ___netp_global_dealloc(0);
+
+	void cfg_memory_pool_alloc_dealloc_check() {
+		if (___netp_global_alloc != ___netp_global_dealloc) {
+			char buf[256] = {0};
+			snprintf(buf,256,"[netp][cfg_memory_pool]___netp_global_alloc-___netp_global_dealloc: %llu", ___netp_global_alloc - ___netp_global_dealloc);
+			NETP_THROW(buf);
+		}
+	}
 #endif
+
 
 	static SLOT_ENTRIES_SIZE_LEVEL g_memory_pool_slot_entries_size_level = L_LARGE;
 	void cfg_memory_pool_slot_entries_size_level(int l) {
@@ -114,6 +126,7 @@ namespace netp {
 			l = L_EXTREM_LARGE;
 		}
 		g_memory_pool_slot_entries_size_level = SLOT_ENTRIES_SIZE_LEVEL(l);
+		std::atomic_thread_fence(std::memory_order_release);
 	}
 
 	//object pool does not suit for large memory gap objects
@@ -343,6 +356,7 @@ namespace netp {
 	}
 
 	void pool_aligned_allocator::init( bool preallocate ) {
+		std::atomic_thread_fence(std::memory_order_acquire);
 		for (u8_t t = 0; t < TABLE::T_COUNT; ++t) {
 			const u8_t slot_max = NETP_ALIGNED_ALLOCATOR_SLOT_MAX(t);
 			m_tables[t] = (table_slot_t**) std::malloc(sizeof(table_slot_t**) * slot_max);
@@ -446,6 +460,9 @@ __fast_path:
 		if (NETP_UNLIKELY(a_hdr == 0)) {
 			return 0;
 		}
+#ifdef _NETP_DEBUG
+		++___netp_global_alloc;
+#endif
 
 #ifdef _NETP_DEBUG
 		NETP_ASSERT((std::size_t(a_hdr) % alignof(std::max_align_t)) == 0);
@@ -482,6 +499,9 @@ __fast_path:
 			}
 			return;
 		}
+#ifdef _NETP_DEBUG
+		++___netp_global_dealloc;
+#endif
 		std::free((void*)a_hdr);
 	}
 

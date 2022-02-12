@@ -6,10 +6,14 @@
 
 #define NETP_DEBUG_IO_CTX_
 
+//@note: for a poll wait for timer >&& timer != infinite, in the following case , one more signal might be leave in the pipe/interrupt_fd
+// 1, poll with timer >0 && timer != infinite
+// 2, poll return with a timeout
+// 3, add a signal into the pipe/interrupt_fd before we reset inwait flag
 //in nano
 //ENTER HAS A lock_gurard to sure the compiler would not reorder it
 #define NETP_POLLER_WAIT_ENTER(W) ((W).store(true,std::memory_order_relaxed))
-#define NETP_POLLER_WAIT_EXIT(wt_in_nano,W) std::atomic_signal_fence(std::memory_order_acq_rel);((u64_t(wt_in_nano)>0)) ? (W).store(false,std::memory_order_relaxed) : (void)0; std::atomic_signal_fence(std::memory_order_acq_rel);
+#define NETP_POLLER_WAIT_EXIT(wt_in_nano,W) ((u64_t(wt_in_nano)>0)) ? (W).store(false,std::memory_order_release) : (void)0;
 
 namespace netp {
 

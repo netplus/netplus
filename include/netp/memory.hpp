@@ -22,6 +22,9 @@
 
 namespace netp {
 
+#ifdef _NETP_DEBUG
+	extern void cfg_memory_pool_alloc_dealloc_check();
+#endif
 	extern void cfg_memory_pool_slot_entries_size_level(int l);
 	#ifdef	_NETP_DEBUG_MEMORY_TABLE
 		extern void memory_test_table();
