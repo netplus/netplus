@@ -85,13 +85,14 @@ namespace netp {
 					break;
 				}
 				ec = netp_socket_get_last_errno();
-				NETP_WARN("[poller_interruptable_by_fd][##%u]interrupt pipe failed: %d", m_fd_w, ec);
-			} while ((ec == netp::E_EINTR)&&(fdw != NETP_INVALID_SOCKET));
+				if (ec == netp::E_EINTR) { continue; }
+				NETP_WARN("[fdinterrupt_monitor][##%u]interrupt pipe failed: %d", fdw, ec);
+			} while (fdw != NETP_INVALID_SOCKET);
 #else
 			u32_t c = netp::send(fdw, (byte_t const* const)&interrutp_i, 1, ec, 0);
 			(void)c;
 			if (NETP_UNLIKELY(ec != netp::OK)) {
-				NETP_WARN("[poller_interruptable_by_fd][##u]interrupt send failed: %d", fdw, ec);
+				NETP_WARN("[fdinterrupt_monitor][##u]interrupt send failed: %d", fdw, ec);
 			}
 #endif
 		}
