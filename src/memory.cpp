@@ -338,6 +338,9 @@ namespace netp {
 			if (a_hdr == 0) {
 				NETP_THROW("[preallocate_table_slot_item]std::malloc falied");
 			}
+#ifdef _NETP_DEBUG
+			++___netp_global_alloc;
+#endif
 
 #ifdef _NETP_DEBUG
 			NETP_ASSERT((std::size_t(a_hdr) % alignof(std::max_align_t)) == 0);
@@ -351,6 +354,9 @@ namespace netp {
 
 	void pool_aligned_allocator::deallocate_table_slot_item(table_slot_t* tst) {
 		while (tst->count) {//stop at 0
+#ifdef _NETP_DEBUG
+			++___netp_global_dealloc;
+#endif
 			std::free( (void*)(tst->ptr[--tst->count]) );
 		}
 	}
@@ -598,6 +604,7 @@ __fast_path:
 				while (_gcount > max_n) {
 #ifdef _NETP_DEBUG
 					NETP_ASSERT(m_tables[t][s]->count != 0);
+					++___netp_global_dealloc;
 #endif
 					std::free((void*)(m_tables[t][s]->ptr[--_gcount]));
 				}
