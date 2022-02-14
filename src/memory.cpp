@@ -99,10 +99,10 @@ namespace netp {
 	};
 
 #ifdef _NETP_DEBUG
-	std::atomic<bool> ___netp_global_allocator_init_done(false);
+	static std::atomic<bool> ___netp_global_allocator_init_done(false);
 
-	std::atomic<long long> ___netp_global_alloc(0);
-	std::atomic<long long> ___netp_global_dealloc(0);
+	static std::atomic<long long> ___netp_global_alloc(0);
+	static std::atomic<long long> ___netp_global_dealloc(0);
 
 	void cfg_memory_pool_alloc_dealloc_check() {
 		if (___netp_global_alloc != ___netp_global_dealloc) {
