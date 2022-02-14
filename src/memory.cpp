@@ -57,12 +57,11 @@ namespace netp {
 		const u8_t offset = u8_t(sizeof(aligned_hdr)) + u8_t((~(std::size_t(a_hdr) + sizeof(aligned_hdr) - 1)) & (alignment-1));
 
 #ifdef _NETP_DEBUG
-		NETP_ASSERT((~(std::size_t(a_hdr) + sizeof(aligned_hdr) - 1)) == (~(std::size_t(a_hdr) + sizeof(aligned_hdr)) + 1));
+		NETP_ASSERT(((~(std::size_t(a_hdr) + sizeof(aligned_hdr) - 1)) == (~(std::size_t(a_hdr) + sizeof(aligned_hdr)) + 1)) && (((std::size_t(a_hdr) + std::size_t(offset)) % alignment) == 0) );
 		NETP_ASSERT(
 			NETP_IS_DEFAULT_ALIGN(alignment) ? ((alignment <= (sizeof(aligned_hdr))) ? offset == sizeof(aligned_hdr) : offset == (alignment))
 			: (offset <= (sizeof(aligned_hdr)+alignment))
 		, "alignment: %u, alignof(std::max_align_t): %u, sizeof(aligned_hdr): %u, a_hdr: %ull", alignment, alignof(std::max_align_t), sizeof(aligned_hdr), std::size_t(a_hdr));
-		NETP_ASSERT(((std::size_t(a_hdr) + std::size_t(offset)) % alignment) == 0);
 #endif
 
 		a_hdr->hdr.AH_4_7.alignment = u8_t(alignment);
@@ -100,10 +99,8 @@ namespace netp {
 
 #ifdef _NETP_DEBUG
 	static std::atomic<bool> ___netp_global_allocator_init_done(false);
-
 	static std::atomic<long long> ___netp_global_alloc(0);
 	static std::atomic<long long> ___netp_global_dealloc(0);
-
 	void cfg_memory_pool_alloc_dealloc_check() {
 		if (___netp_global_alloc != ___netp_global_dealloc) {
 			char buf[256] = {0};
@@ -403,8 +400,7 @@ namespace netp {
 
 	void* pool_aligned_allocator::malloc(size_t size, size_t alignment) {
 #ifdef _NETP_DEBUG
-		NETP_ASSERT( size < _NETP_ALIGN_MALLOC_SIZE_MAX );
-		NETP_ASSERT( (alignment%alignof(std::max_align_t)) == 0 && alignment >= alignof(std::max_align_t) );
+		NETP_ASSERT( (size<_NETP_ALIGN_MALLOC_SIZE_MAX) && ((alignment % alignof(std::max_align_t)) == 0 && alignment >= alignof(std::max_align_t)) );
 #endif
 		aligned_hdr* a_hdr;
 		u8_t t = T_COUNT;
@@ -633,8 +629,7 @@ __fast_path:
 
 	u32_t global_pool_aligned_allocator::borrow(u8_t t, u8_t s, table_slot_t* tst, u32_t borrow_count) {
 #ifdef _NETP_DEBUG
-		NETP_ASSERT(tst->count ==0 );
-		NETP_ASSERT(tst->max > 0);
+		NETP_ASSERT((tst->count ==0) && (tst->max > 0) );
 #endif
 
 		lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
