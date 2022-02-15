@@ -126,10 +126,9 @@ namespace netp {
 		netp::random_init_seed();
 		netp::tls_create<netp::impl::thread_data>();
 
-#ifdef NETP_MEMORY_USE_ALLOCATOR_POOL
-		NETP_ASSERT(m_global_pool_aligned_allocator == nullptr);
-		m_global_pool_aligned_allocator = ::new global_pool_aligned_allocator();
-		netp::tls_create<netp::pool_aligned_allocator_t>();
+#ifdef NETP_MEMORY_USE_ALLOCATOR_WITH_TLS_BLCOK_POOL
+		cfg_memory_init_allocator_with_block_pool_manager();
+		netp::tls_set<netp::allocator_with_block_pool>(cfg_memory_create_allocator_with_block_pool());
 #endif
 
 #if defined(_DEBUG_MUTEX) || defined(_DEBUG_SHARED_MUTEX)
@@ -145,10 +144,10 @@ namespace netp {
 #endif
 		netp::tls_destroy<netp::impl::thread_data>();
 
-#ifdef NETP_MEMORY_USE_ALLOCATOR_POOL
-		netp::tls_destroy<netp::pool_aligned_allocator_t>();
-		::delete m_global_pool_aligned_allocator;
-		m_global_pool_aligned_allocator = nullptr;
+#ifdef NETP_MEMORY_USE_ALLOCATOR_WITH_TLS_BLCOK_POOL
+		cfg_memory_destory_allocator_with_block_pool(netp::tls_get<netp::allocator_with_block_pool>());
+		netp::tls_set<netp::allocator_with_block_pool>(nullptr);
+		cfg_memory_deinit_allocator_with_block_pool_manager();
 #endif
 	}
 
@@ -250,7 +249,6 @@ namespace netp {
 	}
 
 	app::app() :
-		m_global_pool_aligned_allocator(nullptr),
 		m_loop_count(u32_t(std::thread::hardware_concurrency())),
 		m_channel_read_buf_size(128*1024),
 		m_channel_tx_limit_clock(30),/*resolution on windows is 15ms*/
@@ -269,10 +267,6 @@ namespace netp {
 
 		_deinit();
 		_app_thread_deinit();
-
-#ifdef _NETP_DEBUG
-		cfg_memory_pool_alloc_dealloc_check();
-#endif
 	}
 
 	void app::init( int argc, char** argv ) {

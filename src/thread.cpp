@@ -18,9 +18,8 @@ namespace netp {
 	void thread::__PRE_RUN_PROXY__() {
 		netp::random_init_seed();
 
-#ifdef NETP_MEMORY_USE_ALLOCATOR_POOL
-		netp::app::instance()->global_allocator()->incre_thread_count();
-		tls_create<netp::pool_aligned_allocator_t>();
+#ifdef NETP_MEMORY_USE_ALLOCATOR_WITH_TLS_BLCOK_POOL
+		netp::tls_set<netp::allocator_with_block_pool>(cfg_memory_create_allocator_with_block_pool());
 #endif
 
 		impl::thread_data* th_data = m_th_data.load(std::memory_order_relaxed);
@@ -104,9 +103,9 @@ namespace netp {
 		m_th_data.store(nullptr, std::memory_order_release); //start thread have load on this var
 
 		NETP_TRACE_THREAD("[thread]__POST_RUN_PROXY__");
-#ifdef NETP_MEMORY_USE_ALLOCATOR_POOL
-		tls_destroy<netp::pool_aligned_allocator_t>();
-		netp::app::instance()->global_allocator()->decre_thread_count();
+#ifdef NETP_MEMORY_USE_ALLOCATOR_WITH_TLS_BLCOK_POOL
+		cfg_memory_destory_allocator_with_block_pool(netp::tls_get<netp::allocator_with_block_pool>());
+		netp::tls_set<netp::allocator_with_block_pool>(nullptr);
 #endif
 	}
 

@@ -26,7 +26,7 @@ namespace netp {
 		NRP<packet>* pn = netp::allocator<NRP<packet>>::make_array(10);
 		netp::allocator<NRP<packet>>::trash_array(pn, 10);
 
-		u8_t* u8ptr = netp::allocator<u8_t>::malloc(14, 16);
+		u8_t* u8ptr = netp::allocator<u8_t>::malloc(14, 16/**test alignment 16*/);
 		netp::allocator<u8_t>::free(u8ptr);
 	}
 

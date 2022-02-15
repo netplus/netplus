@@ -16,19 +16,16 @@
 #include <netp/thread_impl/spin_mutex.hpp>
 #include <netp/singleton.hpp>
 
-#define NETP_MEMORY_USE_ALLOCATOR_POOL 1
+#define NETP_MEMORY_USE_ALLOCATOR_WITH_TLS_BLCOK_POOL 1
 //#define NETP_MEMORY_USE_ALLOCATOR_STD
 //#define _NETP_DEBUG_MEMORY_TABLE
 
 namespace netp {
 
-#ifdef _NETP_DEBUG
-	extern void cfg_memory_pool_alloc_dealloc_check();
+
+#ifdef	_NETP_DEBUG_MEMORY_TABLE
+	extern void memory_test_table();
 #endif
-	extern void cfg_memory_pool_slot_entries_size_level(int l);
-	#ifdef	_NETP_DEBUG_MEMORY_TABLE
-		extern void memory_test_table();
-	#endif
 
 	enum TABLE {
 		T0 = 0,
@@ -44,17 +41,15 @@ namespace netp {
 		T10,
 		T11,
 		T12,
-//		T13,
-		//T14,
 		T_COUNT
 	};
 
 	//be careful, ptr should better aligned to 8bytes
 	struct table_slot_t {
-		u32_t max;
+		u32_t max; //capacity
 		u32_t count;
 		//pointer to sizeof(u8_t*) * max;
-		u8_t** ptr; //
+		u8_t** ptr; // point to mem block
 
 		//if count == slot_max, we move half of count into global
 		//if count ==0, we borrow half of slot_max from global
@@ -66,46 +61,58 @@ namespace netp {
 //#define TABLE_SLOT_POP(tst) ( tst->ptr + sizeof(u8_t*) * (--tst->count)))
 //#define TABLE_SLOT_PUSH(tst,ptr) (tst->ptr + sizeof(u8_t*) * (tst->count++)))
 
+	extern void cfg_memory_pool_slot_entries_size_level(int l);
+	extern void cfg_memory_init_allocator_with_block_pool_manager();
+	extern void cfg_memory_deinit_allocator_with_block_pool_manager();
+
+	class allocator_with_block_pool;
+	extern allocator_with_block_pool* cfg_memory_create_allocator_with_block_pool();
+	extern void cfg_memory_destory_allocator_with_block_pool(allocator_with_block_pool* allocator);
+
 	//NOTE: if want to share address with different alignment in the same pool, we need to check alignment and do a re-align if necessary
-	class pool_aligned_allocator {
+	class allocator_with_block_pool {
+		friend class allocator_with_block_pool_manager;
 	protected:
 		//pointer to the first table slot
 		//not all the table has seem size
 		table_slot_t** m_tables[TABLE::T_COUNT];
-
 		void preallocate_table_slot_item(table_slot_t* tst, u8_t t, u8_t slot, size_t item_count);
 		void deallocate_table_slot_item(table_slot_t* tst);
 		
-		void init(bool preallocate);
+		void init(bool is_mgr);
 		void deinit();
+		allocator_with_block_pool();
+		virtual ~allocator_with_block_pool();
 
-		public:
-			pool_aligned_allocator( bool preallocate = true );
-			virtual ~pool_aligned_allocator();
-
+	public:
 			void* malloc(size_t size, size_t alignment );
 			void free(void* ptr);
 			void* realloc(void* ptr, size_t size, size_t alignment);
 	};
 
-	class global_pool_aligned_allocator final :
-		public pool_aligned_allocator
+	class allocator_with_block_pool_manager final :
+		public allocator_with_block_pool
 	{
+		friend class allocator_with_block_pool;
+		friend void cfg_memory_init_allocator_with_block_pool_manager();
+		friend void cfg_memory_deinit_allocator_with_block_pool_manager();
+		friend allocator_with_block_pool* cfg_memory_create_allocator_with_block_pool();
+		friend void cfg_memory_destory_allocator_with_block_pool(allocator_with_block_pool* allocator);
+		
 		spin_mutex* m_table_slots_mtx[TABLE::T_COUNT];
-	public:
-		global_pool_aligned_allocator();
-		virtual ~global_pool_aligned_allocator();
-		void incre_thread_count();
-		void decre_thread_count();
+		allocator_with_block_pool* create_allocator_block_pool();
+		void destory_allocator_block_pool(allocator_with_block_pool* abp);
+
 		u32_t commit(u8_t t, u8_t slot, table_slot_t* tst, u32_t count);
 		u32_t borrow(u8_t t, u8_t slot, table_slot_t* tst, u32_t count);
+	public:
+		allocator_with_block_pool_manager();
+		virtual ~allocator_with_block_pool_manager();
 	};
 
-	using pool_aligned_allocator_t = pool_aligned_allocator;
 
-	struct tag_allocator_tls_pool {};
+	struct tag_allocator_tls_allocator_with_block_pool {};
 	struct tag_allocator_std_malloc {};
-//	struct tag_allocator_default_new {};
 
 	//std::allocator<T> AA;
 	template<class allocator_t>
@@ -145,54 +152,31 @@ namespace netp {
 		}
 	};
 
-	/*
+	//note: a tls_set must be done before malloc|calloc|free|realloc
 	template<>
-	struct allocator_wrapper<tag_allocator_default_new> {
+	struct allocator_wrapper<tag_allocator_tls_allocator_with_block_pool> {
 		__NETP_FORCE_INLINE static void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			(void)(alignment);
-			return static_cast<void*>(::operator new(n));
-		}
-		__NETP_FORCE_INLINE static void* calloc(size_t , size_t alignment = NETP_DEFAULT_ALIGN) {
-			(void)(alignment);
-			throw std::bad_alloc();
-		}
-		__NETP_FORCE_INLINE static void free(void* p) {
-			::operator delete(p);
-		}
-		
-		__NETP_FORCE_INLINE static void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
-			(void)(alignment);
-			(void)ptr;
-			(void)size;
-			throw std::bad_alloc();
-		}
-	};
-	*/
-
-	template<>
-	struct allocator_wrapper<tag_allocator_tls_pool> {
-		__NETP_FORCE_INLINE static void* malloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return tls_get<netp::pool_aligned_allocator>()->malloc(n, alignment);
+			return tls_get<netp::allocator_with_block_pool>()->malloc(n, alignment);
 		}
 		__NETP_FORCE_INLINE static void* calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
-			char* p = (char*)tls_get<netp::pool_aligned_allocator>()->malloc(n, alignment);
+			char* p = (char*)tls_get<netp::allocator_with_block_pool>()->malloc(n, alignment);
 			//might it be optimized ? let's see
 			std::memset(p, 0, n);
 			return (void*)p;
 		}
 		__NETP_FORCE_INLINE static void free(void* p) {
-			tls_get<netp::pool_aligned_allocator>()->free(p);
+			tls_get<netp::allocator_with_block_pool>()->free(p);
 		}
 		__NETP_FORCE_INLINE static void* realloc(void* ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
-			return tls_get<netp::pool_aligned_allocator>()->realloc(ptr, size, alignment);
+			return tls_get<netp::allocator_with_block_pool>()->realloc(ptr, size, alignment);
 		}
 	};
 
 	template<typename T, class allocator_wrapper_t>
-	struct allocator_base:
+	struct __allocator_base:
 		private allocator_wrapper_t
 	{
-		typedef allocator_base<T, allocator_wrapper_t> allocator_base_t;
+		typedef __allocator_base<T, allocator_wrapper_t> allocator_base_t;
 		typedef std::size_t size_type;
 		typedef std::ptrdiff_t difference_type;
 		typedef T* pointer;
@@ -263,9 +247,8 @@ namespace netp {
 			inline static byte_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 				return (_allocator_base_t::malloc(n, alignment));
 			}
-			inline static void __trash_array(byte_t* ptr, size_t n) {
+			inline static void __trash_array(byte_t* ptr, size_t ) {
 				_allocator_base_t::free(ptr);
-				(void)n;
 			}
 		};
 
@@ -276,9 +259,8 @@ namespace netp {
 			inline static u16_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 				return (_allocator_base_t::malloc(n, alignment));
 			}
-			inline static void __trash_array(u16_t* ptr, size_t n) {
+			inline static void __trash_array(u16_t* ptr, size_t ) {
 				_allocator_base_t::free(ptr);
-				(void)n;
 			}
 		};
 
@@ -289,9 +271,8 @@ namespace netp {
 			inline static u32_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 				return (_allocator_base_t::malloc(n, alignment));
 			}
-			inline static void __trash_array(u32_t* ptr, size_t n) {
+			inline static void __trash_array(u32_t* ptr, size_t ) {
 				_allocator_base_t::free(ptr);
-				(void)n;
 			}
 		};
 
@@ -302,9 +283,8 @@ namespace netp {
 			inline static u64_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
 				return (_allocator_base_t::malloc(n, alignment));
 			}
-			inline static void __trash_array(u64_t* ptr, size_t n) {
+			inline static void __trash_array(u64_t* ptr, size_t) {
 				_allocator_base_t::free(ptr);
-				(void)n;
 			}
 		};
 
@@ -322,9 +302,8 @@ namespace netp {
 			return allocator_base_t::malloc(n);
 		}
 
-		inline void deallocate(pointer p, size_type n) {
+		inline void deallocate(pointer p, size_type) {
 			allocator_base_t::free(p);
-			(void)n;
 		}
 
 		//for stl container
@@ -351,11 +330,11 @@ namespace netp {
 	};
 
 	template <class T>
-	struct allocator_std_malloc :
-		public allocator_base<T, allocator_wrapper<tag_allocator_std_malloc>>
+	struct allocator_with_std_malloc :
+		public __allocator_base<T, allocator_wrapper<tag_allocator_std_malloc>>
 	{
-		typedef  allocator_base<T, allocator_wrapper<tag_allocator_std_malloc>> allocator_base_t;
-		typedef allocator_std_malloc<T> allocator_t;
+		typedef  __allocator_base<T, allocator_wrapper<tag_allocator_std_malloc>> allocator_base_t;
+		typedef allocator_with_std_malloc<T> allocator_t;
 
 		typedef typename allocator_base_t::size_type size_type;
 		typedef typename allocator_base_t::difference_type difference_type;
@@ -365,41 +344,38 @@ namespace netp {
 		typedef typename allocator_base_t::const_reference const_reference;
 		typedef typename allocator_base_t::value_type value_type;
 
-		//cpp 17
-		//typedef true_type is_always_equal;
-
 		template <class U>
 		struct rebind {
-			typedef allocator_std_malloc<U> other;
+			typedef allocator_with_std_malloc<U> other;
 		};
 
+		//cpp 17
+		//typedef true_type is_always_equal;
 #if __cplusplus >= 201103L
 		typedef std::true_type propagate_on_container_move_assignment;
 #endif
 
-		allocator_std_malloc() _NETP_NOEXCEPT
+		allocator_with_std_malloc() _NETP_NOEXCEPT
 		{}
-		allocator_std_malloc(const allocator_t&) _NETP_NOEXCEPT
+		allocator_with_std_malloc(const allocator_t&) _NETP_NOEXCEPT
 		{}
-		~allocator_std_malloc() _NETP_NOEXCEPT
+		~allocator_with_std_malloc() _NETP_NOEXCEPT
 		{}
 
 		//hint for kinds of container construct proxy
 		template <class U>
-		allocator_std_malloc(const allocator_std_malloc<U>&) _NETP_NOEXCEPT
+		allocator_with_std_malloc(const allocator_with_std_malloc<U>&) _NETP_NOEXCEPT
 		{
 		}
 	};
 
 	//thread safe
-	//@deprecated
-	/*
 	template <class T>
-	struct allocator_default_new:
-		public allocator_base<T, allocator_wrapper<tag_allocator_default_new>>
+	struct allocator_with_tls_block_pool ://compitable with stl
+		public __allocator_base<T, allocator_wrapper<tag_allocator_tls_allocator_with_block_pool> >
 	{
-		typedef  allocator_base<T, allocator_wrapper<tag_allocator_default_new>> allocator_base_t;
-		typedef allocator_default_new<T> allocator_t;
+		typedef __allocator_base<T, allocator_wrapper<tag_allocator_tls_allocator_with_block_pool> > allocator_base_t;
+		typedef allocator_with_tls_block_pool<T> allocator_t;
 
 		typedef typename allocator_base_t::size_type size_type;
 		typedef typename allocator_base_t::difference_type difference_type;
@@ -409,79 +385,35 @@ namespace netp {
 		typedef typename allocator_base_t::const_reference const_reference;
 		typedef typename allocator_base_t::value_type value_type;
 
-		//cpp 17
-		//typedef true_type is_always_equal;
-
 		template <class U>
 		struct rebind {
-			typedef allocator_default_new<U> other;
+			typedef allocator_with_tls_block_pool<U> other;
 		};
-
- #if __cplusplus >= 201103L
-		typedef std::true_type propagate_on_container_move_assignment;
-#endif
-
-		allocator_default_new() _NETP_NOEXCEPT
-		{}
-		allocator_default_new(const allocator_t&) _NETP_NOEXCEPT
-		{}
-		~allocator_default_new() _NETP_NOEXCEPT
-		{}
-
-		//hint for kinds of container construct proxy
-		template <class U>
-		allocator_default_new( const allocator_default_new<U>& ) _NETP_NOEXCEPT
-		{
-		}
-	};
-	*/
-	//thread safe
-	template <class T>
-	struct allocator_pool :
-		public allocator_base<T, allocator_wrapper<tag_allocator_tls_pool>>
-	{
-		typedef  allocator_base<T, allocator_wrapper<tag_allocator_tls_pool>> allocator_base_t;
-		typedef allocator_pool<T> allocator_t;
-
-		typedef typename allocator_base_t::size_type size_type;
-		typedef typename allocator_base_t::difference_type difference_type;
-		typedef typename allocator_base_t::pointer pointer;
-		typedef typename allocator_base_t::const_pointer const_pointer;
-		typedef typename allocator_base_t::reference reference;
-		typedef typename allocator_base_t::const_reference const_reference;
-		typedef typename allocator_base_t::value_type value_type;
-
 		//cpp 17
 		//typedef true_type is_always_equal;
-
-		template <class U>
-		struct rebind {
-			typedef allocator_pool<U> other;
-		};
-
 #if __cplusplus >= 201103L
 		typedef std::true_type propagate_on_container_move_assignment;
 #endif
 
-		allocator_pool() _NETP_NOEXCEPT
+		allocator_with_tls_block_pool() _NETP_NOEXCEPT
 		{}
-		allocator_pool(const allocator_t&) _NETP_NOEXCEPT
+		allocator_with_tls_block_pool(const allocator_t&) _NETP_NOEXCEPT
 		{}
-		~allocator_pool() _NETP_NOEXCEPT
+		~allocator_with_tls_block_pool() _NETP_NOEXCEPT
 		{}
 
 		//hint for kinds of container construct proxy
 		template <class U>
-		allocator_pool(const allocator_pool<U>&) _NETP_NOEXCEPT
+		allocator_with_tls_block_pool(const allocator_with_tls_block_pool<U>&) _NETP_NOEXCEPT
 		{
 		}
 	};
 
 	template<class T>
-#ifdef NETP_MEMORY_USE_ALLOCATOR_POOL
-	using allocator = netp::allocator_pool<T>;
+#if defined(NETP_MEMORY_USE_ALLOCATOR_WITH_TLS_BLCOK_POOL)
+	using allocator = netp::allocator_with_tls_block_pool<T>;
 #else
-	using allocator = netp::allocator_std_malloc<T>;
+	using allocator = netp::allocator_with_std_malloc<T>;
 #endif
 
 	template<typename _T1, typename _T2>
@@ -489,27 +421,22 @@ namespace netp {
 	{
 		return true;
 	}
-
 	template<typename _Tp>
 	inline bool operator==(const allocator<_Tp>&, const allocator<_Tp>&)
 	{
 		return true;
 	}
-
 	template<typename _T1, typename _T2>
 	inline bool operator!=(const allocator<_T1>&, const allocator<_T2>&)
 	{
 		return false;
 	}
-
 	template<typename _Tp>
 	inline bool operator!=(const allocator<_Tp>&, const allocator<_Tp>&)
 	{
 		return false;
 	}
 
-
-	
 	/*
 	namespace __gnugcc_impl {
 		template<typename _Tp>
@@ -701,7 +628,6 @@ namespace netp {
 	//struct allocator :
 	//	public std::allocator<T>
 	//{};
-
 }
 
 namespace netp {
