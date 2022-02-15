@@ -45,7 +45,7 @@ namespace netp {
 	}
 
 	void logger_broker::remove(NRP<logger::logger_abstract> const& logger) {
-		std::vector< NRP<logger::logger_abstract> >::iterator&& it = m_loggers.begin();
+		std::vector< NRP<logger::logger_abstract>, netp::allocator<NRP<logger::logger_abstract>> >::iterator&& it = m_loggers.begin();
 
 		while (it != m_loggers.end()) {
 			if ((*it) == logger) {

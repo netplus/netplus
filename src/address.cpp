@@ -39,7 +39,7 @@ namespace netp {
 	 *		for a list of service names , u could refer to %WINDOW%/system32/drivers/etc/services on windows
 	 *
 	 */
-	int get_iplist_by_host( char const* const hostname, char const* const servicename, std::vector<string_t>& ips, int const& filter ) {
+	int get_iplist_by_host( char const* const hostname, char const* const servicename, std::vector<string_t,netp::allocator<string_t>>& ips, int const& filter ) {
 
 		NETP_ASSERT( (hostname != nullptr && netp::strlen(hostname)) ||
 					 (servicename != nullptr && netp::strlen(servicename))
@@ -136,7 +136,7 @@ namespace netp {
 	}
 
 	extern int get_ip_by_host( const char* hostname, string_t& ip_o, int const& filter ) {
-		std::vector<string_t> infos;
+		std::vector<string_t, netp::allocator<string_t>> infos;
 		int retval = get_iplist_by_host( hostname, "", infos, filter );
 
 		if( retval != 0 ) {

@@ -152,7 +152,7 @@ namespace netp {
 	};
 
 	#define NETP_TM_INIT_CAPACITY (1000)
-	typedef std::deque<NRP<timer>> _timer_queue;
+	typedef std::deque<NRP<timer>, netp::allocator<NRP<timer>>> _timer_queue;
 	typedef netp::binary_heap< NRP<timer>, netp::timer_less, NETP_TM_INIT_CAPACITY > _timer_heap_t;
 	
 	class timer_broker final:

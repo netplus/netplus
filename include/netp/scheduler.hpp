@@ -87,7 +87,7 @@ namespace netp {
 			}
 		};
 
-		typedef std::vector< NRP<runner> > TRV;
+		typedef std::vector<NRP<runner>,netp::allocator<NRP<runner>> > TRV;
 
 		class runner_pool {
 		public:

@@ -24,7 +24,7 @@ namespace netp {
 
 		void write(logger::log_mask mask,char const* const file, int line, char const* const func, ... );
 	private:
-		std::vector< NRP<logger::logger_abstract> > m_loggers;
+		std::vector<NRP<logger::logger_abstract>, netp::allocator<NRP<logger::logger_abstract>> > m_loggers;
 		bool m_isInited;
 	};
 }

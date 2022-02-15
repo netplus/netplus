@@ -346,7 +346,7 @@ namespace netp {
 
 	void event_loop_group::_wait_loop() {
 	__dealloc_begin:
-		std::vector<NRP<event_loop>> to_deattach;
+		std::vector<NRP<event_loop>, netp::allocator<NRP<event_loop>>> to_deattach;
 		{
 			lock_guard<shared_mutex> lg(m_loop_mtx);
 			if (m_loop.size() == 0) {

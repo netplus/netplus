@@ -359,7 +359,7 @@ namespace netp {
 	};
 
 	class app;
-	typedef std::vector<NRP<event_loop>> event_loop_vector_t;
+	typedef std::vector<NRP<event_loop>, netp::allocator<NRP<event_loop>>> event_loop_vector_t;
 	class event_loop_group:
 		public non_atomic_ref_base
 	{

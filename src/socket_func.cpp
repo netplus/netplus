@@ -229,7 +229,7 @@ namespace netp {
 		so->do_dial(so_dialp, addr, initializer);
 	}
 
-	void do_dial(NRP<channel_dial_promise> const& ch_dialf, netp::size_t idx, std::vector< NRP<address>> const& addrs, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
+	void do_dial(NRP<channel_dial_promise> const& ch_dialf, netp::size_t idx, std::vector< NRP<address>, netp::allocator<NRP<address>>> const& addrs, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {
 		NETP_ASSERT( idx<addrs.size() );
 
 		NRP<channel_dial_promise> _dp = netp::make_ref<channel_dial_promise>();
@@ -291,7 +291,7 @@ namespace netp {
 				return;
 			}
 
-			std::vector<NRP<address>> dialaddrs;
+			std::vector<NRP<address>, netp::allocator<NRP<address>>> dialaddrs;
 			for (netp::size_t i = 0; i < ipv4s.size(); ++i) {
 				NRP<address > __a = netp::make_ref<address>();
 				__a->setipv4(ipv4s[i]);
