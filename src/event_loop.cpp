@@ -268,7 +268,7 @@ namespace netp {
 		if (m_state.compare_exchange_strong(terminated, u8_t(loop_state::S_EXIT), std::memory_order_acq_rel, std::memory_order_acquire)) {
 			NETP_VERBOSE("[event_loop][%p][%u]enter S_EXIT, last interrupt if needed", this, m_cfg.type);
 			//@TODO
-			//NOTE: interrupt_wait might failed, the the L->deinit() happens before interrupt_wait, the Loop enter wait ,then interrupted by system && m_state entered into S_EXIT at the time [eintr]
+			//NOTE: interrupt_wait might failed, if L->deinit() happens before interrupt_wait, the Loop enter wait ,then interrupted by system && m_state entered into S_EXIT at the time [eintr]
 			m_poller->interrupt_wait();
 			//@NOTE:
 			//1, we don't interrupt these kinds of thread, cuz we want all the tasks be finished one by one

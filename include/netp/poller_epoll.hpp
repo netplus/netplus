@@ -80,7 +80,11 @@ namespace netp {
 
 			int epoll_op = EPOLL_CTL_MOD;
 			if ( 0 == (ctx->flag & (~flag)) ) {
-				epEvent.events &= ~(EPOLLIN|EPOLLOUT);
+				//@note
+				//In kernel versions before 2.6.9, the EPOLL_CTL_DEL operation required a non - NULL pointer in event, even though this argument is ignored.
+				//Since Linux 2.6.9, event can be specified as NULL when using EPOLL_CTL_DEL.Applications that need to be portable to kernels before 2.6.9 should specify a non - NULL pointer in event.
+
+				//epEvent.events &= ~(EPOLLIN|EPOLLOUT);
 				epoll_op = EPOLL_CTL_DEL;
 			} else {
 				const static int _s_flag_epollin_epollout_map[] = {

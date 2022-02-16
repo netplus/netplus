@@ -154,15 +154,14 @@ namespace netp {
 		void __deinit_interrupt_fd() {
 			NETP_VERBOSE("[poller_interruptable_by_fd]__deinit_interrupt_fd begin, fd_r: %u, m_fd_w: %u", m_fdintr->fdr, m_fdintr->fdw);
 			io_do(io_action::END_READ, m_fdintr->ctx);
-			io_end(m_fdintr->ctx);
-			m_fdintr->ctx = nullptr;
-
 			netp::close(m_fdintr->fdr);
 			netp::close(m_fdintr->fdw);
 			m_fdintr->fdr = NETP_INVALID_SOCKET;
 			m_fdintr->fdw = NETP_INVALID_SOCKET;
-			NETP_VERBOSE("[poller_interruptable_by_fd]__deinit_interrupt_fd done");
+			io_end(m_fdintr->ctx);
+			m_fdintr->ctx = nullptr;
 
+			NETP_VERBOSE("[poller_interruptable_by_fd]__deinit_interrupt_fd done");
 			NETP_ASSERT(NETP_LIST_IS_EMPTY(&m_io_ctx_list), "m_io_ctx_list not empty");
 		}
 
