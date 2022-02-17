@@ -209,13 +209,14 @@ namespace netp {
 		NETP_ASSERT( in_event_loop() );
 		NETP_VERBOSE("[event_loop]__do_notify_terminating begin");
 
-		//dns resolver stop would result in dns socket be removed from io_ctx
+		//dns resolver stop would result in dns socket be removed from io_ctx, thus the loop_ref_count shall decrease by 1
 		//we keep m_dns_resolver instance until there is no event_loop reference outside
 		//no new fd is accepted after state enter terminating, so it's safe to stop dns first
-		if (m_cfg.flag & f_enable_dns_resolver) {
+		if (m_cfg.flag&f_enable_dns_resolver) {
 			NETP_ASSERT(m_dns_resolver != nullptr);
 			m_dns_resolver->stop();
 		}
+
 		io_do(io_action::NOTIFY_TERMINATING, 0);
 		if (m_io_ctx_count == m_io_ctx_count_before_running) {
 			__do_enter_terminated();
