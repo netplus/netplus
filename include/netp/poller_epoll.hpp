@@ -50,6 +50,10 @@ namespace netp {
 				{(void*)ctx}
 			};
 
+#ifdef _NETP_DEBUG
+			NETP_ASSERT( (flag&ctx->flag) == 0 );
+#endif
+
 			int epoll_op = EPOLL_CTL_ADD;
 			if ( 0 != ctx->flag ) {
 				epEvent.events |= (EPOLLIN|EPOLLOUT);
