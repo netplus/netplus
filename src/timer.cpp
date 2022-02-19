@@ -17,14 +17,19 @@ namespace netp {
 	}
 
 	void timer_broker::expire(timer_duration_t& ndelay) {
-		const bool shrink_or_not = m_tq.size() > NETP_TM_INIT_CAPACITY;
+#ifdef _NETP_DEBUG
+		const bool swap_to_release = true;
+#else
+		const bool swap_to_release = m_tq.size() > (NETP_TM_INIT_CAPACITY>>2);
+#endif
+
 		while (!m_tq.empty()) {
 			NRP<timer>& tm = m_tq.front();
 			NETP_ASSERT(tm->delay.count() >= 0 && tm->expiration > timer_timepoint_t());
 			m_heap.push(std::move(tm));
 			m_tq.pop_front();
 		}
-		if (shrink_or_not) { m_tq.shrink_to_fit(); }
+		if (swap_to_release) { _timer_queue().swap(m_tq); }
 
 		while (!m_heap.empty()) {
 			NRP<timer>& tm = m_heap.front();
