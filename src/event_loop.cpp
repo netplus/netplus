@@ -165,7 +165,8 @@ namespace netp {
 						m_tq[i++]();
 					}
 					NETP_ASSERT(ss == m_tq.size());
-					if (ss>256) {
+					
+					if (m_tq.capacity()>512) {
 						io_task_q_t().swap(m_tq);
 					} else {
 						m_tq.clear();
