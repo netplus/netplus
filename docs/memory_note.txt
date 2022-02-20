@@ -1,0 +1,2 @@
+1, use glibc by default, note tcache, the memory will not be returned until thread exit
+	refer: https://elixir.bootlin.com/glibc/glibc-2.31/source/malloc/malloc.c#L1729
