@@ -3,6 +3,12 @@
 
 namespace netp {
 
+#ifdef _NETP_DEBUG
+	#define NETP_MEMORY_POOL_ASSERT NETP_ASSERT
+#else
+	#define NETP_MEMORY_POOL_ASSERT(...)
+#endif
+
 //ALIGN_SIZE SHOUDL BE LESS THAN 256bit
 //STORE OFFSET IN PREVIOUS BYTES
 #define _NETP_ALIGN_MALLOC_SIZE_MAX (0xffffffffff)
@@ -56,13 +62,11 @@ namespace netp {
 		*/
 		const u8_t offset = u8_t(sizeof(aligned_hdr)) + u8_t((~(std::size_t(a_hdr) + sizeof(aligned_hdr) - 1)) & (alignment-1));
 
-#ifdef _NETP_DEBUG
-		NETP_ASSERT(((~(std::size_t(a_hdr) + sizeof(aligned_hdr) - 1)) == (~(std::size_t(a_hdr) + sizeof(aligned_hdr)) + 1)) && (((std::size_t(a_hdr) + std::size_t(offset)) % alignment) == 0) );
-		NETP_ASSERT(
+		NETP_MEMORY_POOL_ASSERT(((~(std::size_t(a_hdr) + sizeof(aligned_hdr) - 1)) == (~(std::size_t(a_hdr) + sizeof(aligned_hdr)) + 1)) && (((std::size_t(a_hdr) + std::size_t(offset)) % alignment) == 0) );
+		NETP_MEMORY_POOL_ASSERT(
 			NETP_IS_DEFAULT_ALIGN(alignment) ? ((alignment <= (sizeof(aligned_hdr))) ? offset == sizeof(aligned_hdr) : offset == (alignment))
 			: (offset <= (sizeof(aligned_hdr)+alignment))
 		, "alignment: %u, alignof(std::max_align_t): %u, sizeof(aligned_hdr): %u, a_hdr: %ull", alignment, alignof(std::max_align_t), sizeof(aligned_hdr), std::size_t(a_hdr));
-#endif
 
 		a_hdr->hdr.AH_4_7.alignment = u8_t(alignment);
 		a_hdr->hdr.AH_4_7.offset = (offset);
@@ -87,7 +91,7 @@ namespace netp {
 #endif
 	}
 
-	enum SLOT_ENTRIES_SIZE_LEVEL {
+	enum MEMORY_POOL_SIZE_LEVEL {
 		L_DISABLED,
 		L_EXTREM_LOW,
 		L_LOW,
@@ -97,7 +101,7 @@ namespace netp {
 		L_MAX
 	};
 
-	static SLOT_ENTRIES_SIZE_LEVEL g_memory_pool_slot_entries_size_level = L_LARGE;
+	static MEMORY_POOL_SIZE_LEVEL __g_memory_pool_size_level = L_LARGE;
 	enum allocator_block_pool_state {
 		s_idle,
 		s_initing,
@@ -107,17 +111,16 @@ namespace netp {
 	//if mutile-thread try to call cfg_memory_init_global_allocator, only one thread succeed to new the global_pool_aligned_allocator
 	static std::atomic<u8_t> ___netp_allocator_with_block_pool_manager_init_done(s_idle);
 	static allocator_with_block_pool_manager* ___netp_allocator_with_block_pool_manager = nullptr;
-	void cfg_memory_pool_slot_entries_size_level(int l) {
-#ifdef _NETP_DEBUG
-		NETP_ASSERT(___netp_allocator_with_block_pool_manager_init_done.load(std::memory_order_acquire) == s_idle);
-#endif
+	void cfg_memory_pool_size_level(int l) {
+		NETP_MEMORY_POOL_ASSERT(___netp_allocator_with_block_pool_manager_init_done.load(std::memory_order_acquire) == s_idle);
+
 		if (l < L_DISABLED) {
 			l = L_DISABLED;
 		} else if (l > L_EXTREM_LARGE) {
 			l = L_EXTREM_LARGE;
 		}
 
-		g_memory_pool_slot_entries_size_level = SLOT_ENTRIES_SIZE_LEVEL(l);
+		__g_memory_pool_size_level = MEMORY_POOL_SIZE_LEVEL(l);
 		std::atomic_thread_fence(std::memory_order_release);
 	}
 
@@ -190,26 +193,25 @@ namespace netp {
 		___netp_allocator_with_block_pool_manager->destory_allocator_block_pool(allocator);
 	}
 
+	#define NETP_MEMORY_POOL_SLOT_COUNT (8)
+
 	//object pool does not suit for large memory gap objects
 	//@note: tls default record size 16kb
-	constexpr static u32_t TABLE_SLOT_ENTRIES_INIT_LIMIT[SLOT_ENTRIES_SIZE_LEVEL::L_MAX][TABLE::T_COUNT][8] = {
+	constexpr static u32_t TABLE_SLOT_ENTRIES_INIT_LIMIT[MEMORY_POOL_SIZE_LEVEL::L_MAX][TABLE::T_COUNT][NETP_MEMORY_POOL_SLOT_COUNT] = {
 		{//L_DISABLED
-			{0,0,0,0,0,0,0,0}, //
-			{0,0,0,0,0,0,0,0}, //
-			{0,0,0,0,0,0,0,0}, //
-			{0,0,0,0,0,0,0,0},//
-			{0,0,0,0,0,0,0,0},//
-			{0,0,0,0,0,0,0,0},//
-			{0,0,0,0,0,0,0,0},//
-			{0,0,0,0,0,0,0,0},//
-			{0,0,0,0,0,0,0,0},//
-			{0,0,0,0,0,0,0,0},//
-			{0,0,0,0,0,0,0,0},//
-			{0,0,0,0,0,0,0,0},//
-			{0,0,0,0,0,0,0,0},//
-			//4,//512-1M
-			//2,//1M-2M
-			//1//
+			{0,0,0,0,0,0,0,0}, 
+			{0,0,0,0,0,0,0,0}, 
+			{0,0,0,0,0,0,0,0}, 
+			{0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0}
 		},
 		{//L_EXTREM_LOW
 			{512,256,256,128,128,128,128,128}, //
@@ -316,16 +318,8 @@ namespace netp {
 		64 + 128 + 256 + 512 + 1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072 + 262144 //T12: 524214
 	 };
 
-	#define NETP_ALIGNED_ALLOCATOR_SLOT_MAX (8)
-
-	#define _netp_memory_calc_F_by_TABLE(t) (t+3)
-	#define _netp_memory_calc_SIZE_by_TABLE_SLOT(t,s) (TABLE_BOUND[t] + ((1<<(_netp_memory_calc_F_by_TABLE(t)))) * (((s) + 1)))
-	
-	#ifdef _NETP_DEBUG
-		#define NETP_ASSERT_calc_TABLE NETP_ASSERT
-	#else
-		#define NETP_ASSERT_calc_TABLE(...) 
-	#endif
+#define _netp_memory_calc_F_by_TABLE(t) (t+3)
+#define _netp_memory_calc_SIZE_by_TABLE_SLOT(t,s) (TABLE_BOUND[t] + ((1<<(_netp_memory_calc_F_by_TABLE(t)))) * (((s) + 1)))
 
 #define _netp_memory_calc_size_64step(size) (size>>6)
 #define _netp_memory_calc_size_mod_64step(size) ((size%64))
@@ -373,7 +367,7 @@ namespace netp {
 
 #ifdef _NETP_DEBUG_MEMORY_TABLE
 	void 	memory_test_table() {
-		for (u32_t size = 1; (size < TABLE_BOUND[T_COUNT-1]+1000); ++size) {
+		for (u32_t size = 1; (size < TABLE_BOUND[T_COUNT - 1] + 1000); ++size) {
 			u8_t t = T_COUNT;
 			u8_t s = u8_t(-1);
 			u8_t t_fullsearch = T_COUNT;
@@ -381,11 +375,10 @@ namespace netp {
 			_netp_memory_calc_TABLE(size, t, s);
 			_netp_memory_calc_TABLE_full_search(size, t_fullsearch, s_fullsearch);
 			NETP_ASSERT(t == t_fullsearch, "size: %u,t: %u, s: %u, t_fullsearch:%u, s_fullsearch: %u", size, t, s, t_fullsearch, s_fullsearch);
-			NETP_ASSERT(s ==0 ? s == s_fullsearch:true, "size: %u,t: %u, s: %u, t_fullsearch:%u, s_fullsearch:%u",size, t,s, t_fullsearch,s_fullsearch);
+			NETP_ASSERT(s == 0 ? s == s_fullsearch : true, "size: %u,t: %u, s: %u, t_fullsearch:%u, s_fullsearch:%u", size, t, s, t_fullsearch, s_fullsearch);
 		}
 	}
 #endif
-	
 
 	void allocator_with_block_pool::preallocate_table_slot_item(table_slot_t* tst, u8_t t, u8_t s, size_t item_count) {
 		(void)tst;
@@ -401,9 +394,8 @@ namespace netp {
 			++___netp_global_alloc;
 #endif
 
-#ifdef _NETP_DEBUG
-			NETP_ASSERT((std::size_t(a_hdr) % alignof(std::max_align_t)) == 0);
-#endif
+			NETP_MEMORY_POOL_ASSERT((std::size_t(a_hdr) % alignof(std::max_align_t)) == 0);
+
 			a_hdr->hdr.AH_4_7.t = t;
 			a_hdr->hdr.AH_4_7.s = s;
 			u8_t offset = __AH_UPDATE_OFFSET__(a_hdr, NETP_DEFAULT_ALIGN);
@@ -423,9 +415,9 @@ namespace netp {
 	void allocator_with_block_pool::init( bool is_mgr ) {
 		std::atomic_thread_fence(std::memory_order_acquire);
 		for (u8_t t = 0; t < TABLE::T_COUNT; ++t) {
-			m_tables[t] = (table_slot_t**) std::malloc(sizeof(table_slot_t**) * NETP_ALIGNED_ALLOCATOR_SLOT_MAX);
-			for (u8_t s = 0; s < NETP_ALIGNED_ALLOCATOR_SLOT_MAX; ++s) {
-				const u32_t max_n = !is_mgr ? TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]:0;
+			m_tables[t] = (table_slot_t**) std::malloc(sizeof(table_slot_t**) * NETP_MEMORY_POOL_SLOT_COUNT);
+			for (u8_t s = 0; s < NETP_MEMORY_POOL_SLOT_COUNT; ++s) {
+				const u32_t max_n = !is_mgr ? TABLE_SLOT_ENTRIES_INIT_LIMIT[__g_memory_pool_size_level][t][s]:0;
 				u8_t* __ptr = (u8_t*) std::malloc(sizeof(table_slot_t) + (sizeof(u8_t*) * max_n));
 				m_tables[t][s] = (table_slot_t*)__ptr;
 				m_tables[t][s]->max = max_n;
@@ -433,7 +425,7 @@ namespace netp {
 				m_tables[t][s]->ptr = (u8_t**)(__ptr + (sizeof(table_slot_t)));
 
 				if ( (max_n >0) && (t< TABLE::T_COUNT /*<1k*/) ) {
-					preallocate_table_slot_item(m_tables[t][s], t, s, (TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]>>1) );
+					preallocate_table_slot_item(m_tables[t][s], t, s, (TABLE_SLOT_ENTRIES_INIT_LIMIT[__g_memory_pool_size_level][t][s]>>1) );
 				}
 			}
 		}
@@ -441,7 +433,7 @@ namespace netp {
 
 	void allocator_with_block_pool::deinit() {
 		for (u8_t t = 0; t < TABLE::T_COUNT; ++t) {
-			for (u8_t s = 0; s < NETP_ALIGNED_ALLOCATOR_SLOT_MAX; ++s) {
+			for (u8_t s = 0; s < NETP_MEMORY_POOL_SLOT_COUNT; ++s) {
 				deallocate_table_slot_item(m_tables[t][s]);
 				//deallocate_table_slot(m_tables[t][s]);
 				std::free(m_tables[t][s]);
@@ -458,9 +450,8 @@ namespace netp {
 	}
 
 	void* allocator_with_block_pool::malloc(size_t size, size_t alignment) {
-#ifdef _NETP_DEBUG
-		NETP_ASSERT( (size<_NETP_ALIGN_MALLOC_SIZE_MAX) && ((alignment % alignof(std::max_align_t)) == 0 && alignment >= alignof(std::max_align_t)) );
-#endif
+		NETP_MEMORY_POOL_ASSERT( (size<_NETP_ALIGN_MALLOC_SIZE_MAX) && ((alignment % alignof(std::max_align_t)) == 0 && alignment >= alignof(std::max_align_t)) );
+
 		aligned_hdr* a_hdr;
 		u8_t t = T_COUNT;
 		u8_t s = u8_t(-1);
@@ -473,31 +464,24 @@ namespace netp {
 
 			if (s==0) {
 				--t;
-				s = (NETP_ALIGNED_ALLOCATOR_SLOT_MAX - 1);
+				s = (NETP_MEMORY_POOL_SLOT_COUNT - 1);
 			} else {
 				s = u8_t( (slot_size-TABLE_BOUND[t]) >> (_netp_memory_calc_F_by_TABLE(t)));
 				slot_size = _netp_memory_calc_SIZE_by_TABLE_SLOT(t, s);
-		
-				#ifdef _NETP_DEBUG
-					NETP_ASSERT(s < NETP_ALIGNED_ALLOCATOR_SLOT_MAX );
-				#endif
+				NETP_MEMORY_POOL_ASSERT(s < NETP_MEMORY_POOL_SLOT_COUNT );
 			}
 
 			table_slot_t*& tst = (m_tables[t][s]);
 			if (tst->count) {
 __fast_path:
-	#ifdef _NETP_DEBUG
-				NETP_ASSERT(TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]>0, "l: %u, t: %u, s: %u, tst->count: %u, tst->max: %u", g_memory_pool_slot_entries_size_level, t,s , tst->count, tst->max );
-				NETP_ASSERT(tst->ptr[tst->count-1] != 0, "tst->count: %u, tst->max: %u", tst->count , tst->max );
-	#endif
+				NETP_MEMORY_POOL_ASSERT(TABLE_SLOT_ENTRIES_INIT_LIMIT[__g_memory_pool_size_level][t][s]>0, "l: %u, t: %u, s: %u, tst->count: %u, tst->max: %u", __g_memory_pool_size_level, t,s , tst->count, tst->max );
+				NETP_MEMORY_POOL_ASSERT(tst->ptr[tst->count-1] != 0, "tst->count: %u, tst->max: %u", tst->count , tst->max );
 				 a_hdr = (aligned_hdr*) (tst->ptr[--tst->count]);
 
 				 //update new size
 				 __AH_UPDATE_SIZE(a_hdr, size);
 				const u8_t offset = __AH_UPDATE_OFFSET__(a_hdr, alignment);
-#ifdef _NETP_DEBUG
-				NETP_ASSERT((sizeof(aligned_hdr) + _netp_memory_calc_SIZE_by_TABLE_SLOT(t,s) - offset) >= size);
-#endif
+				NETP_MEMORY_POOL_ASSERT((sizeof(aligned_hdr) + _netp_memory_calc_SIZE_by_TABLE_SLOT(t,s) - offset) >= size);
 				 return (u8_t*)a_hdr + offset ;
 			}
 
@@ -506,9 +490,8 @@ __fast_path:
 				//tst->max ==0 means no pool object allowed in this slot
 				//borrow
 				size_t c = ___netp_allocator_with_block_pool_manager->borrow(t, s, tst, (tst->max) >> 1);
-#ifdef _NETP_DEBUG
-				NETP_ASSERT(c == tst->count);
-#endif
+				NETP_MEMORY_POOL_ASSERT(c == tst->count);
+
 				if (c != 0) {
 					goto __fast_path;
 				}
@@ -525,18 +508,15 @@ __fast_path:
 		++___netp_global_alloc;
 #endif
 
-#ifdef _NETP_DEBUG
-		NETP_ASSERT((std::size_t(a_hdr) % alignof(std::max_align_t)) == 0);
-#endif
+		NETP_MEMORY_POOL_ASSERT((std::size_t(a_hdr) % alignof(std::max_align_t)) == 0);
 
 		//size is used by realloc
 		__AH_UPDATE_SIZE(a_hdr, size);
 		a_hdr->hdr.AH_4_7.t = t;
 		a_hdr->hdr.AH_4_7.s = s;
 		u8_t offset = __AH_UPDATE_OFFSET__(a_hdr, alignment);
-#ifdef _NETP_DEBUG
-		NETP_ASSERT( (sizeof(aligned_hdr) + slot_size - offset ) >= size );
-#endif
+		NETP_MEMORY_POOL_ASSERT( (sizeof(aligned_hdr) + slot_size - offset ) >= size );
+
 		return (u8_t*)a_hdr + offset;
 	}
 
@@ -545,9 +525,8 @@ __fast_path:
 
 		u8_t offset = *(reinterpret_cast<u8_t*>(ptr) - 1);
 		aligned_hdr* a_hdr = (aligned_hdr*)((u8_t*)ptr - offset);
-#ifdef _NETP_DEBUG
-		NETP_ASSERT( a_hdr->hdr.AH_4_7.offset == offset );
-#endif
+		NETP_MEMORY_POOL_ASSERT( a_hdr->hdr.AH_4_7.offset == offset );
+
 		u8_t t = a_hdr->hdr.AH_4_7.t;
 		u8_t s = a_hdr->hdr.AH_4_7.s;
 		table_slot_t*& tst = (m_tables[t][s]);
@@ -578,16 +557,12 @@ __fast_path:
 		}
 
 		//we would never get old ptr, cuz old ptr have not yet been returned
-#ifdef _NETP_DEBUG
-		NETP_ASSERT(n_ptr != old_ptr);
-#endif
+		NETP_MEMORY_POOL_ASSERT(n_ptr != old_ptr);
 
 		u8_t old_offset = *(reinterpret_cast<u8_t*>(old_ptr) - 1);
 		aligned_hdr* old_a_hdr = (aligned_hdr*)((u8_t*)old_ptr - old_offset);
 
-#ifdef _NETP_DEBUG
-		NETP_ASSERT(old_a_hdr->hdr.AH_4_7.offset == old_offset);
-#endif
+		NETP_MEMORY_POOL_ASSERT(old_a_hdr->hdr.AH_4_7.offset == old_offset);
 		size_t old_size = __AH_SIZE(old_a_hdr);
 		//do copy
 		std::memcpy(n_ptr, old_ptr, NETP_MIN(size, old_size));
@@ -600,7 +575,7 @@ __fast_path:
 	allocator_with_block_pool_manager::allocator_with_block_pool_manager()
 	{
 		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
-			m_table_slots_mtx[t] = ::new spin_mutex[NETP_ALIGNED_ALLOCATOR_SLOT_MAX];
+			m_table_slots_mtx[t] = ::new spin_mutex[NETP_MEMORY_POOL_SLOT_COUNT];
 		}
 	}
 
@@ -619,15 +594,13 @@ __fast_path:
 		alloc->init(false);
 
 		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
-			for (size_t s = 0; s < NETP_ALIGNED_ALLOCATOR_SLOT_MAX; ++s) {
+			for (size_t s = 0; s < NETP_MEMORY_POOL_SLOT_COUNT; ++s) {
 				lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s] );
-				if (TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s] == 0) {
-#ifdef _NETP_DEBUG
-					NETP_ASSERT(m_tables[t][s]->max == 0);
-#endif
+				if (TABLE_SLOT_ENTRIES_INIT_LIMIT[__g_memory_pool_size_level][t][s] == 0) {
+					NETP_MEMORY_POOL_ASSERT(m_tables[t][s]->max == 0);
 					continue;
 				}
-				u32_t max_n = (m_tables[t][s]->max + TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]);
+				u32_t max_n = (m_tables[t][s]->max + TABLE_SLOT_ENTRIES_INIT_LIMIT[__g_memory_pool_size_level][t][s]);
 				u8_t* __ptr = (u8_t*)(std::realloc(m_tables[t][s], sizeof(table_slot_t) + sizeof(u8_t*) * max_n));
 				m_tables[t][s] = (table_slot_t*)__ptr;
 				m_tables[t][s]->max = max_n;
@@ -643,24 +616,21 @@ __fast_path:
 		::delete abp;
 
 		for (size_t t = 0; t < sizeof(m_tables) / sizeof(m_tables[0]); ++t) {
-			for (size_t s = 0; s < NETP_ALIGNED_ALLOCATOR_SLOT_MAX; ++s) {
+			for (size_t s = 0; s < NETP_MEMORY_POOL_SLOT_COUNT; ++s) {
 				lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
-				if (TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s] == 0) {
-#ifdef _NETP_DEBUG
-					NETP_ASSERT(m_tables[t][s]->max == 0);
-#endif
+				if (TABLE_SLOT_ENTRIES_INIT_LIMIT[__g_memory_pool_size_level][t][s] == 0) {
+					NETP_MEMORY_POOL_ASSERT(m_tables[t][s]->max == 0);
 					continue;
 				}
 
-#ifdef _NETP_DEBUG
-				NETP_ASSERT(m_tables[t][s]->max >= TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]);
-#endif
-				u32_t max_n = (m_tables[t][s]->max - TABLE_SLOT_ENTRIES_INIT_LIMIT[g_memory_pool_slot_entries_size_level][t][s]);
+				NETP_MEMORY_POOL_ASSERT(m_tables[t][s]->max >= TABLE_SLOT_ENTRIES_INIT_LIMIT[__g_memory_pool_size_level][t][s]);
+
+				u32_t max_n = (m_tables[t][s]->max - TABLE_SLOT_ENTRIES_INIT_LIMIT[__g_memory_pool_size_level][t][s]);
 				u32_t& _gcount = m_tables[t][s]->count;
 				//purge exceed count first
 				while (_gcount > max_n) {
+					NETP_MEMORY_POOL_ASSERT(m_tables[t][s]->count != 0);
 #ifdef _NETP_DEBUG
-					NETP_ASSERT(m_tables[t][s]->count != 0);
 					++___netp_global_dealloc;
 #endif
 					std::free((void*)(m_tables[t][s]->ptr[--_gcount]));
@@ -674,9 +644,8 @@ __fast_path:
 	}
 
 	u32_t allocator_with_block_pool_manager::commit(u8_t t, u8_t s, table_slot_t* tst, u32_t commit_count) {
-#ifdef _NETP_DEBUG
-		NETP_ASSERT( commit_count <= tst->count );
-#endif
+		NETP_MEMORY_POOL_ASSERT( commit_count <= tst->count );
+
 		lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
 		u32_t& _gcount = m_tables[t][s]->count;
 		u32_t& _tcount = tst->count;
@@ -689,9 +658,7 @@ __fast_path:
 	}
 
 	u32_t allocator_with_block_pool_manager::borrow(u8_t t, u8_t s, table_slot_t* tst, u32_t borrow_count) {
-#ifdef _NETP_DEBUG
-		NETP_ASSERT((tst->count ==0) && (tst->max > 0) );
-#endif
+		NETP_MEMORY_POOL_ASSERT((tst->count ==0) && (tst->max > 0) );
 
 		lock_guard<spin_mutex> lg(m_table_slots_mtx[t][s]);
 		u32_t& _gcount = m_tables[t][s]->count;

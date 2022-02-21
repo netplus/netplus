@@ -167,8 +167,8 @@ namespace netp {
 		}
 		m_is_cfg_json_checked = true;
 
-		if (cfg_json.find("netp_memory_pool_slot_entries_size_level") != cfg_json.end() && cfg_json["netp_memory_pool_slot_entries_size_level"].is_number()) {
-			cfg_memory_pool_slot_entries_size_level(cfg_json["netp_memory_pool_slot_entries_size_level"].get<int>());
+		if (cfg_json.find("netp_memory_pool_size_level") != cfg_json.end() && cfg_json["netp_memory_pool_size_level"].is_number()) {
+			cfg_memory_pool_size_level(cfg_json["netp_memory_pool_size_level"].get<int>());
 		}
 
 		if (cfg_json.find("netp_log") != cfg_json.end() && cfg_json["netp_log"].is_string()) {
@@ -195,7 +195,7 @@ namespace netp {
 		struct ::option long_options[] = {
 			{"netp-cfg", optional_argument, 0, 1},
 			{"netp-log", optional_argument, 0, 2 },
-			{"netp-memory-pool-slot-entries-size-level", optional_argument, 0, 3 },
+			{"netp-memory-pool-size-level", optional_argument, 0, 3 },
 			{"netp-def-loop-count-by-factor", optional_argument, 0, 4 },
 			{"netp-def-loop-count", optional_argument, 0, 5 },
 			{"netp-channel-read-buf", optional_argument, 0, 6 },
@@ -221,7 +221,7 @@ namespace netp {
 			break;
 			case 3:
 			{
-				cfg_memory_pool_slot_entries_size_level(std::atoi(optarg));
+				cfg_memory_pool_size_level(std::atoi(optarg));
 			}
 			break;
 			case 4:

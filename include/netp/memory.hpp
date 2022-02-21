@@ -61,7 +61,7 @@ namespace netp {
 //#define TABLE_SLOT_POP(tst) ( tst->ptr + sizeof(u8_t*) * (--tst->count)))
 //#define TABLE_SLOT_PUSH(tst,ptr) (tst->ptr + sizeof(u8_t*) * (tst->count++)))
 
-	extern void cfg_memory_pool_slot_entries_size_level(int l);
+	extern void cfg_memory_pool_size_level(int l);
 	extern void cfg_memory_init_allocator_with_block_pool_manager();
 	extern void cfg_memory_deinit_allocator_with_block_pool_manager();
 
