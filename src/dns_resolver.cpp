@@ -7,7 +7,6 @@
 
 namespace netp {
 
-#ifdef _NETP_USE_C_ARES
 	const static int dns_error_map[] = {
 		0,
 		netp::E_DNS_TEMPORARY_ERROR,
@@ -17,7 +16,6 @@ namespace netp {
 		netp::E_DNS_NOMEM,
 		netp::E_DNS_BADQUERY
 	};
-#endif
 
 	ares_fd_monitor::ares_fd_monitor(dns_resolver& _dnsr_, SOCKET fd_) :
 		dnsr(_dnsr_),
@@ -28,25 +26,28 @@ namespace netp {
 
 	void ares_fd_monitor::io_end() {
 
-		if (flag & f_closed) { return; }
-		flag |= f_closed;
+		if (flag & f_ares_fd_closed) { return; }
+		flag |= f_ares_fd_closed;
 
-		if (flag & f_watch_read) {
+		if (flag & f_ares_fd_watch_read) {
 			netp::shutdown(fd, SHUT_RD);
 			ares_process_fd(dnsr.m_ares_channel, fd, ARES_SOCKET_BAD);
 			dnsr.L->io_do(io_action::END_READ, ctx);
-			flag &= ~f_watch_read;
+			flag &= ~f_ares_fd_watch_read;
 		}
 
-		if (flag & f_watch_write) {
+		if (flag & f_ares_fd_watch_write) {
 			netp::shutdown(fd, SHUT_WR);
 			ares_process_fd(dnsr.m_ares_channel,ARES_SOCKET_BAD, fd);
 			dnsr.L->io_do(io_action::END_WRITE, ctx);
-			flag &= ~f_watch_write;
+			flag &= ~f_ares_fd_watch_write;
 		}
 		
-		NETP_TRACE_SOCKET_OC("[ares_fd_monitor][#%d][netp::close]", fd );
-		netp::close(fd);
+		//@note: fix fd dup close bug
+		//fd is managed by lib ares for the current impl
+		//NETP_TRACE_SOCKET_OC("[ares_fd_monitor][#%d][netp::close]", fd );
+		//netp::close(fd);
+
 		dnsr.m_ares_fd_monitor_map.erase(fd);
 		dnsr.L->schedule([afm=NRP<ares_fd_monitor>(this),L_=dnsr.L, ctx_=ctx]() {
 			L_->io_end(ctx_);
@@ -119,7 +120,6 @@ namespace netp {
 		return p;
 	}
 
-#ifdef _NETP_USE_C_ARES
 	static void ___ares_socket_state_cb(void* data, ares_socket_t socket_fd, int readable, int writable) {
 		NETP_ASSERT(data != 0);
 		dns_resolver* dnsr = (dns_resolver*)data;
@@ -130,7 +130,6 @@ namespace netp {
 		dns_resolver* dnsr = (dns_resolver*)data;
 		return dnsr->__ares_socket_create_cb(socket_fd, type);
 	}
-#endif
 
 	void dns_resolver::_do_start(NRP<netp::promise<int>> const& p) {
 		NETP_ASSERT(L->in_event_loop());
@@ -141,7 +140,6 @@ namespace netp {
 		}
 
 		m_flag |= dns_resolver_flag::f_launching;
-#ifdef _NETP_USE_C_ARES
 		int ares_init_rt = ares_library_init(ARES_LIB_INIT_ALL);
 		if (ares_init_rt != ARES_SUCCESS) {
 			m_flag &= ~dns_resolver_flag::f_launching;
@@ -203,7 +201,6 @@ namespace netp {
 
 		NETP_INFO("[dns_resolver]launched");
 		p->set(netp::OK);
-#endif
 	}
 
 	NRP<netp::promise<int>> dns_resolver::start() {
@@ -274,7 +271,6 @@ namespace netp {
 			return;
 		}
 
-#ifdef _NETP_USE_C_ARES
 		//ares_process_fd might result in insert/erase pair from m_ares_fd_monitor_map
 		//ares_process_fd might result in restart
 
@@ -289,10 +285,7 @@ namespace netp {
 		}
 
 		__ares_check_timeout();
-#endif
 	}
-
-#ifdef _NETP_USE_C_ARES
 
 	void dns_resolver::__ares_wait() {
 		NETP_ASSERT(m_ares_fd_monitor_map.size() == 0);
@@ -327,33 +320,33 @@ namespace netp {
 		if (it == m_ares_fd_monitor_map.end()) { return; }
 
 		NRP<ares_fd_monitor> m = it->second;
-		if (readable == 1 && (m->flag &f_watch_read) ==0) {
+		if (readable == 1 && (m->flag &f_ares_fd_watch_read) ==0) {
 			int rt = L->io_do(io_action::READ, m->ctx);
 			if (rt != netp::OK) {
 				netp::shutdown(socket_fd, SHUT_RD);
 				ares_process_fd(m_ares_channel, socket_fd, ARES_SOCKET_BAD);
 			} else {
-				m->flag |= f_watch_read;
+				m->flag |= f_ares_fd_watch_read;
 			}
-		} else if(readable == 0 && (m->flag&f_watch_read) !=0 ){
+		} else if(readable == 0 && (m->flag&f_ares_fd_watch_read) !=0 ){
 			L->io_do(io_action::END_READ, m->ctx);
-			m->flag &= ~f_watch_read;
+			m->flag &= ~f_ares_fd_watch_read;
 		}
 
-		if (writable == 1 && (m->flag&f_watch_write) == 0) {
+		if (writable == 1 && (m->flag&f_ares_fd_watch_write) == 0) {
 			int rt = L->io_do(io_action::WRITE, m->ctx);
 			if (rt != netp::OK) {
 				netp::shutdown(socket_fd, SHUT_WR);
 				ares_process_fd(m_ares_channel, ARES_SOCKET_BAD, socket_fd );
 			} else {
-				m->flag |= f_watch_write;
+				m->flag |= f_ares_fd_watch_write;
 			}
-		} else if(writable == 0 && (m->flag&f_watch_write) !=0 ){
+		} else if(writable == 0 && (m->flag&f_ares_fd_watch_write) !=0 ){
 			L->io_do(io_action::END_WRITE, m->ctx);
-			m->flag &= ~f_watch_write;
+			m->flag &= ~f_ares_fd_watch_write;
 		}
 
-		if ( (readable == 0 && writable == 0) && (m->flag&(f_watch_read|f_watch_write)) == 0 ) {
+		if ( (readable == 0 && writable == 0) && (m->flag&(f_ares_fd_watch_read|f_ares_fd_watch_write)) == 0 ) {
 			m->io_end();
 		}
 	}
@@ -410,7 +403,6 @@ namespace netp {
 
 		netp::allocator<async_dns_query>::trash(adq);
 	}
-#endif
 
 	void dns_resolver::_do_resolve(string_t const& domain, NRP<dns_query_promise> const& p) {
 		NETP_ASSERT(L->in_event_loop());
@@ -426,11 +418,9 @@ namespace netp {
 		adq->host = netp::string_t(domain.c_str(), domain.length());
 		#endif
 
-#ifdef _NETP_USE_C_ARES
 		++m_ares_active_query;
 		ares_gethostbyname(m_ares_channel, domain.c_str(), AF_INET, __ares_gethostbyname_cb, adq);
 		__ares_check_timeout();
-#endif
 	}
 
 	NRP<dns_query_promise> dns_resolver::resolve(string_t const& domain) {

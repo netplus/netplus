@@ -748,7 +748,6 @@ int socket_base::get_left_snd_queue() const {
 		} else if (m_chflag & (int(channel_flag::F_READ_SHUTDOWNING) | int(channel_flag::F_CLOSING))) {
 			prt = (netp::E_OP_INPROCESS);
 		} else {
-			//if(m_chflag | int(channel_flag::F_CLOSE_PENDING))
 			_ch_do_close_read();
 		}
 		if (closep) { closep->set(prt); }
@@ -1124,5 +1123,102 @@ __act_label_close_read_write:
 				m_fn_write = nullptr;
 				NETP_TRACE_IOE("[socket][%s]io_action::END_WRITE", ch_info().c_str());
 			}
+		}
+
+		//@note: if u wanna to have independent read&write thread, use dup with a different L
+		//pay attention to r&w concurrent issue
+		//please do ch_io_begin by manual
+
+		NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> socket_channel::dup(NRP<event_loop> const& LL) {
+			NETP_ASSERT( (L->poller_type() == LL->poller_type()) && (LL->poller_type() == NETP_DEFAULT_POLLER_TYPE) );
+
+			NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> p =
+				netp::make_ref<netp::promise<std::tuple<int, NRP<socket_channel>>>>();
+
+			int __errno = netp::OK;
+			NRP<socket_cfg> _cfg = netp::make_ref<socket_cfg>();
+
+#ifdef _NETP_WIN
+			WSAPROTOCOL_INFO proto_info;
+#endif
+
+			if (sock_protocol() == NETP_PROTOCOL_USER) {
+				__errno = netp::E_OP_NOT_SUPPORTED;
+				goto __exit_with_errno;
+			}
+
+			if (m_chflag&int(channel_flag::F_CLOSED)) {
+				__errno = netp::E_EBADF;
+				goto __exit_with_errno;
+			}
+
+#ifdef _NETP_WIN
+			__errno = WSADuplicateSocket(ch_id(), GetCurrentProcessId(), &proto_info);
+			if (__errno != 0) {
+				__errno = netp_socket_get_last_errno();
+				goto __exit_with_errno;
+			}
+
+			_cfg->fd = WSASocket(sock_family(), sock_type(), OS_DEF_protocol[sock_protocol()], &proto_info, 0, WSA_FLAG_OVERLAPPED);
+#else
+			_cfg->fd = dup(ch_id());
+#endif
+
+			if (_cfg->fd == NETP_INVALID_SOCKET) {
+				__errno = netp_socket_get_last_errno();
+				goto __exit_with_errno;
+			}
+
+#ifdef _NETP_DEBUG
+			channel_buf_cfg __src_ch_buf;
+			__src_ch_buf.rcvbuf_size = get_rcv_buffer_size();
+			__src_ch_buf.sndbuf_size = get_snd_buffer_size();
+#endif
+
+			_cfg->L = LL;
+			//friend access
+			_cfg->family = m_family;
+			_cfg->type = m_type;
+			_cfg->proto = m_protocol;
+			_cfg->laddr = m_laddr;
+			_cfg->raddr = m_raddr;
+			_cfg->tx_limit = m_tx_limit;
+
+#ifdef _NETP_DEBUG
+			LL->execute([p, option = m_option, _cfg, __src_ch_buf]() {
+#else
+			LL->execute([p, option=m_option, _cfg]() {
+#endif
+				NRP<socket_channel> _dupch = default_socket_channel_maker(_cfg);
+				NETP_ASSERT(_dupch != nullptr);
+				int __errno = _dupch->ch_init(0, { 0,0,0 }, { 0,0 });
+				if (__errno != netp::OK) {
+					_dupch->ch_close();//just double confirm
+					goto ____exit_with_errno;
+				}
+
+#ifdef _NETP_DEBUG
+				channel_buf_cfg __dup_ch_buf;
+				__dup_ch_buf.rcvbuf_size = _dupch->get_rcv_buffer_size();
+				__dup_ch_buf.sndbuf_size = _dupch->get_snd_buffer_size();
+				NETP_ASSERT(__dup_ch_buf.rcvbuf_size == __src_ch_buf.rcvbuf_size);
+				NETP_ASSERT(__dup_ch_buf.sndbuf_size == __src_ch_buf.sndbuf_size);
+#endif
+
+				_dupch->m_option = option;
+
+				NETP_ASSERT(_dupch->ch_errno() == netp::OK);
+				p->set(std::make_tuple(netp::OK, _dupch));
+				return;
+
+		____exit_with_errno :
+				if (__errno == netp::OK) { __errno = netp::E_UNKNOWN; }
+				p->set(std::make_tuple(__errno, nullptr));
+			});
+			return p;
+
+		__exit_with_errno:
+			if (__errno == netp::OK) { __errno = netp::E_UNKNOWN; }
+			p->set(std::make_tuple(__errno, nullptr));
 		}
 } //end of ns

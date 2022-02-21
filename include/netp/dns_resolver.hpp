@@ -7,10 +7,7 @@
 #include <netp/core.hpp>
 #include <netp/string.hpp>
 
-
-#if defined(_NETP_USE_C_ARES)
-	#include "../../3rd/c-ares/c-ares-1.17.1/include/ares.h"
-#endif
+#include "../../3rd/c-ares/c-ares-1.17.1/include/ares.h"
 #include <netp/ipv4.hpp>
 #include <netp/smart_ptr.hpp>
 #include <netp/promise.hpp>
@@ -34,13 +31,10 @@ namespace netp {
 #endif
 	};
 
-#ifdef _NETP_USE_C_ARES
-
-#ifdef _NETP_USE_C_ARES
 	enum ares_fd_monitor_flag {
-		f_watch_read = 1 << 0,
-		f_watch_write = 1 << 1,
-		f_closed			= 1<<2
+		f_ares_fd_watch_read	= 1 << 0,
+		f_ares_fd_watch_write	= 1 << 1,
+		f_ares_fd_closed		= 1 << 2
 	};
 
 	struct ares_fd_monitor final :
@@ -59,9 +53,11 @@ namespace netp {
 		virtual void io_notify_write(int status, io_ctx*) override;
 	};
 
-#endif
-#endif
-
+	//@impl note:
+	//memory pool not used for the currently impl
+	//netp::allocator use tls data to store allocator pointer, if we share a dns resolver in between multi-eventloops, the following case should be taken into consideration
+	//1, thread safe alloc/dealloc
+	
 	class event_loop;
 	class dns_resolver :
 		public netp::ref_base
@@ -81,17 +77,14 @@ namespace netp {
 
 		NRP<event_loop> L;
 
-#ifdef _NETP_USE_C_ARES
 		ares_channel m_ares_channel;
 		long m_ares_active_query;
-#endif
 
 		NRP<netp::timer> m_tm_dnstimeout;
 		std::vector<netp::string_t, netp::allocator<netp::string_t>> m_ns; //for restart
 		u8_t m_flag;
 
-#ifdef _NETP_USE_C_ARES
-		typedef std::unordered_map<SOCKET, NRP<ares_fd_monitor>> ares_fd_monitor_map_t;
+		typedef std::unordered_map<SOCKET, NRP<ares_fd_monitor>, std::hash<SOCKET>, std::equal_to<SOCKET>, netp::allocator<std::pair<const SOCKET, NRP<ares_fd_monitor>>>> ares_fd_monitor_map_t;
 		typedef std::pair<SOCKET, NRP<ares_fd_monitor>> ares_fd_monitor_pair_t;
 		ares_fd_monitor_map_t m_ares_fd_monitor_map;
 
@@ -101,7 +94,6 @@ namespace netp {
 		void __ares_socket_state_cb(ares_socket_t socket_fd, int readable, int writable);
 		inline void __ares_done() { NETP_ASSERT(m_ares_active_query>0); --m_ares_active_query; }
 		void __ares_check_timeout();
-#endif
 
 	private:
 		void _do_add_name_server();

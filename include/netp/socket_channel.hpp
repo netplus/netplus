@@ -1035,11 +1035,12 @@ protected:
 				s->m_tx_limit = (limit != 0 && limit< _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN: limit;
 				s->m_tx_budget = (limit != 0 && limit < _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN : limit;
 			});
-		};
+		}
+
+		NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> dup(NRP<event_loop> const& LL);
 	};
 
 	extern NRP<socket_channel> default_socket_channel_maker(NRP<netp::socket_cfg> const& cfg);
 	extern std::tuple<int, NRP<socket_channel>> create_socket_channel(NRP<netp::socket_cfg> const& cfg);
-	extern NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> dup_socket_channel(NRP<netp::socket_channel> const& ch, NRP<event_loop> const& LL);
 }
 #endif
