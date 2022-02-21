@@ -1161,7 +1161,7 @@ __act_label_close_read_write:
 
 			_cfg->fd = WSASocket(sock_family(), sock_type(), OS_DEF_protocol[sock_protocol()], &proto_info, 0, WSA_FLAG_OVERLAPPED);
 #else
-			_cfg->fd = dup(ch_id());
+			_cfg->fd = ::dup(ch_id());
 #endif
 
 			if (_cfg->fd == NETP_INVALID_SOCKET) {
