@@ -18,11 +18,13 @@ namespace netp {
 		SOCKET fdw;
 		io_ctx* ctx;
 		std::atomic<bool> is_sigset;
+		bool read_until_block;
 		fdinterrupt_monitor():
 			fdr(NETP_INVALID_SOCKET),
 			fdw(NETP_INVALID_SOCKET),
 			ctx(0),
-			is_sigset(false)
+			is_sigset(false),
+			read_until_block(true)
 		{}
 
 		virtual void io_notify_terminating(int, io_ctx*) override {}
@@ -36,11 +38,11 @@ namespace netp {
 				byte_t tmp[4];
 				int ec = netp::OK;
 				do {
-#ifdef NETP_HAS_PIPE
+#ifdef NETP_USE_PIPE_AS_INTRFD
 					//NOTE: error 88 if we do read|write on a pipe fd 
-				__label_read:
+			__label_read:
 					ssize_t c = ::read(fdr, tmp, 4);
-					if ( NETP_UNLIKELY(c <= 0) ) { //0,-1
+					if (NETP_UNLIKELY(c <= 0)) { //0,-1
 						ec = netp_socket_get_last_errno();
 						if (ec == netp::E_EINTR) {
 							goto __label_read;
@@ -49,17 +51,23 @@ namespace netp {
 						}
 						_NETP_REFIX_EWOULDBLOCK(ec);
 					}
-				#ifdef _NETP_DEBUG_INTERRUPT_
-					else { nbytes+=c; }
-				#endif
-					
+#ifdef _NETP_DEBUG_INTERRUPT_
+					else { nbytes += c; }
+#endif
+
 #else
 					u32_t c = netp::recv(fdr, tmp, 4, ec, 0);
-	#ifdef _NETP_DEBUG_INTERRUPT_
+#ifdef _NETP_DEBUG_INTERRUPT_
 					nbytes += c;
-	#endif
 #endif
-				} while (false/*as we have at most 1 bytes in buffer, we can use false to save one syscall*/ && (ec == netp::OK) );
+#endif
+#ifdef NETP_USE_PIPE_AS_INTRFD
+				//note: refer to https://man7.org/linux/man-pages/man7/epoll.7.html tip 9
+				//*as we have at most 1 bytes in buffer,we do not need to take a try, thus save a syscall*/	
+			} while (false);
+#else
+			} while ((read_until_block) && (ec == netp::OK));
+#endif
 
 #ifdef _NETP_DEBUG_INTERRUPT_
 				NETP_ASSERT(nbytes <= 1, "nbytes: %u", nbytes);
@@ -76,7 +84,7 @@ namespace netp {
 			}
 			int ec;
 			const char interrutp_i = 'i';
-#ifdef NETP_HAS_PIPE
+#ifdef NETP_USE_PIPE_AS_INTRFD
 			do {
 				int c = ::write(fdw, (const void*)&interrutp_i, 1);
 				if (c == 1) {
@@ -98,7 +106,7 @@ namespace netp {
 		void init() {
 			int rt;
 			SOCKET fds[2] = { NETP_INVALID_SOCKET, NETP_INVALID_SOCKET };
-#ifdef NETP_HAS_PIPE
+#ifdef NETP_USE_PIPE_AS_INTRFD
 			while (pipe(fds) == -1) {
 				netp::this_thread::yield();
 			}
@@ -141,8 +149,8 @@ namespace netp {
 		long m_io_ctx_count_free;
 #endif
 
-		poller_interruptable_by_fd() :
-			poller_abstract(),
+		poller_interruptable_by_fd(io_poller_type t) :
+			poller_abstract(t),
 			m_fdintr(nullptr)
 #ifdef NETP_DEBUG_IO_CTX_
 			,m_io_ctx_count_alloc(0),
@@ -157,6 +165,11 @@ namespace netp {
 			m_fdintr->init();
 			io_ctx* ctx = io_begin(m_fdintr->fdr, m_fdintr);
 			NETP_ASSERT(ctx != 0);
+
+			if (m_type == io_poller_type::T_SELECT) {
+				m_fdintr->read_until_block = false;
+			}
+			
 			int rt = io_do(io_action::READ, ctx);
 			NETP_ASSERT(rt == netp::OK, "fd: %d, rt: %d, errno: %d", ctx->fd, rt, netp_socket_get_last_errno() );
 			m_fdintr->ctx = ctx;

@@ -198,7 +198,7 @@ namespace netp {
 		}
 	public:
 		poller_iocp() :
-			poller_abstract(),
+			poller_abstract(io_poller_type::T_IOCP),
 			m_handle(nullptr)
 #ifdef NETP_DEBUG_IO_CTX_
 		,m_io_ctx_count_alloc(0)

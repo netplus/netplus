@@ -21,7 +21,7 @@ namespace netp {
 	private:
 		public:
 			poller_select():
-				poller_interruptable_by_fd(),
+				poller_interruptable_by_fd(io_poller_type::T_SELECT),
 				m_polling(false)
 			{
 			}

@@ -29,7 +29,8 @@ namespace netp {
 	enum io_flag {
 		IO_READ = 1,
 		IO_WRITE = 1 << 1,
-		IO_ADD_PENDING = 1<<2 //USED BY SELECT ONLY
+		IO_ADD_PENDING = 1<<2, //USED BY SELECT ONLY,
+		IO_EPOLL_NOET = 1<<3 //USED BY EPOLL ONLY
 	};
 
 	enum class io_action {
@@ -66,14 +67,13 @@ namespace netp {
 		netp::allocator<io_ctx>::trash(ctx);
 	}
 
-
 	class poller_abstract:
 		public netp::ref_base
 	{
 	protected:
-
+		io_poller_type m_type;
 	public:
-		poller_abstract() {}
+		poller_abstract(io_poller_type t):m_type(t) {}
 		~poller_abstract() {}
 
 		virtual void init() = 0;

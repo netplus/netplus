@@ -14,7 +14,7 @@ namespace netp {
 		struct kevent* m_kevts;
 	public:
 		poller_kqueue() :
-			poller_interruptable_by_fd(),
+			poller_interruptable_by_fd(io_poller_type::T_KQUEUE),
 			m_kq(-1),
 			m_kevts(0)
 		{}

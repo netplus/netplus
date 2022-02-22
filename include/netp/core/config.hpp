@@ -92,7 +92,6 @@
 #ifdef NETP_ENABLE_EPOLL
 	#define NETP_EPOLL_CREATE_HINT_SIZE			(1024)	///< max size of epoll control
 	#define NETP_EPOLL_PER_HANDLE_SIZE			(128)	///< max size of per epoll_wait
-	#define NETP_IO_POLLER_EPOLL_USE_ET
 #endif
 
 //#define NETP_ENABLE_TASK_TRACK
