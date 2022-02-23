@@ -29,8 +29,9 @@ namespace netp {
 	enum io_flag {
 		IO_READ = 1,
 		IO_WRITE = 1 << 1,
-		IO_ADD_PENDING = 1<<2, //USED BY SELECT ONLY,
-		IO_EPOLL_NOET = 1<<3 //USED BY EPOLL ONLY
+		IO_READ_HUP = 1<<2, //read closed by remote peer
+		IO_ADD_PENDING = 1<<3, //USED BY SELECT ONLY,
+		IO_EPOLL_NOET = 1<<4 //USED BY EPOLL ONLY
 	};
 
 	enum class io_action {

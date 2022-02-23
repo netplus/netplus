@@ -89,29 +89,23 @@ namespace netp {
 					}
 				}
 
-			//wait_in_nano = netp::random_u64(2000000);
 			timeval _tv = { static_cast<long>(wait_in_nano / 1000000000ULL), static_cast<long>(wait_in_nano % 1000000000ULL) / 1000 };
 			timeval* tv = wait_in_nano != ~0 ? &_tv : 0 ;
-//			char mk_buf[128] = { 0 };
-//			snprintf(mk_buf, 128, "select(%lld)", (wait_in_nano == ~0) ? wait_in_nano : i64_t(wait_in_nano / 1000LL));
-//			netp::benchmark mk(mk_buf);
 			int nready = ::select((int)(max_fd_v + 1), &m_fds[fds_r], &m_fds[fds_w], &m_fds[fds_e], tv); //only read now
-//			mk.mark("select return");
 			NETP_POLLER_WAIT_EXIT(wait_in_nano, W);
 
-			if (nready == 0) {
+			if (nready <= 0 ) {
 				m_polling = false;
-				return;
-			} else if (nready == -1) {
-				//notice 10038
-				m_polling = false;
-				NETP_ERR("[event_loop][select]select error, errno: %d", netp_socket_get_last_errno());
+				const int ec = netp_socket_get_last_errno();
+				if (ec != 0) {
+					NETP_ERR("[event_loop][select]select error, errno: %d", netp_socket_get_last_errno());
+				}
 				return;
 			}
 
 			io_ctx* ctx_n;
 			for (ctx = (m_io_ctx_list.next), ctx_n = ctx->next; ctx != &m_io_ctx_list && nready>0; ctx = ctx_n, ctx_n = ctx->next) {
-				if (ctx->flag & io_flag::IO_ADD_PENDING) {
+				if (ctx->flag&io_flag::IO_ADD_PENDING) {
 					//newly added 
 					continue;
 				}
@@ -136,7 +130,7 @@ namespace netp {
 					hit = true;
 					IOM->io_notify_read(status, ctx);
 				}
-				if ( (ctx->flag & io_flag::IO_WRITE) && ((status != netp::OK) ||FD_ISSET(ctx->fd, &m_fds[fds_w])) ) {
+				if ( (ctx->flag&io_flag::IO_WRITE) && ((status != netp::OK) ||FD_ISSET(ctx->fd, &m_fds[fds_w])) ) {
 					//fn_read might result in fn_write be reset
 					hit = true;
 					IOM->io_notify_write(status, ctx);

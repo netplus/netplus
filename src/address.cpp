@@ -10,7 +10,7 @@ namespace netp {
 		"IGMP",
 		"SCTP",
 		"RAW",
-		"USER"
+		"BFR_TCP"
 	};
 
 	const u16_t OS_DEF_protocol[NETP_PROTOCOL_MAX] = {
@@ -28,8 +28,10 @@ namespace netp {
 			return NETP_PROTOCOL_TCP;
 		} else if (netp::iequals<string_t>(protostr, string_t("udp"))) {
 			return NETP_PROTOCOL_UDP;
+		} else if(netp::iequals<string_t>(protostr,string_t("bfr_tcp"))) {
+			return NETP_PROTOCOL_BFR_TCP;
 		} else {
-			return NETP_PROTOCOL_USER;
+			return NETP_PROTOCOL_UNKNOWN;
 		}
 	}
 

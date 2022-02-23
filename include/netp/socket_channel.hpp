@@ -367,7 +367,7 @@ protected:
 		int __cfg_keepalive_vals(keep_alive_vals const& vals) {
 			/*BFR WILL SETUP A DEFAULT KAV AT START FOR THE CURRENT IMPL*/
 			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_fd == NETP_INVALID_SOCKET);
-			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_protocol == u16_t(NETP_PROTOCOL_USER));
+			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_family == u16_t(NETP_AF_USER));
 			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_protocol == u16_t(NETP_PROTOCOL_UDP));
 			NETP_ASSERT(m_option & int(socket_option::OPTION_KEEP_ALIVE));
 			int rt;
@@ -417,7 +417,7 @@ protected:
 			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_fd == NETP_INVALID_SOCKET);
 
 			/*BFR WILL SETUP A DEFAULT KAV AT START FOR THE CURRENT IMPL*/
-			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_protocol == u16_t(NETP_PROTOCOL_USER));
+			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_family == u16_t(NETP_AF_USER));
 			NETP_RETURN_V_IF_MATCH(netp::E_INVALID_OPERATION, m_protocol == u16_t(NETP_PROTOCOL_UDP));
 
 			//force to false
@@ -582,6 +582,8 @@ protected:
 		__NETP_FORCE_INLINE u8_t sock_family() const { return ((m_family)); };
 		__NETP_FORCE_INLINE u8_t sock_type() const { return (m_type); };
 		__NETP_FORCE_INLINE u16_t sock_protocol() { return (m_protocol); };
+
+		__NETP_FORCE_INLINE u8_t is_stream() const { return (m_type== NETP_SOCK_STREAM); };
 
 		__NETP_FORCE_INLINE bool is_tcp() const { return m_protocol == u8_t(NETP_PROTOCOL_TCP); }
 		__NETP_FORCE_INLINE bool is_udp() const { return m_protocol == u8_t(NETP_PROTOCOL_UDP); }

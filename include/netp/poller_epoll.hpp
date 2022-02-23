@@ -30,7 +30,7 @@ namespace netp {
 			NETP_ASSERT( ctx->fd != NETP_INVALID_SOCKET);
 			struct epoll_event epEvent =
 			{
-				(ctx->flag&io_flag::IO_EPOLL_NOET) ? (EPOLLPRI|EPOLLRDHUP|EPOLLHUP|EPOLLERR) : (EPOLLET|EPOLLPRI|EPOLLRDHUP|EPOLLHUP|EPOLLERR),
+				(ctx->flag&io_flag::IO_EPOLL_NOET) ? (EPOLLRDHUP|EPOLLHUP|EPOLLERR) : (EPOLLET|EPOLLRDHUP|EPOLLHUP|EPOLLERR),
 				{(void*)ctx}
 			};
 
@@ -58,7 +58,7 @@ namespace netp {
 
 			struct epoll_event epEvent =
 			{
-				(ctx->flag&io_flag::IO_EPOLL_NOET) ? (EPOLLPRI | EPOLLRDHUP | EPOLLHUP | EPOLLERR) : (EPOLLET | EPOLLPRI | EPOLLRDHUP | EPOLLHUP | EPOLLERR),
+				(ctx->flag&io_flag::IO_EPOLL_NOET) ? (EPOLLRDHUP | EPOLLHUP | EPOLLERR) : (EPOLLET | EPOLLRDHUP | EPOLLHUP | EPOLLERR),
 				{(void*)ctx}
 			};
 
@@ -129,13 +129,15 @@ namespace netp {
 #endif
 				uint32_t events = ((epEvents[i].events) & 0xFFFFFFFF) ;
 				int sockerr = netp::OK;
+				//refer to:https://elixir.bootlin.com/linux/v4.19/source/net/ipv4/tcp.c#L524
+				//EPOLLHUP is only sent when the shutdown has been both for read and write (I reckon that the peer shutdowning the write equals to my shutdowning the read). Or when the connection is closed, of course.
 				if (events&(EPOLLERR|EPOLLHUP)) {
 					//WE NEED THESE ERR INFO
 					socklen_t optlen = sizeof(int);
 					int readsockfderr = ::getsockopt(ctx->fd, SOL_SOCKET, SO_ERROR, (char*)&sockerr, &optlen);
 					(void)readsockfderr;
 					if (sockerr == -1) {
-						if (events & EPOLLHUP) {
+						if (events&EPOLLHUP) {
 							sockerr = netp::E_SOCKET_EPOLLHUP;
 						} else {
 							sockerr = netp::E_UNKNOWN;
@@ -156,20 +158,19 @@ namespace netp {
 
 				NRP<io_monitor>& iom = ctx->iom;
 				//do not check EPOLLERR|EPOLLHUP for read/write, as we has checked before, if they are set, sockerr must not be netp::OK
-				if ((ctx->flag&u8_t(io_flag::IO_READ)) && ((events&(EPOLLRDHUP|EPOLLIN)) || (sockerr != netp::OK)) ) {
+				if ((ctx->flag&u8_t(io_flag::IO_READ)) && (events&(EPOLLIN|EPOLLRDHUP|EPOLLERR|EPOLLHUP)) ) {
+					if (events&EPOLLRDHUP) {
+						ctx->flag |= io_flag::IO_READ_HUP;
+					}
 					iom->io_notify_read(sockerr, ctx);
 				}
 				//read error might result in write act be cancelled, just cancel it 
-				if ((ctx->flag&u8_t(io_flag::IO_WRITE)) && ((events&EPOLLOUT) || (sockerr != netp::OK)) ) {
+				if ((ctx->flag&u8_t(io_flag::IO_WRITE)) && (events&(EPOLLOUT|EPOLLERR|EPOLLHUP)) ) {
 					iom->io_notify_write(sockerr, ctx);
-				}
-				if (events&EPOLLPRI) {
-					NETP_ERR("[EPOLL][##%d][#%d]EVT: EPOLLPRI", m_epfd, ctx->fd);
-					//NETP_THROW("EPOLLPRI arrive!!!");
 				}
 
 #ifdef _NETP_DEBUG
-				events &= ~(EPOLLPRI|EPOLLERR|EPOLLRDHUP|EPOLLHUP|EPOLLIN|EPOLLOUT);
+				events &= ~(EPOLLERR|EPOLLRDHUP|EPOLLHUP|EPOLLIN|EPOLLOUT);
 				NETP_ASSERT( events == 0, "evt: %d", events );
 #endif
 			}

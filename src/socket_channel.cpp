@@ -420,7 +420,7 @@ int socket_base::get_left_snd_queue() const {
 
 #ifdef _NETP_WIN
 		//not sure linux os behaviour, to test
-		if (0 == local_addr()->ipv4() && m_type != u8_t(NETP_SOCK_USERPACKET/*FOR BFR*/) ) {
+		if (0 == local_addr()->ipv4() && m_family != u8_t(NETP_AF_USER/*FOR BFR*/) ) {
 			status = netp::E_WSAENOTCONN;
 			goto _set_fail_and_return;
 		}
@@ -568,27 +568,38 @@ int socket_base::get_left_snd_queue() const {
 		___do_io_read_done(status);
 	}
 
-	void socket_channel::__do_io_read(int status, io_ctx*) {
+	void socket_channel::__do_io_read(int status, io_ctx* ioctx) {
 		//NETP_INFO("READ IN");
 #ifdef _NETP_DEBUG
-		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(!ch_is_listener());
+		NETP_ASSERT(L->in_event_loop());
+		NETP_ASSERT(L->channel_rcv_buf()->len() == 0 );
 #endif
 
 		//in case socket object be destructed during ch_read
-		while (status == netp::OK) {
+		u32_t size = L->channel_rcv_buf_size();
+		netp::u32_t nbytes = size; //skip the frist check
+		//refer to https://man7.org/linux/man-pages/man7/epoll.7.html tip 9
+		//if it is stream based, return value nbytes<size indicate that the buf has been exhausted
+		while ( (status == netp::OK) && ((nbytes==size)|| !is_stream()) ) {
 			NETP_ASSERT( (m_chflag&(int(channel_flag::F_READ_SHUTDOWNING))) == 0);
 			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN)|int(channel_flag::F_READ_ERROR) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
-			
 			NRP<netp::packet>& loop_buf = L->channel_rcv_buf();
-			netp::u32_t nbytes = socket_recv_impl(loop_buf->head(), loop_buf->left_right_capacity(), status);
-			if (NETP_LIKELY(nbytes > 0)) {
+			nbytes = socket_recv_impl(loop_buf->head(), loop_buf->left_right_capacity(), status);
+			if (NETP_LIKELY(nbytes>0)) {
 				loop_buf->incre_write_idx(nbytes);
-				NRP<netp::packet> __tmp = netp::make_ref<netp::packet>(L->channel_rcv_buf_size());
+				NRP<netp::packet> __tmp = netp::make_ref<netp::packet>(size);
 				__tmp.swap(loop_buf);
 				channel::ch_fire_read(std::move(__tmp));
 			}
 		}
+
+		//for epoll et, (nbytes<size && rdhub is set)
+#if defined(NETP_HAS_POLLER_EPOLL) && defined(NETP_DEFAULT_POLLER_TYPE_IS_EPOLL)
+		if ( (ioctx->flag&io_flag::IO_READ_HUP) && (status == netp::OK) ) {
+			status = netp::E_SOCKET_GRACE_CLOSE;
+		}
+#endif
 		___do_io_read_done(status);
 	}
 
@@ -1142,7 +1153,7 @@ __act_label_close_read_write:
 			WSAPROTOCOL_INFO proto_info;
 #endif
 
-			if (sock_protocol() == NETP_PROTOCOL_USER) {
+			if (sock_family() == NETP_AF_USER) {
 				__errno = netp::E_OP_NOT_SUPPORTED;
 				goto __exit_with_errno;
 			}

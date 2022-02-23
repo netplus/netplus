@@ -17,6 +17,7 @@
 
 #if defined(NETP_HAS_POLLER_EPOLL)
 #define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_EPOLL
+#define NETP_DEFAULT_POLLER_TYPE_IS_EPOLL
 #elif defined(NETP_HAS_POLLER_SELECT)
 #define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_SELECT
 #elif defined(NETP_HAS_POLLER_KQUEUE)

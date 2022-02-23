@@ -38,10 +38,15 @@ namespace netp {
 				stype = NETP_SOCK_DGRAM;
 			}
 			break;
-			default:
+			case (NETP_PROTOCOL_BFR_TCP):
 			{
 				family = NETP_AF_USER;
 				stype = NETP_SOCK_USERPACKET;
+			}
+			break;
+			default:
+			{
+				NETP_THROW("unknow dial url");
 			}
 		}
 
@@ -59,7 +64,7 @@ namespace netp {
 		NETP_ASSERT(cfg->L != nullptr && cfg->L->in_event_loop());
 
 		NRP<socket_channel> __socketch;
-		if (cfg->proto == NETP_PROTOCOL_USER) {
+		if (cfg->family == NETP_AF_USER) {
 			NETP_ASSERT(cfg->L->poller_type() != NETP_DEFAULT_POLLER_TYPE);
 			if (cfg->ch_maker == nullptr) {
 				return std::make_tuple(netp::E_CHANNEL_MISSING_MAKER, nullptr);

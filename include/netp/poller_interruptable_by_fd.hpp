@@ -14,6 +14,8 @@ namespace netp {
 	struct fdinterrupt_monitor final:
 		public io_monitor
 	{
+
+		//@TODO: eventfd vs pipe's
 		SOCKET fdr;
 		SOCKET fdw;
 		io_ctx* ctx;
@@ -23,8 +25,7 @@ namespace netp {
 			fdr(NETP_INVALID_SOCKET),
 			fdw(NETP_INVALID_SOCKET),
 			ctx(0),
-			is_sigset(false),
-			read_until_block(true)
+			is_sigset(false)
 		{}
 
 		virtual void io_notify_terminating(int, io_ctx*) override {}
@@ -57,17 +58,11 @@ namespace netp {
 
 #else
 					u32_t c = netp::recv(fdr, tmp, 4, ec, 0);
-#ifdef _NETP_DEBUG_INTERRUPT_
+	#ifdef _NETP_DEBUG_INTERRUPT_
 					nbytes += c;
+	#endif
 #endif
-#endif
-#ifdef NETP_USE_PIPE_AS_INTRFD
-				//note: refer to https://man7.org/linux/man-pages/man7/epoll.7.html tip 9
-				//*as we have at most 1 bytes in buffer,we do not need to take a try, thus save a syscall*/	
 			} while (false);
-#else
-			} while ((read_until_block) && (ec == netp::OK));
-#endif
 
 #ifdef _NETP_DEBUG_INTERRUPT_
 				NETP_ASSERT(nbytes <= 1, "nbytes: %u", nbytes);
@@ -166,10 +161,6 @@ namespace netp {
 			io_ctx* ctx = io_begin(m_fdintr->fdr, m_fdintr);
 			NETP_ASSERT(ctx != 0);
 
-			if (m_type == io_poller_type::T_SELECT) {
-				m_fdintr->read_until_block = false;
-			}
-			
 			int rt = io_do(io_action::READ, ctx);
 			NETP_ASSERT(rt == netp::OK, "fd: %d, rt: %d, errno: %d", ctx->fd, rt, netp_socket_get_last_errno() );
 			m_fdintr->ctx = ctx;
