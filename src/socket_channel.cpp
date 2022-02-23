@@ -581,7 +581,7 @@ int socket_base::get_left_snd_queue() const {
 		netp::u32_t nbytes = size; //skip the frist check
 		//refer to https://man7.org/linux/man-pages/man7/epoll.7.html tip 9
 		//if it is stream based, return value nbytes<size indicate that the buf has been exhausted
-		while ( (status == netp::OK) && ( 1 || (nbytes==size)|| !is_stream()) ) {
+		while ( (status == netp::OK) && ( (nbytes==size)|| !is_stream()) ) {
 			NETP_ASSERT( (m_chflag&(int(channel_flag::F_READ_SHUTDOWNING))) == 0);
 			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN)|int(channel_flag::F_READ_ERROR) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
 			NRP<netp::packet>& loop_buf = L->channel_rcv_buf();
