@@ -71,8 +71,12 @@ namespace netp {
 	}
 
 	void app::cfg_channel_read_buf(u32_t buf_in_kbytes) {
-		if (buf_in_kbytes > 512) {
-			buf_in_kbytes = 512;
+		if (buf_in_kbytes == 0) {
+			buf_in_kbytes = 128;
+		} else if (buf_in_kbytes > 256) {
+			buf_in_kbytes = 256;
+		} else if (buf_in_kbytes<8) {
+			buf_in_kbytes = 8;
 		}
 		m_channel_read_buf_size = buf_in_kbytes * (1024);
 	}

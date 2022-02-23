@@ -73,6 +73,7 @@ namespace netp {
 	}
 
 	void event_loop::init() {
+		NETP_ASSERT(m_cfg.channel_read_buf_size > 0);
 		m_channel_rcv_buf = netp::make_ref<netp::packet>(m_cfg.channel_read_buf_size);
 		m_tid = std::this_thread::get_id();
 		m_tb = netp::make_ref<timer_broker>();

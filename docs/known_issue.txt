@@ -1,1 +1,2 @@
 1, random_device exception on rpi4
+2, dns_resolver, if we try to resolve a domain like google.com, we get status code 11, which is the initial state before any req be sent out
