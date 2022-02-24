@@ -1,14 +1,18 @@
 #include <netp/string.hpp>
 #include <netp/exception.hpp>
 
-#if defined(_NETP_WIN)
+#if defined(_NETP_WIN) && (defined(_NETP_ARCH_X64) || defined(_NETP_ARCH_X86))
+	#define _NETP_STACK_WALKER_AVAILABLE_HPP
+#endif
+
+#ifdef _NETP_STACK_WALKER_AVAILABLE_HPP
 	#include "./../3rd/stack_walker/StackWalker.h"
 #elif defined(_NETP_HAS_EXECINFO_H)
 	#include <execinfo.h>
 #elif defined(_NETP_ANDROID)
 	#include <android/log.h>
 #else
-	#error 
+	#define _NETP_NO_STACK_TRACE
 #endif
 
 namespace netp {
@@ -79,7 +83,7 @@ namespace netp {
 		*/
 	}
 
-#elif defined(_NETP_WIN)
+#elif defined(_NETP_STACK_WALKER_AVAILABLE_HPP)
 
 	class stack_walker : 
 		public StackWalker 
@@ -120,8 +124,7 @@ namespace netp {
 			__stack_info += std::string(szText);
 			//StackWalker::OnOutput(szText);
 		}
-	};*/	
-
+	};*/
 
 	void stack_trace(char* stack_buffer, netp::u32_t s) {
 		stack_walker sw(stack_buffer, s);
@@ -146,6 +149,11 @@ namespace netp {
 			//stack_buffer[sw.ON_OUTPUT_STR.length()] = '\0';
 		}
 		*/
+	}
+
+#elif defined(_NETP_NO_STACK_TRACE)
+	void stack_trace(char* stack_buffer, netp::u32_t s) {
+		*stack_buffer = '\0';
 	}
 #endif
 }
