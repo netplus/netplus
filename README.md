@@ -16,8 +16,8 @@ Netplus borrows lots of concepts from Netty, and tries to implement these concep
     5) Implement RPC server
 
 # Target Arch & Platform
-    1) Windows on x86
-    2) Linux on x86/arm
+    1) Windows on x86/x64
+    2) Linux on x86/x64/arm
     3) IOS/MAC on x86/arm
     4) Android on x86/arm
 
