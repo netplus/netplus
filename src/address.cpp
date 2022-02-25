@@ -28,10 +28,8 @@ namespace netp {
 			return NETP_PROTOCOL_TCP;
 		} else if (netp::iequals<string_t>(protostr, string_t("udp"))) {
 			return NETP_PROTOCOL_UDP;
-		} else if(netp::iequals<string_t>(protostr,string_t("bfr_tcp"))) {
-			return NETP_PROTOCOL_BFR_TCP;
 		} else {
-			return NETP_PROTOCOL_UNKNOWN;
+			return NETP_PROTOCOL_USER;
 		}
 	}
 

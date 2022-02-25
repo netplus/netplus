@@ -38,7 +38,7 @@ namespace netp {
 				stype = NETP_SOCK_DGRAM;
 			}
 			break;
-			case (NETP_PROTOCOL_BFR_TCP):
+			case (NETP_PROTOCOL_USER):
 			{
 				family = NETP_AF_USER;
 				stype = NETP_SOCK_USERPACKET;
