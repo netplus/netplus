@@ -531,16 +531,16 @@ namespace netp {
 	//this code borrow from msvc stl
 	inline size_t hash_seq(const unsigned char* _First, size_t _Count)
 	{	// FNV-1a hash function for bytes in [_First, _First + _Count)
-#ifdef _NETP_ARCH_X64
+#ifdef _NETP_AMW64
 		static_assert(sizeof(size_t) == 8, "This code is for 64-bit size_t.");
 		const size_t _FNV_offset_basis = 14695981039346656037ULL;
 		const size_t _FNV_prime = 1099511628211ULL;
 
-#else /* defined(_WIN64) */
+#else
 		static_assert(sizeof(size_t) == 4, "This code is for 32-bit size_t.");
 		const size_t _FNV_offset_basis = 2166136261U;
 		const size_t _FNV_prime = 16777619U;
-#endif /* defined(_WIN64) */
+#endif
 
 		size_t _Val = _FNV_offset_basis;
 		for (size_t _Next = 0; _Next < _Count; ++_Next)
@@ -554,16 +554,16 @@ namespace netp {
 	//this code borrow from msvc stl
 	inline size_t ihash_seq(const unsigned char* _First, size_t _Count)
 	{	// FNV-1a hash function for bytes in [_First, _First + _Count)
-#ifdef _NETP_ARCH_X64
+#ifdef _NETP_AMW64
 		static_assert(sizeof(size_t) == 8, "This code is for 64-bit size_t.");
 		const size_t _FNV_offset_basis = 14695981039346656037ULL;
 		const size_t _FNV_prime = 1099511628211ULL;
 
-#else /* defined(_WIN64) */
+#else
 		static_assert(sizeof(size_t) == 4, "This code is for 32-bit size_t.");
 		const size_t _FNV_offset_basis = 2166136261U;
 		const size_t _FNV_prime = 16777619U;
-#endif /* defined(_WIN64) */
+#endif
 
 		size_t _Val = _FNV_offset_basis;
 		for (size_t _Next = 0; _Next < _Count; ++_Next)

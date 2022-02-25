@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug_comm|ARM64">
+      <Configuration>Debug_comm</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug_comm|Win32">
       <Configuration>Debug_comm</Configuration>
       <Platform>Win32</Platform>
@@ -9,9 +13,17 @@
       <Configuration>Debug_comm</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|ARM64">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM64">
+      <Configuration>Release</Configuration>
+      <Platform>ARM64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
@@ -77,6 +89,8 @@
     <ClInclude Include="..\..\include\netp\core\compiler\gcc_x64_.hpp" />
     <ClInclude Include="..\..\include\netp\core\compiler\gcc_x86_.hpp" />
     <ClInclude Include="..\..\include\netp\core\compiler\msvc_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\compiler\msvc_arm64_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\compiler\msvc_arm_.hpp" />
     <ClInclude Include="..\..\include\netp\core\compiler\msvc_x64_.hpp" />
     <ClInclude Include="..\..\include\netp\core\compiler\msvc_x86_.hpp" />
     <ClInclude Include="..\..\include\netp\core\config.hpp" />
@@ -92,6 +106,8 @@
     <ClInclude Include="..\..\include\netp\core\platform\osx_x64_.hpp" />
     <ClInclude Include="..\..\include\netp\core\platform\osx_x86_.hpp" />
     <ClInclude Include="..\..\include\netp\core\platform\win_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform\win_arm64_.hpp" />
+    <ClInclude Include="..\..\include\netp\core\platform\win_arm_.hpp" />
     <ClInclude Include="..\..\include\netp\core\platform\win_x64_.hpp" />
     <ClInclude Include="..\..\include\netp\core\platform\win_x86_.hpp" />
     <ClInclude Include="..\..\include\netp\CPUID.hpp" />
@@ -341,6 +357,15 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug_comm|ARM64'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -371,7 +396,6 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="vsprops_local\common.props" />
     <Import Project="vsprops_local\debug.props" />
-    <Import Project="with_botan.props" />
     <Import Project="vsprops_local\c-ares.props" />
     <Import Project="..\..\..\netplus_deps\with_botan.props" />
   </ImportGroup>
@@ -379,7 +403,6 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="vsprops_local\common.props" />
     <Import Project="vsprops_local\debug.props" />
-    <Import Project="with_botan.props" />
     <Import Project="vsprops_local\c-ares.props" />
     <Import Project="..\..\..\netplus_deps\with_botan.props" />
   </ImportGroup>
@@ -387,9 +410,13 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="vsprops_local\common.props" />
     <Import Project="vsprops_local\release.props" />
-    <Import Project="with_botan.props" />
     <Import Project="vsprops_local\c-ares.props" />
     <Import Project="..\..\..\netplus_deps\with_botan.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
+    <Import Project="vsprops_local\debug.props" />
+    <Import Project="vsprops_local\c-ares.props" />
+    <Import Project="vsprops_local\common.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

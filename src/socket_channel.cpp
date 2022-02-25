@@ -1231,5 +1231,7 @@ __act_label_close_read_write:
 		__exit_with_errno:
 			if (__errno == netp::OK) { __errno = netp::E_UNKNOWN; }
 			p->set(std::make_tuple(__errno, nullptr));
+			return p;
 		}
+
 } //end of ns

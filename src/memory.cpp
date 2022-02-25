@@ -78,13 +78,13 @@ namespace netp {
 
 	__NETP_FORCE_INLINE static void __AH_UPDATE_SIZE(aligned_hdr* a_hdr, size_t size) {
 		a_hdr->hdr.size_L = (size&0xffffffff);
-#ifdef _NETP_AM64
+#ifdef _NETP_AMW64
 		a_hdr->hdr.AH_4_7.size_H = ((size >> 32) & 0xff);
 #endif
 	}
 
 	__NETP_FORCE_INLINE const static size_t __AH_SIZE(aligned_hdr* a_hdr) {
-#ifdef _NETP_AM64
+#ifdef _NETP_AMW64
 		return a_hdr->hdr.size_L|(size_t(a_hdr->hdr.AH_4_7.size_H)<<32);
 #else
 		return a_hdr->hdr.size_L;

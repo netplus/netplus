@@ -32,36 +32,42 @@
 #define NETP_SIMD_HAVE(a) (((__NETP_SIMD)&(a)) ==(a))
 */
 
-#define __NETP_AM_32_W	32
-#define __NETP_AM_64_W	64
+#define __NETP_AMW_32	32
+#define __NETP_AMW_64	64
 
 #ifdef _NETP_MSVC
     #if defined(_M_AMD64)
 		#define _NETP_ARCH_X64
 		#define _NETP_ARCH_STR x64
-		#define _NETP_AM_W __NETP_AM_64_W
-		#define _NETP_AM64
+		#define _NETP_AM_W __NETP_AMW_64
+		#define _NETP_AMW64
 	#elif defined(_M_IX86)
-			#define _NETP_ARCH_X86
-			#define _NETP_ARCH_STR x86
-			#define _NETP_AM_W __NETP_AM_32_W
-			#define _NETP_AM32
+		#define _NETP_ARCH_X86
+		#define _NETP_ARCH_STR x86
+		#define _NETP_AM_W __NETP_AMW_32
+		#define _NETP_AMW32
+	#elif defined(_M_ARM64)
+		#define _NETP_ARCH_ARM
+		#define _NETP_ARCH_STR arm64
+		#define _NETP_ARM_VERSION	_M_ARM64
+		#define _NETP_AMW64
 	#elif defined(_M_ARM)
-			#define _NETP_ARCH_ARM
-			#define _NETP_ARM_VERSION	_M_ARM
-			#error "to be completed"
+		#define _NETP_ARCH_ARM
+		#define _NETP_ARCH_STR arm
+		#define _NETP_ARM_VERSION	_M_ARM
+		#define _NETP_AMW32
     #endif
 #elif defined(_NETP_GCC)
 	#if (defined(__x86_64__) && __x86_64__) || defined(__ppc64__) && __ppc64__
 		#define _NETP_ARCH_X64
 		#define _NETP_ARCH_STR x64
-		#define _NETP_AM_W __NETP_AM_64_W
-		#define _NETP_AM64
+		#define _NETP_AM_W __NETP_AMW_64
+		#define _NETP_AMW64
 	#elif defined(__i386) || defined(__i486__) || defined(__i586__)|| defined(__i686__)
 		#define _NETP_ARCH_X86
 		#define _NETP_ARCH_STR x86
-		#define _NETP_AM_W __NETP_AM_32_W
-		#define _NETP_AM32
+		#define _NETP_AM_W __NETP_AMW_32
+		#define _NETP_AMW32
 	#elif defined(__arm__)
 		//https://sourceforge.net/p/predef/wiki/Architectures/
 		#define _NETP_ARCH_ARM
@@ -69,8 +75,8 @@
 		#ifdef __ARM_ARCH_7A__
 			#define _NETP_ARCH_ARMV7A
 			#define _NETP_ARCH_STR armv7a
-			#define _NETP_AM_W __NETP_AM_32_W
-			#define _NETP_AM32
+			#define _NETP_AM_W __NETP_AMW_32
+			#define _NETP_AMW32
 		#else
 			#error "unknown arm version"
 		#endif

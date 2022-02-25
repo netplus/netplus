@@ -543,6 +543,18 @@
     <ClInclude Include="..\..\include\netp\util_hlen.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform\win_arm_.hpp">
+      <Filter>Header Files\netp\core\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\platform\win_arm64_.hpp">
+      <Filter>Header Files\netp\core\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\compiler\msvc_arm_.hpp">
+      <Filter>Header Files\netp\core\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\netp\core\compiler\msvc_arm64_.hpp">
+      <Filter>Header Files\netp\core\compiler</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">

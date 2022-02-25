@@ -82,6 +82,8 @@
  *
  **********************************************************************/
 
+#if defined(_M_IA64) || defined(_M_X64) || defined(_M_IX86)
+
 #include "StackWalker.h"
 
 #include <stdio.h>
@@ -1538,3 +1540,5 @@ void StackWalker::OnOutput(LPCSTR buffer)
 {
     OutputDebugStringA(buffer);
 }
+
+#endif
