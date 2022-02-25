@@ -1,0 +1,2 @@
+const vs constexpr
+The primary difference between const and constexpr variables is that the initialization of a const variable can be deferred until run time. A constexpr variable must be initialized at compile time. All constexpr variables are const
