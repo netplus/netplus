@@ -599,6 +599,8 @@ int socket_base::get_left_snd_queue() const {
 		if ( (ioctx->flag&io_flag::IO_READ_HUP) && (status == netp::OK) ) {
 			status = netp::E_SOCKET_GRACE_CLOSE;
 		}
+#else
+		(void)ioctx;
 #endif
 		___do_io_read_done(status);
 	}
