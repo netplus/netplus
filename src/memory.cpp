@@ -587,6 +587,7 @@ __fast_path:
 	}
 
 	//default: one thread -- main thread
+#define ___NETP_TABLE_SLOT_ENTRIES_INIT_LIMIT_HALF(t,s) ((TABLE_SLOT_ENTRIES_INIT_LIMIT[__g_memory_pool_size_level][t][s])>>1)
 	allocator_with_block_pool* allocator_with_block_pool_manager::create_allocator_block_pool() {
 
 		allocator_with_block_pool* alloc = ::new allocator_with_block_pool();
@@ -600,7 +601,7 @@ __fast_path:
 					NETP_MEMORY_POOL_ASSERT(m_tables[t][s]->max == 0);
 					continue;
 				}
-				u32_t max_n = (m_tables[t][s]->max + TABLE_SLOT_ENTRIES_INIT_LIMIT[__g_memory_pool_size_level][t][s]);
+				u32_t max_n = (m_tables[t][s]->max + ___NETP_TABLE_SLOT_ENTRIES_INIT_LIMIT_HALF(t,s));
 				u8_t* __ptr = (u8_t*)(std::realloc(m_tables[t][s], sizeof(table_slot_t) + sizeof(u8_t*) * max_n));
 				m_tables[t][s] = (table_slot_t*)__ptr;
 				m_tables[t][s]->max = max_n;
@@ -623,9 +624,9 @@ __fast_path:
 					continue;
 				}
 
-				NETP_MEMORY_POOL_ASSERT(m_tables[t][s]->max >= TABLE_SLOT_ENTRIES_INIT_LIMIT[__g_memory_pool_size_level][t][s]);
+				NETP_MEMORY_POOL_ASSERT(m_tables[t][s]->max >= ___NETP_TABLE_SLOT_ENTRIES_INIT_LIMIT_HALF(t, s));
 
-				u32_t max_n = (m_tables[t][s]->max - TABLE_SLOT_ENTRIES_INIT_LIMIT[__g_memory_pool_size_level][t][s]);
+				u32_t max_n = (m_tables[t][s]->max - ___NETP_TABLE_SLOT_ENTRIES_INIT_LIMIT_HALF(t, s));
 				u32_t& _gcount = m_tables[t][s]->count;
 				//purge exceed count first
 				while (_gcount > max_n) {
@@ -650,7 +651,7 @@ __fast_path:
 		u32_t& _gcount = m_tables[t][s]->count;
 		u32_t& _tcount = tst->count;
 		u32_t commited = 0;
-		if ( (_gcount < (m_tables[t][s]->max)) && (commited < commit_count) ) {
+		if ((commited < commit_count) && (_gcount < (m_tables[t][s]->max)) ) {
 			m_tables[t][s]->ptr[_gcount++] = tst->ptr[--_tcount];
 			++commited;
 		}
