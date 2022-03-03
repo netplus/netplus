@@ -65,8 +65,8 @@ $(APP_BIN_PATH)/%.o : $(APP_SRC)/%.cpp
 	@echo 'compiling $$<F ' $(<F)
 	@echo '$$@ '$@
 	@echo ''
-	@echo $(CXX) $(CC_MISC) $(CC_C11) $(DEFINES) $(INCLUDES) $< -o $@
-	@$(CXX) $(CC_MISC) $(CC_C11) $(DEFINES) $(INCLUDES) $< -o $@
+	@echo $(CXX) $(CC_MISC) $(CC_LANG_VERSION) $(DEFINES) $(INCLUDES) $< -o $@
+	@$(CXX) $(CC_MISC) $(CC_LANG_VERSION) $(DEFINES) $(INCLUDES) $< -o $@
 	
 
 dumpinfo:

@@ -24,7 +24,8 @@ LIB_O_FILES		:= $(addprefix $(LIB_BUILD_DIR)/,$(LIB_O_FILES))
 CC_INC 			:= $(LIB_INCLUDE_DIR) $(CC_INC)
 
 
-LIB_3RD_FILES_DIR		:= $(LIB_3RD_DIR)/llhttp $(LIB_3RD_DIR)/c-ares/c-ares-1.17.2/src/lib
+LIB_3RD_C_ARES_VERSION	:= c-ares-1.18.1
+LIB_3RD_FILES_DIR		:= $(LIB_3RD_DIR)/llhttp $(LIB_3RD_DIR)/c-ares/$(LIB_3RD_C_ARES_VERSION)/src/lib
 
 
 LIB_3RD_CPP_BUILD_DIR	:= $(LIB_3RD_DIR)/build/cpp/$(LIB_ARCH_BUILD)
@@ -37,7 +38,7 @@ LIB_3RD_CPP_O_FILES		:= $(foreach path,$(LIB_3RD_CPP_O_FILES), $(subst $(LIB_3RD
 LIB_3RD_CPP_O_FILES 	:= $(addprefix $(LIB_3RD_CPP_BUILD_DIR)/,$(LIB_3RD_CPP_O_FILES))
 
 
-LIB_3RD_CPP_FILES_INCLUDES := $(LIB_3RD_DIR)/c-ares/c-ares-1.17.2/src/lib $(LIB_3RD_DIR)/c-ares/c-ares-1.17.2/include
+LIB_3RD_CPP_FILES_INCLUDES := $(LIB_3RD_DIR)/c-ares/$(LIB_3RD_C_ARES_VERSION)/src/lib $(LIB_3RD_DIR)/c-ares/$(LIB_3RD_C_ARES_VERSION)/include
 
 C_3RD_INCLUDES := \
 	$(foreach include,$(LIB_3RD_CPP_FILES_INCLUDES), -I"$(include)")
@@ -119,7 +120,7 @@ $(LIB_BUILD_DIR)/%.o : $(LIB_SOURCE_DIR)/%.cpp
 	@echo $(<F)
 	@echo "------build cpp file end------"
 
-	$(if $(findstring $(<F),$(LIB_SIMD_CPP_FILES)),$(CXX) $(CC_MISC) $(CC_C11) $(CC_SIMD) $(SIMD_DEFINES) $(DEFINES) $(INCLUDES) $< -o $@, $(CXX) $(CC_MISC) $(CC_C11) $(DEFINES) $(INCLUDES) $< -o $@ ) 
+	$(if $(findstring $(<F),$(LIB_SIMD_CPP_FILES)),$(CXX) $(CC_MISC) $(CC_LANG_VERSION) $(CC_SIMD) $(SIMD_DEFINES) $(DEFINES) $(INCLUDES) $< -o $@, $(CXX) $(CC_MISC) $(CC_LANG_VERSION) $(DEFINES) $(INCLUDES) $< -o $@ ) 
 
 $(LIB_3RD_CPP_BUILD_DIR)/%.o : $(LIB_3RD_DIR)/%.cpp
 	@if [ ! -d $(@D) ] ; then \
@@ -129,7 +130,7 @@ $(LIB_3RD_CPP_BUILD_DIR)/%.o : $(LIB_3RD_DIR)/%.cpp
 	@echo $(<F)
 	@echo "------build 3rd cpp file end------"
 	
-	$(CXX) $(CC_MISC) $(CC_C11) $(CC_3RD_CPP_MISC) $(DEFINES) $(INCLUDES) $< -o $@
+	$(CXX) $(CC_MISC) $(CC_LANG_VERSION) $(CC_3RD_CPP_MISC) $(DEFINES) $(INCLUDES) $< -o $@
 
 $(LIB_3RD_C_BUILD_DIR)/%.o : $(LIB_3RD_DIR)/%.c
 	@if [ ! -d $(@D) ] ; then \

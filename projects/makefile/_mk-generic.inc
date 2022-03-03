@@ -88,7 +88,7 @@ CC_3RD_CPP_MISC =
 
 #-fPIC https://gcc.gnu.org/onlinedocs/gcc-8.3.0/gcc/Code-Gen-Options.html#Code-Gen-Options
 CC_MISC		:= -fPIC -c
-CC_C11		:= -std=c++11
+CC_LANG_VERSION		:= -std=c++14
 LINK_MISC 	:= -rdynamic $(LINK_MISC)
 LINK_CXX_LIBS = -lpthread -ldl
 

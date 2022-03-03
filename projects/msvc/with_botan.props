@@ -5,7 +5,7 @@
   <PropertyGroup />
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(ProjectDir)/../../../netplus_deps/botan_build/2.18.1/msvc/$(PlatformToolSet)/$(Platform)/$(Configuration)/static/include/botan-2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)/../../../netplus_deps/botan_build/2.19.1/msvc/$(PlatformToolSet)/$(Platform)/$(Configuration)/static/include/botan-2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NETP_WITH_BOTAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>

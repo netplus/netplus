@@ -69,6 +69,6 @@ $(APP_TARGET_PATH)/%.o : $(${APP_NAME}_SRC)/%.cpp
 	@echo 'compiling $$<F ' $(<F)
 	@echo '$$@ '$@
 	@echo ''
-	@echo $(CXX) $(CC_MISC) $(CC_C11) $(DEFINES) $(${APP_NAME}_INCLUDES) $< -o $@
-	@$(CXX) $(CC_MISC) $(CC_C11) $(DEFINES) $(${APP_NAME}_INCLUDES) $< -o $@
+	@echo $(CXX) $(CC_MISC) $(CC_LANG_VERSION) $(DEFINES) $(${APP_NAME}_INCLUDES) $< -o $@
+	@$(CXX) $(CC_MISC) $(CC_LANG_VERSION) $(DEFINES) $(${APP_NAME}_INCLUDES) $< -o $@
 	
