@@ -9,6 +9,8 @@
 #include <netp/poller_interruptable_by_fd.hpp>
 #include <netp/socket_api.hpp>
 
+#define _NETP_DEBUG_EPOLL_EVENTS
+
 namespace netp {
 
 	class poller_epoll final:
@@ -27,14 +29,14 @@ namespace netp {
 		}
 
 		int watch(u8_t flag, io_ctx* ctx) override {
-			NETP_ASSERT( ctx->fd != NETP_INVALID_SOCKET);
+			NETP_ASSERT((ctx->fd != NETP_INVALID_SOCKET) && (flag == io_flag::IO_READ || flag == io_flag::IO_WRITE));
 			struct epoll_event epEvent =
 			{
 				(ctx->flag&io_flag::IO_EPOLL_NOET) ? (EPOLLRDHUP|EPOLLHUP|EPOLLERR) : (EPOLLET|EPOLLRDHUP|EPOLLHUP|EPOLLERR),
 				{(void*)ctx}
 			};
 
-#ifdef _NETP_DEBUG
+#ifdef _NETP_DEBUG_EPOLL_EVENTS
 			NETP_ASSERT( (flag&ctx->flag) == 0 );
 #endif
 
@@ -54,11 +56,10 @@ namespace netp {
 		}
 
 		int unwatch( u8_t flag, io_ctx* ctx ) override {
-			NETP_ASSERT(ctx->fd != NETP_INVALID_SOCKET);
-
+			NETP_ASSERT( (ctx->fd != NETP_INVALID_SOCKET) && (flag == io_flag::IO_READ || flag == io_flag::IO_WRITE));
 			struct epoll_event epEvent =
 			{
-				(ctx->flag&io_flag::IO_EPOLL_NOET) ? (EPOLLRDHUP | EPOLLHUP | EPOLLERR) : (EPOLLET | EPOLLRDHUP | EPOLLHUP | EPOLLERR),
+				(ctx->flag&io_flag::IO_EPOLL_NOET) ? (EPOLLRDHUP|EPOLLHUP|EPOLLERR) : (EPOLLET|EPOLLRDHUP|EPOLLHUP|EPOLLERR),
 				{(void*)ctx}
 			};
 
@@ -108,11 +109,7 @@ namespace netp {
 
 			struct epoll_event epEvents[NETP_EPOLL_PER_HANDLE_SIZE];
 			const int wait_in_mill = (wait_in_nano != ~0 ? (wait_in_nano / i64_t(1000000)): ~0);
-//			char _mk_buf[128] = { 0 };
-//			snprintf(_mk_buf, 128, "epollwait(%d)", wait_in_mill);
-//			netp::benchmark mk(_mk_buf);
 			int nEvents = epoll_wait(m_epfd, epEvents,NETP_EPOLL_PER_HANDLE_SIZE, wait_in_mill);
-//			mk.mark("epoll_wait return");
 			NETP_POLLER_WAIT_EXIT(wait_in_nano, W);
 			if ( -1 == nEvents ) {
 				NETP_ERR("[EPOLL][##%u]epoll wait event failed!, errno: %d", m_epfd, netp_socket_get_last_errno() );
@@ -120,14 +117,14 @@ namespace netp {
 			}
 
 			for( int i=0;i<nEvents;++i) {
-#ifdef _NETP_DEBUG
+#ifdef _NETP_DEBUG_EPOLL_EVENTS
 				NETP_ASSERT( epEvents[i].data.ptr != nullptr );
 #endif
-				io_ctx* ctx =(static_cast<io_ctx*> (epEvents[i].data.ptr)) ;
-#ifdef _NETP_DEBUG
-				NETP_ASSERT(ctx->fd != NETP_INVALID_SOCKET);
+				uint32_t events = ((epEvents[i].events) & 0xFFFFFFFF);
+				io_ctx* ctx = (static_cast<io_ctx*> (epEvents[i].data.ptr));
+#ifdef _NETP_DEBUG_EPOLL_EVENTS
+				NETP_ASSERT((ctx->fd != NETP_INVALID_SOCKET) && (ctx->flag&(io_flag::IO_READ|io_flag::IO_WRITE)));
 #endif
-				uint32_t events = ((epEvents[i].events) & 0xFFFFFFFF) ;
 				int sockerr = netp::OK;
 				//refer to:https://elixir.bootlin.com/linux/v4.19/source/net/ipv4/tcp.c#L524
 				//EPOLLHUP is only sent when the shutdown has been both for read and write (I reckon that the peer shutdowning the write equals to my shutdowning the read). Or when the connection is closed, of course.
@@ -159,6 +156,10 @@ namespace netp {
 				NRP<io_monitor>& iom = ctx->iom;
 				//do not check EPOLLERR|EPOLLHUP for read/write, as we has checked before, if they are set, sockerr must not be netp::OK
 				if ((ctx->flag&u8_t(io_flag::IO_READ)) && (events&(EPOLLIN|EPOLLRDHUP|EPOLLERR|EPOLLHUP)) ) {
+
+				#ifdef	_NETP_DEBUG_EPOLL_EVENTS
+					events &= ~EPOLLIN;
+				#endif
 					if (events&EPOLLRDHUP) {
 						ctx->flag |= io_flag::IO_READ_HUP;
 					}
@@ -166,12 +167,14 @@ namespace netp {
 				}
 				//read error might result in write act be cancelled, just cancel it 
 				if ((ctx->flag&u8_t(io_flag::IO_WRITE)) && (events&(EPOLLOUT|EPOLLERR|EPOLLHUP)) ) {
+#ifdef	_NETP_DEBUG_EPOLL_EVENTS
+					events &= ~EPOLLOUT;
+#endif
 					iom->io_notify_write(sockerr, ctx);
 				}
 
-#ifdef _NETP_DEBUG
-				events &= ~(EPOLLERR|EPOLLRDHUP|EPOLLHUP|EPOLLIN|EPOLLOUT);
-				NETP_ASSERT( events == 0, "evt: %d", events );
+#ifdef	_NETP_DEBUG_EPOLL_EVENTS
+				NETP_ASSERT((events&(EPOLLIN|EPOLLOUT)) == 0, "evt: %d", events );
 #endif
 			}
 		}
