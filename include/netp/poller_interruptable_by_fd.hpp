@@ -199,16 +199,22 @@ namespace netp {
 
 		virtual io_ctx* io_begin(SOCKET fd, NRP<io_monitor> const& iom) override {
 			io_ctx* ctx = netp::io_ctx_allocate(fd,iom);
+			if (ctx == 0) {
+				return 0;
+			}
 			netp::list_append(&m_io_ctx_list, ctx);
 
 #ifdef NETP_DEBUG_IO_CTX_
 			++m_io_ctx_count_alloc;
 #endif
+			NETP_TRACE_IOE("[poller_interruptable_by_fd][io_begin][#%d]", ctx->fd);
 			return ctx;
 		}
 
 		//
 		virtual void io_end(io_ctx* ctx) override {
+			NETP_TRACE_IOE("[poller_interruptable_by_fd][io_end][#%d]", ctx->fd);
+
 			netp::list_delete(ctx);
 			netp::io_ctx_deallocate(ctx);
 
@@ -235,7 +241,7 @@ namespace netp {
 			case io_action::END_READ:
 			{
 				NETP_TRACE_IOE("[poller_interruptable_by_fd][type:%d][#%d]io_action::END_READ", ctx->fd);
-				if (ctx->flag & io_flag::IO_READ) {
+				if (ctx->flag&io_flag::IO_READ) {
 					ctx->flag &= ~io_flag::IO_READ;
 					//we need this condition check ,cuz epoll might fail to watch
 					return unwatch(io_flag::IO_READ, ctx);

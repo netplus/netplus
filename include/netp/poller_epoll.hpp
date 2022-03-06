@@ -9,9 +9,15 @@
 #include <netp/poller_interruptable_by_fd.hpp>
 #include <netp/socket_api.hpp>
 
-#define _NETP_DEBUG_EPOLL_EVENTS
+#ifdef _NETP_DEBUG
+	#define _NETP_DEBUG_EPOLL_EVENTS
+#endif
 
 namespace netp {
+
+	const static int _s_flag_epollin_epollout_map[2] = {
+		EPOLLIN,EPOLLOUT
+	};
 
 	class poller_epoll final:
 		public poller_interruptable_by_fd
@@ -29,34 +35,39 @@ namespace netp {
 		}
 
 		int watch(u8_t flag, io_ctx* ctx) override {
-			NETP_ASSERT((ctx->fd != NETP_INVALID_SOCKET) && (flag == io_flag::IO_READ || flag == io_flag::IO_WRITE));
+
+#ifdef _NETP_DEBUG_EPOLL_EVENTS
+			NETP_ASSERT((ctx->fd != NETP_INVALID_SOCKET) && ((flag & ((io_flag::IO_READ | io_flag::IO_WRITE))) == io_flag::IO_READ || (flag & ((io_flag::IO_READ | io_flag::IO_WRITE))) == io_flag::IO_WRITE));
+			NETP_ASSERT((flag&ctx->flag) == 0);
+			//test forcce lt
+			//ctx->flag |= io_flag::IO_EPOLL_NOET;
+#endif
+
 			struct epoll_event epEvent =
 			{
 				(ctx->flag&io_flag::IO_EPOLL_NOET) ? (EPOLLRDHUP|EPOLLHUP|EPOLLERR) : (EPOLLET|EPOLLRDHUP|EPOLLHUP|EPOLLERR),
 				{(void*)ctx}
 			};
 
-#ifdef _NETP_DEBUG_EPOLL_EVENTS
-			NETP_ASSERT( (flag&ctx->flag) == 0 );
-#endif
-
 			int epoll_op = EPOLL_CTL_ADD;
 			if ( ctx->flag&(io_flag::IO_READ|io_flag::IO_WRITE) ) {
-				epEvent.events |= (EPOLLIN|EPOLLOUT);
 				epoll_op = EPOLL_CTL_MOD;
+				epEvent.events |= (EPOLLIN|EPOLLOUT);
 			} else {
-                const static int _s_flag_epollin_epollout_map[] = {
-                    EPOLLIN,EPOLLOUT
-                };
 				epEvent.events |= _s_flag_epollin_epollout_map[--flag];
 			}
 
-			NETP_TRACE_IOE("[watch]fd: %d, op:%d, evts: %u", ctx->fd, epoll_op, epEvent.events);
+#ifdef _NETP_DEBUG_EPOLL_EVENTS
+			NETP_ASSERT(epEvent.events & (EPOLLIN|EPOLLOUT) );
+#endif
+			NETP_TRACE_IOE("[EPOLL][##%u][watch][#%u]op: %c, evts: %u", m_epfd, ctx->fd, epoll_op == EPOLL_CTL_MOD ? 'm' : 'a', epEvent.events);
 			return epoll_ctl(m_epfd, epoll_op, ctx->fd, &epEvent);
 		}
 
 		int unwatch( u8_t flag, io_ctx* ctx ) override {
+#ifdef _NETP_DEBUG_EPOLL_EVENTS
 			NETP_ASSERT( (ctx->fd != NETP_INVALID_SOCKET) && (flag == io_flag::IO_READ || flag == io_flag::IO_WRITE));
+#endif
 			struct epoll_event epEvent =
 			{
 				(ctx->flag&io_flag::IO_EPOLL_NOET) ? (EPOLLRDHUP|EPOLLHUP|EPOLLERR) : (EPOLLET|EPOLLRDHUP|EPOLLHUP|EPOLLERR),
@@ -64,11 +75,9 @@ namespace netp {
 			};
 
 			int epoll_op = EPOLL_CTL_MOD;
-			if ( (ctx->flag&(~flag)) & (io_flag::IO_READ|io_flag::IO_WRITE) ) {
-				const static int _s_flag_epollin_epollout_map[] = {
-					EPOLLIN,EPOLLOUT
-				};
-				epEvent.events &= ~(_s_flag_epollin_epollout_map[--flag]);
+			u8_t remaining_flag = ((ctx->flag&(~flag)) & (io_flag::IO_READ|io_flag::IO_WRITE));
+			if (remaining_flag) {
+				epEvent.events |= _s_flag_epollin_epollout_map[--remaining_flag];
 			} else {
 				//@note
 				//In kernel versions before 2.6.9, the EPOLL_CTL_DEL operation required a non - NULL pointer in event, even though this argument is ignored.
@@ -77,7 +86,11 @@ namespace netp {
 				//epEvent.events &= ~(EPOLLIN|EPOLLOUT);
 				epoll_op = EPOLL_CTL_DEL;
 			}
-			NETP_TRACE_IOE("[unwatch]fd: %d, op:%d, evts: %u", ctx->fd, epoll_op, epEvent.events);
+
+#ifdef _NETP_DEBUG_EPOLL_EVENTS
+			NETP_ASSERT(epoll_op == EPOLL_CTL_MOD ? (epEvent.events & (EPOLLIN|EPOLLOUT)) : true);
+#endif
+			NETP_TRACE_IOE("[EPOLL][##%u][unwatch][#%u]op: %c, evts: %u", m_epfd, ctx->fd, epoll_op, epoll_op == EPOLL_CTL_MOD ? 'm': 'd', epEvent.events);
 			return epoll_ctl(m_epfd,epoll_op,ctx->fd,&epEvent) ;
 		}
 
