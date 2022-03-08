@@ -169,26 +169,16 @@ namespace netp {
 				NRP<io_monitor>& iom = ctx->iom;
 				//do not check EPOLLERR|EPOLLHUP for read/write, as we has checked before, if they are set, sockerr must not be netp::OK
 				if ((ctx->flag&u8_t(io_flag::IO_READ)) && (events&(EPOLLIN|EPOLLRDHUP|EPOLLERR|EPOLLHUP)) ) {
-
-				#ifdef	_NETP_DEBUG_EPOLL_EVENTS
-					events &= ~EPOLLIN;
-				#endif
 					if (events&EPOLLRDHUP) {
 						ctx->flag |= io_flag::IO_READ_HUP;
 					}
 					iom->io_notify_read(sockerr, ctx);
 				}
+				//@note io_notify_read might result in io_write be removed
 				//read error might result in write act be cancelled, just cancel it 
 				if ((ctx->flag&u8_t(io_flag::IO_WRITE)) && (events&(EPOLLOUT|EPOLLERR|EPOLLHUP)) ) {
-#ifdef	_NETP_DEBUG_EPOLL_EVENTS
-					events &= ~EPOLLOUT;
-#endif
 					iom->io_notify_write(sockerr, ctx);
 				}
-
-#ifdef	_NETP_DEBUG_EPOLL_EVENTS
-				NETP_ASSERT((events&(EPOLLIN|EPOLLOUT)) == 0, "evt: %d", events );
-#endif
 			}
 		}
 	};
