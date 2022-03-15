@@ -121,21 +121,29 @@ namespace netp {
 			ch_dialf->set(std::make_tuple(rt, nullptr));
 			return;
 		}
+		NRP<socket_channel>& __socketch = std::get<1>(tupc);
+
+		if (cfg->laddr != nullptr) {
+			__socketch->bind(cfg->laddr);
+			if (rt != netp::OK) {
+				__socketch->ch_close();
+				ch_dialf->set(std::make_tuple(rt, nullptr));
+			}
+		}
 
 		NRP<promise<int>> so_dialp = netp::make_ref<promise<int>>();
-		NRP<socket_channel> so = std::get<1>(tupc);
-		so_dialp->if_done([ch_dialf, so](int const& rt) {
-			NETP_ASSERT( so->L->in_event_loop() );
+		so_dialp->if_done([ch_dialf, __socketch](int const& rt) {
+			NETP_ASSERT(__socketch->L->in_event_loop() );
 			if (rt == netp::OK) {
-				ch_dialf->set(std::make_tuple(rt, so));
+				ch_dialf->set(std::make_tuple(rt, __socketch));
 			} else {
 				ch_dialf->set(std::make_tuple(rt, nullptr));
-				NETP_ASSERT( so->ch_errno() != netp::OK );
-				NETP_ASSERT( so->ch_flag() & int(channel_flag::F_CLOSED) );
+				NETP_ASSERT(__socketch->ch_errno() != netp::OK );
+				NETP_ASSERT(__socketch->ch_flag() & int(channel_flag::F_CLOSED) );
 			}
 		});
 
-		so->do_dial(so_dialp, addr, initializer);
+		__socketch->do_dial(so_dialp, addr, initializer);
 	}
 
 	void do_dial(NRP<channel_dial_promise> const& ch_dialf, netp::size_t idx, std::vector< NRP<address>, netp::allocator<NRP<address>>> const& addrs, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg) {

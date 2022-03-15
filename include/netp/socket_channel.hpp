@@ -143,7 +143,6 @@ namespace netp {
 	class socket_channel:
 		public channel
 	{
-		friend void do_dup_socket_channel(NRP<netp::promise<std::tuple<int, NRP<socket_channel>>>> const& p, NRP<netp::socket_channel> const& ch, NRP<netp::event_loop> const& LL);
 		friend void do_dial(NRP<channel_dial_promise> const& ch_dialf, NRP<address> const& addr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg);
 		friend void do_listen_on(NRP<channel_listen_promise> const& listenp, NRP<address> const& laddr, fn_channel_initializer_t const& initializer, NRP<socket_cfg> const& cfg, int backlog);
 		typedef std::deque<socket_outbound_entry, netp::allocator<socket_outbound_entry>> socket_outbound_entry_t;
@@ -182,8 +181,8 @@ namespace netp {
 			m_type(cfg->type),
 			m_protocol(cfg->proto),
 			m_option(0),
-			m_laddr(cfg->laddr),
-			m_raddr(cfg->raddr),
+			m_laddr(cfg->fd != NETP_INVALID_SOCKET ? cfg->laddr : nullptr),
+			m_raddr(cfg->fd != NETP_INVALID_SOCKET ? cfg->raddr : nullptr),
 			m_fn_read(nullptr),
 			m_fn_write(nullptr),
 			m_io_ctx(0),
@@ -194,8 +193,17 @@ namespace netp {
 		{
 			NETP_ASSERT(cfg->L != nullptr);
 			if (cfg->fd != NETP_INVALID_SOCKET) {
+				NETP_ASSERT(m_laddr != nullptr);
+				NETP_ASSERT(m_raddr != nullptr);
 				m_chflag &= ~int(channel_flag::F_CLOSED);
 			}
+#ifdef _NETP_DEBUG
+			else {
+				NETP_ASSERT(m_laddr == nullptr);
+				NETP_ASSERT(m_raddr == nullptr);
+			}
+#endif
+
 		}
 
 		~socket_channel()
