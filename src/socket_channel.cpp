@@ -203,6 +203,7 @@ int socket_base::get_left_snd_queue() const {
 		return size;
 	}
 	*/
+
 	int socket_channel::get_linger(bool& on_off, int& linger_t) const {
 		NETP_ASSERT(m_fd > 0);
 		struct linger soLinger;
