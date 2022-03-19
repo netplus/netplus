@@ -193,8 +193,8 @@ namespace netp {
 		{
 			NETP_ASSERT(cfg->L != nullptr);
 			if (cfg->fd != NETP_INVALID_SOCKET) {
-				NETP_ASSERT(m_laddr != nullptr);
-				NETP_ASSERT(m_raddr != nullptr);
+				//@note: for unix_sock|pipe, there is no laddr&raddr
+				NETP_ASSERT(m_laddr != nullptr || m_raddr !=nullptr );
 				m_chflag &= ~int(channel_flag::F_CLOSED);
 			}
 #ifdef _NETP_DEBUG
