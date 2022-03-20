@@ -155,21 +155,21 @@ namespace netp {
 #endif
 	}
 
-	void app::_init_from_cfg_json(const char* jsonfile) {
+	int app::_init_from_cfg_json(const char* jsonfile) {
 		std::ifstream ifs(jsonfile, std::ifstream::in);
 		if (!ifs.good()) {
-			return;
+			return -1;
 		}
 		nlohmann::json cfg_json = nlohmann::json::parse(ifs, nullptr, false);
 		ifs.close();
 
 		if (cfg_json.is_discarded()) {
-			return;
+			return -1;
 		}
-		if (m_is_cfg_json_checked) { 
-			return;
+		if (m_is_cfg_json_loaded) { 
+			return -1;
 		}
-		m_is_cfg_json_checked = true;
+		m_is_cfg_json_loaded = true;
 
 		if (cfg_json.find("netp_memory_pool_size_level") != cfg_json.end() && cfg_json["netp_memory_pool_size_level"].is_number()) {
 			cfg_memory_pool_size_level(cfg_json["netp_memory_pool_size_level"].get<int>());
@@ -192,10 +192,13 @@ namespace netp {
 		if (cfg_json.find("netp_channel_tx_limit_clock") != cfg_json.end() && cfg_json["netp_channel_tx_limit_clock"].is_number()) {
 			cfg_channel_tx_limit_clock(cfg_json["netp_channel_tx_limit_clock"].get<int>());
 		}
+
+		return netp::OK;
 	}
 
-	void app::_parse_cfg(int argc, char** argv) {
-		if ( !(argc >1)) { return; }
+	int app::__parse_cfg(parse_cfg_mode mode, int argc, char** argv, std::string const& param, std::string& value) {
+		if (!(argc > 1)) { return -1; }
+
 		struct ::option long_options[] = {
 			{"netp-cfg", optional_argument, 0, 1},
 			{"netp-log", optional_argument, 0, 2 },
@@ -207,11 +210,38 @@ namespace netp {
 			{0,0,0,0}
 		};
 
+		int mode_fetch_val = -1;
+		if (mode == mode_fetch) {
+			if (param.length() == 0) {
+				return -1;
+			}
+			for (int i = 0; i < (sizeof(long_options) / sizeof(long_options[0])); ++i) {
+				if (long_options[i].name == 0) { continue; }
+				if (netp::strcmp(param.c_str(), long_options[i].name) == 0) {
+					mode_fetch_val = long_options[i].val;
+					break;
+				}
+			}
+			if (mode_fetch_val == -1) {
+				return -1;
+			}
+		}
+
+		int rt = mode == mode_fetch ? -1 : netp::OK;
 		::optind = 1;
 		const char* optstring = "H:h::";
 		int opt;
 		int opt_idx;
 		while ((opt = getopt_long(argc, argv, optstring, long_options, &opt_idx)) != -1) {
+
+			if (mode == mode_fetch) {
+				if (opt != mode_fetch_val) {
+					continue;
+				}
+				value = std::string(optarg);
+				return netp::OK;
+			}
+
 			switch (opt) {
 			case 1:
 			{
@@ -230,7 +260,7 @@ namespace netp {
 			break;
 			case 4:
 			{
-				cfg_loop_count(std::atoi(optarg)*std::thread::hardware_concurrency());
+				cfg_loop_count(std::atoi(optarg) * std::thread::hardware_concurrency());
 			}
 			break;
 			case 5:
@@ -250,13 +280,34 @@ namespace netp {
 			break;
 			}
 		}
+
+		std::atomic_thread_fence(std::memory_order_release);
+		return rt;
+	}
+
+	int app::_parse_cfg_fetch(int argc, char** argv, std::string const& param, std::string& value) {
+		if (param.length() == 0) {
+			return -1;
+		}
+		return __parse_cfg(mode_fetch, argc, argv, param, value);
+	}
+
+	void app::_parse_cfg(int argc, char** argv) {
+		std::string empty_string;
+		std::string bfr_cfg_json = std::string("netp-cfg");
+		std::string bfr_cfg_json_value = std::string();
+		int rt = _parse_cfg_fetch(argc, argv, bfr_cfg_json, bfr_cfg_json_value);
+		if (rt == -1 || bfr_cfg_json_value.length() == 0 || (_init_from_cfg_json(bfr_cfg_json_value.c_str()) == -1)) {
+			_init_from_cfg_json("./netp.cfg.json");
+		}
+		__parse_cfg(mode_do, argc, argv, empty_string, empty_string);
 	}
 
 	app::app() :
 		m_loop_count(u32_t(std::thread::hardware_concurrency())),
 		m_channel_read_buf_size(128*1024),
 		m_channel_tx_limit_clock(30),/*resolution on windows is 15ms*/
-		m_is_cfg_json_checked(false),
+		m_is_cfg_json_loaded(false),
 		m_should_exit(false), 
 		m_app_state(app_state::s_idle),
 		m_logfilepathname()
@@ -280,11 +331,6 @@ namespace netp {
 		}
 
 		_parse_cfg(argc, argv);
-
-		//check def
-		if (!m_is_cfg_json_checked) {
-			_init_from_cfg_json("./netp.cfg.json");
-		}
 
 		if (m_logfilepathname.length() == 0) {
 			std::string data = netp::curr_local_data_str();

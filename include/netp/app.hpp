@@ -28,6 +28,11 @@ namespace netp {
 		s_loop_wait_done
 	};
 
+	enum parse_cfg_mode {
+		mode_do,
+		mode_fetch
+	};
+
 	class app:
 		public netp::singleton<app>
 	{
@@ -42,7 +47,7 @@ namespace netp {
 		u32_t m_loop_count;
 		u32_t m_channel_read_buf_size; //in bytes
 		u32_t m_channel_tx_limit_clock; //in millis
-		bool m_is_cfg_json_checked;
+		bool m_is_cfg_json_loaded;
 		bool m_should_exit;
 
 		std::atomic<app_state> m_app_state;
@@ -53,7 +58,10 @@ namespace netp {
 		void _app_thread_init();
 		void _app_thread_deinit();
 
-		void _init_from_cfg_json(const char* jsonfile);
+		int _init_from_cfg_json(const char* jsonfile);
+
+		int __parse_cfg(parse_cfg_mode mode, int argc, char** argv, std::string const& param, std::string& value);
+		int _parse_cfg_fetch(int argc, char** argv, std::string const& param, std::string& value);
 		void _parse_cfg(int argc, char** argv);
 
 		void _init();
