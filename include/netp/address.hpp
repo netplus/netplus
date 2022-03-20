@@ -112,11 +112,6 @@ namespace netp {
 	}
 
 	__NETP_FORCE_INLINE
-	bool is_internal(ipv4_t v4_ /*nip*/) {
-		return is_loopback_or_rfc1918(v4_);
-	}
-
-	__NETP_FORCE_INLINE
 	bool is_loopback_or_rfc1918(ipv4_t v4_) {
 		const ipv4_u4 _ipv4_u4 = { v4_ };
 		switch (_ipv4_u4.u4.u1) {
@@ -130,6 +125,11 @@ namespace netp {
 		default:
 			return false;
 		}
+	}
+
+	__NETP_FORCE_INLINE
+		bool is_internal(ipv4_t v4_ /*nip*/) {
+		return is_loopback_or_rfc1918(v4_);
 	}
 
 	struct address final :
@@ -154,7 +154,7 @@ namespace netp {
 
 		inline bool is_rfc1918() {
 			if (m_in.sin_family != NETP_AF_UNSPEC) {
-				return netp::is_internal(m_in.sin_addr.s_addr);
+				return netp::is_rfc1918(m_in.sin_addr.s_addr);
 			}
 			NETP_TODO("IPV6");
 		}
