@@ -153,9 +153,9 @@ SIMD_DEFINES :=\
 
 
 ifdef ver
-	TARGET_VER := $(ver)
+	BUILD_VER := $(ver)
 else
-	TARGET_VER := a000
+	BUILD_VER := a000
 endif
 
 CC_DUMP := NO
