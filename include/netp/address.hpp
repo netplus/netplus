@@ -74,7 +74,8 @@ namespace netp {
 	extern string_t nipv4todotip(ipv4_t const& ip);
 	inline string_t ipv4todotip(ipv4_t const& ip) { return nipv4todotip(htonl(ip)); }
 
-	__NETP_FORCE_INLINE netp::u32_t ipv4_t4h(ipv4_t lip, port_t lport, ipv4_t rip, port_t rport) {
+	__NETP_FORCE_INLINE
+	netp::u32_t ipv4_t4h(ipv4_t lip, port_t lport, ipv4_t rip, port_t rport) {
 		return ((netp::u32_t)(lip) * 59) ^
 			((netp::u32_t)(rip)) ^
 			((netp::u32_t)(lport) << 16) ^
@@ -82,11 +83,11 @@ namespace netp {
 			;
 	}
 
-
 	//::1 - IPv6  loopback
 	//127.0.0.0 - 127.255.255.255  (127 / 8 prefix)
-	inline bool is_loopback(ipv4_t v4_/*nip*/) {
-		ipv4_u4 _ipv4_u4 = { v4_ };
+	__NETP_FORCE_INLINE
+	bool is_loopback(ipv4_t v4_/*nip*/) {
+		const ipv4_u4 _ipv4_u4 = { v4_ };
 		return _ipv4_u4.u4.u1 == 127;
 	}
 
@@ -95,22 +96,40 @@ namespace netp {
 	172.16.0.0   -   172.31.255.255  (172.16/12 prefix)
 	192.168.0.0  -   192.168.255.255 (192.168/16 prefix)
 	*/
-	inline bool is_rfc1918(ipv4_t v4_/*nip*/) {
-		ipv4_u4 _ipv4_u4 = { v4_ };
+	__NETP_FORCE_INLINE
+	bool is_rfc1918(ipv4_t v4_/*nip*/) {
+		const ipv4_u4 _ipv4_u4 = { v4_ };
 		switch (_ipv4_u4.u4.u1) {
 		case 10:
 			return true;
-		case 172:
-			return _ipv4_u4.u4.u2 >= 16 && _ipv4_u4.u4.u2 < 32;
 		case 192:
-			return _ipv4_u4.u4.u2 == 168;
+			return (_ipv4_u4.u4.u2 == 168);
+		case 172:
+			return (_ipv4_u4.u4.u2 >= 16) && (_ipv4_u4.u4.u2 < 32);
 		default:
 			return false;
 		}
 	}
 
-	inline bool is_internal(ipv4_t v4_ /*nip*/) {
-		return is_loopback(v4_) || is_rfc1918(v4_);
+	__NETP_FORCE_INLINE
+	bool is_internal(ipv4_t v4_ /*nip*/) {
+		return is_loopback_or_rfc1918(v4_);
+	}
+
+	__NETP_FORCE_INLINE
+	bool is_loopback_or_rfc1918(ipv4_t v4_) {
+		const ipv4_u4 _ipv4_u4 = { v4_ };
+		switch (_ipv4_u4.u4.u1) {
+		case 10:
+		case 127:
+			return true;
+		case 192:
+			return (_ipv4_u4.u4.u2 == 168);
+		case 172:
+			return (_ipv4_u4.u4.u2 >= 16) && (_ipv4_u4.u4.u2 < 32);
+		default:
+			return false;
+		}
 	}
 
 	struct address final :
