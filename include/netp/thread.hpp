@@ -153,7 +153,7 @@ _VARIADIC_EXPAND_0X(_THREAD_CONS, , , , )
 			do {
 				challenge_rt = m_th_data_state.compare_exchange_weak(__borrow, thead_th_data_state::th_data_state_idle, std::memory_order_acq_rel, std::memory_order_acquire);
 				if (challenge_rt == false) {
-					NETP_ASSERT(__borrow == thead_th_data_state::th_data_state_borrowed);
+					NETP_ASSERT(__borrow == thead_th_data_state::th_data_state_borrowed, "__borrow: %u", thead_th_data_state::th_data_state_borrowed);
 				}
 			} while (!challenge_rt);
 			//a store to reset might be followed right after the compare_exchange_weak opeation
