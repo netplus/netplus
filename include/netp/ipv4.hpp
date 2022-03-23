@@ -13,14 +13,17 @@ namespace netp {
 	typedef std::vector<ipv4_t, netp::allocator<ipv4_t>> vector_ipv4_t;
 
 #pragma pack(push,1)
-	union ipv4_u4 {
-		ipv4_t nipv4;
-		struct __ipv4_c4 {
-			u8_t u1;
-			u8_t u2;
-			u8_t u3;
-			u8_t u4;
-		} u4;
+	//@comment
+	//192.168.1.1
+	//little endian, b1 == 1, big endian b1 == 192
+	union ipv4_bits {
+		ipv4_t v4; //
+		struct _bit {
+			u8_t b1;
+			u8_t b2;
+			u8_t b3;
+			u8_t b4;
+		} bits;
 	};
 #pragma pack(pop)
 }

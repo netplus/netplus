@@ -87,8 +87,8 @@ namespace netp {
 	//127.0.0.0 - 127.255.255.255  (127 / 8 prefix)
 	__NETP_FORCE_INLINE
 	bool is_loopback(ipv4_t v4_/*nip*/) {
-		const ipv4_u4 _ipv4_u4 = { v4_ };
-		return _ipv4_u4.u4.u1 == 127;
+		const ipv4_bits __v4bits = { v4_ };
+		return __v4bits.bits.b1 == 127;
 	}
 
 	/* An IP should be considered as internal when
@@ -98,14 +98,14 @@ namespace netp {
 	*/
 	__NETP_FORCE_INLINE
 	bool is_rfc1918(ipv4_t v4_/*nip*/) {
-		const ipv4_u4 _ipv4_u4 = { v4_ };
-		switch (_ipv4_u4.u4.u1) {
+		const ipv4_bits _ipv4_u4 = { v4_ };
+		switch (_ipv4_u4.bits.b1) {
 		case 10:
 			return true;
 		case 192:
-			return (_ipv4_u4.u4.u2 == 168);
+			return (_ipv4_u4.bits.b2 == 168);
 		case 172:
-			return (_ipv4_u4.u4.u2 >= 16) && (_ipv4_u4.u4.u2 < 32);
+			return (_ipv4_u4.bits.b2 >= 16) && (_ipv4_u4.bits.b2 < 32);
 		default:
 			return false;
 		}
@@ -113,15 +113,15 @@ namespace netp {
 
 	__NETP_FORCE_INLINE
 	bool is_loopback_or_rfc1918(ipv4_t v4_) {
-		const ipv4_u4 _ipv4_u4 = { v4_ };
-		switch (_ipv4_u4.u4.u1) {
+		const ipv4_bits _ipv4_u4 = { v4_ };
+		switch (_ipv4_u4.bits.b1) {
 		case 10:
 		case 127:
 			return true;
 		case 192:
-			return (_ipv4_u4.u4.u2 == 168);
+			return (_ipv4_u4.bits.b2 == 168);
 		case 172:
-			return (_ipv4_u4.u4.u2 >= 16) && (_ipv4_u4.u4.u2 < 32);
+			return (_ipv4_u4.bits.b2 >= 16) && (_ipv4_u4.bits.b2 < 32);
 		default:
 			return false;
 		}
