@@ -92,9 +92,9 @@ namespace netp {
 			challenge_rt = m_th_data_state.compare_exchange_weak(__idle,thead_th_data_state::th_data_state_reset_already,
 				std::memory_order_acq_rel, std::memory_order_acquire);
 			if (__idle != thead_th_data_state::th_data_state_reset_already) {
+				__idle = th_data_state_idle;
 				netp::this_thread::no_interrupt_yield();
 			}
-			__idle = th_data_state_idle;
 		} while (!challenge_rt);
 		NETP_ASSERT(m_th_data_state.load(std::memory_order_acquire) == thead_th_data_state::th_data_state_reset_already);
 		

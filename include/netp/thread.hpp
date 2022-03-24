@@ -134,10 +134,10 @@ _VARIADIC_EXPAND_0X(_THREAD_CONS, , , , )
 					//no interrupt needed anymore, just return
 					return;
 				}
-				if (__idle == thead_th_data_state::th_data_state_not_set) {
+				//if (__idle == thead_th_data_state::th_data_state_not_set) {
 					/*it might be if the os schedule is busy*/
 					//try again
-				}
+				//}
 				__idle = thead_th_data_state::th_data_state_idle;
 			} while (!challenge_rt);
 			NETP_ASSERT(m_th_data_state.load(std::memory_order_acquire) == thead_th_data_state::th_data_state_borrowed);
