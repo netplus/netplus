@@ -22,6 +22,9 @@ MSVC++ 5.0  _MSC_VER == 1100
 #define __NETP_TLS thread_local
 #define __NETP_FORCE_INLINE __forceinline
 #define __NETP_NO_INLINE	__declspec(noinline)
+#define __NETP_ALIGN(n) __declspec(align(n)) 
+
+
 
 #if defined(_MSC_VER) && (_MSC_VER < 1600)
 	typedef unsigned char uint8_t;
@@ -61,6 +64,8 @@ MSVC++ 5.0  _MSC_VER == 1100
 
 #define NETP_LIKELY(x) (x)
 #define NETP_UNLIKELY(x) (x)
+
+
 
 /*
 The __AVX__ preprocessor symbol is defined when the /arch:AVX, /arch:AVX2 or /arch:AVX512 compiler option is specified.
