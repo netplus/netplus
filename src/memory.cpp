@@ -60,9 +60,10 @@ namespace netp {
 		0x0001 + 0x1110(~0x1001) = 0x1111
 		0x1111 + 1 = 0x1 0000 = 0
 		*/
+
 		const u8_t offset = u8_t(sizeof(aligned_hdr)) + u8_t((~(std::size_t(a_hdr) + sizeof(aligned_hdr) - 1)) & (alignment-1));
 
-		NETP_MEMORY_POOL_ASSERT(((~(std::size_t(a_hdr) + sizeof(aligned_hdr) - 1)) == (~(std::size_t(a_hdr) + sizeof(aligned_hdr)) + 1)) && (((std::size_t(a_hdr) + std::size_t(offset)) % alignment) == 0) );
+		NETP_MEMORY_POOL_ASSERT( (alignment<0xff) && ((~(std::size_t(a_hdr) + sizeof(aligned_hdr) - 1)) == (~(std::size_t(a_hdr) + sizeof(aligned_hdr)) + 1)) && (((std::size_t(a_hdr) + std::size_t(offset)) % alignment) == 0) );
 		NETP_MEMORY_POOL_ASSERT(
 			NETP_IS_DEFAULT_ALIGN(alignment) ? ((alignment <= (sizeof(aligned_hdr))) ? offset == sizeof(aligned_hdr) : offset == (alignment))
 			: (offset <= (sizeof(aligned_hdr)+alignment))

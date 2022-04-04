@@ -22,7 +22,6 @@
 
 namespace netp {
 
-
 #ifdef	_NETP_DEBUG_MEMORY_TABLE
 	extern void memory_test_table();
 #endif
@@ -172,11 +171,11 @@ namespace netp {
 		}
 	};
 
-	template<typename T, class allocator_wrapper_t>
+	template<typename T, class allocator_wrapper_t, size_t _allocator_def_alignment=NETP_DEFAULT_ALIGN>
 	struct __allocator_base:
 		private allocator_wrapper_t
 	{
-		typedef __allocator_base<T, allocator_wrapper_t> allocator_base_t;
+		typedef __allocator_base<T, allocator_wrapper_t, _allocator_def_alignment> allocator_base_t;
 		typedef std::size_t size_type;
 		typedef std::ptrdiff_t difference_type;
 		typedef T* pointer;
@@ -186,22 +185,22 @@ namespace netp {
 		typedef T value_type;
 
 		//these three api for convenience purpose
-		__NETP_FORCE_INLINE static pointer malloc(size_t n, size_t alignment= NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static pointer malloc(size_t n, size_t alignment= _allocator_def_alignment) {
 			return static_cast<pointer>(allocator_wrapper_t::malloc(sizeof(value_type) * n, alignment));
 		}
-		__NETP_FORCE_INLINE static pointer calloc(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static pointer calloc(size_t n, size_t alignment = _allocator_def_alignment) {
 			return static_cast<pointer>(allocator_wrapper_t::calloc(sizeof(value_type) * n, alignment));
 		}
 		__NETP_FORCE_INLINE static void free(pointer p) {
 			allocator_wrapper_t::free(p);
 		}
-		__NETP_FORCE_INLINE static pointer realloc(pointer ptr, size_t size, size_t alignment = NETP_DEFAULT_ALIGN) {
+		__NETP_FORCE_INLINE static pointer realloc(pointer ptr, size_t size, size_t alignment = _allocator_def_alignment) {
 			return static_cast<pointer>(allocator_wrapper_t::realloc(ptr,size,alignment));
 		}
 
 		template<class... _Args_t>
 		inline static pointer make(_Args_t&&... _Args) {
-			pointer p = static_cast<pointer>(allocator_wrapper_t::malloc(sizeof(value_type)));
+			pointer p = static_cast<pointer>(allocator_wrapper_t::malloc(sizeof(value_type), _allocator_def_alignment));
 			if (p != 0) {
 				::new ((void*)p)(value_type)(std::forward<_Args_t>(_Args)...);
 			}
@@ -221,7 +220,7 @@ namespace netp {
 		struct __make_array_trait {
 			//this is track
 			//function template does not support partial specialised
-			inline static array_ele_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+			inline static array_ele_t* __make_array(size_t n, size_t alignment) {
 				array_ele_t* ptr = (_allocator_base_t::malloc(n, alignment));
 				for (size_t i = 0; i < n; ++i) {
 					//TODO: might throw exception
@@ -244,7 +243,7 @@ namespace netp {
 		struct __make_array_trait<byte_t, _allocator_base_t> {
 			//this is a track
 			//function template does not support partial specialised
-			inline static byte_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+			inline static byte_t* __make_array(size_t n, size_t alignment) {
 				return (_allocator_base_t::malloc(n, alignment));
 			}
 			inline static void __trash_array(byte_t* ptr, size_t ) {
@@ -256,7 +255,7 @@ namespace netp {
 		struct __make_array_trait<u16_t, _allocator_base_t> {
 			//this is track
 			//function template does not support partial specialised
-			inline static u16_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+			inline static u16_t* __make_array(size_t n, size_t alignment) {
 				return (_allocator_base_t::malloc(n, alignment));
 			}
 			inline static void __trash_array(u16_t* ptr, size_t ) {
@@ -268,7 +267,7 @@ namespace netp {
 		struct __make_array_trait<u32_t, _allocator_base_t> {
 			//this is track
 			//function template does not support partial specialised
-			inline static u32_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+			inline static u32_t* __make_array(size_t n, size_t alignment ) {
 				return (_allocator_base_t::malloc(n, alignment));
 			}
 			inline static void __trash_array(u32_t* ptr, size_t ) {
@@ -280,7 +279,7 @@ namespace netp {
 		struct __make_array_trait<u64_t, _allocator_base_t> {
 			//this is track
 			//function template does not support partial specialised
-			inline static u64_t* __make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+			inline static u64_t* __make_array(size_t n, size_t alignment) {
 				return (_allocator_base_t::malloc(n, alignment));
 			}
 			inline static void __trash_array(u64_t* ptr, size_t) {
@@ -289,7 +288,7 @@ namespace netp {
 		};
 
 	public:
-		inline static pointer make_array(size_t n, size_t alignment = NETP_DEFAULT_ALIGN) {
+		inline static pointer make_array(size_t n, size_t alignment = _allocator_def_alignment) {
 			return __make_array_trait<value_type, allocator_base_t>::__make_array(n, alignment);
 		}
 
@@ -299,7 +298,7 @@ namespace netp {
 
 		//for container compliance below
 		inline pointer allocate(size_type n) {
-			return allocator_base_t::malloc(n);
+			return allocator_base_t::malloc(n, _allocator_def_alignment);
 		}
 
 		inline void deallocate(pointer p, size_type) {
@@ -329,12 +328,12 @@ namespace netp {
 		}
 	};
 
-	template <class T>
+	template <class T, size_t alignment>
 	struct allocator_with_std_malloc :
 		public __allocator_base<T, allocator_wrapper<tag_allocator_std_malloc>>
 	{
-		typedef  __allocator_base<T, allocator_wrapper<tag_allocator_std_malloc>> allocator_base_t;
-		typedef allocator_with_std_malloc<T> allocator_t;
+		typedef  __allocator_base<T, allocator_wrapper<tag_allocator_std_malloc>,alignment> allocator_base_t;
+		typedef allocator_with_std_malloc<T,alignment> allocator_t;
 
 		typedef typename allocator_base_t::size_type size_type;
 		typedef typename allocator_base_t::difference_type difference_type;
@@ -346,7 +345,7 @@ namespace netp {
 
 		template <class U>
 		struct rebind {
-			typedef allocator_with_std_malloc<U> other;
+			typedef allocator_with_std_malloc<U, alignment> other;
 		};
 
 		//cpp 17
@@ -364,18 +363,19 @@ namespace netp {
 
 		//hint for kinds of container construct proxy
 		template <class U>
-		allocator_with_std_malloc(const allocator_with_std_malloc<U>&) _NETP_NOEXCEPT
+		allocator_with_std_malloc(const allocator_with_std_malloc<U, alignment>&) _NETP_NOEXCEPT
 		{
 		}
 	};
 
 	//thread safe
-	template <class T>
+	//NETP_DEFAULT_ALIGN
+	template <class T, size_t alignment>
 	struct allocator_with_tls_block_pool ://compitable with stl
-		public __allocator_base<T, allocator_wrapper<tag_allocator_tls_allocator_with_block_pool> >
+		public __allocator_base<T, allocator_wrapper<tag_allocator_tls_allocator_with_block_pool>, alignment>
 	{
-		typedef __allocator_base<T, allocator_wrapper<tag_allocator_tls_allocator_with_block_pool> > allocator_base_t;
-		typedef allocator_with_tls_block_pool<T> allocator_t;
+		typedef __allocator_base<T, allocator_wrapper<tag_allocator_tls_allocator_with_block_pool>, alignment> allocator_base_t;
+		typedef allocator_with_tls_block_pool<T, alignment> allocator_t;
 
 		typedef typename allocator_base_t::size_type size_type;
 		typedef typename allocator_base_t::difference_type difference_type;
@@ -387,7 +387,7 @@ namespace netp {
 
 		template <class U>
 		struct rebind {
-			typedef allocator_with_tls_block_pool<U> other;
+			typedef allocator_with_tls_block_pool<U, alignment> other;
 		};
 		//cpp 17
 		//typedef true_type is_always_equal;
@@ -404,22 +404,28 @@ namespace netp {
 
 		//hint for kinds of container construct proxy
 		template <class U>
-		allocator_with_tls_block_pool(const allocator_with_tls_block_pool<U>&) _NETP_NOEXCEPT
+		allocator_with_tls_block_pool(const allocator_with_tls_block_pool<U, alignment>&) _NETP_NOEXCEPT
 		{
 		}
 	};
 
 	template<class T>
+	struct __alignof_t {
+		static constexpr size_t value = (alignof(T) < NETP_DEFAULT_ALIGN) ? NETP_DEFAULT_ALIGN: alignof(T);
+	};
+
+	template<class T, size_t alignment= __alignof_t<T>::value>
 #if defined(NETP_MEMORY_USE_ALLOCATOR_WITH_TLS_BLCOK_POOL)
-	using allocator = netp::allocator_with_tls_block_pool<T>;
+	using allocator = netp::allocator_with_tls_block_pool<T, alignment>;
 #else
-	using allocator = netp::allocator_with_std_malloc<T>;
+	using allocator = netp::allocator_with_std_malloc<T, alignment>;
 #endif
 
+	//propagate-on-container-copy-assignment related
 	template<typename _T1, typename _T2>
 	inline bool operator==(const allocator<_T1>&, const allocator<_T2>&)
 	{
-		return true;
+		return __alignof_t<_T1>::value == __alignof_t<_T2>::value;
 	}
 	template<typename _Tp>
 	inline bool operator==(const allocator<_Tp>&, const allocator<_Tp>&)
@@ -429,7 +435,7 @@ namespace netp {
 	template<typename _T1, typename _T2>
 	inline bool operator!=(const allocator<_T1>&, const allocator<_T2>&)
 	{
-		return false;
+		return __alignof_t<_T1>::value != __alignof_t<_T2>::value;
 	}
 	template<typename _Tp>
 	inline bool operator!=(const allocator<_Tp>&, const allocator<_Tp>&)
