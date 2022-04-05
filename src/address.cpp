@@ -207,6 +207,11 @@ namespace netp {
 		int ret = ::inet_pton(AF_INET6, v6string, &in6);
 		if (ret == 1) {
 			std::memcpy( &(ip6.byte[0]), &(in6.u.Byte[0]), 16 );
+
+#ifdef _NETP_DEBUG
+			netp::string_t v6s= nipv6tov6string(ip6.v6);
+			NETP_ASSERT(netp::strncmp(v6string, v6s.c_str(), v6s.length()) == 0);
+#endif
 		} else {
 			ip6.v6.u64.A = 0;
 			ip6.v6.u64.B = 0;

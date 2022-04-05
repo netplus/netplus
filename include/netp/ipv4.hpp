@@ -26,7 +26,7 @@ namespace netp {
 	static_assert(sizeof(ipv4_t) == 4, "ipv4_t size assert failed");
 
 	__NETP_FORCE_INLINE
-		bool operator== (ipv4_t const& A, ipv4_t const& B) {
+	bool operator== (ipv4_t const& A, ipv4_t const& B) {
 		return A.u32 == B.u32;
 	}
 	__NETP_FORCE_INLINE
