@@ -150,37 +150,27 @@ namespace netp {
 
 	ipv4_t dotiptonip(const char* ipaddr) {
 		NETP_ASSERT(strlen(ipaddr) > 0);
-		struct in_addr inaddr;
-		int ret = ::inet_pton(AF_INET, ipaddr, &inaddr);
-		switch (ret) {
-			case 1:
-			{
-				return inaddr.s_addr;
-			}
-			break;
-			case 0:
-			{
-				return 0;
-			}
-			break;
-			case -1:
-			default:
-			{
-			}
-			break;
+		struct in_addr in4;
+		int ret = ::inet_pton(AF_INET, ipaddr, &in4);
+		if (ret == 1) {
+			return { in4.s_addr };		
 		}
-		 return 0;
+		return { 0 };
 	}
 
 	ipv4_t dotiptoip(const char* ipaddr) {
-		return ntohl(dotiptonip(ipaddr));
+		ipv4_t v4 = dotiptonip(ipaddr);
+		v4.u32 = NETP_NTOHL(v4.u32);
+		return v4;
 	}
 
 	ipv4_t hosttoip( const char* hostname ) {
 		NETP_ASSERT( strlen(hostname) > 0 );
 		string_t dotip;
 		int ec = get_ip_by_host( hostname, dotip, 0 );
-		NETP_RETURN_V_IF_NOT_MATCH( 0, ec ==netp::OK );
+		if (ec != netp::OK) {
+			return { 0 };
+		}
 		return dotiptoip(dotip.c_str());
 	}
 
@@ -201,16 +191,38 @@ namespace netp {
 	}
 
 	string_t nipv4todotip(ipv4_t const& nip) { 
-		in_addr ia;
-		ia.s_addr = nip;
+		in_addr in4;
+		in4.s_addr = nip.u32;
 		char addr[16] = { 0 };
-		const char* addr_cstr = ::inet_ntop(AF_INET, &ia, addr, 16);
+		const char* addr_cstr = ::inet_ntop(AF_INET, &in4, addr, 16);
 		if (NETP_LIKELY(addr_cstr != nullptr)) {
 			return string_t(addr);
 		}
 		return string_t();
 	}
 
+	ipv6_t v6stringtonip(const char* v6string) {
+		in6_addr in6;
+		ip_t ip6;
+		int ret = ::inet_pton(AF_INET6, v6string, &in6);
+		if (ret == 1) {
+			std::memcpy( &(ip6.byte[0]), &(in6.u.Byte[0]), 16 );
+		} else {
+			ip6.v6.u64.A = 0;
+			ip6.v6.u64.B = 0;
+		}
+		return ip6.v6;
+	}
+	string_t nipv6tov6string(ipv6_t const& v6) {
+		in6_addr in6;
+		std::memcpy( &(in6.u.Byte[0]), (const char*)&v6, 16);
+		char v6string[64] = { 0 };
+		const char* addr_cstr = ::inet_ntop(AF_INET6, &in6, v6string, 64);
+		if (NETP_LIKELY(addr_cstr != nullptr)) {
+			return string_t(v6string);
+		}
+		return string_t();
+	}
 
 	address::address()
 	{
@@ -226,7 +238,7 @@ namespace netp {
 		NETP_ASSERT( ip != nullptr && netp::strlen(ip) );
 		m_in.sin_port = htons(port);
 		m_in.sin_family = u8_t(f);
-		m_in.sin_addr.s_addr = dotiptonip(ip);
+		m_in.sin_addr.s_addr = dotiptonip(ip).u32;
 	}
 
 	address::address( const struct sockaddr_in* sockaddr_in_, size_t slen )
@@ -246,14 +258,14 @@ namespace netp {
 		NETP_ASSERT(f < 255);
 		m_in.sin_port = htons(port);
 		m_in.sin_family = u8_t(f);
-		m_in.sin_addr.s_addr = ipv4tonipv4(ip);
+		m_in.sin_addr.s_addr = ipv4tonipv4(ip).u32;
 	}
 	
 
 	address::~address() {}
 
 	const string_t address::dotip() const {
-		return nipv4todotip(m_in.sin_addr.s_addr);
+		return nipv4todotip({ m_in.sin_addr.s_addr });
 	}
 
 	string_t address::to_string() const {

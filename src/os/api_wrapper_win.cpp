@@ -88,7 +88,7 @@ namespace netp { namespace os {
 			IP_ADAPTER_DNS_SERVER_ADDRESS* pDnsServer = adapter_address->FirstDnsServerAddress;
 			while (pDnsServer) {
 				sockaddr_in* sa_in = (sockaddr_in*)pDnsServer->Address.lpSockaddr;
-				adapter_.dns.push_back( nipv4toipv4(sa_in->sin_addr.s_addr) );
+				adapter_.dns.push_back( nipv4toipv4({sa_in->sin_addr.s_addr}) );
 				pDnsServer = pDnsServer->Next;
 			}
 
@@ -98,7 +98,7 @@ namespace netp { namespace os {
 					sockaddr_in* sa_in = (sockaddr_in*)(pUnicast->Address.lpSockaddr);
 					ULONG mask;
 					ConvertLengthToIpv4Mask(pUnicast->OnLinkPrefixLength, &mask);
-					adapter_.unicast.push_back({ nipv4toipv4(sa_in->sin_addr.s_addr) , htonl(mask) });
+					adapter_.unicast.push_back({ nipv4toipv4({sa_in->sin_addr.s_addr}) , htonl(mask) });
 				} else if (pUnicast->Address.lpSockaddr->sa_family == AF_INET6) {
 					NETP_ERR("[api_wrapper_win]get_adapters, unicast, ipv6, skip");
 				} else {
@@ -115,7 +115,7 @@ namespace netp { namespace os {
 				case AF_INET:
 				{
 					sockaddr_in* sa_in = (sockaddr_in*)(pANYAddress->Address.lpSockaddr);
-					adapter_.anycast.push_back(nipv4toipv4(sa_in->sin_addr.s_addr));
+					adapter_.anycast.push_back(nipv4toipv4({ sa_in->sin_addr.s_addr }));
 				}
 				break;
 				case AF_INET6:
@@ -133,7 +133,7 @@ namespace netp { namespace os {
 				case AF_INET:
 				{
 					sockaddr_in* sa_in = (sockaddr_in*)(pMULAddress->Address.lpSockaddr);
-					adapter_.multicast.push_back(nipv4toipv4(sa_in->sin_addr.s_addr));
+					adapter_.multicast.push_back(nipv4toipv4({ sa_in->sin_addr.s_addr }));
 				}
 				break;
 				case AF_INET6:
@@ -151,7 +151,7 @@ namespace netp { namespace os {
 				case AF_INET:
 				{
 					sockaddr_in* sa_in = (sockaddr_in*)(pGWAddress->Address.lpSockaddr);
-					adapter_.gateway.push_back(nipv4toipv4(sa_in->sin_addr.s_addr));
+					adapter_.gateway.push_back(nipv4toipv4({ sa_in->sin_addr.s_addr }));
 				}
 				break;
 				case AF_INET6:

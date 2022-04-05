@@ -421,7 +421,7 @@ int socket_base::get_left_snd_queue() const {
 
 #ifdef _NETP_WIN
 		//not sure linux os behaviour, to test
-		if (0 == local_addr()->ipv4() && m_family != u8_t(NETP_AF_USER/*FOR BFR*/) ) {
+		if (0 == local_addr()->ipv4().u32 && m_family != u8_t(NETP_AF_USER/*FOR BFR*/) ) {
 			status = netp::E_WSAENOTCONN;
 			goto _set_fail_and_return;
 		}

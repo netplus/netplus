@@ -170,7 +170,7 @@ namespace netp {
 			switch (n->family) {
 			case AF_INET:
 			{
-				NETP_INFO("ns: %s", nipv4todotip(n->addr.addr4.s_addr).c_str());
+				NETP_INFO("ns: %s", nipv4todotip({ n->addr.addr4.s_addr }).c_str());
 			}
 			break;
 			case AF_INET6:

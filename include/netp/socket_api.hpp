@@ -49,7 +49,7 @@ namespace netp {
 			if (pCMsgHdr->cmsg_type == IP_PKTINFO) {
 				IN_PKTINFO* pPktInfo = (IN_PKTINFO*)WSA_CMSG_DATA(pCMsgHdr);
 				if (pPktInfo != nullptr) {
-					lipv4 = netp::nipv4toipv4(pPktInfo->ipi_addr.s_addr);
+					lipv4 = netp::nipv4toipv4({pPktInfo->ipi_addr.s_addr});
 				}
 			}
 			return _nbytes;
@@ -338,7 +338,7 @@ namespace netp {
 			::memset(&addr_in, 0, sizeof(addr_in));
 			addr_in.sin_family = u16_t(addr_to->family());
 			addr_in.sin_port = addr_to->nport();
-			addr_in.sin_addr.s_addr = addr_to->nipv4();
+			addr_in.sin_addr.s_addr = addr_to->nipv4().u32;
 			nbytes = ::sendto(fd, reinterpret_cast<const char*>(buf), (int)len, flag, reinterpret_cast<struct sockaddr*>(&addr_in), sizeof(addr_in));
 		} else {
 			nbytes = ::sendto(fd, reinterpret_cast<const char*>(buf), (int)len, flag,NULL, 0);
