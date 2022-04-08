@@ -1,2 +1,6 @@
 const vs constexpr
 The primary difference between const and constexpr variables is that the initialization of a const variable can be deferred until run time. A constexpr variable must be initialized at compile time. All constexpr variables are const
+
+leftshift
+First, integer promotions are performed, individually, on each operand (Note: this is unlike other binary arithmetic operators, which all perform usual arithmetic conversions). The type of the result is the type of lhs after promotion.
+The behavior is undefined if rhs is negative or is greater or equal the number of bits in the promoted lhs.
