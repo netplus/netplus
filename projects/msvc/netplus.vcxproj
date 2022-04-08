@@ -117,6 +117,7 @@
     <ClInclude Include="..\..\include\netp\handler\tls_handler.hpp" />
     <ClInclude Include="..\..\include\netp\handler\tls_policy.hpp" />
     <ClInclude Include="..\..\include\netp\handler\tls_server.hpp" />
+    <ClInclude Include="..\..\include\netp\ip.hpp" />
     <ClInclude Include="..\..\include\netp\util_hlen.hpp" />
     <ClInclude Include="..\..\include\netp\http\chunk_encoder.hpp" />
     <ClInclude Include="..\..\include\netp\http\url_parser.hpp" />
@@ -283,6 +284,7 @@
     <ClCompile Include="..\..\src\http\parser.cpp" />
     <ClCompile Include="..\..\src\http\url_parser.cpp" />
     <ClCompile Include="..\..\src\event_loop.cpp" />
+    <ClCompile Include="..\..\src\ip.cpp" />
     <ClCompile Include="..\..\src\logger\android_log_print.cpp" />
     <ClCompile Include="..\..\src\logger\console_logger.cpp" />
     <ClCompile Include="..\..\src\logger\file_logger.cpp" />

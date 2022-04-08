@@ -558,6 +558,9 @@
     <ClInclude Include="..\..\3rd\c-ares\c-ares-1.18.1\src\lib\setup_once.h">
       <Filter>3rd\c-ares\src</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\netp\ip.hpp">
+      <Filter>Header Files\netp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">
@@ -877,6 +880,9 @@
     </ClCompile>
     <ClCompile Include="..\..\3rd\c-ares\c-ares-1.18.1\src\lib\windows_port.c">
       <Filter>3rd\c-ares\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ip.cpp">
+      <Filter>Source Files\src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

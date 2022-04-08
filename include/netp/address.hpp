@@ -4,11 +4,9 @@
 #include <string>
 #include <vector>
 #include <netp/core.hpp>
-#include <netp/ipv4.hpp>
-#include <netp/ipv6.hpp>
 #include <netp/string.hpp>
-
 #include <netp/smart_ptr.hpp>
+#include <netp/ip.hpp>
 
 #define NETP_PF_INET 		PF_INET
 #define NETP_AF_INET		AF_INET
@@ -38,17 +36,6 @@
 
 namespace netp {
 
-#pragma pack(push,1)
-	typedef union __ip_bits ip_t;
-	union __ip_bits {
-		ipv4_t v4;
-		ipv6_t v6;
-		netp::u8_t byte[16];
-	};
-#pragma pack(pop)
-
-	static_assert(sizeof(ip_t) == 16, "ip_bits size check");
-
 	extern const char* DEF_protocol_str[NETP_PROTOCOL_MAX];
 	extern const u16_t OS_DEF_protocol[NETP_PROTOCOL_MAX];
 	extern const u16_t DEF_protocol_str_to_proto(const char* protostr);
@@ -63,106 +50,15 @@ namespace netp {
 		AIF_P_UDP		= 0x20
 	};
 
-	const ipv4_t IP_LOOPBACK = { 2130706433U };
 	enum class address_type {
 		t_empty,
 		t_ipv4,
 		t_ipv6
 	};
+
 	extern int get_iplist_by_host(char const* const hostname, char const* const servicename, std::vector<string_t>& ips, int const& filter = int(addrinfo_filter::AIF_F_INET));
 	extern int get_ip_by_host(const char* hostname, string_t& ip, int const& filter = int(addrinfo_filter::AIF_F_INET));
-
-	extern ipv4_t dotiptonip(const char* dotip);
-	extern ipv4_t dotiptoip(const char* dotip);
 	extern ipv4_t hosttoip(const char* hostname);
-
-	extern bool is_dotipv4_decimal_notation(const char* string);
-
-	inline ipv4_t ipv4tonipv4(ipv4_t const& ip) { return { NETP_HTONL(ip.u32) }; }
-	inline ipv4_t nipv4toipv4(ipv4_t const& ip) { return { NETP_NTOHL(ip.u32) }; }
-
-	extern string_t nipv4todotip(ipv4_t const& ip);
-
-	inline string_t ipv4todotip(ipv4_t const& ip) { return nipv4todotip({ NETP_HTONL(ip.u32) }); }
-
-	inline ipv6_t ipv6tonipv6(ipv6_t const& v6_) {
-		ipv6_t v6 = v6_;
-		v6.u64.A = NETP_HTONLL(v6.u64.A);
-		v6.u64.B = NETP_HTONLL(v6.u64.B);
-		return v6;
-	}
-
-	inline ipv6_t nipv6toipv6(ipv6_t const& v6_) {
-		ipv6_t v6 = v6_;
-		v6.u64.A = NETP_NTOHLL(v6.u64.A);
-		v6.u64.B = NETP_NTOHLL(v6.u64.B);
-		return v6;
-	}
-
-	extern ipv6_t v6stringtonip(const char* v6string);
-	inline ipv6_t v6stringtoip(const char* v6string) {
-			return nipv6toipv6(v6stringtonip(v6string));
-	}
-
-	extern string_t nipv6tov6string(ipv6_t const& v6);
-	inline string_t ipv6tov6string(ipv6_t const& v6) {
-		return nipv6tov6string( v6 );
-	}
-
-	__NETP_FORCE_INLINE
-	netp::u32_t ipv4_t4h(ipv4_t lip, port_t lport, ipv4_t rip, port_t rport) {
-		return ((netp::u32_t)(lip.u32) * 59) ^
-			((netp::u32_t)(rip.u32)) ^
-			((netp::u32_t)(lport) << 16) ^
-			((netp::u32_t)(rport))
-			;
-	}
-
-	//::1 - IPv6  loopback
-	//127.0.0.0 - 127.255.255.255  (127 / 8 prefix)
-	__NETP_FORCE_INLINE
-	bool is_loopback(ipv4_t v4_/*nip*/) {
-		return v4_.bits.b1 == 127;
-	}
-
-	/* An IP should be considered as internal when
-	10.0.0.0     -   10.255.255.255  (10/8 prefix)
-	172.16.0.0   -   172.31.255.255  (172.16/12 prefix)
-	192.168.0.0  -   192.168.255.255 (192.168/16 prefix)
-	*/
-	__NETP_FORCE_INLINE
-	bool is_rfc1918(ipv4_t v4_/*nip*/) {
-		switch (v4_.bits.b1) {
-		case 10:
-			return true;
-		case 192:
-			return (v4_.bits.b2 == 168);
-		case 172:
-			return (v4_.bits.b2 >= 16) && (v4_.bits.b2 < 32);
-		default:
-			return false;
-		}
-	}
-
-	__NETP_FORCE_INLINE
-	bool is_loopback_or_rfc1918(ipv4_t v4_) {
-		switch (v4_.bits.b1) {
-		case 10:
-		case 127:
-			return true;
-		case 192:
-			return (v4_.bits.b2 == 168);
-		case 172:
-			return (v4_.bits.b2 >= 16) && (v4_.bits.b2 < 32);
-		default:
-			return false;
-		}
-	}
-
-	__NETP_FORCE_INLINE
-		bool is_internal(ipv4_t v4_ /*nip*/) {
-		return is_loopback_or_rfc1918(v4_);
-	}
 
 	struct address final :
 		public netp::ref_base
