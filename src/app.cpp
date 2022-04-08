@@ -649,6 +649,70 @@ namespace netp {
 		return m_should_exit;
 	}
 
+	static
+	void test_v4_mask_by_cidr() {
+		netp::ipv4_t iplist[33];
+		int j = 0;
+		netp::ipv4_t v4;
+		v4.u32 = 0;
+		iplist[j++] = v4;
+		for (int i = 1; i < 32; ++i) {
+			v4.u32 = (0xfffffffful - ((1ul << (32 - i)) - 1ul));
+			iplist[j++] = v4;
+		}
+		v4.u32 = 0xfffffffful;
+		iplist[j++] = v4;
+
+		netp::ipv4_t v4mask;
+		v4mask.bits = { 255,255,255,255 };
+
+		for (netp::u8_t i = 0; i < (sizeof(iplist) / sizeof(iplist[0])); ++i) {
+			NETP_ASSERT(i <= 32);
+			NETP_ASSERT(netp::v4_mask_by_cidr(&v4mask, i) == (iplist[i]));
+		}
+	}
+
+	static 
+	void test_v6_mask_by_cidr()
+	{
+		netp::ipv6_t iplist[129];
+		int j = 0;
+
+		netp::ipv6_t v6;
+		v6.u64.A = 0;
+		v6.u64.B = 0;
+		iplist[j++] = v6;
+
+		for (int i = 1; i < 64; ++i)
+		{
+			v6.u64.A = 0xffffffffffffffffull - ((1ull << (64 - i)) - 1ull);
+			v6.u64.B = 0;
+			iplist[j++] = v6;
+		}
+
+		v6.u64.A = 0xffffffffffffffffull;
+		v6.u64.B = 0;
+		iplist[j++] = v6;
+
+		for (int i = 65; i < 128; ++i) {
+			v6.u64.A = 0xffffffffffffffffull;
+			v6.u64.B = 0xffffffffffffffffull - ((1ull << ((128 - (i)))) - 1ull);
+			iplist[j++] = v6;
+		}
+
+		v6.u64.A = 0xffffffffffffffffull;
+		v6.u64.B = 0xffffffffffffffffull;
+		iplist[j++] = v6;
+
+		netp::ipv6_t v6mask;
+		v6mask.bits = { 0xffff,0xffff,0xffff,0xffff, 0xffff,0xffff,0xffff,0xffff };
+
+		for (netp::u8_t i = 0; i < (sizeof(iplist) / sizeof(iplist[0])); ++i) {
+			NETP_ASSERT(i <= 128);
+			NETP_ASSERT(netp::v6_mask_by_cidr(&v6mask, i) == (iplist[i]));
+		}
+	}
+
 	void app_test_unit::test_generic_check() {
 		const char* loopback[] = {
 			"127.0.0.1",
@@ -661,6 +725,9 @@ namespace netp {
 			ipv4_t v4 = netp::dotiptonip(loopback[i]);
 			NETP_ASSERT(is_internal(v4));
 		}
+
+		test_v4_mask_by_cidr();
+		test_v6_mask_by_cidr();
 	}
 
 	void app_test_unit::benchmark_hash() {
@@ -690,11 +757,10 @@ namespace netp {
 	}
 
 	bool app_test_unit::run() {
-
 		netp::run_test<memory_test_unit>();
 
 #ifdef _NETP_DEBUG
-//		test_generic_check();
+		test_generic_check();
 //		benchmark_hash();
 #endif
 

@@ -86,7 +86,7 @@ namespace netp {
 		}
 	}
 
-	netp::ipv6_t v4_mask_by_cidr(const netp::ipv6_t* const v6_, netp::u8_t cidr) {
+	netp::ipv6_t v6_mask_by_cidr(const netp::ipv6_t* const v6_, netp::u8_t cidr) {
 		netp::ipv6_t v6;
 		if (cidr == 0) {//x<<64 is UB
 			v6.u64.A = 0;

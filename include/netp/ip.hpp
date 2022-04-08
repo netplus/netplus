@@ -7,7 +7,7 @@
 
 namespace netp {
 
-	const ipv4_t IP_LOOPBACK = { 2130706433U };
+const ipv4_t IP_LOOPBACK = { 2130706433U };
 
 #pragma pack(push,1)
 	typedef union __ip_bits ip_t;
@@ -109,6 +109,9 @@ namespace netp {
 	bool is_internal(ipv4_t v4_ /*nip*/) {
 		return is_loopback_or_rfc1918(v4_);
 	}
+
+	extern netp::ipv4_t v4_mask_by_cidr(const netp::ipv4_t* const v4, netp::u8_t cidr);
+	extern netp::ipv6_t v6_mask_by_cidr(const netp::ipv6_t* const v6, netp::u8_t cidr);
 }
 
 #endif
