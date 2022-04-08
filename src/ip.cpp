@@ -50,14 +50,8 @@ namespace netp {
 		ip_t ip6;
 		int ret = ::inet_pton(AF_INET6, v6string, &in6);
 		if (ret == 1) {
-			std::memcpy(&(ip6.byte[0]), &(in6.u.Byte[0]), 16);
-
-#ifdef _NETP_DEBUG
-			netp::string_t v6s = nipv6tov6string(ip6.v6);
-			NETP_ASSERT(netp::strncmp(v6string, v6s.c_str(), v6s.length()) == 0);
-#endif
-		}
-		else {
+			std::memcpy(&(ip6.byte[0]), &(in6.s6_addr), 16);
+		} else {
 			ip6.v6.u64.A = 0;
 			ip6.v6.u64.B = 0;
 		}
@@ -65,9 +59,9 @@ namespace netp {
 	}
 	string_t nipv6tov6string(ipv6_t const& v6) {
 		in6_addr in6;
-		std::memcpy(&(in6.u.Byte[0]), (const char*)&v6, 16);
-		char v6string[64] = { 0 };
-		const char* addr_cstr = ::inet_ntop(AF_INET6, &in6, v6string, 64);
+		std::memcpy(&(in6.s6_addr), (const char*)(&(v6.byte[0])), 16);
+		char v6string[48] = { 0 };
+		const char* addr_cstr = ::inet_ntop(AF_INET6, &in6, v6string, 48);
 		if (NETP_LIKELY(addr_cstr != nullptr)) {
 			return string_t(v6string);
 		}

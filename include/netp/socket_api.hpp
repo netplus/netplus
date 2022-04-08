@@ -107,11 +107,11 @@ namespace netp {
 			for (struct cmsghdr* cmsgptr = CMSG_FIRSTHDR(&msg); cmsgptr != nullptr; cmsgptr = CMSG_NXTHDR(&msg, cmsgptr)) {
 				if (cmsgptr->cmsg_level == IPPROTO_IP && cmsgptr->cmsg_type == DSTADDR_SOCKOPT) {
 					struct in_addr* _dstaddr = (struct in_addr*)dstaddr((cmsgptr));
-					lipv4 = netp::nipv4toipv4(_dstaddr->s_addr);
+					lipv4 = { netp::nipv4toipv4({_dstaddr->s_addr}) };
 				}
 			}
 
-			if ( raddr && !raddr->is_af_unspec() && lipv4 != 0) {
+			if ( raddr && !raddr->is_af_unspec() && lipv4.u32 != 0) {
 				ec_o = netp::OK;
 				return nbytes;
 			}

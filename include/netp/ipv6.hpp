@@ -19,6 +19,7 @@ namespace netp {
 			u16_t s7;
 			u16_t s8;
 		} bits;
+		netp::u8_t byte[16];
 	};
 #pragma pack(pop)
 	static_assert(sizeof(ipv6_t) == 16, "ipv6_bits size check");
