@@ -112,6 +112,7 @@ const ipv4_t IP_LOOPBACK = { 2130706433U };
 
 	extern netp::ipv4_t v4_mask_by_cidr(const netp::ipv4_t* const v4, netp::u8_t cidr);
 	extern netp::ipv6_t v6_mask_by_cidr(const netp::ipv6_t* const v6, netp::u8_t cidr);
+	extern int ip_from_cidr_string(const char* cidrstr, netp::ip_t* const ipbits/*stored in network endian*/, netp::u8_t* cidr, bool isv6);
 }
 
 #endif

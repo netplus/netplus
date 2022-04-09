@@ -96,4 +96,21 @@ namespace netp {
 		}
 		return v6;
 	}
+
+	//ip/cidr: 192.168.0.0/16, 1234:0000:2d00:0000:0000:123:73:26b1/64
+	int ip_from_cidr_string(const char* cidr_string, netp::ip_t* const ipbits/*stored in network endian*/, netp::u8_t* cidr, bool isv6) {
+		std::vector<netp::string_t, netp::allocator<netp::string_t>> cidrstr_;
+		netp::split<netp::string_t>(netp::string_t(cidr_string, netp::strlen(cidr_string)), netp::string_t("/"), cidrstr_);
+		if (cidrstr_.size() != 2) {
+			return netp::E_OP_INVALID_ARG;
+		}
+		if (isv6) {
+			(ipbits->v6) = netp::v6stringtonip(cidrstr_[0].c_str());
+			(*cidr) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
+		} else {
+			(ipbits->v4) = netp::dotiptonip(cidrstr_[0].c_str());
+			(*cidr) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
+		}
+		return netp::OK;
+	}
 }
