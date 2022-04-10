@@ -5,10 +5,6 @@
 #include <netp/memory.hpp>
 #include <netp/eth.hpp>
 
-#ifdef __NETP_IS_LITTLE_ENDIAN
-	#define __L2_LITTLE_ENDIAN
-#endif
-
 namespace netp {
 	typedef unsigned short port_t;
 	static_assert(sizeof(port_t) == 2, "port_t size assert failed");

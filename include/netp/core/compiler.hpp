@@ -120,6 +120,21 @@
 	#define NETP_NTOHLL(x) (x)
 #endif
 
+//for l2 spec
+#ifdef __NETP_IS_LITTLE_ENDIAN
+	#define __L2_LITTLE_ENDIAN
+#endif
+
+#ifdef _NETP_AMW32
+	#define __L2_AMW32
+#endif
+
+#define __L2_NTOHS(x) NETP_NTOHS(x)
+#define __L2_HTONS(x) NETP_NTOHS(x)
+#define __L2_NTOHL(x) NETP_NTOHS(x)
+#define __L2_HTONL(x) NETP_NTOHS(x)
+#define __L2_NTOHLL(x) NETP_NTOHS(x)
+#define __L2_HTONLL(x) NETP_NTOHS(x)
 
 namespace netp {
 	typedef signed char				i8_t;
