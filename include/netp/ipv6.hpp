@@ -22,7 +22,8 @@ namespace netp {
 		netp::u8_t byte[16];
 	};
 #pragma pack(pop)
-	static_assert(sizeof(ipv6_t) == 16, "ipv6_bits size check");
+	static_assert(sizeof(ipv6_t) == 16, "ipv6_t size check");
+	static_assert(alignof(ipv6_t) == 1, "ipv6_t alignment check");
 
 	__NETP_FORCE_INLINE
 	bool operator== (ipv6_t const& A, ipv6_t const& B) {
