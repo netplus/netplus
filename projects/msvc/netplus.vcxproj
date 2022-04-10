@@ -113,6 +113,7 @@
     <ClInclude Include="..\..\include\netp\core\platform\win_x86_.hpp" />
     <ClInclude Include="..\..\include\netp\CPUID.hpp" />
     <ClInclude Include="..\..\include\netp\dns_resolver.hpp" />
+    <ClInclude Include="..\..\include\netp\eth.hpp" />
     <ClInclude Include="..\..\include\netp\handler\tls_config.hpp" />
     <ClInclude Include="..\..\include\netp\handler\tls_handler.hpp" />
     <ClInclude Include="..\..\include\netp\handler\tls_policy.hpp" />
