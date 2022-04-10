@@ -6,7 +6,6 @@
 #include <netp/app.hpp>
 #include <netp/memory.hpp>
 #include <netp/address.hpp>
-#include <netp/l2/m6.hpp>
 #include <netp/string.hpp>
 
 namespace netp {
@@ -19,7 +18,7 @@ namespace netp {
 	typedef std::vector<ipv4_t, netp::allocator<ipv4_t>> vector_ipv4_t;
 	struct adapter {
 		int idx;
-		netp::l2::m6 mac;
+		netp::MAC mac;
 		
 		vector_interface_unicast_t unicast;
 		vector_ipv4_t anycast;

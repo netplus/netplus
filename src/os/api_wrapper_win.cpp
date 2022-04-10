@@ -1,5 +1,5 @@
 #include <netp/os/api_wrapper.hpp>
-#include <netp/l2/m6.hpp>
+#include <netp/eth.hpp>
 
 #ifdef _NETP_WIN
 #include <iphlpapi.h>

@@ -3,6 +3,11 @@
 
 #include <vector>
 #include <netp/memory.hpp>
+#include <netp/eth.hpp>
+
+#ifdef __NETP_IS_LITTLE_ENDIAN
+	#define __L2_LITTLE_ENDIAN
+#endif
 
 namespace netp {
 	typedef unsigned short port_t;
@@ -33,30 +38,6 @@ namespace netp {
 	bool operator!= (ipv4_t const& A, ipv4_t const& B) {
 		return A.u32 != B.u32;
 	}
-
-#ifdef __NETP_IS_LITTLE_ENDIAN
-	#define __L2_LITTLE_ENDIAN
-#endif
-
-#pragma pack(push,1)
-	typedef unsigned short port_t;
-	static_assert(sizeof(port_t) == 2, "port_t size assert failed");
-
-	//@comment
-	//192.168.1.1
-	//little endian, b1 == 1, big endian b1 == 192
-	typedef u32_t ipv4_u32_t;
-	typedef union __ipv4_bits ipv4_t;
-	union __ipv4_bits {
-		ipv4_u32_t u32;
-		struct _bit {
-			u8_t b1;
-			u8_t b2;
-			u8_t b3;
-			u8_t b4;
-		} bits;
-	};
-	static_assert(sizeof(ipv4_t) == 4, "ipv4_t size assert failed");
 
 #define __l2_arp_ipv4_payload_len (28)
 	typedef union __l2_arp_ipv4_payload dd_arp_ipv4_payload;
