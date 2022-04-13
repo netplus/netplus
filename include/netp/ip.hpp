@@ -17,8 +17,16 @@ const ipv4_t IP_LOOPBACK = { 2130706433U };
 		netp::u8_t byte[16];
 	};
 #pragma pack(pop)
-
 	static_assert(sizeof(ip_t) == 16, "ip_bits size check");
+
+	__NETP_FORCE_INLINE
+	bool operator== (ip_t const& A, ip_t const& B) {
+		return std::memcmp(A.byte, B.byte, 16) ==0;
+	}
+	__NETP_FORCE_INLINE
+	bool operator!= (ip_t const& A, ip_t const& B) {
+		return std::memcmp(A.byte, B.byte, 16) != 0;
+	}
 
 	extern ipv4_t dotiptonip(const char* dotip);
 	extern ipv4_t dotiptoip(const char* dotip);
