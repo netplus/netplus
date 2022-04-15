@@ -130,11 +130,11 @@
 #endif
 
 #define __L2_NTOHS(x) NETP_NTOHS(x)
-#define __L2_HTONS(x) NETP_NTOHS(x)
-#define __L2_NTOHL(x) NETP_NTOHS(x)
-#define __L2_HTONL(x) NETP_NTOHS(x)
-#define __L2_NTOHLL(x) NETP_NTOHS(x)
-#define __L2_HTONLL(x) NETP_NTOHS(x)
+#define __L2_HTONS(x) NETP_HTONS(x)
+#define __L2_NTOHL(x) NETP_NTOHL(x)
+#define __L2_HTONL(x) NETP_HTONL(x)
+#define __L2_NTOHLL(x) NETP_NTOHLL(x)
+#define __L2_HTONLL(x) NETP_HTONLL(x)
 
 namespace netp {
 	typedef signed char				i8_t;
