@@ -89,13 +89,22 @@ const ipv4_t IP_LOOPBACK = { 2130706433U };
 		switch (v4_.bits.b1) {
 		case 10:
 			return true;
-		case 192:
-			return (v4_.bits.b2 == 168);
 		case 172:
 			return (v4_.bits.b2 >= 16) && (v4_.bits.b2 < 32);
+		case 192:
+			return (v4_.bits.b2 == 168);
 		default:
 			return false;
 		}
+	}
+
+	//100.64.0.0/10: https://datatracker.ietf.org/doc/html/rfc6598
+	__NETP_FORCE_INLINE
+	bool is_shared_address_space(ipv4_t v4_) {
+		if (v4_.bits.b1==100) {
+			return (((v4_.bits.b2 >> 6) & 0x01) == 0x01);
+		}
+		return false;
 	}
 
 	__NETP_FORCE_INLINE
@@ -104,10 +113,27 @@ const ipv4_t IP_LOOPBACK = { 2130706433U };
 		case 10:
 		case 127:
 			return true;
+		case 172:
+			return (v4_.bits.b2 >= 16) && (v4_.bits.b2 < 32);
+		case 192:
+			return (v4_.bits.b2 == 168);
+		default:
+			return false;
+		}
+	}
+
+	__NETP_FORCE_INLINE
+	bool __is_internal_or_shared(ipv4_t v4_) {
+		switch (v4_.bits.b1) {
+		case 10:
+		case 127:
+			return true;
 		case 192:
 			return (v4_.bits.b2 == 168);
 		case 172:
 			return (v4_.bits.b2 >= 16) && (v4_.bits.b2 < 32);
+		case 100:
+			return (((v4_.bits.b2>>6) & 0x01) == 0x01);
 		default:
 			return false;
 		}
@@ -116,6 +142,11 @@ const ipv4_t IP_LOOPBACK = { 2130706433U };
 	__NETP_FORCE_INLINE
 	bool is_internal(ipv4_t v4_ /*nip*/) {
 		return is_loopback_or_rfc1918(v4_);
+	}
+
+	__NETP_FORCE_INLINE
+	bool is_internal_or_shared(ipv4_t v4_) {
+		return __is_internal_or_shared(v4_);
 	}
 
 	extern netp::ipv4_t v4_mask_by_cidr(const netp::ipv4_t* const v4, netp::u8_t cidr);
