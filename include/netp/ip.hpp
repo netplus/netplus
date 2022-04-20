@@ -114,7 +114,7 @@ const ipv4_t IP_LOOPBACK = { 2130706433U };
 		case 127:
 			return true;
 		case 172:
-			return (v4_.bits.b2 >= 16) && (v4_.bits.b2 < 32);
+			return (((v4_.bits.b2>>4)&0x01) == 0x01);
 		case 192:
 			return (v4_.bits.b2 == 168);
 		default:
@@ -122,6 +122,9 @@ const ipv4_t IP_LOOPBACK = { 2130706433U };
 		}
 	}
 
+	//10.0.0.0        -   10.255.255.255  (10/8 prefix)
+	//172.16.0.0 - 172.31.255.255  (172.16/12 prefix)
+	//192.168.0.0 - 192.168.255.255 (192.168/ 16 prefix)
 	__NETP_FORCE_INLINE
 	bool __is_internal_or_shared(ipv4_t v4_) {
 		switch (v4_.bits.b1) {
@@ -131,9 +134,9 @@ const ipv4_t IP_LOOPBACK = { 2130706433U };
 		case 192:
 			return (v4_.bits.b2 == 168);
 		case 172:
-			return (v4_.bits.b2 >= 16) && (v4_.bits.b2 < 32);
+			return (((v4_.bits.b2>>4)&0x01) == 0x01);
 		case 100:
-			return (((v4_.bits.b2>>6) & 0x01) == 0x01);
+			return (((v4_.bits.b2>>6)&0x01) == 0x01);
 		default:
 			return false;
 		}
