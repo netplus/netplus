@@ -32,8 +32,8 @@
 #define NETP_USE_PIPE_AS_INTRFD				1
 
 #define netp_last_errno() NETP_NEGATIVE((int)errno)
-#define netp_set_last_errno(e) (errno=e)
-#define netp_socket_set_last_errno(e) (errno=e)
+#define netp_set_last_errno(e) (errno=(NETP_ABS(e)))
+#define netp_socket_set_last_errno(e) (errno=NETP_ABS(e))
 #define netp_socket_get_last_errno() (netp_last_errno())
 
 namespace netp {
