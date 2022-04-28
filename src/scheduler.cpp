@@ -51,7 +51,7 @@ namespace netp {
 		NETP_ASSERT(m_scheduler != nullptr);
 		while (1)
 		{
-			fn_task_t task = nullptr;
+			netp::non_atomic_shared_ptr<fn_task_t> task = nullptr;
 			{
 				unique_lock<spin_mutex> _ulk(m_scheduler->m_mutex);
 			check_begin:
@@ -75,18 +75,15 @@ namespace netp {
 
 			NETP_ASSERT(task != nullptr);
 			try {
-				task();
-			}
-			catch (netp::exception& e) {
+				(*task)();
+			} catch (netp::exception& e) {
 				NETP_ERR("[TRunner][-%d-]runner netp::exception: [%d]%s\n%s(%d) %s\n%s",
 					m_id, e.code(), e.what(), e.file(), e.line(), e.function(), e.callstack());
 				throw;
-			}
-			catch (std::exception& e) {
+			} catch (std::exception& e) {
 				NETP_ERR("[TRunner][-%d-]runner exception: %s", m_id, e.what());
 				throw;
-			}
-			catch (...) {
+			} catch (...) {
 				NETP_ERR("[TRunner][-%d-]runner, unknown exception", m_id);
 				throw;
 			}

@@ -17,16 +17,16 @@ namespace netp {
 
 	typedef std::function<void()> fn_task_t;
 
-	typedef std::deque<fn_task_t, netp::allocator<fn_task_t> > task_queue_t;
+	typedef std::deque<netp::non_atomic_shared_ptr<fn_task_t>, netp::allocator<fn_task_t> > task_queue_t;
 	struct priority_task_queue {
 		task_queue_t tasks[P_MAX];
 		inline void push(fn_task_t const& t, u8_t const& p) {
-			tasks[p].push_back(t);
+			tasks[p].push_back( netp::make_non_atomic_shared<fn_task_t>(t) );
 		}
 		inline void push(fn_task_t&& t, u8_t const& p) {
-			tasks[p].push_back(std::forward<fn_task_t>(t));
+			tasks[p].push_back(netp::make_non_atomic_shared<fn_task_t>(std::forward<fn_task_t>(t)));
 		}
-		inline bool front_and_pop(fn_task_t& t) {
+		inline bool front_and_pop(netp::non_atomic_shared_ptr<fn_task_t>& t) {
 			for (u8_t i = 0; i < P_MAX; ++i) {
 				if (tasks[i].size()) {
 					t = tasks[i].front();
@@ -55,7 +55,7 @@ namespace netp {
 		{
 			NETP_DECLARE_NONCOPYABLE(runner)
 
-				u8_t m_id;
+			u8_t m_id;
 			std::atomic<u8_t> m_wait_flag;
 			std::atomic<u8_t> m_state;
 
@@ -69,10 +69,10 @@ namespace netp {
 			void on_stop();
 			void run();
 
-			inline bool is_waiting() const { return m_state == TR_S_WAITING; }
-			inline bool is_running() const { return m_state == TR_S_RUNNING; }
-			inline bool is_idle() const { return m_state == TR_S_IDLE; }
-			inline bool is_ending() const { return m_state == TR_S_ENDING; }
+			inline bool is_waiting() const { return m_state.load(std::memory_order_acquire) == TR_S_WAITING; }
+			inline bool is_running() const { return m_state.load(std::memory_order_acquire) == TR_S_RUNNING; }
+			inline bool is_idle() const { return m_state.load(std::memory_order_acquire) == TR_S_IDLE; }
+			inline bool is_ending() const { return m_state.load(std::memory_order_acquire) == TR_S_ENDING; }
 
 			inline bool test_waiting_step1() {
 				if (m_state.load(std::memory_order_acquire) == TR_S_WAITING) {
