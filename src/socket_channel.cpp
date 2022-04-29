@@ -450,6 +450,7 @@ int socket_base::get_left_snd_queue() const {
 			}
 
 			ch_io_end_connect();
+			//@note: for handlers that have handshake protocol, connected evt happens after dialp->set(netp::OK)
 			ch_set_connected();
 			dialp->set(netp::OK);
 		} catch(netp::exception const& e) {
