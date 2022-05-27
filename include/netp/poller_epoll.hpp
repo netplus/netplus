@@ -118,16 +118,28 @@ namespace netp {
 		}
 
 		void poll(i64_t wait_in_nano, std::atomic<bool>& W) override {
-			NETP_ASSERT( m_epfd != NETP_INVALID_SOCKET );
+			NETP_ASSERT(m_epfd != NETP_INVALID_SOCKET);
 
 			struct epoll_event epEvents[NETP_EPOLL_PER_HANDLE_SIZE];
-			const int wait_in_mill = (wait_in_nano != ~0 ? (wait_in_nano / i64_t(1000000)): ~0);
-			int nEvents = epoll_wait(m_epfd, epEvents,NETP_EPOLL_PER_HANDLE_SIZE, wait_in_mill);
+			const int wait_in_mill = (wait_in_nano != ~0 ? (wait_in_nano / i64_t(1000000)) : ~0);
+			int nEvents = epoll_wait(m_epfd, epEvents, NETP_EPOLL_PER_HANDLE_SIZE, wait_in_mill);
 			NETP_POLLER_WAIT_EXIT(wait_in_nano, W);
-			if ( -1 == nEvents ) {
-				NETP_ERR("[EPOLL][##%u]epoll wait event failed!, errno: %d", m_epfd, netp_socket_get_last_errno() );
-				return ;
+			if (-1 == nEvents) {
+				NETP_ERR("[EPOLL][##%u]epoll wait event failed!, errno: %d", m_epfd, netp_socket_get_last_errno());
+				return;
 			}
+
+#ifdef _NETP_DEBUG_EPOLL_EVENTS
+			//checked from epoll source code, ep_remove would result in epitem be freeed, if ctx->flag & (io_flag::IO_READ|io_flag::IO_WRITE) == 0, the fd should have been removed
+			//steps of ep_remove:
+			//remove poll_wait queue
+			//remove rdlink from list
+			for (int i = 0; i < nEvents; ++i) {
+				NETP_ASSERT(epEvents[i].data.ptr != nullptr);
+				io_ctx* ctx = (static_cast<io_ctx*> (epEvents[i].data.ptr));
+				NETP_ASSERT((ctx->fd != NETP_INVALID_SOCKET) && (ctx->flag&(io_flag::IO_READ|io_flag::IO_WRITE)), "fd: %u, flag: %u, event: %u", ctx->fd, ctx->flag, epEvents[i].events);
+			}
+#endif
 
 			for( int i=0;i<nEvents;++i) {
 #ifdef _NETP_DEBUG_EPOLL_EVENTS

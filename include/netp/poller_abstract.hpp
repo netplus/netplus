@@ -65,7 +65,7 @@ namespace netp {
 	}
 
 	inline static void io_ctx_deallocate(io_ctx* ctx) {
-		NETP_ASSERT(ctx->iom != nullptr);
+		NETP_ASSERT((ctx->iom != nullptr) && ((ctx->flag&(io_flag::IO_READ|io_flag::IO_WRITE))==0), "flag: %u", ctx->flag );
 		ctx->iom = nullptr;
 		netp::allocator<io_ctx>::trash(ctx);
 	}
