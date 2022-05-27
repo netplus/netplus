@@ -50,7 +50,9 @@ namespace netp {
 			};
 
 			int epoll_op = EPOLL_CTL_ADD;
-			if ( ctx->flag&(io_flag::IO_READ|io_flag::IO_WRITE) ) {
+			if ( (ctx->flag&flag) == flag ) {
+				return netp::OK;
+			} else if ( ctx->flag&(io_flag::IO_READ|io_flag::IO_WRITE) ) {
 				epoll_op = EPOLL_CTL_MOD;
 				epEvent.events |= (EPOLLIN|EPOLLOUT);
 			} else {
