@@ -136,7 +136,7 @@ namespace netp {
 				uint32_t events = ((epEvents[i].events) & 0xFFFFFFFF);
 				io_ctx* ctx = (static_cast<io_ctx*> (epEvents[i].data.ptr));
 #ifdef _NETP_DEBUG_EPOLL_EVENTS
-				NETP_ASSERT((ctx->fd != NETP_INVALID_SOCKET) && (ctx->flag&(io_flag::IO_READ|io_flag::IO_WRITE)));
+				NETP_ASSERT((ctx->fd != NETP_INVALID_SOCKET) && (ctx->flag&(io_flag::IO_READ|io_flag::IO_WRITE)), "fd: %u, flag: %u, event: %u", ctx->fd, ctx->flag, epEvents[i].events );
 #endif
 				int sockerr = netp::OK;
 				//refer to:https://elixir.bootlin.com/linux/v4.19/source/net/ipv4/tcp.c#L524

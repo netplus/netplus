@@ -17,7 +17,7 @@ namespace netp {
 
 	typedef std::function<void()> fn_task_t;
 
-	typedef std::deque<netp::non_atomic_shared_ptr<fn_task_t>, netp::allocator<fn_task_t> > task_queue_t;
+	typedef std::deque<netp::non_atomic_shared_ptr<fn_task_t>, netp::allocator<netp::non_atomic_shared_ptr<fn_task_t>> > task_queue_t;
 	struct priority_task_queue {
 		task_queue_t tasks[P_MAX];
 		inline void push(fn_task_t const& t, u8_t const& p) {
