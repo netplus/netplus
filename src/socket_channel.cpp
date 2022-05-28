@@ -592,7 +592,7 @@ int socket_base::get_left_snd_queue() const {
 			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN)|int(channel_flag::F_READ_ERROR) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
 			NRP<netp::packet>& loop_buf = L->channel_rcv_buf();
 			nbytes = socket_recv_impl(loop_buf->head(), size);
-			if (NETP_LIKELY(nbytes < 0)) {
+			if (NETP_UNLIKELY(nbytes < 0)) {
 				status = nbytes;
 				break;
 			} else if (nbytes == 0 ) {
