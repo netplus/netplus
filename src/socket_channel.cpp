@@ -598,10 +598,11 @@ int socket_base::get_left_snd_queue() const {
 			} else if (nbytes == 0 ) {
 				if (is_tcp()) {
 					status = netp::E_SOCKET_GRACE_CLOSE;
-				} else {
+					break;
+				} else if (!is_udp()) {
 					status = netp::E_UNKNOWN;
+					break;
 				}
-				break;
 			}
 
 			//@note: udp socket might receive a 0 len pkt
@@ -664,9 +665,9 @@ int socket_base::get_left_snd_queue() const {
 			NETP_ASSERT( is_udp() ? true: (m_tx_bytes) > 0 );
 #endif
 			socket_outbound_entry& entry = m_tx_entry_q.front();
-			u32_t dlen = u32_t(entry.data->len());
-			u32_t wlen = (dlen);
-			if (m_tx_limit !=0 && (m_tx_budget<wlen)) {
+			const int dlen = int(entry.data->len());
+			int wlen = (dlen);
+			if (m_tx_limit !=0 && (m_tx_budget<u32_t(wlen))) {
 				if ( (m_tx_budget == 0) || is_udp()/*udp pkt could not be split into smaller pkt*/ ) {
 #ifdef _NETP_DEBUG
 					NETP_ASSERT(m_chflag&int(channel_flag::F_TX_LIMIT_TIMER));
@@ -678,7 +679,7 @@ int socket_base::get_left_snd_queue() const {
 			}
 
 #ifdef _NETP_DEBUG
-			NETP_ASSERT((wlen > 0) && (wlen <= m_tx_bytes));
+			NETP_ASSERT((wlen > 0) && (u32_t(wlen) <= m_tx_bytes));
 #endif
 			const int nbytes = socket_send_impl( entry.data->head(), u32_t(wlen));
 			if (NETP_UNLIKELY(nbytes < 0)) {
@@ -719,7 +720,6 @@ int socket_base::get_left_snd_queue() const {
 #ifdef _NETP_DEBUG
 		NETP_ASSERT( !ch_is_connected() && m_tx_entry_to_q.size() && m_tx_entry_q.empty(), "%s, flag: %u", ch_info().c_str(), m_chflag);
 #endif
-
 		NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)));
 
 		//there might be a chance to be blocked a while in this loop, if set trigger another write
@@ -730,13 +730,13 @@ int socket_base::get_left_snd_queue() const {
 			NETP_ASSERT((entry.data->len() <= m_tx_bytes));
 			status = socket_sendto_impl(entry.data->head(), (u32_t)entry.data->len(), entry.to);
 			if(status < 0) {
-				break;
+				return status;
 			}
 			m_tx_bytes -= u32_t(entry.data->len());
-			entry.write_promise->set(status);
+			entry.write_promise->set(netp::OK);
 			m_tx_entry_to_q.pop_front();
 		}
-		return status;
+		return netp::OK;
 	}
 
 	void socket_channel::_ch_do_close_listener() {
