@@ -560,11 +560,16 @@ int socket_base::get_left_snd_queue() const {
 			NRP<netp::address> __address_nonnullptr_ = netp::make_ref<netp::address>();
 			NRP<netp::packet>& loop_buf = L->channel_rcv_buf();
 			netp::u32_t nbytes = socket_recvfrom_impl(loop_buf->head(), loop_buf->left_right_capacity(), __address_nonnullptr_, status);
+
 			if (NETP_LIKELY(nbytes > 0)) {
+_label_deliver_pkt:
 				loop_buf->incre_write_idx(nbytes);
 				NRP<netp::packet> __tmp =netp::make_ref<netp::packet>(L->channel_rcv_buf_size());
 				__tmp.swap(loop_buf);
 				channel::ch_fire_readfrom(std::move(__tmp), __address_nonnullptr_);
+			}
+			else if (nbytes == 0 && status == netp::OK) {
+				goto _label_deliver_pkt;
 			}
 		}
 		___do_io_read_done(status);
@@ -583,16 +588,28 @@ int socket_base::get_left_snd_queue() const {
 		netp::u32_t nbytes = size; //skip the frist check
 		//refer to https://man7.org/linux/man-pages/man7/epoll.7.html tip 9
 		//if it is stream based, return value nbytes<size indicate that the buf has been exhausted
+		//socket_recv_impl set status to non-zero iff ::recv return -1
 		while ( (status == netp::OK) && ( (nbytes==size)|| !is_stream()) ) {
 			NETP_ASSERT( (m_chflag&(int(channel_flag::F_READ_SHUTDOWNING))) == 0);
 			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN)|int(channel_flag::F_READ_ERROR) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
 			NRP<netp::packet>& loop_buf = L->channel_rcv_buf();
 			nbytes = socket_recv_impl(loop_buf->head(), size, status);
 			if (NETP_LIKELY(nbytes>0)) {
+_label_deliver_pkt:
 				loop_buf->incre_write_idx(nbytes);
 				NRP<netp::packet> __tmp = netp::make_ref<netp::packet>(size);
 				__tmp.swap(loop_buf);
 				channel::ch_fire_read(std::move(__tmp));
+			}
+			//@note: udp socket might receive a 0 len pkt
+			else if ( (nbytes == 0) && (status == netp::OK)) {
+				if (is_udp()) {
+					goto _label_deliver_pkt;
+				} else if (is_tcp()) {
+					status = netp::E_SOCKET_GRACE_CLOSE;
+				} else {
+					status = netp::E_UNKNOWN;
+				}
 			}
 		}
 
@@ -962,8 +979,7 @@ __act_label_close_read_write:
 	}
 
 	void socket_channel::__ch_clean() {
-		NETP_ASSERT(m_fn_read == nullptr);
-		NETP_ASSERT(m_fn_write == nullptr);
+		NETP_ASSERT(m_fn_read == nullptr && m_fn_write == nullptr);
 		ch_deinit();
 		if (m_chflag & int(channel_flag::F_IO_EVENT_LOOP_BEGIN_DONE)) {
 			L->io_end(m_io_ctx);

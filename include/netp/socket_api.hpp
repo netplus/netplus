@@ -266,11 +266,7 @@ namespace netp {
 				if (R == len) {
 					break;
 				}
-			}
-			else {
-#ifdef _NETP_DEBUG
-				NETP_ASSERT(r == -1);
-#endif
+			} else {
 				int ec = netp_socket_get_last_errno();
 				if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
 					continue;
@@ -300,15 +296,10 @@ namespace netp {
 			const int r = ::recv(fd, reinterpret_cast<char*>(buffer_o) + R, (int)(size - R), flag);
 			if (NETP_LIKELY(r > 0)) {
 				R += r;
-				ec_o = netp::OK;
 				break;
 			} else if (r == 0) {
-				ec_o = netp::E_SOCKET_GRACE_CLOSE;
 				break;
 			} else {
-#ifdef _NETP_DEBUG
-				NETP_ASSERT(r == -1);
-#endif
 				int ec = netp_socket_get_last_errno();
 				if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
 					continue;
@@ -375,21 +366,20 @@ namespace netp {
 		}
 
 		if (NETP_LIKELY(nbytes > 0)) {
-			ec_o = netp::OK;
 			//NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom() == %d", fd, nbytes);
 			return nbytes;
+		} else if (nbytes == 0) {
+			return 0;
+		} else {
+			int ec = netp_socket_get_last_errno();
+			//NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom, ERROR: %d", fd, ec);
+			if (ec == netp::E_EINTR) {
+				goto _label_recvfrom;
+			}
+			_NETP_REFIX_EWOULDBLOCK(ec);
+			ec_o = ec;
+			return 0;
 		}
-#ifdef _NETP_DEBUG
-		NETP_ASSERT(nbytes == -1);
-#endif
-		int ec = netp_socket_get_last_errno();
-		//NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom, ERROR: %d", fd, ec);
-		if (ec == netp::E_EINTR) {
-			goto _label_recvfrom;
-		}
-		_NETP_REFIX_EWOULDBLOCK(ec);
-		ec_o = ec;
-		return 0;
 	}
 
 	inline int socketpair(int domain, int type, int protocol, SOCKET sv[2]) {

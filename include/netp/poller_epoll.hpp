@@ -90,7 +90,7 @@ namespace netp {
 			}
 
 #ifdef _NETP_DEBUG_EPOLL_EVENTS
-			NETP_ASSERT(epoll_op == EPOLL_CTL_MOD ? (epEvent.events & (EPOLLIN|EPOLLOUT)) : true);
+			NETP_ASSERT(epoll_op == EPOLL_CTL_MOD ? (epEvent.events & (EPOLLIN|EPOLLOUT)) && (ctx->flag&(io_flag::IO_READ | io_flag::IO_WRITE)) : true);
 #endif
 			NETP_TRACE_IOE("[EPOLL][##%u][unwatch][#%u]op: %c, evts: %u", m_epfd, ctx->fd, epoll_op, epoll_op == EPOLL_CTL_MOD ? 'm': 'd', epEvent.events);
 			return epoll_ctl(m_epfd,epoll_op,ctx->fd,&epEvent) ;
@@ -150,7 +150,7 @@ namespace netp {
 				uint32_t events = ((epEvents[i].events) & 0xFFFFFFFF);
 				io_ctx* ctx = (static_cast<io_ctx*> (epEvents[i].data.ptr));
 #ifdef _NETP_DEBUG_EPOLL_EVENTS
-				NETP_ASSERT((ctx->fd != NETP_INVALID_SOCKET) && (ctx->flag&(io_flag::IO_READ|io_flag::IO_WRITE)), "fd: %u, flag: %u, event: %u", ctx->fd, ctx->flag, epEvents[i].events );
+				NETP_ASSERT((ctx->fd != NETP_INVALID_SOCKET) && (ctx->flag&(io_flag::IO_READ|io_flag::IO_WRITE)), "fd: %u, flag: %u, event: %u", ctx->fd, ctx->flag, events);
 #endif
 				int sockerr = netp::OK;
 				//refer to:https://elixir.bootlin.com/linux/v4.19/source/net/ipv4/tcp.c#L524
