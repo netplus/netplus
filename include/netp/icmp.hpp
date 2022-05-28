@@ -120,19 +120,15 @@ namespace netp {
 
 			NRP<netp::address> addr = netp::make_ref<address>( ip, u16_t(0), NETP_AF_INET);
 
-			int ec = netp::OK;
-			u32_t snd_c = netp::sendto(m_so->ch_id(), icmp_pack->head(), (u32_t)icmp_pack->len(), addr, ec,0);
-			NETP_RETURN_V_IF_NOT_MATCH(ec, ec == netp::OK);
-
-			(void)snd_c;
+			const int sndrt = netp::sendto(m_so->ch_id(), icmp_pack->head(), (u32_t)icmp_pack->len(), addr, 0);
+			NETP_RETURN_V_IF_MATCH(sndrt, (sndrt <0));
 
 			NRP<netp::address> recv_addr;
 			byte_t recv_buffer[256] = { 0 };
 
-			u32_t recv_c = netp::recvfrom(m_so->ch_id(), recv_buffer, 256, recv_addr, ec,0);
+			const int recvrt = netp::recvfrom(m_so->ch_id(), recv_buffer, 256, recv_addr, 0);
 			netp::u64_t now = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()).time_since_epoch().count();
-			NETP_RETURN_V_IF_NOT_MATCH(ec, ec == netp::OK);
-			NETP_ASSERT(recv_c > 0);
+			NETP_RETURN_V_IF_MATCH(recvrt, recvrt<0);
 
 			u32_t read_idx = 0;
 			u8_t ver_IHL = netp::bytes_helper::read_u8(recv_buffer + read_idx);

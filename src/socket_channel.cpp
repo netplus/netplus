@@ -559,18 +559,15 @@ int socket_base::get_left_snd_queue() const {
 			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN) | int(channel_flag::F_CLOSE_PENDING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
 			NRP<netp::address> __address_nonnullptr_ = netp::make_ref<netp::address>();
 			NRP<netp::packet>& loop_buf = L->channel_rcv_buf();
-			netp::u32_t nbytes = socket_recvfrom_impl(loop_buf->head(), loop_buf->left_right_capacity(), __address_nonnullptr_, status);
-
-			if (NETP_LIKELY(nbytes > 0)) {
-_label_deliver_pkt:
-				loop_buf->incre_write_idx(nbytes);
-				NRP<netp::packet> __tmp =netp::make_ref<netp::packet>(L->channel_rcv_buf_size());
-				__tmp.swap(loop_buf);
-				channel::ch_fire_readfrom(std::move(__tmp), __address_nonnullptr_);
+			const int nbytes = socket_recvfrom_impl(loop_buf->head(), loop_buf->left_right_capacity(), __address_nonnullptr_);
+			if (NETP_UNLIKELY(nbytes<0)) {
+				status = nbytes;
+				break;
 			}
-			else if (nbytes == 0 && status == netp::OK) {
-				goto _label_deliver_pkt;
-			}
+			loop_buf->incre_write_idx(nbytes);
+			NRP<netp::packet> __tmp =netp::make_ref<netp::packet>(L->channel_rcv_buf_size());
+			__tmp.swap(loop_buf);
+			channel::ch_fire_readfrom(std::move(__tmp), __address_nonnullptr_);
 		}
 		___do_io_read_done(status);
 	}
@@ -584,8 +581,9 @@ _label_deliver_pkt:
 #endif
 
 		//in case socket object be destructed during ch_read
-		const u32_t size = L->channel_rcv_buf_size();
-		netp::u32_t nbytes = size; //skip the frist check
+
+		const int size = L->channel_rcv_buf_size();
+		int nbytes = size; //trick to skip the frist check
 		//refer to https://man7.org/linux/man-pages/man7/epoll.7.html tip 9
 		//if it is stream based, return value nbytes<size indicate that the buf has been exhausted
 		//socket_recv_impl set status to non-zero iff ::recv return -1
@@ -593,24 +591,24 @@ _label_deliver_pkt:
 			NETP_ASSERT( (m_chflag&(int(channel_flag::F_READ_SHUTDOWNING))) == 0);
 			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN)|int(channel_flag::F_READ_ERROR) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
 			NRP<netp::packet>& loop_buf = L->channel_rcv_buf();
-			nbytes = socket_recv_impl(loop_buf->head(), size, status);
-			if (NETP_LIKELY(nbytes>0)) {
-_label_deliver_pkt:
-				loop_buf->incre_write_idx(nbytes);
-				NRP<netp::packet> __tmp = netp::make_ref<netp::packet>(size);
-				__tmp.swap(loop_buf);
-				channel::ch_fire_read(std::move(__tmp));
-			}
-			//@note: udp socket might receive a 0 len pkt
-			else if ( (nbytes == 0) && (status == netp::OK)) {
-				if (is_udp()) {
-					goto _label_deliver_pkt;
-				} else if (is_tcp()) {
+			nbytes = socket_recv_impl(loop_buf->head(), size);
+			if (NETP_LIKELY(nbytes < 0)) {
+				status = nbytes;
+				break;
+			} else if (nbytes == 0 ) {
+				if (is_tcp()) {
 					status = netp::E_SOCKET_GRACE_CLOSE;
 				} else {
 					status = netp::E_UNKNOWN;
 				}
+				break;
 			}
+
+			//@note: udp socket might receive a 0 len pkt
+			loop_buf->incre_write_idx(nbytes);
+			NRP<netp::packet> __tmp = netp::make_ref<netp::packet>(size);
+			__tmp.swap(loop_buf);
+			channel::ch_fire_read(std::move(__tmp));
 		}
 
 		//for epoll et, (nbytes<size && rdhub is set)
@@ -661,19 +659,19 @@ _label_deliver_pkt:
 		NETP_ASSERT( (m_chflag&int(channel_flag::F_TX_LIMIT)) ==0);
 
 		//there might be a chance to be blocked a while in this loop, if set trigger another write
-		int _errno = netp::OK;
-		while ( _errno == netp::OK && m_tx_entry_q.size() ) {
+		while ( m_tx_entry_q.size() ) {
 #ifdef _NETP_DEBUG
-			NETP_ASSERT( (m_tx_bytes) > 0);
+			NETP_ASSERT( is_udp() ? true: (m_tx_bytes) > 0 );
 #endif
 			socket_outbound_entry& entry = m_tx_entry_q.front();
 			u32_t dlen = u32_t(entry.data->len());
 			u32_t wlen = (dlen);
 			if (m_tx_limit !=0 && (m_tx_budget<wlen)) {
-				if (m_tx_budget == 0) {
+				if ( (m_tx_budget == 0) || is_udp()/*udp pkt could not be split into smaller pkt*/ ) {
 #ifdef _NETP_DEBUG
 					NETP_ASSERT(m_chflag&int(channel_flag::F_TX_LIMIT_TIMER));
 #endif
+					//@note: for a tx_limit less than 64k/s, writing a 64k udp pkt would always be failed
 					return netp::E_CHANNEL_TXLIMIT;
 				}
 				wlen = m_tx_budget;
@@ -682,38 +680,42 @@ _label_deliver_pkt:
 #ifdef _NETP_DEBUG
 			NETP_ASSERT((wlen > 0) && (wlen <= m_tx_bytes));
 #endif
-			netp::u32_t nbytes = socket_send_impl( entry.data->head(), u32_t(wlen), _errno);
-			if (NETP_LIKELY(nbytes > 0)) {
-				m_tx_bytes -= nbytes;
-				if (m_tx_limit != 0 ) {
-					m_tx_budget -= nbytes;
-					u32_t __tx_limit_clock_ms = netp::app::instance()->channel_tx_limit_clock();
-					if (!(m_chflag & int(channel_flag::F_TX_LIMIT_TIMER)) && ( (m_tx_budget < ((m_tx_limit/(1000/__tx_limit_clock_ms))) ) ) ) {
-						m_chflag |= int(channel_flag::F_TX_LIMIT_TIMER);
-						m_tx_limit_last_tp = netp::now<netp::microseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
-						L->launch(netp::make_ref<netp::timer>(std::chrono::milliseconds(__tx_limit_clock_ms), &socket_channel::_tmcb_tx_limit, NRP<socket_channel>(this), std::placeholders::_1));
-					}
-				}
+			const int nbytes = socket_send_impl( entry.data->head(), u32_t(wlen));
+			if (NETP_UNLIKELY(nbytes < 0)) {
+				return nbytes;
+			}
 
-				if (NETP_LIKELY(nbytes == dlen)) {
-#ifdef _NETP_DEBUG
-					NETP_ASSERT(_errno == netp::OK);
-#endif
-					entry.write_promise->set(netp::OK);
-					m_tx_entry_q.pop_front();
-				} else {
-					entry.data->skip(nbytes); //ewouldblock or bdlimit
-#ifdef _NETP_DEBUG
-					NETP_ASSERT(entry.data->len());
-#endif
+			if ( is_udp() && (nbytes != dlen)) {
+				//ignore the last write && retry
+				continue;
+			}
+
+			m_tx_bytes -= nbytes;
+			if (m_tx_limit != 0 ) {
+				m_tx_budget -= nbytes;
+				u32_t __tx_limit_clock_ms = netp::app::instance()->channel_tx_limit_clock();
+				if (!(m_chflag & int(channel_flag::F_TX_LIMIT_TIMER)) && ( (m_tx_budget < ((m_tx_limit/(1000/__tx_limit_clock_ms))) ) ) ) {
+					m_chflag |= int(channel_flag::F_TX_LIMIT_TIMER);
+					m_tx_limit_last_tp = netp::now<netp::microseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
+					L->launch(netp::make_ref<netp::timer>(std::chrono::milliseconds(__tx_limit_clock_ms), &socket_channel::_tmcb_tx_limit, NRP<socket_channel>(this), std::placeholders::_1));
 				}
 			}
+
+			if ((nbytes == dlen)) {
+				entry.write_promise->set(netp::OK);
+				m_tx_entry_q.pop_front();
+			} else {
+				NETP_ASSERT(!is_udp(), "proto: %u", sock_protocol() );
+				entry.data->skip(nbytes);
+#ifdef _NETP_DEBUG
+				NETP_ASSERT(entry.data->len());
+#endif
+			}
 		}
-		return _errno;
+		return netp::OK;
 	}
 
 	int socket_channel::___do_io_write_to() {
-
 #ifdef _NETP_DEBUG
 		NETP_ASSERT( !ch_is_connected() && m_tx_entry_to_q.size() && m_tx_entry_q.empty(), "%s, flag: %u", ch_info().c_str(), m_chflag);
 #endif
@@ -721,20 +723,20 @@ _label_deliver_pkt:
 		NETP_ASSERT(m_chflag & (int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE)));
 
 		//there might be a chance to be blocked a while in this loop, if set trigger another write
-		int _errno = netp::OK;
-		while (_errno == netp::OK && m_tx_entry_to_q.size() ) {
-			NETP_ASSERT(m_tx_bytes > 0);
-
+		int status = netp::OK;
+		while ( m_tx_entry_to_q.size() ) {
+			//@note: udp allow zero-len pkt
 			socket_outbound_entry_to& entry = m_tx_entry_to_q.front();
-			NETP_ASSERT((entry.data->len() > 0) && (entry.data->len() <= m_tx_bytes));
-			netp::u32_t nbytes = socket_sendto_impl(entry.data->head(), (u32_t)entry.data->len(), entry.to, _errno);
-			//hold a copy before we do pop it from queue
-			nbytes == entry.data->len() ? NETP_ASSERT(_errno == netp::OK):NETP_ASSERT(_errno != netp::OK);
+			NETP_ASSERT((entry.data->len() <= m_tx_bytes));
+			status = socket_sendto_impl(entry.data->head(), (u32_t)entry.data->len(), entry.to);
+			if(status < 0) {
+				break;
+			}
 			m_tx_bytes -= u32_t(entry.data->len());
-			entry.write_promise->set(_errno);
+			entry.write_promise->set(status);
 			m_tx_entry_to_q.pop_front();
 		}
-		return _errno;
+		return status;
 	}
 
 	void socket_channel::_ch_do_close_listener() {
@@ -874,7 +876,7 @@ __act_label_close_read_write:
 	{
 #ifdef _NETP_DEBUG
 		NETP_ASSERT(L->in_event_loop());
-		NETP_ASSERT((intp != nullptr) && (outlet->len() > 0));
+		NETP_ASSERT((intp != nullptr) && ( is_udp() ? true: (outlet->len() > 0)) );
 #endif
 
 		__CH_WRITEABLE_CHECK__(outlet, intp);
@@ -904,11 +906,11 @@ __act_label_close_read_write:
 #endif
 	}
 
+	//@note: udp could send zero-len pkt
 	void socket_channel::ch_write_to_impl( NRP<promise<int>> const& intp, NRP<packet> const& outlet,NRP<netp::address >const& to) {
 #ifdef _NETP_DEBUG
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT(intp != nullptr);
-		NETP_ASSERT(outlet->len() > 0);
 #endif
 
 		__CH_WRITEABLE_CHECK__(outlet, intp);

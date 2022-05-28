@@ -252,76 +252,58 @@ namespace netp {
 		int optval = onoff ? 1 : 0;
 		return netp::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval));
 	}
-	inline netp::u32_t send( SOCKET fd, byte_t const* const buf, netp::u32_t len, int& ec_o, int flag) {
-		NETP_ASSERT(buf != nullptr && len>0);
 
-		netp::u32_t R = 0;
-
-		//TRY SEND
-		do {
-			const int r = ::send(fd, reinterpret_cast<const char*>(buf) + R, (int)(len - R), flag);
-			if (NETP_LIKELY(r > 0)) {
-				ec_o = netp::OK;
-				R += r;
-				if (R == len) {
-					break;
-				}
-			} else {
-				int ec = netp_socket_get_last_errno();
-				if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
-					continue;
-				}
-				//NETP_TRACE_SOCKET_API("[netp::send][#%d]send failed: %d", fd, ec);
-				_NETP_REFIX_EWOULDBLOCK(ec);
-				ec_o = ec;
-				break;
+	//caller decide to retry or not
+	inline int send( SOCKET fd, byte_t const* const buf, netp::u32_t len, int flag) {
+		//for a connected udp session, zero-len is allowed
+		NETP_ASSERT(buf != nullptr);
+__label_send:
+		const int r = ::send(fd, reinterpret_cast<const char*>(buf), (int)(len), flag);
+		if (NETP_UNLIKELY(r == -1)) {
+			int ec = netp_socket_get_last_errno();
+			if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
+				goto __label_send;
 			}
-		} while (true);
-
-		NETP_TRACE_SOCKET_API("[netp::send][#%d]send, to send: %d, sent: %d, ec: %d", fd, len, R, ec_o);
-		return R;
+			//NETP_TRACE_SOCKET_API("[netp::send][#%d]send failed: %d", fd, ec);
+			_NETP_REFIX_EWOULDBLOCK(ec);
+			return ec;
+		}
+		return r;
 	}
-
 
 	//@note: 
 	//Datagram sockets in various domains(e.g., the UNIXand Internet
 	//	domains) permit zero - length datagrams.When such a datagram is
-	//	received, the return value is 0
-
-	inline netp::u32_t recv(SOCKET fd, byte_t* const buffer_o, netp::u32_t size, int& ec_o, int flag) {
+	//	received, the return value is 0 with no error ec_o set
+	inline int recv(SOCKET fd, byte_t* const buffer_o, netp::u32_t size, int flag ) {
 		NETP_ASSERT(buffer_o != nullptr && size>0);
-
-		netp::u32_t R = 0;
-		do {
-			const int r = ::recv(fd, reinterpret_cast<char*>(buffer_o) + R, (int)(size - R), flag);
-			if (NETP_LIKELY(r > 0)) {
-				R += r;
-				break;
-			} else if (r == 0) {
-				break;
-			} else {
-				int ec = netp_socket_get_last_errno();
-				if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
-					continue;
-				}
-				_NETP_REFIX_EWOULDBLOCK(ec);
-				ec_o = ec;
-				//NETP_TRACE_SOCKET_API("[netp::recv][#%d]recv: %d", fd, ec);
-				break;
+__label_recv:
+		const int r = ::recv(fd, reinterpret_cast<char*>(buffer_o), (int)(size), flag);
+		if (NETP_UNLIKELY(r == -1)) {
+			int ec = netp_socket_get_last_errno();
+			if (NETP_UNLIKELY(ec == netp::E_EINTR)) {
+				goto __label_recv;
 			}
-		} while (true);
+			_NETP_REFIX_EWOULDBLOCK(ec);
+			return ec;
+			//NETP_TRACE_SOCKET_API("[netp::recv][#%d]recv: %d", fd, ec);
+		}
 
-		//NETP_TRACE_SOCKET_API("[netp::recv][#%d]recv bytes, %u, ec: %d", fd, R, ec_o);
-#ifdef _NETP_DEBUG
-		NETP_ASSERT(R <= size);
-#endif
-		return R;
+		//note
+		//(1) one shot one recv to give a zero-len udp pkt a chance to the caller, or we'll risk to miss this zero-len udp pkt for the following case
+		//		a, zero-len udp pkt arrive
+		//		b, we fetch from kernel by recv
+		//		c, next recv return E_AGAIN
+		//		d, return the call with R=0&&ec_o==E_AGAIN
+
+		//(2) a break is a must to distinguish udp-pkts, one shot(recv) one pkt
+		//(3) optimization: the caller decide to retry or not
+		return r;
 	}
 
-	inline netp::u32_t sendto(SOCKET fd, netp::byte_t const* const buf, netp::u32_t len, NRP<address> const& addr_to, int& ec_o, int const& flag) {
-
-		NETP_ASSERT(buf != nullptr && len>0);
-
+	//@NOTE: udp allow zero-len pkt
+	inline int sendto(SOCKET fd, netp::byte_t const* const buf, netp::u32_t len, NRP<address> const& addr_to, int const& flag) {
+		NETP_ASSERT(buf != nullptr);
 	_label_sendto:
 		int nbytes;
 		if (addr_to != nullptr) {
@@ -332,29 +314,24 @@ namespace netp {
 			addr_in.sin_addr.s_addr = addr_to->nipv4().u32;
 			nbytes = ::sendto(fd, reinterpret_cast<const char*>(buf), (int)len, flag, reinterpret_cast<struct sockaddr*>(&addr_in), sizeof(addr_in));
 		} else {
-			nbytes = ::sendto(fd, reinterpret_cast<const char*>(buf), (int)len, flag,NULL, 0);
+			nbytes = ::sendto(fd, reinterpret_cast<const char*>(buf), (int)len, flag, NULL, 0);
 		}
 
-		if (NETP_LIKELY(nbytes > 0)) {
-			//sometimes, we got nbytes != len (happens on rpi )
-			ec_o = netp::OK;
-			//NETP_TRACE_SOCKET_API("[netp::sendto][#%d]sendto() == %d", fd, nbytes);
-			return nbytes;
+		if ( NETP_UNLIKELY(nbytes == -1) ) {
+			int ec = netp_socket_get_last_errno();
+			//NETP_TRACE_SOCKET_API("[netp::sendto][#%d]send failed, error code: %d", fd, ec);
+			if (ec == netp::E_EINTR) {
+				goto _label_sendto;
+			}
+			_NETP_REFIX_EWOULDBLOCK(ec);
+			return ec;
 		}
-#ifdef _NETP_DEBUG
-		NETP_ASSERT(nbytes == -1);
-#endif
-		int ec = netp_socket_get_last_errno();
-		//NETP_TRACE_SOCKET_API("[netp::sendto][#%d]send failed, error code: %d", fd, ec);
-		if (ec == netp::E_EINTR) {
-			goto _label_sendto;
-		}
-		_NETP_REFIX_EWOULDBLOCK(ec);
-		ec_o = ec;
-		return 0;
+		//sometimes, we got nbytes != len (noticed on rpi )
+		//NETP_TRACE_SOCKET_API("[netp::sendto][#%d]sendto() == %d", fd, nbytes);
+		return nbytes;
 	}
 
-	inline netp::u32_t recvfrom( SOCKET fd, byte_t* const buff_o, netp::u32_t size, NRP<address>& addr_o, int& ec_o, int const& flag) {
+	inline int recvfrom( SOCKET fd, byte_t* const buff_o, netp::u32_t size, NRP<address>& addr_o, int const& flag) {
 	_label_recvfrom:
 		int nbytes;
 		if (addr_o != nullptr) {
@@ -365,21 +342,16 @@ namespace netp {
 			nbytes = ::recvfrom(fd, reinterpret_cast<char*>(buff_o), (int)size, flag, NULL, NULL);
 		}
 
-		if (NETP_LIKELY(nbytes > 0)) {
-			//NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom() == %d", fd, nbytes);
-			return nbytes;
-		} else if (nbytes == 0) {
-			return 0;
-		} else {
+		if (NETP_UNLIKELY(nbytes == -1)) {
 			int ec = netp_socket_get_last_errno();
 			//NETP_TRACE_SOCKET_API("[netp::recvfrom][#%d]recvfrom, ERROR: %d", fd, ec);
 			if (ec == netp::E_EINTR) {
 				goto _label_recvfrom;
 			}
 			_NETP_REFIX_EWOULDBLOCK(ec);
-			ec_o = ec;
-			return 0;
+			return ec;
 		}
+		return nbytes;
 	}
 
 	inline int socketpair(int domain, int type, int protocol, SOCKET sv[2]) {

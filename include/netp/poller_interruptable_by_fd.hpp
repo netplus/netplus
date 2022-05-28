@@ -57,9 +57,11 @@ namespace netp {
 #endif
 
 #else
-					u32_t c = netp::recv(fdr, tmp, 4, ec, 0);
+					ec = netp::recv(fdr, tmp, 4, 0);
 	#ifdef _NETP_DEBUG_INTERRUPT_
-					nbytes += c;
+					if (ec >0) {
+						nbytes += ec;
+					}
 	#endif
 #endif
 			} while (false);
@@ -90,9 +92,8 @@ namespace netp {
 				NETP_WARN("[fdinterrupt_monitor][##%u]interrupt pipe failed: %d", fdw, ec);
 			} while (fdw != NETP_INVALID_SOCKET);
 #else
-			u32_t c = netp::send(fdw, (byte_t const* const)&interrutp_i, 1, ec, 0);
-			(void)c;
-			if (NETP_UNLIKELY(ec != netp::OK)) {
+			ec = netp::send(fdw, (byte_t const* const)&interrutp_i, 1, 0);
+			if (NETP_UNLIKELY(ec<0)) {
 				NETP_WARN("[fdinterrupt_monitor][##%u]interrupt send failed: %d", fdw, ec);
 			}
 #endif

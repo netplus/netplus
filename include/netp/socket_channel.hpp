@@ -572,18 +572,18 @@ protected:
 			return netp::setsockopt(m_fd, level, option_name, value, option_len);
 		}
 
-		virtual int socket_send_impl(const byte_t* data, u32_t len, int& status, int flag = 0) {
-			return netp::send(m_fd, data, len, status, flag);
+		virtual int socket_send_impl(const byte_t* data, u32_t len, int flag = 0) {
+			return netp::send(m_fd, data, len, flag);
 		}
-		virtual int socket_sendto_impl(const byte_t* data, u32_t len, NRP<address> const& to, int& status, int flag = 0) {
-			return netp::sendto(m_fd, data, len, to, status, flag);
+		virtual int socket_sendto_impl(const byte_t* data, u32_t len, NRP<address> const& to, int flag = 0) {
+			return netp::sendto(m_fd, data, len, to, flag);
 		}
 
-		virtual int socket_recv_impl(byte_t* const buf, u32_t size, int& status, int flag = 0) {
-			return netp::recv(m_fd, buf, size, status, flag);
+		virtual int socket_recv_impl(byte_t* const buf, u32_t size, int flag = 0) {
+			return netp::recv(m_fd, buf, size, flag);
 		}
-		virtual int socket_recvfrom_impl(byte_t* const  buf, u32_t size, NRP<address>& from, int& status, int flag = 0) {
-			return netp::recvfrom(m_fd, buf, size, from, status, flag);
+		virtual int socket_recvfrom_impl(byte_t* const buf, u32_t size, NRP<address>& from, int flag = 0) {
+			return netp::recvfrom(m_fd, buf, size, from, flag);
 		}
 
 	public:
