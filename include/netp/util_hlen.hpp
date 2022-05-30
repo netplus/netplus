@@ -25,6 +25,7 @@ namespace netp {
 			m_in_q_nbytes(0)
 		{}
 
+		//@note: zero-len m_size is supported
 		//@return true for re-try
 		inline bool decode(NRP<netp::packet>&& in_, NRP<netp::packet>& out) {
 			//@NOTE: for a stream based connection, we must handle the following edge case
@@ -80,7 +81,7 @@ namespace netp {
 					if (m_in_q_nbytes < m_size) {
 						return false;
 					}
-					const hlen_util_size_t to_write = in->len() > m_size ? m_size : hlen_util_size_t(in->len());
+					const hlen_util_size_t to_write = (in->len() > m_size ? m_size : hlen_util_size_t(in->len()));
 					m_pkt_tmp->write(in->head(), to_write);
 					in->skip(to_write);
 
