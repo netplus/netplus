@@ -5,3 +5,5 @@
 3, NETP_ASSERT((ctx->fd != NETP_INVALID_SOCKET) && (ctx->flag&(io_flag::IO_READ|io_flag::IO_WRITE)), "fd: %u, flag: %u, event: %u", ctx->fd, ctx->flag, epEvents[i].events ); be seen, no clue.
 	a, clue1, it's from def_loop_group()
 	b, might source from poller_interruptable_by_fd::unwatch
+
+	fix note: close socket_channel if unwatch return non-zero, close socket_channel if do_io(end_xx) failed both in ch_io_end_read|ch_io_end_write.
