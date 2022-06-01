@@ -1097,6 +1097,7 @@ __act_label_close_read_write:
 
 				if (rt != netp::OK) {
 					NETP_WARN("[socket][%s]io_action::END_READ, rt: %d, close socket_channel", ch_info().c_str(), rt );
+					ch_errno() = rt;
 					ch_close_impl(nullptr);
 				}
 			}
@@ -1163,6 +1164,7 @@ __act_label_close_read_write:
 
 				if (rt != netp::OK) {
 					NETP_WARN("[socket][%s]io_action::END_WRITE, rt: %d, close socket_channel", ch_info().c_str(), rt);
+					ch_errno() = rt;
 					ch_close_impl(nullptr);
 				}
 			}
