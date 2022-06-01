@@ -228,7 +228,7 @@ namespace netp {
 			switch (act) {
 			case io_action::READ:
 			{
-				NETP_TRACE_IOE("[poller_interruptable_by_fd][#%d]io_action::READ", ctx->fd);
+				NETP_TRACE_IOE("[poller_interruptable_by_fd][type:%d][#%d]io_action::READ", m_type, ctx->fd);
 #ifdef _NETP_DEBUG
 				NETP_ASSERT((ctx->flag & io_flag::IO_READ) == 0);
 #endif
@@ -241,7 +241,7 @@ namespace netp {
 			break;
 			case io_action::END_READ:
 			{
-				NETP_TRACE_IOE("[poller_interruptable_by_fd][type:%d][#%d]io_action::END_READ", ctx->fd);
+				NETP_TRACE_IOE("[poller_interruptable_by_fd][type:%d][#%d]io_action::END_READ", m_type, ctx->fd);
 				if (ctx->flag&io_flag::IO_READ) {
 					ctx->flag &= ~io_flag::IO_READ;
 					//we need this condition check ,cuz epoll might fail to watch
@@ -252,7 +252,7 @@ namespace netp {
 			break;
 			case io_action::WRITE:
 			{
-				NETP_TRACE_IOE("[poller_interruptable_by_fd][type:%d][#%d]io_action::WRITE", ctx->fd);
+				NETP_TRACE_IOE("[poller_interruptable_by_fd][type:%d][#%d]io_action::WRITE", m_type, ctx->fd);
 #ifdef _NETP_DEBUG
 				NETP_ASSERT((ctx->flag & io_flag::IO_WRITE) == 0);
 #endif
@@ -265,7 +265,7 @@ namespace netp {
 			break;
 			case io_action::END_WRITE:
 			{
-				NETP_TRACE_IOE("[poller_interruptable_by_fd][type:%d][#%d]io_action::END_WRITE", ctx->fd);
+				NETP_TRACE_IOE("[poller_interruptable_by_fd][type:%d][#%d]io_action::END_WRITE", m_type, ctx->fd);
 				if (ctx->flag & io_flag::IO_WRITE) {
 					ctx->flag &= ~io_flag::IO_WRITE;
 					//we need this condition check ,cuz epoll might fail to watch

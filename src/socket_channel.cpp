@@ -1089,11 +1089,16 @@ __act_label_close_read_write:
 			}
 
 			if ((m_chflag & int(channel_flag::F_WATCH_READ))) {
-				L->io_do(io_action::END_READ, m_io_ctx);
+				int rt = L->io_do(io_action::END_READ, m_io_ctx);
 				m_chflag &= ~(int(channel_flag::F_USE_DEFAULT_READ) | int(channel_flag::F_WATCH_READ));
 				netp::allocator<fn_io_event_t>::trash(m_fn_read);
 				m_fn_read = nullptr;
 				NETP_TRACE_IOE("[socket][%s]io_action::END_READ", ch_info().c_str());
+
+				if (rt != netp::OK) {
+					NETP_WARN("[socket][%s]io_action::END_READ, rt: %d, close socket_channel", ch_info().c_str(), rt );
+					ch_close_impl(nullptr);
+				}
 			}
 		}
 
@@ -1150,11 +1155,16 @@ __act_label_close_read_write:
 			}
 
 			if (m_chflag & int(channel_flag::F_WATCH_WRITE)) {
-				L->io_do(io_action::END_WRITE, m_io_ctx);
+				int rt = L->io_do(io_action::END_WRITE, m_io_ctx);
 				m_chflag &= ~(int(channel_flag::F_USE_DEFAULT_WRITE) | int(channel_flag::F_WATCH_WRITE));
 				netp::allocator<fn_io_event_t>::trash(m_fn_write);
 				m_fn_write = nullptr;
-				NETP_TRACE_IOE("[socket][%s]io_action::END_WRITE", ch_info().c_str());
+				NETP_TRACE_IOE("[socket][%s]io_action::END_WRITE, rt: %d", ch_info().c_str(), rt );
+
+				if (rt != netp::OK) {
+					NETP_WARN("[socket][%s]io_action::END_WRITE, rt: %d, close socket_channel", ch_info().c_str(), rt);
+					ch_close_impl(nullptr);
+				}
 			}
 		}
 
