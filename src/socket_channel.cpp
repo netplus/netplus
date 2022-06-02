@@ -1067,7 +1067,7 @@ __act_label_close_read_write:
 				m_chflag |= int(channel_flag::F_READ_ERROR);//for assert check
 				ch_errno() = rt;
 				ch_close(nullptr);
-				if(fn_read != nullptr) fn_read(rt, nullptr);
+				if (fn_read != nullptr) { fn_read(rt, nullptr); }
 				return;
 			}
 			if (fn_read == nullptr) {
@@ -1134,7 +1134,7 @@ __act_label_close_read_write:
 				m_chflag |= int(channel_flag::F_WRITE_ERROR);//for assert check
 				ch_errno() = rt;
 				ch_close(nullptr);
-				if (fn_write != nullptr) fn_write(rt, nullptr);
+				if (fn_write != nullptr) { fn_write(rt, nullptr); }
 				return;
 			}
 			if (fn_write == nullptr) {

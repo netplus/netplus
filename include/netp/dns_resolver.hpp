@@ -7,7 +7,6 @@
 #include <netp/core.hpp>
 #include <netp/string.hpp>
 
-#include "../../3rd/c-ares/c-ares-1.17.1/include/ares.h"
 #include <netp/ipv4.hpp>
 #include <netp/smart_ptr.hpp>
 #include <netp/promise.hpp>
@@ -58,6 +57,7 @@ namespace netp {
 	//netp::allocator use tls data to store allocator pointer, if we share a dns resolver in between multi-eventloops, the following case should be taken into consideration
 	//1, thread safe alloc/dealloc
 	
+
 	class event_loop;
 	class dns_resolver :
 		public netp::ref_base
@@ -65,6 +65,7 @@ namespace netp {
 		friend class event_loop;
 		friend struct ares_fd_monitor;
 		friend struct async_dns_query;
+		
 		enum dns_resolver_flag {
 			f_stop_called = 1<<0,
 			f_launching = 1<<1,
@@ -77,7 +78,7 @@ namespace netp {
 
 		NRP<event_loop> L;
 
-		ares_channel m_ares_channel;
+		void* m_ares_channel;
 		long m_ares_active_query;
 
 		NRP<netp::timer> m_tm_dnstimeout;
@@ -90,8 +91,10 @@ namespace netp {
 
 	public:
 		void __ares_wait();
-		int __ares_socket_create_cb(ares_socket_t socket_fd, int type);
-		void __ares_socket_state_cb(ares_socket_t socket_fd, int readable, int writable);
+
+		SOCKET __ares_socket_create(int af, int type, int proto);
+		int __ares_socket_close(SOCKET fd);
+		void __ares_socket_state_cb(SOCKET socket_fd, int readable, int writable);
 		inline void __ares_done() { NETP_ASSERT(m_ares_active_query>0); --m_ares_active_query; }
 		void __ares_check_timeout();
 

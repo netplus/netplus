@@ -68,7 +68,7 @@ namespace netp {
 
 		int unwatch( u8_t flag, io_ctx* ctx ) override {
 #ifdef _NETP_DEBUG_EPOLL_EVENTS
-			NETP_ASSERT( (ctx->fd != NETP_INVALID_SOCKET) && (flag == io_flag::IO_READ || flag == io_flag::IO_WRITE));
+			NETP_ASSERT((ctx->fd != NETP_INVALID_SOCKET) && (flag == io_flag::IO_READ || flag == io_flag::IO_WRITE));
 #endif
 			struct epoll_event epEvent =
 			{
@@ -143,6 +143,7 @@ namespace netp {
 			}
 #endif
 
+			//@note: if fda's event might result in unwatch(R|W) for fdb
 			for( int i=0;i<nEvents;++i) {
 #ifdef _NETP_DEBUG_EPOLL_EVENTS
 				NETP_ASSERT( epEvents[i].data.ptr != nullptr );
@@ -174,8 +175,8 @@ namespace netp {
 				//TRACE_IOE( "[EPOLL][##%d][#%d]EVT: (EPOLLERR|EPOLLHUB), post IOE_ERROR", m_epfd, ctx->fd );
 				//refer to https://stackoverflow.com/questions/52976152/tcp-when-is-epollhup-generated
 				//@note:
-				// 1) FIN_SENT&FIN_RECV result  in hub
-				// 2) FIN_RECV result rdhub
+				// 1) FIN_SENT&FIN_RECV result in hub
+				// 2) FIN_RECV result in rdhub
 				// 3) for EPOLLERR, just notify read|write, if there is a error ,let read|write to handle it
 				// 4) EPOLLRDHUP|EPOLLIN would arrive at the same time (but it's not sometimes), keep reading until read() return 0 to avoid a miss
 				//		4.1) alternative solution is to ignore read if we get EPOLLRDHUB, in this case, we might miss some pending data in rcvbuf 

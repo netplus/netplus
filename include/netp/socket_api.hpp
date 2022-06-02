@@ -206,6 +206,7 @@ namespace netp {
 #endif
 	}
 
+	//@note: fcntl return -1 if failed, ioctlsocket return SOCKET_ERROR(-1) if failed
 	inline int set_nonblocking(SOCKET fd, bool onoff) {
 		int rt;
 #if defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID) || defined(_NETP_APPLE)
