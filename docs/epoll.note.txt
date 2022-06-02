@@ -1,0 +1,1 @@
+1, epoll_ctl(del) must happens before close(fd)
