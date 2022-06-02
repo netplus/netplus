@@ -38,7 +38,9 @@ LIB_3RD_CPP_O_FILES		:= $(foreach path,$(LIB_3RD_CPP_O_FILES), $(subst $(LIB_3RD
 LIB_3RD_CPP_O_FILES 	:= $(addprefix $(LIB_3RD_CPP_BUILD_DIR)/,$(LIB_3RD_CPP_O_FILES))
 
 
-LIB_3RD_CPP_FILES_INCLUDES := $(LIB_3RD_DIR)/c-ares/$(LIB_3RD_C_ARES_VERSION)/src/lib $(LIB_3RD_DIR)/c-ares/$(LIB_3RD_C_ARES_VERSION)/include
+LIB_3RD_CPP_FILES_INCLUDES := $(LIB_3RD_DIR)/c-ares/$(LIB_3RD_C_ARES_VERSION)/ares_config/generic $(LIB_3RD_DIR)/c-ares/$(LIB_3RD_C_ARES_VERSION)/include
+
+CC_INC := $(CC_INC) $(LIB_3RD_CPP_FILES_INCLUDES)
 
 C_3RD_INCLUDES := \
 	$(foreach include,$(LIB_3RD_CPP_FILES_INCLUDES), -I"$(include)")
@@ -59,7 +61,7 @@ LIB_FULL_PATH_NAME	:= $(LIB_BIN_DIR)/$(LIB_FULL_NAME)
 
 LIB_NETP_A := $(LIB_FULL_PATH_NAME)
 
-DEFINES	:= __NETP__ $(DEFINES) $(LIB_SIMD_DEFINE)
+DEFINES	:= __NETP__ $(DEFINES) $(LIB_SIMD_DEFINE) $(C_ARES_DEFINES)
 
 #we have to output these define to a build.hpp file to be referenced by others
 DEFINES :=\

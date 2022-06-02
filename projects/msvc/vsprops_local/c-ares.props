@@ -5,7 +5,7 @@
   <PropertyGroup />
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(ProjectDir)/../../3rd/c-ares/c-ares-1.18.1/include;$(ProjectDir)/../../3rd/c-ares/c-ares-1.18.1/src/lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)/../../3rd/c-ares/c-ares-1.18.1/include;$(ProjectDir)/../../3rd/c-ares/c-ares-1.18.1/ares_config/generic;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>CARES_STATICLIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>

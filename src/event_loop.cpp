@@ -86,7 +86,7 @@ namespace netp {
 			} else {
 				m_dns_resolver = netp::make_ref<dns_resolver>(netp::app::instance()->def_loop_group()->next());
 			}
-
+			m_dns_resolver->init();
 			if (m_dns_hosts.size()) {
 				m_dns_resolver->add_name_server(m_dns_hosts);
 			}
@@ -107,6 +107,7 @@ namespace netp {
 
 		if (m_cfg.flag & f_enable_dns_resolver) {
 			NETP_ASSERT(m_dns_resolver != nullptr);
+			m_dns_resolver->deinit();
 			m_dns_resolver = nullptr;
 		}
 

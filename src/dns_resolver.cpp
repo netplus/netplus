@@ -100,6 +100,7 @@ namespace netp {
 
 	dns_resolver::dns_resolver(NRP<event_loop> const& L_) :
 		L(L_),
+		m_ares_channel(0),
 		m_ares_active_query(0),
 		m_flag(0)
 	{
@@ -107,6 +108,17 @@ namespace netp {
 	}
 
 	dns_resolver::~dns_resolver() {}
+
+	void dns_resolver::init() {
+		NETP_ASSERT(m_ares_channel ==0);
+		m_ares_channel = netp::allocator<ares_channel>::make();
+	}
+	void dns_resolver::deinit() {
+		if (m_ares_channel != 0) {
+			netp::allocator<ares_channel>::trash((ares_channel*)m_ares_channel);
+			m_ares_channel = 0;
+		}
+	}
 
 	void dns_resolver::_do_add_name_server() {
 		NETP_ASSERT(L->in_event_loop());
@@ -117,7 +129,7 @@ namespace netp {
 
 	NRP<netp::promise<int>> dns_resolver::add_name_server(std::vector<netp::string_t, netp::allocator<netp::string_t>> const& ns) {
 		NRP<netp::promise<int>> p = netp::make_ref<netp::promise<int>>();
-		L->execute([dnsr = NRP<dns_resolver>(this), ns, p]() {
+		L->execute([dnsr=NRP<dns_resolver>(this), ns, p]() {
 			dnsr->m_ns.insert(dnsr->m_ns.begin(), ns.begin(), ns.end());
 			p->set(netp::OK);
 		});
@@ -157,7 +169,13 @@ namespace netp {
 		return writev(fd,iovec_,count);
 	}
 
-	static ares_socket_functions __ares_func;
+	static const ares_socket_functions __ares_func = {
+		___ares_socket_create,
+		___ares_socket_close,
+		___ares_socket_connect,
+		___ares_socket_recvfrom,
+		___ares_socket_sendv
+	};
 
 	void dns_resolver::_do_start(NRP<netp::promise<int>> const& p) {
 		NETP_ASSERT(L->in_event_loop());
@@ -177,16 +195,13 @@ namespace netp {
 		ares_options ares_opt;
 		std::memset(&ares_opt, 0, sizeof(ares_opt));
 
-		int ares_flag =ARES_OPT_SOCK_STATE_CB;
+		int ares_flag = ARES_OPT_SOCK_STATE_CB;
 		ares_opt.sock_state_cb = ___ares_socket_state_cb;
 		ares_opt.sock_state_cb_data = this;
 
 		ares_flag |= ARES_OPT_FLAGS;
 		ares_opt.flags = ARES_FLAG_STAYOPEN;
 		
-		NETP_ASSERT(m_ares_channel == 0);
-		m_ares_channel = netp::allocator<ares_channel>::make();
-
 		ares_init_rt = ares_init_options(((ares_channel*)(m_ares_channel)), &ares_opt, ares_flag);
 		if (ares_init_rt != ARES_SUCCESS) {
 			m_flag &= ~dns_resolver_flag::f_launching;
@@ -194,11 +209,6 @@ namespace netp {
 			return;
 		}
 
-		__ares_func.asocket = ___ares_socket_create;
-		__ares_func.aclose = ___ares_socket_close;
-		__ares_func.aconnect = ___ares_socket_connect;
-		__ares_func.arecvfrom = ___ares_socket_recvfrom;
-		__ares_func.asendv = ___ares_socket_sendv;
 		ares_set_socket_functions(*((ares_channel*)(m_ares_channel)), &__ares_func, this );
 
 		//@note
@@ -259,8 +269,7 @@ namespace netp {
 
 		ares_cancel(*((ares_channel*)(m_ares_channel)));
 		ares_destroy(*((ares_channel*)(m_ares_channel)));
-		netp::allocator<ares_channel>::trash((ares_channel*)m_ares_channel);
-		m_ares_channel = 0;
+
 		__ares_wait();
 
 		ares_library_cleanup();
@@ -330,11 +339,10 @@ namespace netp {
 		NETP_ASSERT(m_ares_active_query == 0);
 	}
 
-	ares_socket_t dns_resolver::__ares_socket_create(int af, int type, int proto) {
-		NETP_ASSERT(L != nullptr);
-		NETP_ASSERT(L->in_event_loop());
+	SOCKET dns_resolver::__ares_socket_create(int af, int type, int proto) {
+		NETP_ASSERT(L != nullptr && L->in_event_loop());
 
-		ares_socket_t fd = socket(af, type, proto);
+		SOCKET fd = socket(af, type, proto);
 		NETP_RETURN_V_IF_MATCH(fd, fd == NETP_INVALID_SOCKET);
 		
 		int setnb = netp::set_nonblocking(fd, true);
@@ -350,13 +358,12 @@ namespace netp {
 			return NETP_INVALID_SOCKET;
 		}
 
-
 		afm->ctx = ctx;
 		m_ares_fd_monitor_map.insert({ fd, afm });
 		return fd;
 	}
 
-	int dns_resolver::__ares_socket_close(ares_socket_t fd) {
+	int dns_resolver::__ares_socket_close(SOCKET fd) {
 		NETP_ASSERT(L != nullptr);
 		NETP_ASSERT(L->in_event_loop());
 		ares_fd_monitor_map_t::iterator it = m_ares_fd_monitor_map.find(fd);
@@ -383,7 +390,7 @@ namespace netp {
 	}
 	*/
 
-	void dns_resolver::__ares_socket_state_cb(ares_socket_t socket_fd, int readable, int writable) {
+	void dns_resolver::__ares_socket_state_cb(SOCKET socket_fd, int readable, int writable) {
 		//NETP_VERBOSE("[dns_resolver]__ares_state_cb, fd: %d, readable: %d, writeable: %d", socket_fd, readable, writable);
 
 		//if ((m_flag & dns_resolver_flag::f_running) ==0) { return; }

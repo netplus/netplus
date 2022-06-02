@@ -115,6 +115,10 @@ namespace netp {
 	public:
 		dns_resolver(NRP<event_loop> const& L_);
 		~dns_resolver();
+		
+		void init();
+		void deinit();
+
 		NRP<netp::promise<int>> add_name_server(std::vector<netp::string_t, netp::allocator<netp::string_t>> const& ns);
 		NRP<dns_query_promise> resolve(string_t const& domain);
 
