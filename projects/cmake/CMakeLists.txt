@@ -11,8 +11,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_STANDARD 11)
 
 # add source file for lib
-aux_source_directory(../../3rd/http_parser PROGRAM_SOURCE)
-aux_source_directory(../../3rd/udns/0.4 PROGRAM_SOURCE)
+aux_source_directory(../../3rd/c-ares/c-ares-1.18.1 PROGRAM_SOURCE)
 aux_source_directory(../../src/ PROGRAM_SOURCE)
 aux_source_directory(../../src/handler PROGRAM_SOURCE)
 aux_source_directory(../../src/http PROGRAM_SOURCE)
@@ -20,7 +19,7 @@ aux_source_directory(../../src/logger PROGRAM_SOURCE)
 aux_source_directory(../../src/os PROGRAM_SOURCE)
 aux_source_directory(../../src/task PROGRAM_SOURCE)
 aux_source_directory(../../src/thread_impl PROGRAM_SOURCE)
-aux_source_directory(../../src/traffic PROGRAM_SOURCE)
+
 if (WIN32)
   aux_source_directory(../../3rd/stack_walker PROGRAM_SOURCE)
   aux_source_directory(../../3rd/getopt PROGRAM_SOURCE)
@@ -46,12 +45,15 @@ if (WIN32)
           -DNETP_ENABLE_DNS_RESOLVER
           -DNO_IPHLPAPI
           -DWIN32_LEAN_AND_MEAN
+          -DCARES_STATICLIB
   )
   set(CMAKE_SYSTEM_VERSION 10.0.18362.0)
   target_include_directories(${LIB_NAME} 
     PUBLIC
       ../../3rd/stack_walker
       ../../3rd/getopt
+	    ../../3rd/c-ares/c-ares-1.18.1/include/
+      ../../include
   )
 elseif (APPLE)
   MESSAGE(STATUS "apple now")
@@ -63,9 +65,10 @@ endif ()
 # inclue hpp files
 target_include_directories(${LIB_NAME} 
   PUBLIC
-    ../../3rd/http_parser
-    ../../3rd/udns/0.4
     ../../include
+    ../../3rd/c-ares/c-ares-1.18.1/include/
+    ../../3rd/stack_walker
+      ../../3rd/getopt
 )
 
 
@@ -76,5 +79,5 @@ install(DIRECTORY ../../include/ DESTINATION netplus_demo/include)
 install(DIRECTORY ../../3rd/ DESTINATION netplus_demo/3rd)
 
 # Create executable file with netplus
-# add_executable(${PROJECT_NAME} ../../test/throughput/src/main.cpp)
-# TARGET_LINK_LIBRARIES(${PROJECT_NAME} PRIVATE ${LIB_NAME})
+add_executable(hello_world ../../test/hello_world/src/main.cpp)
+TARGET_LINK_LIBRARIES(hello_world PRIVATE ${LIB_NAME})
