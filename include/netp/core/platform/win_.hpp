@@ -30,8 +30,9 @@
 #include "../../../../3rd/getopt/getopt.h"
 
 //there is no ws2_64
-#pragma comment(lib,"ws2_32.lib")
-#pragma comment(lib,"mswsock.lib")
+#pragma comment (lib, "iphlpapi.lib")
+#pragma comment (lib, "Ws2_32.lib")
+#pragma comment (lib, "mswsock.lib")
 
 
 //for shutdown
