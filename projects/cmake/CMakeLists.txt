@@ -11,7 +11,8 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_STANDARD 11)
 
 # add source file for lib
-aux_source_directory(../../3rd/c-ares/c-ares-1.18.1 PROGRAM_SOURCE)
+aux_source_directory(../../3rd/c-ares/c-ares-1.18.1/src/lib PROGRAM_SOURCE)
+aux_source_directory(../../3rd/c-ares/c-ares-1.18.1/src/tools PROGRAM_SOURCE)
 aux_source_directory(../../src/ PROGRAM_SOURCE)
 aux_source_directory(../../src/handler PROGRAM_SOURCE)
 aux_source_directory(../../src/http PROGRAM_SOURCE)
@@ -46,6 +47,8 @@ if (WIN32)
           -DNO_IPHLPAPI
           -DWIN32_LEAN_AND_MEAN
           -DCARES_STATICLIB
+          -D_UNICODE
+          -DUNICODE
   )
   set(CMAKE_SYSTEM_VERSION 10.0.18362.0)
   target_include_directories(${LIB_NAME} 
@@ -53,6 +56,7 @@ if (WIN32)
       ../../3rd/stack_walker
       ../../3rd/getopt
 	    ../../3rd/c-ares/c-ares-1.18.1/include/
+      ../../3rd/c-ares/c-ares-1.18.1/src/lib
       ../../include
   )
 elseif (APPLE)
@@ -66,9 +70,6 @@ endif ()
 target_include_directories(${LIB_NAME} 
   PUBLIC
     ../../include
-    ../../3rd/c-ares/c-ares-1.18.1/include/
-    ../../3rd/stack_walker
-      ../../3rd/getopt
 )
 
 
@@ -79,5 +80,5 @@ install(DIRECTORY ../../include/ DESTINATION netplus_demo/include)
 install(DIRECTORY ../../3rd/ DESTINATION netplus_demo/3rd)
 
 # Create executable file with netplus
-add_executable(hello_world ../../test/hello_world/src/main.cpp)
-TARGET_LINK_LIBRARIES(hello_world PRIVATE ${LIB_NAME})
+# add_executable(hello_world ../../test/hello_world/src/main.cpp)
+# TARGET_LINK_LIBRARIES(hello_world PRIVATE ${LIB_NAME})
