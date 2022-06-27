@@ -4,7 +4,9 @@
 
 #include "netp.hpp"
 int main(int argc, char** argv) {
-    netp::app _app;
+    netp::app::instance()->init(argc, argv);
+    netp::app::instance()->start_loop();
+
     NETP_INFO("HELLO WORLD");
     return 0;
 }
