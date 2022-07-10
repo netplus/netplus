@@ -408,6 +408,7 @@ namespace netp {
 				m->flag |= f_ares_fd_watch_read;
 			}
 		} else if(readable == 0 && (m->flag&f_ares_fd_watch_read) !=0 ){
+			NETP_VERBOSE("[dns_resolver][#%u]END_READ", m->fd);
 			int rt = L->io_do(io_action::END_READ, m->ctx);
 			m->flag &= ~f_ares_fd_watch_read;
 			if (rt != netp::OK) {
@@ -425,7 +426,8 @@ namespace netp {
 			} else {
 				m->flag |= f_ares_fd_watch_write;
 			}
-		} else if(writable == 0 && (m->flag&f_ares_fd_watch_write) !=0 ){
+		} else if(writable == 0 && (m->flag&f_ares_fd_watch_write) !=0 ) {
+			NETP_VERBOSE("[dns_resolver][#%u]END_WRITE", m->fd);
 			int rt = L->io_do(io_action::END_WRITE, m->ctx);
 			m->flag &= ~f_ares_fd_watch_write;
 			if (rt != netp::OK) {
