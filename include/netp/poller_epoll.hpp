@@ -143,16 +143,13 @@ namespace netp {
 			}
 #endif
 
-			//@note: if fda's event might result in unwatch(R|W) for fdb
+			//@note: fda's event might result in unwatch(R|W) for fdb's
 			for( int i=0;i<nEvents;++i) {
 #ifdef _NETP_DEBUG_EPOLL_EVENTS
 				NETP_ASSERT( epEvents[i].data.ptr != nullptr );
 #endif
 				uint32_t events = ((epEvents[i].events) & 0xFFFFFFFF);
 				io_ctx* ctx = (static_cast<io_ctx*> (epEvents[i].data.ptr));
-#ifdef _NETP_DEBUG_EPOLL_EVENTS
-				NETP_ASSERT((ctx->fd != NETP_INVALID_SOCKET) && (ctx->flag&(io_flag::IO_READ|io_flag::IO_WRITE)), "fd: #%u, flag: %u, event: %u", ctx->fd, ctx->flag, events);
-#endif
 				int sockerr = netp::OK;
 				//refer to:https://elixir.bootlin.com/linux/v4.19/source/net/ipv4/tcp.c#L524
 				//EPOLLHUP is only sent when the shutdown has been both for read and write (I reckon that the peer shutdowning the write equals to my shutdowning the read). Or when the connection is closed, of course.
