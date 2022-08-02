@@ -1014,10 +1014,8 @@ __act_label_close_read_write:
 
 		void socket_channel::ch_io_end() {
 			NETP_ASSERT(L->in_event_loop());
-			NETP_ASSERT(m_tx_bytes == 0);
-			NETP_ASSERT(m_tx_entry_q.empty() && m_tx_entry_to_q.empty(), "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
-			NETP_ASSERT(m_chflag & int(channel_flag::F_CLOSED));
-			NETP_ASSERT((m_chflag & (int(channel_flag::F_WATCH_READ) | int(channel_flag::F_WATCH_WRITE) | int(channel_flag::F_CONNECTED) )) == 0);
+			NETP_ASSERT(m_tx_bytes == 0 && m_tx_entry_q.empty() && m_tx_entry_to_q.empty(), "[#%s]flag: %d, errno: %d, tx_bytes: %u, tx_entry_q.size(): %u, tx_entry_q_to.size(): %u", ch_info().c_str(), m_chflag, m_cherrno, m_tx_bytes, m_tx_entry_q.size(), m_tx_entry_to_q.size());
+			NETP_ASSERT((m_chflag & (int(channel_flag::F_WATCH_READ) | int(channel_flag::F_WATCH_WRITE) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_CLOSED))) == int(channel_flag::F_CLOSED));
 			NETP_TRACE_SOCKET("[socket][%s]io_action::END, flag: %d", ch_info().c_str(), m_chflag);
 
 			//no more read|write event be watched by poller any more at this point, it's safe to do close
