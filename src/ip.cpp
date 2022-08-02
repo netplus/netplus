@@ -69,7 +69,7 @@ namespace netp {
 	}
 
 	//https://en.cppreference.com/w/c/language/operator_arithmetic
-
+	//192.168.0.x/24 -> 192.168.0.0
 	netp::ipv4_t v4_mask_by_cidr(const netp::ipv4_t* const v4, netp::u8_t cidr) {
 		if (cidr == 0) {//x<<32 on ul is UB
 			return netp::ipv4_t{ 0 };
@@ -79,7 +79,7 @@ namespace netp {
 			return (*v4);
 		}
 	}
-
+	
 	netp::ipv6_t v6_mask_by_cidr(const netp::ipv6_t* const v6_, netp::u8_t cidr) {
 		netp::ipv6_t v6;
 		if (cidr == 0) {//x<<64 is UB

@@ -1020,6 +1020,7 @@ __act_label_close_read_write:
 			NETP_ASSERT((m_chflag & (int(channel_flag::F_WATCH_READ) | int(channel_flag::F_WATCH_WRITE) | int(channel_flag::F_CONNECTED) )) == 0);
 			NETP_TRACE_SOCKET("[socket][%s]io_action::END, flag: %d", ch_info().c_str(), m_chflag);
 
+			//no more read|write event be watched by poller any more at this point, it's safe to do close
 			ch_fire_closed(close());
 			//@note: trick
 			//delay one tick to hold this channel's ref
