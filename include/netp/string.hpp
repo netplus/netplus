@@ -224,7 +224,20 @@ namespace netp {
 		if (len != b.length()) { return false; }
 		size_t i = 0;
 		while (i < len) {
-			if ( tolower(a[i]) != tolower(b[i])) {
+			if (tolower(a[i]) != tolower(b[i])) {
+				return false;
+			}
+			++i;
+		}
+		return true;
+	}
+	//a,b must be null-terminated
+	inline bool iequals(const char* const a, const char* const b) {
+		const size_t len = netp::strlen(a);
+		if (len != netp::strlen(b)) { return false; }
+		size_t i = 0;
+		while (i < len) {
+			if (tolower(*(a + i)) != tolower(*(b + i))) {
 				return false;
 			}
 			++i;

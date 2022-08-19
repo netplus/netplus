@@ -38,7 +38,7 @@ namespace netp { namespace http {
 			urlfields.port = u.port;
 		}
 		else {
-			urlfields.port = netp::iequals(urlfields.schema, string_t("https")) ? 443 : 80;
+			urlfields.port = netp::iequals(urlfields.schema.c_str(), "https") ? 443 : 80;
 		}
 
 		return netp::OK;

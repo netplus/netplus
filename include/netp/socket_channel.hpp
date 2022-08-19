@@ -58,9 +58,9 @@ namespace netp {
 		netp::string_t to_string() const {
 			char _buf[1024] = { 0 };
 #ifdef _NETP_MSVC
-			int nbytes = snprintf(_buf, 1024, "#%zu:%s:L:%s-R:%s", fd, DEF_protocol_str[int(p)], laddr ? laddr->to_string().c_str():"", raddr?raddr->to_string().c_str():"");
+			int nbytes = snprintf(_buf, 1024, "#%zu:%s:L:%s-R:%s", fd, NETP_PROTO_MAP_PROTO_STR[int(p)], laddr ? laddr->to_string().c_str():"", raddr?raddr->to_string().c_str():"");
 #elif defined(_NETP_GCC)
-			int nbytes = snprintf(_buf, 1024, "#%d:%s:L:%s-R:%s", fd, DEF_protocol_str[int(p)], laddr ? laddr->to_string().c_str() : "", raddr ? raddr->to_string().c_str() : "");
+			int nbytes = snprintf(_buf, 1024, "#%d:%s:L:%s-R:%s", fd, NETP_PROTO_MAP_PROTO_STR[int(p)], laddr ? laddr->to_string().c_str() : "", raddr ? raddr->to_string().c_str() : "");
 #else
 #error "unknown compiler"
 #endif
@@ -154,7 +154,7 @@ namespace netp {
 		SOCKET m_fd;
 		u8_t m_family;
 		u8_t m_type;
-		u16_t m_protocol;
+		u16_t m_protocol; //netp_proto 
 		u16_t m_option;
 
 		NRP<address> m_laddr;

@@ -225,7 +225,7 @@ namespace netp { namespace http {
 			return ;
 		}
 
-		bool is_https = netp::iequals<string_t>(fields.schema, "https");
+		bool is_https = netp::iequals(fields.schema.c_str(), "https");
 		string_t http_host = fields.host + string_t(":") + (netp::to_string(fields.port));
 		string_t dial_url = string_t("tcp://") + http_host;
 		NRP<channel_dial_promise> ch_dp = netp::make_ref<channel_dial_promise>();

@@ -1203,7 +1203,7 @@ __act_label_close_read_write:
 				goto __exit_with_errno;
 			}
 
-			_cfg->fd = WSASocket(sock_family(), sock_type(), OS_DEF_protocol[sock_protocol()], &proto_info, 0, WSA_FLAG_OVERLAPPED);
+			_cfg->fd = WSASocket(sock_family(), sock_type(), NETP_PROTO_MAP_OS_PROTO[sock_protocol()], &proto_info, 0, WSA_FLAG_OVERLAPPED);
 #else
 			_cfg->fd = ::dup(ch_id());
 #endif

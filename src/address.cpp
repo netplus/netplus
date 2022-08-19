@@ -4,34 +4,61 @@
 
 namespace netp {
 
-	const char* DEF_protocol_str[NETP_PROTOCOL_MAX] = {
+	const char* NETP_PROTO_MAP_PROTO_STR[NETP_PROTOCOL_MAX+1 /*NETP_PROTOCOL_UNKNOWN */ ] = {
 		"TCP",
 		"UDP",
 		"ICMP",
 		"IGMP",
 		"SCTP",
 		"RAW",
-		"BFR_TCP"
+		"BFR_TCP",
+		"USER",
+		"UNKNOWN"
 	};
 
-	const u16_t OS_DEF_protocol[NETP_PROTOCOL_MAX] = {
+	const u16_t NETP_PROTO_MAP_OS_PROTO[NETP_PROTOCOL_MAX+1] = {
 		IPPROTO_TCP,
 		IPPROTO_UDP,
 		IPPROTO_ICMP,
 		IPPROTO_IGMP,
 		IPPROTO_SCTP,
 		IPPROTO_RAW,
-		u16_t(~0)
+		u16_t(-3),
+		u16_t(-2),
+		u16_t(-1)
 	};
 
-	const u16_t DEF_protocol_str_to_proto(const char* protostr) {
-		if (netp::iequals<string_t>(protostr, string_t("tcp"))) {
-			return NETP_PROTOCOL_TCP;
-		} else if (netp::iequals<string_t>(protostr, string_t("udp"))) {
-			return NETP_PROTOCOL_UDP;
-		} else {
-			return NETP_PROTOCOL_USER;
+	const u16_t proto_str_to_netp_proto(const char* proto_str) {
+		for (u16_t i = 0; i < NETP_PROTOCOL_MAX; ++i) {
+			if (netp::iequals(proto_str, NETP_PROTO_MAP_PROTO_STR[i])) {
+				return i;
+			}
 		}
+		return NETP_PROTOCOL_UNKNOWN;
+	}
+	const char* netp_proto_to_proto_str(u16_t netp_proto) {
+		if (netp_proto < NETP_PROTOCOL_MAX) {
+			return NETP_PROTO_MAP_PROTO_STR[netp_proto];
+		}
+		return NETP_PROTO_MAP_PROTO_STR[NETP_PROTOCOL_UNKNOWN];
+	}
+	const u16_t proto_str_to_os_proto(const char* proto_str) {
+		for (u16_t i = 0; i < NETP_PROTOCOL_MAX; ++i) {
+			if (netp::iequals(proto_str, NETP_PROTO_MAP_PROTO_STR[i])) {
+				return NETP_PROTO_MAP_OS_PROTO[i];
+			}
+		}
+		return u16_t (-1);//-1 means unknown os protocol
+	}
+	const char* os_proto_to_proto_str(u16_t os_proto) {
+		u16_t netp_proto = NETP_PROTOCOL_UNKNOWN;
+		for (u16_t i = 0; i <NETP_PROTOCOL_MAX; ++i) {
+			if (os_proto == NETP_PROTO_MAP_OS_PROTO[i]) {
+				netp_proto = i;
+				break;
+			}
+		}
+		return netp_proto_to_proto_str(netp_proto);
 	}
 
 	/**

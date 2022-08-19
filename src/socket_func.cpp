@@ -22,7 +22,7 @@ namespace netp {
 	}
 
 	std::tuple<int, u8_t, u8_t, u16_t> inspect_address_info_from_dial_str(const char* dialstr) {
-		u16_t sproto = DEF_protocol_str_to_proto(dialstr);
+		u16_t sproto = proto_str_to_netp_proto(dialstr);
 		u8_t family;
 		u8_t stype;
 		switch (sproto) {
@@ -38,6 +38,7 @@ namespace netp {
 				stype = NETP_SOCK_DGRAM;
 			}
 			break;
+			case (NETP_PROTOCOL_BFR_TCP):
 			case (NETP_PROTOCOL_USER):
 			{
 				family = NETP_AF_USER;

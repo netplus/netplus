@@ -30,15 +30,20 @@
 #define NETP_PROTOCOL_IGMP			3
 #define NETP_PROTOCOL_SCTP				4
 #define NETP_PROTOCOL_RAW				5
-#define NETP_PROTOCOL_USER				6
-#define NETP_PROTOCOL_MAX				7
-#define NETP_PROTOCOL_UNKNOWN	8
+#define NETP_PROTOCOL_BFR_TCP		6
+#define NETP_PROTOCOL_USER				7
+#define NETP_PROTOCOL_MAX				8
+#define NETP_PROTOCOL_UNKNOWN	9
 
 namespace netp {
 
-	extern const char* DEF_protocol_str[NETP_PROTOCOL_MAX];
-	extern const u16_t OS_DEF_protocol[NETP_PROTOCOL_MAX];
-	extern const u16_t DEF_protocol_str_to_proto(const char* protostr);
+	extern const char* NETP_PROTO_MAP_PROTO_STR[NETP_PROTOCOL_MAX+1];
+	extern const u16_t NETP_PROTO_MAP_OS_PROTO[NETP_PROTOCOL_MAX+1];
+
+	extern const u16_t proto_str_to_netp_proto(const char* proto_str);
+	extern const char* netp_proto_to_proto_str(u16_t netp_proto);
+	extern const u16_t proto_str_to_os_proto(const char* proto_str);
+	extern const char* os_proto_to_proto_str(u16_t os_proto);
 
 	enum class addrinfo_filter {
 		AIF_ALL			= 0x0, //return all

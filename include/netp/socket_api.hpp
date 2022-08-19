@@ -138,9 +138,9 @@ namespace netp {
 
 	inline SOCKET open(int family, int type, int protocol) {
 #ifdef _NETP_WIN
-		return WSASocket(family, type, OS_DEF_protocol[protocol], NULL,0,WSA_FLAG_OVERLAPPED);
+		return WSASocket(family, type, NETP_PROTO_MAP_OS_PROTO[protocol], NULL,0,WSA_FLAG_OVERLAPPED);
 #else
-		return ::socket(family, type, OS_DEF_protocol[protocol]);
+		return ::socket(family, type, NETP_PROTO_MAP_OS_PROTO[protocol]);
 #endif
 	}
 
@@ -369,7 +369,7 @@ __label_recv:
 
 		NETP_ASSERT((protocol == NETP_PROTOCOL_TCP) || protocol == NETP_PROTOCOL_UDP);
 
-		SOCKET listenfd = ::socket(domain, type, OS_DEF_protocol[protocol]);
+		SOCKET listenfd = ::socket(domain, type, NETP_PROTO_MAP_OS_PROTO[protocol]);
 		if (listenfd == NETP_INVALID_SOCKET) {
 			//NETP_INFO("[socketpair]make listener failed: %d", netp_socket_get_last_errno());
 			return NETP_SOCKET_ERROR;
@@ -400,7 +400,7 @@ __label_recv:
 			goto end;
 		}
 
-		connectfd = ::socket(domain, type, OS_DEF_protocol[protocol]);
+		connectfd = ::socket(domain, type, NETP_PROTO_MAP_OS_PROTO[protocol]);
 		if (connectfd == NETP_INVALID_SOCKET) {
 			goto end;
 		}
