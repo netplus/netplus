@@ -17,6 +17,9 @@ namespace netp {
 
 	void channel_pipeline::init()
 	{
+		//(read) socket->head->tail
+		//(write) socket<-head<-tail
+
 		NRP<channel_handler_head> h = netp::make_ref<channel_handler_head>();
 		m_head = netp::make_ref<channel_handler_context>(m_ch, h);
 
