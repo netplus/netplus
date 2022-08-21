@@ -556,7 +556,10 @@ int socket_base::get_left_snd_queue() const {
 		NETP_ASSERT(m_protocol == u8_t(NETP_PROTOCOL_UDP));
 		while (status == netp::OK) {
 			NETP_ASSERT((m_chflag & (int(channel_flag::F_READ_SHUTDOWNING))) == 0);
-			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN) | int(channel_flag::F_CLOSE_PENDING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
+			/*@NOTE: ch_fire_read might result in F_WATCH_READ BE RESET*/
+
+			if (NETP_UNLIKELY( int(channel_flag::F_WATCH_READ) !=(m_chflag & (int(channel_flag::F_WATCH_READ)|int(channel_flag::F_READ_SHUTDOWN) | int(channel_flag::F_CLOSE_PENDING)/*ignore the left read buffer, cuz we're closing it*/) )))
+			{ return; }
 			NRP<netp::address> __address_nonnullptr_ = netp::make_ref<netp::address>();
 			NRP<netp::packet>& loop_buf = L->channel_rcv_buf();
 			const int nbytes = socket_recvfrom_impl(loop_buf->head(), loop_buf->left_right_capacity(), __address_nonnullptr_);
@@ -589,7 +592,11 @@ int socket_base::get_left_snd_queue() const {
 		//socket_recv_impl set status to non-zero iff ::recv return -1
 		while ( (status == netp::OK) && ( (nbytes==size)|| !is_stream()) ) {
 			NETP_ASSERT( (m_chflag&(int(channel_flag::F_READ_SHUTDOWNING))) == 0);
-			if (NETP_UNLIKELY(m_chflag & (int(channel_flag::F_READ_SHUTDOWN)|int(channel_flag::F_READ_ERROR) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING)/*ignore the left read buffer, cuz we're closing it*/))) { return; }
+
+			/*@NOTE: ch_fire_read might result in F_WATCH_READ BE RESET*/
+			if (NETP_UNLIKELY(int(channel_flag::F_WATCH_READ) != (m_chflag & (int(channel_flag::F_WATCH_READ)|int(channel_flag::F_READ_SHUTDOWN)|int(channel_flag::F_READ_ERROR) | int(channel_flag::F_CLOSE_PENDING) | int(channel_flag::F_CLOSING)/*ignore the left read buffer, cuz we're closing it*/)) ))
+			{ return; }
+			
 			NRP<netp::packet>& loop_buf = L->channel_rcv_buf();
 			nbytes = socket_recv_impl(loop_buf->head(), size);
 			if (NETP_UNLIKELY(nbytes < 0)) {
@@ -613,7 +620,7 @@ int socket_base::get_left_snd_queue() const {
 		}
 
 		//for epoll et, (nbytes<size && rdhub is set)
-#if defined(NETP_HAS_POLLER_EPOLL) && defined(NETP_DEFAULT_POLLER_TYPE_IS_EPOLL)
+#if defined(NETP_DEFAULT_POLLER_TYPE_IS_EPOLL)
 		if ( (ioctx->flag&io_flag::IO_READ_HUP) && (status == netp::OK) ) {
 			status = netp::E_SOCKET_GRACE_CLOSE;
 		}

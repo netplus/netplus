@@ -60,7 +60,7 @@ namespace netp {
 				return ctx;
 			}
 
-#ifdef _NETP_WIN
+#ifdef _NETP_MSVC
     #pragma warning(push)
     #pragma warning(disable:4389)
 #endif
@@ -140,7 +140,7 @@ namespace netp {
 			m_polling = false;
 		}
 
-#ifdef _NETP_WIN
+#ifdef _NETP_MSVC
     #pragma warning(pop)
 #endif
 	};

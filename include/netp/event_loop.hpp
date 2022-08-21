@@ -16,17 +16,19 @@
 #include <netp/dns_resolver.hpp>
 
 #if defined(NETP_HAS_POLLER_EPOLL)
-#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_EPOLL
-#define NETP_DEFAULT_POLLER_TYPE_IS_EPOLL
+	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_EPOLL
+	#define NETP_DEFAULT_POLLER_TYPE_IS_EPOLL
 #elif defined(NETP_HAS_POLLER_SELECT)
-#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_SELECT
+	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_SELECT
+	#define NETP_DEFAULT_POLLER_TYPE_IS_SELECT
 #elif defined(NETP_HAS_POLLER_KQUEUE)
-#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_KQUEUE
+	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_KQUEUE
+	#define NETP_DEFAULT_POLLER_TYPE_IS_KQUEUE
 #elif defined(NETP_HAS_POLLER_IOCP)
-#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_IOCP
-#define NETP_DEFAULT_POLLER_TYPE_IOCP
+	#define NETP_DEFAULT_POLLER_TYPE netp::io_poller_type::T_IOCP
+	#define NETP_DEFAULT_POLLER_TYPE_IS_IOCP
 #else
-#error "unknown poller type"
+	#error "unknown poller type"
 #endif
 
 //#define NETP_DEBUG_LOOP_TIME
