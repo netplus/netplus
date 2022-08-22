@@ -402,13 +402,13 @@ int socket_base::get_left_snd_queue() const {
 			m_cherrno = status;
 			ch_io_end_connect();
 			ch_close_impl(netp::make_ref<netp::promise<int>>());
-			NETP_ERR("[socket][%s]dial error: %d", ch_info().c_str(), status);
+			NETP_WARN("[socket][%s]dial error: %d", ch_info().c_str(), status);
 			dialp->set(status);
 			return;
 		}
 
 		if( m_chflag& int(channel_flag::F_CLOSED)) {
-			NETP_ERR("[socket][%s]closed already, dial promise set abort, errno: %d", ch_info().c_str(), ch_errno() );
+			NETP_WARN("[socket][%s]closed already, dial promise set abort, errno: %d", ch_info().c_str(), ch_errno() );
 			status = netp::E_ECONNABORTED;
 			goto _set_fail_and_return;
 		}
@@ -440,7 +440,7 @@ int socket_base::get_left_snd_queue() const {
 
 		if ( *(local_addr()) == *(remote_addr()) ) {
 			status = netp::E_SOCKET_SELF_CONNCTED;
-			NETP_WARN("[socket][%s]selfconnected", ch_info().c_str());
+			NETP_WARN("[socket][%s]self connected", ch_info().c_str());
 			goto _set_fail_and_return;
 		}
 
