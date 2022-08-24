@@ -174,13 +174,6 @@
 	#define NETP_TRACE_SOCKET(...)
 #endif
 
-#ifdef NETP_ENABLE_DEBUG_STREAM
-	#define NETP_TRACE_STREAM NETP_INFO
-#else
-	#define NETP_TRACE_STREAM(...)
-#endif
-
-
 #ifdef NETP_ENABLE_TRACE_HTTP
 	#define TRACE_HTTP NETP_INFO
 #else

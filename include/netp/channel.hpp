@@ -95,10 +95,10 @@ namespace netp {
 	};
 
 	enum channel_buf_range {
-		CH_BUF_RCV_MAX_SIZE = (83388608U),//1024 * 1024 * 8,
-		CH_BUF_RCV_MIN_SIZE = (8192U),
-		CH_BUF_SND_MAX_SIZE = (83388608U),//1024 * 1024 * 8,
-		CH_BUF_SND_MIN_SIZE = (8192U)
+		CH_BUF_RCV_MAX_SIZE = (83388608U),//1024*1024*8,
+		CH_BUF_RCV_MIN_SIZE = (2*8192U),
+		CH_BUF_SND_MAX_SIZE = (83388608U),//1024*1024*8,
+		CH_BUF_SND_MIN_SIZE = (2*8192U)
 	};
 
 	class channel_pipeline;
