@@ -267,7 +267,7 @@ namespace netp {
 			return;
 		}
 		m_flag &= ~dns_resolver_flag::f_running;
-
+		NETP_ASSERT(m_ares_channel != nullptr);
 		ares_cancel(*((ares_channel*)(m_ares_channel)));
 		ares_destroy(*((ares_channel*)(m_ares_channel)));
 
