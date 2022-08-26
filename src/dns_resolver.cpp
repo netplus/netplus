@@ -114,6 +114,7 @@ namespace netp {
 		m_ares_channel = netp::allocator<ares_channel>::make();
 	}
 	void dns_resolver::deinit() {
+		NETP_ASSERT(L->in_event_loop());
 		if (m_ares_channel != 0) {
 			netp::allocator<ares_channel>::trash((ares_channel*)m_ares_channel);
 			m_ares_channel = 0;

@@ -107,8 +107,19 @@ namespace netp {
 
 		if (m_cfg.flag & f_enable_dns_resolver) {
 			NETP_ASSERT(m_dns_resolver != nullptr);
-			m_dns_resolver->deinit();
-			m_dns_resolver = nullptr;
+			if (m_cfg.type == NETP_DEFAULT_POLLER_TYPE) {
+				m_dns_resolver->deinit();
+				m_dns_resolver = nullptr;
+			} else {
+				NETP_ASSERT(m_dns_resolver->L.get() != this);
+				NRP<promise<int>> wait_dnsr_deinit_done_p = netp::make_ref<promise<int>>();
+				m_dns_resolver->L->execute([dnsr = m_dns_resolver, wait_dnsr_deinit_done_p]() {
+					dnsr->deinit();
+					wait_dnsr_deinit_done_p->set(netp::OK);
+				});
+				wait_dnsr_deinit_done_p->wait();
+				m_dns_resolver = nullptr;
+			}
 		}
 
 		{
