@@ -124,7 +124,7 @@ namespace netp { namespace http {
 		if ((m_flag & f_closed) ==0) {
 			m_ctx->close(close_f);
 		} else {
-			close_f->set(netp::E_CHANNEL_CLOSED);
+			if (close_f != nullptr) { close_f->set(netp::E_CHANNEL_CLOSED); }
 		}
 	}
 
