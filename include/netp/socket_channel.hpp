@@ -48,8 +48,8 @@ namespace netp {
 
 	struct socketinfo {
 		SOCKET fd;
-		u8_t f;
-		u8_t t;
+		u16_t f;
+		u16_t t;
 		u16_t p;
 
 		NRP<address> laddr;
@@ -77,8 +77,8 @@ namespace netp {
 	public:
 		NRP<event_loop> L;
 		SOCKET fd;
-		u8_t family;
-		u8_t type;
+		u16_t family;
+		u16_t type;
 		u16_t proto;
 		u16_t option;
 
@@ -152,8 +152,8 @@ namespace netp {
 		friend ref_ptr<_Ref_ty> make_ref(_Args&&... args);
 	protected:
 		SOCKET m_fd;
-		u8_t m_family;
-		u8_t m_type;
+		u16_t m_family;
+		u16_t m_type;
 		u16_t m_protocol; //netp_proto 
 		u16_t m_option;
 
@@ -161,12 +161,14 @@ namespace netp {
 		NRP<address> m_raddr;
 		fn_io_event_t* m_fn_read;
 		fn_io_event_t* m_fn_write;
-
 		io_ctx* m_io_ctx;
-		long long m_tx_limit_last_tp;
+
+		u32_t m_rcv_buf_size;
+		u32_t m_snd_buf_size;
 		u32_t m_tx_limit; //in byte
 		u32_t m_tx_budget;
 		u32_t m_tx_bytes;
+		long long m_tx_limit_last_tp;
 
 		//@note: for long term session, we should better release the q if necessary
 		socket_outbound_entry_t m_tx_entry_q;
@@ -186,10 +188,12 @@ namespace netp {
 			m_fn_read(nullptr),
 			m_fn_write(nullptr),
 			m_io_ctx(0),
-			m_tx_limit_last_tp(0),
+			m_rcv_buf_size(0),
+			m_snd_buf_size(0),
 			m_tx_limit((cfg->tx_limit != 0 && cfg->tx_limit < _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN : cfg->tx_limit),
 			m_tx_budget( (cfg->tx_limit != 0 && cfg->tx_limit < _NETP_SOCKET_CHANNEL_LIMIT_MIN) ? _NETP_SOCKET_CHANNEL_LIMIT_MIN : cfg->tx_limit ),
-			m_tx_bytes(0)
+			m_tx_bytes(0),
+			m_tx_limit_last_tp(0)
 		{
 			NETP_ASSERT(cfg->L != nullptr);
 			if (cfg->fd != NETP_INVALID_SOCKET) {
@@ -494,6 +498,20 @@ protected:
 			return netp::OK;
 		}
 
+		int _cfg_load_rcv_buf_size() {
+			int rt = get_rcv_buffer_size();
+			NETP_RETURN_V_IF_MATCH(rt, rt<0);
+			m_rcv_buf_size = rt;
+			return netp::OK;
+		}
+
+		int _cfg_load_snd_buf_size() {
+			int rt = get_snd_buffer_size();
+			NETP_RETURN_V_IF_MATCH(rt, rt < 0);
+			m_snd_buf_size = rt;
+			return netp::OK;
+		}
+
 		//all user custom socket(such as bfr etc), must impl these functions by user to utilize netplus features
 		//the name of these kinds of functions looks like socket_x_impl
 		//the defualt impl is posix socket api
@@ -587,8 +605,8 @@ protected:
 		}
 
 	public:
-		__NETP_FORCE_INLINE u8_t sock_family() const { return ((m_family)); };
-		__NETP_FORCE_INLINE u8_t sock_type() const { return (m_type); };
+		__NETP_FORCE_INLINE u16_t sock_family() const { return ((m_family)); };
+		__NETP_FORCE_INLINE u16_t sock_type() const { return (m_type); };
 		__NETP_FORCE_INLINE u16_t sock_protocol() { return (m_protocol); };
 
 		__NETP_FORCE_INLINE bool is_stream() const { return (m_type== NETP_SOCK_STREAM); };
@@ -667,6 +685,7 @@ protected:
 		//@NOTE
 		// FOR PASSIVE FD , THE BEST WAY IS TO INHERITE THE SETTINGS FROM LISTEN FD
 		// FOR ACTIVE FD, THE BEST WAY IS TO CALL THESE TWO APIS BEFORE ANY DATA WRITE
+
 		int set_snd_buffer_size(u32_t size);
 		int get_snd_buffer_size() const;
 
@@ -1007,7 +1026,7 @@ protected:
 		NRP<promise<int>> ch_get_read_buffer_size() override {
 			NRP<promise<int>> chp = make_ref<promise<int>>();
 			L->execute([S = NRP<socket_channel>(this), chp]() {
-				chp->set(S->get_rcv_buffer_size());
+				chp->set(S->m_rcv_buf_size);
 			});
 			return chp;
 		}
@@ -1023,7 +1042,7 @@ protected:
 		NRP<promise<int>> ch_get_write_buffer_size() override {
 			NRP<promise<int>> chp = make_ref<promise<int>>();
 			L->execute([S = NRP<socket_channel>(this), chp]() {
-				chp->set(S->get_snd_buffer_size());
+				chp->set(S->m_snd_buf_size);
 			});
 			return chp;
 		}

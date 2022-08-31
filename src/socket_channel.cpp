@@ -99,9 +99,9 @@ namespace netp {
 
 	int socket_channel::set_snd_buffer_size(u32_t size) {
 		NETP_ASSERT(m_fd > 0);
-
+		bool force_reload_buf_size = false;
 		if (size == 0) {//0 for default
-			return netp::OK;
+			goto _label_reload; //nothing changed
 		} else if (size < u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE)) {
 			size = u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE);
 		} else if (size > u32_t(channel_buf_range::CH_BUF_SND_MAX_SIZE)) {
@@ -118,7 +118,13 @@ namespace netp {
 		if (rt == NETP_SOCKET_ERROR) {
 			return netp_socket_get_last_errno();
 		}
-		return netp::OK;
+		force_reload_buf_size = true;
+_label_reload:
+		if (force_reload_buf_size) {
+			return _cfg_load_snd_buf_size();
+		} else {
+			return netp::OK;
+		}
 	}
 
 	int socket_channel::get_snd_buffer_size() const {
@@ -152,9 +158,9 @@ int socket_base::get_left_snd_queue() const {
 
 	int socket_channel::set_rcv_buffer_size(u32_t size) {
 		NETP_ASSERT(m_fd != NETP_INVALID_SOCKET);
-
+		bool force_reload_buf_size = false;
 		if (size == 0) {//0 for default
-			return netp::OK;
+			goto _label_reload;
 		} else if (size < u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE)) {
 			size = u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE);
 		} else if (size > u32_t(channel_buf_range::CH_BUF_RCV_MAX_SIZE)) {
@@ -171,7 +177,13 @@ int socket_base::get_left_snd_queue() const {
 		if (rt == NETP_SOCKET_ERROR) {
 			return netp_socket_get_last_errno();
 		}
-		return netp::OK;
+		force_reload_buf_size = true;
+	_label_reload:
+		if (force_reload_buf_size) {
+			return _cfg_load_rcv_buf_size();
+		} else {
+			return netp::OK;
+		}
 	}
 
 	int socket_channel::get_rcv_buffer_size() const {
@@ -421,7 +433,7 @@ int socket_base::get_left_snd_queue() const {
 
 #ifdef _NETP_WIN
 		//not sure linux os behaviour, to test
-		if (0 == local_addr()->ipv4().u32 && m_family != u8_t(NETP_AF_USER/*FOR BFR*/) ) {
+		if (0 == local_addr()->ipv4().u32 && m_family != (NETP_AF_USER/*FOR BFR*/) ) {
 			status = netp::E_WSAENOTCONN;
 			goto _set_fail_and_return;
 		}
@@ -873,7 +885,7 @@ __act_label_close_read_write:
 		} \
 		const u32_t outlet_len = (u32_t)outlet->len(); \
 		/*set the threshold arbitrarily high, the writer have to check the return value if */ \
-		if ( (m_tx_bytes > 0) && ( (m_tx_bytes + outlet_len) > /*m_sock_buf.sndbuf_size,*/u32_t(channel_buf_range::CH_BUF_SND_MAX_SIZE))) { \
+		if ( (m_tx_bytes>0) && ( (m_tx_bytes + outlet_len) > m_snd_buf_size) ) { \
 			NETP_ASSERT(m_chflag&(int(channel_flag::F_WRITE_BARRIER)|int(channel_flag::F_WATCH_WRITE))); \
 			chp->set(netp::E_CHANNEL_WRITE_BLOCK); \
 			return; \
@@ -884,6 +896,7 @@ __act_label_close_read_write:
 #ifdef _NETP_DEBUG
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT((intp != nullptr) && ( is_udp() ? true: (outlet->len() > 0)) );
+		NETP_ASSERT(m_snd_buf_size>0);
 #endif
 
 		__CH_WRITEABLE_CHECK__(outlet, intp);
