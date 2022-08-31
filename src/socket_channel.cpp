@@ -101,6 +101,7 @@ namespace netp {
 		NETP_ASSERT(m_fd > 0);
 		bool force_reload_buf_size = false;
 		if (size == 0) {//0 for default
+			force_reload_buf_size = (m_snd_buf_size == 0);
 			goto _label_reload; //nothing changed
 		} else if (size < u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE)) {
 			size = u32_t(channel_buf_range::CH_BUF_SND_MIN_SIZE);
@@ -160,6 +161,7 @@ int socket_base::get_left_snd_queue() const {
 		NETP_ASSERT(m_fd != NETP_INVALID_SOCKET);
 		bool force_reload_buf_size = false;
 		if (size == 0) {//0 for default
+			force_reload_buf_size = (m_rcv_buf_size == 0);
 			goto _label_reload;
 		} else if (size < u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE)) {
 			size = u32_t(channel_buf_range::CH_BUF_RCV_MIN_SIZE);
