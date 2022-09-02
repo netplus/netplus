@@ -100,7 +100,7 @@ namespace netp {
 		}
 
 		__NETP_FORCE_INLINE void incre_write_idx(buf_size_width_t bytes) {
-			NETP_ASSERT((m_capacity - m_write_idx) >= bytes);
+			NETP_ASSERT((m_capacity - m_write_idx) >= bytes, "m_capacity: %u, m_write_idx: %u, bytes: %u", m_capacity, m_write_idx, bytes);
 			m_write_idx += bytes;
 		}
 
@@ -325,7 +325,7 @@ namespace netp {
 		}
 
 		__NETP_FORCE_INLINE void write_zero(_buf_width_t len) {
-			fill(0, len);
+			expandable_packet_t::fill(0, len);
 		}
 
 		bool operator ==(expandable_packet_t const& other) const {
