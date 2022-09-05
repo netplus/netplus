@@ -278,17 +278,17 @@ int socket_base::get_left_snd_queue() const {
 			m_chflag |= int(channel_flag::F_TX_LIMIT_TIMER);
 			m_tx_budget += tokens;
 
-			//if we got write error just at terminating period
-			//the call to expire_all might reach here
-			NRP<netp::promise<int>> lp = netp::make_ref<netp::promise<int>>();
-			lp->if_done([ch=NRP<socket_channel>(this)]( int rt) {
-				if (rt != netp::OK) {
-					ch->m_chflag |= int(channel_flag::F_WRITE_ERROR);
-					ch->ch_errno() = rt;
-					ch->ch_close_impl(nullptr);
-				}
-			});
-			L->launch(t,lp);
+			
+			//NRP<netp::promise<int>> lp = netp::make_ref<netp::promise<int>>();
+			//lp->if_done([ch=NRP<socket_channel>(this)]( int rt) {
+			//	if (rt != netp::OK) {
+			//		ch->m_chflag |= int(channel_flag::F_WRITE_ERROR);
+			//		ch->ch_errno() = rt;
+			//		ch->ch_close_impl(nullptr);
+			//	}
+			//});
+			//@note: if there is a socket_channel in L's ctx list, the L should never enter terminated state
+			L->launch(t);
 		}
 
 		if (m_chflag & int(channel_flag::F_TX_LIMIT)) {
@@ -727,16 +727,7 @@ int socket_base::get_left_snd_queue() const {
 				if (!(m_chflag & int(channel_flag::F_TX_LIMIT_TIMER)) && ( (m_tx_budget < ((m_tx_limit/(1000/__tx_limit_clock_ms))) ) ) ) {
 					m_chflag |= int(channel_flag::F_TX_LIMIT_TIMER);
 					m_tx_limit_last_tp = netp::now<netp::microseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
-
-					NRP<netp::promise<int>> lp = netp::make_ref<netp::promise<int>>();
-					lp->if_done([ch = NRP<socket_channel>(this)](int rt) {
-						if (rt != netp::OK) {
-							ch->m_chflag |= int(channel_flag::F_WRITE_ERROR);
-							ch->ch_errno() = rt;
-							ch->ch_close_impl(nullptr);
-						}
-					});
-					L->launch(netp::make_ref<netp::timer>(std::chrono::milliseconds(__tx_limit_clock_ms), &socket_channel::_tmcb_tx_limit, NRP<socket_channel>(this), std::placeholders::_1),lp);
+					L->launch(netp::make_ref<netp::timer>(std::chrono::milliseconds(__tx_limit_clock_ms), &socket_channel::_tmcb_tx_limit, NRP<socket_channel>(this), std::placeholders::_1));
 				}
 			}
 
