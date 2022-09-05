@@ -280,7 +280,15 @@ int socket_base::get_left_snd_queue() const {
 
 			//if we got write error just at terminating period
 			//the call to expire_all might reach here
-			L->launch(t, netp::make_ref<netp::promise<int>>());
+			NRP<netp::promise<int>> lp = netp::make_ref<netp::promise<int>>();
+			lp->if_done([ch=NRP<socket_channel>(this)]( int rt) {
+				if (rt != netp::OK) {
+					ch->m_chflag |= int(channel_flag::F_WRITE_ERROR);
+					ch->ch_errno() = rt;
+					ch->ch_close_impl(nullptr);
+				}
+			});
+			L->launch(t,lp);
 		}
 
 		if (m_chflag & int(channel_flag::F_TX_LIMIT)) {
@@ -719,7 +727,16 @@ int socket_base::get_left_snd_queue() const {
 				if (!(m_chflag & int(channel_flag::F_TX_LIMIT_TIMER)) && ( (m_tx_budget < ((m_tx_limit/(1000/__tx_limit_clock_ms))) ) ) ) {
 					m_chflag |= int(channel_flag::F_TX_LIMIT_TIMER);
 					m_tx_limit_last_tp = netp::now<netp::microseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
-					L->launch(netp::make_ref<netp::timer>(std::chrono::milliseconds(__tx_limit_clock_ms), &socket_channel::_tmcb_tx_limit, NRP<socket_channel>(this), std::placeholders::_1));
+
+					NRP<netp::promise<int>> lp = netp::make_ref<netp::promise<int>>();
+					lp->if_done([ch = NRP<socket_channel>(this)](int rt) {
+						if (rt != netp::OK) {
+							ch->m_chflag |= int(channel_flag::F_WRITE_ERROR);
+							ch->ch_errno() = rt;
+							ch->ch_close_impl(nullptr);
+						}
+					});
+					L->launch(netp::make_ref<netp::timer>(std::chrono::milliseconds(__tx_limit_clock_ms), &socket_channel::_tmcb_tx_limit, NRP<socket_channel>(this), std::placeholders::_1),lp);
 				}
 			}
 
@@ -961,6 +978,14 @@ __act_label_close_read_write:
 		ch_io_write();
 #endif
 	}
+
+	//@NOTE:
+	//if we have a socket that has pending outlet data in the pipe, and the remote peer do not read data from pipe from this point of time, the writing socket would be in established state with pending data in snd buffer
+	//reproduce steps as below:
+	//1, write data via fd (chrome download a file)
+	//2, chrome pause download process
+	//3, writing peer's snd buffer reach full eventually, then the writing fd will be added to poll list for a write evetn
+	//4, as the chrome do not read data anymore, thus the writing peer will never get a chance to clear the snd buffer,
 
 	void socket_channel::io_notify_terminating(int status, io_ctx* ctx_) {
 		NETP_ASSERT(L->in_event_loop());
