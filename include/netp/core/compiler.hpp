@@ -147,10 +147,9 @@ namespace netp {
 	typedef unsigned long long	u64_t;
 	typedef unsigned char			byte_t;
 	typedef long							long_t;
+	typedef unsigned long			ulong_t;
 
-	#define WORD_WIDTH (64u)
-	typedef u64_t word_t;
-    typedef unsigned long ulong_t;
+	#define NETP_SIZEOF_ULONG (sizeof(ulong_t))
 }
 
 #endif
