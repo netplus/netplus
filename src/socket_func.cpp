@@ -178,23 +178,22 @@ namespace netp {
 			return;
 		}
 
+
 		NRP<socket_cfg> _dcfg = cfg_->clone();
 		std::tie(rt, _dcfg->family, _dcfg->type, _dcfg->proto) = inspect_address_info_from_dial_str(info.proto.c_str());
 		if (rt != netp::OK) {
 			ch_dialf->set(std::make_tuple(rt, nullptr));
 			return;
 		}
-
+		if (_dcfg->L == nullptr) {
+			_dcfg->L = netp::app::instance()->def_loop_group()->next();
+		}
 		if (netp::is_dotipv4_decimal_notation(info.host.c_str())) {
 			do_dial(ch_dialf, netp::make_ref<address>(info.host.c_str(), info.port, _dcfg->family), initializer, _dcfg);
 			return;
 		}
 
-		if (cfg_->L == nullptr) {
-			cfg_->L = netp::app::instance()->def_loop_group()->next();
-		}
-
-		NRP<dns_query_promise> dnsp = cfg_->L->resolve(info.host);
+		NRP<dns_query_promise> dnsp = _dcfg->L->resolve(info.host);
 		dnsp->if_done([host=info.host,port = info.port, initializer, ch_dialf, _dcfg](std::tuple<int, std::vector<ipv4_t, netp::allocator<ipv4_t>>> const& tupdns) {
 			if (std::get<0>(tupdns) != netp::OK) {
 				NETP_WARN("[socket]dns resolve failed, host: %s, rt: %d", host.c_str(), std::get<0>(tupdns));
