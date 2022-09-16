@@ -129,7 +129,7 @@ $(LIB_3RD_CPP_BUILD_DIR)/%.o : $(LIB_3RD_DIR)/%.cpp
 		mkdir -p $(@D) ; \
 	fi
 	@echo "------build 3rd cpp file begin------"
-	@echo $(<F)
+	@echo $(CXX) $(CC_MISC) $(CC_LANG_VERSION) $(CC_3RD_CPP_MISC) $(DEFINES) $(INCLUDES) $< -o $@
 	@echo "------build 3rd cpp file end------"
 	
 	$(CXX) $(CC_MISC) $(CC_LANG_VERSION) $(CC_3RD_CPP_MISC) $(DEFINES) $(INCLUDES) $< -o $@
@@ -139,7 +139,7 @@ $(LIB_3RD_C_BUILD_DIR)/%.o : $(LIB_3RD_DIR)/%.c
 		mkdir -p $(@D) ; \
 	fi
 	@echo "------build 3rd c file begin------"
-	@echo $(<F)
+	@echo $(CC) $(CC_MISC) $(DEFINES) $(C_3RD_DEFINES) $(INCLUDES) $(C_3RD_INCLUDES) $< -o $@
 	@echo "------build 3rd c file end------"
 	
 	$(CC) $(CC_MISC) $(DEFINES) $(C_3RD_DEFINES) $(INCLUDES) $(C_3RD_INCLUDES) $< -o $@

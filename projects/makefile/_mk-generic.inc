@@ -7,6 +7,7 @@ PRJ_ARCH			:= x86_64
 PRJ_BUILD_SUFFIX 	:= 
 PRJ_DEFS			:= 
 PRJ_COMM			:=NO
+PRJ_ENABLE_O3		:=NO
 
 
 #
@@ -27,6 +28,10 @@ endif
 
 ifdef comm
 	PRJ_COMM := $(comm)
+endif
+
+ifdef enable_o3
+	PRJ_ENABLE_O3 := $(enable_o3)
 endif
 
 
@@ -104,7 +109,12 @@ ifeq ($(PRJ_BUILD),debug)
 	CC_MISC := $(CC_MISC) -g -Wall -O0
 else
 	DEFINES := $(DEFINES) RELEASE NDEBUG
-	CC_MISC := $(CC_MISC) -O2
+	ifeq ($(PRJ_ENABLE_O3),YES)
+		CC_MISC := $(CC_MISC) -O3
+	else
+		CC_MISC := $(CC_MISC) -O2
+	endif
+
 endif
 
 #-ftree-vectorize enable this option would result bus error for rpi4
