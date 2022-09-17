@@ -5,28 +5,30 @@ void read_and_write(NRP<netp::socket_channel> const& so, NRP<netp::packet> const
 	netp::u64_t total_received = 0;
 	do {
 		buf->reset();
-		int ec = netp::OK;
-		netp::u32_t len = netp::recv(so->ch_id(), buf->head(), buf->left_right_capacity(), ec, 0);
-		if (len > 0) {
+		int received = netp::recv(so->ch_id(), buf->head(), buf->left_right_capacity());
+		if (received > 0) {
 			if (total_received_to_exit > 0) {
-				total_received += len;
+				total_received += received;
 				if (total_received >= total_received_to_exit) {
 					so->ch_close();
 					break;
 				}
 			}
-			buf->incre_write_idx(len);
-			netp::u32_t wlen = netp::send(so->ch_id(), buf->head(), buf->len(), ec,0);
-			NETP_ASSERT(len == wlen);
+			buf->incre_write_idx(received);
+			int written = netp::send(so->ch_id(), buf->head(), buf->len());
+			if (written < 0) {
+				so->ch_close();
+				NETP_ERR("reply failed: %d", written);
+				break;
+			}
+			NETP_ASSERT(received == written);
 		}
-		else if (len == 0) {
+		else if (received == 0) {
 			so->ch_close();
-			NETP_ERR("remote fin received: %d", ec);
+			NETP_ERR("remote fin received: %d");
 			break;
-		}
-
-		if (ec != netp::OK) {
-			NETP_ERR("write failed: %d", ec);
+		} else if(received<0) {
+			NETP_ERR("receive failed: %d", received);
 			break;
 		}
 	} while (1);
@@ -119,9 +121,8 @@ void th_dialer() {
 
 	NRP<netp::packet> buf = netp::make_ref<netp::packet>(64 * 1024);
 	buf->incre_write_idx(64 * 1024);
-	int ec = netp::OK;
-	netp::u32_t len = netp::send(dialer->ch_id(), buf->head(), buf->len(), ec, 0);
-	NETP_ASSERT(len == buf->len());
+	int written = netp::send(dialer->ch_id(), buf->head(), buf->len());
+	NETP_ASSERT(written == buf->len());
 	read_and_write(dialer, buf, 6553500000LL);
 }
 

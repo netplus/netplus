@@ -1,4 +1,4 @@
-include ../../../../projects/linux/_mk-generic.inc
+include ../../../../projects/makefile/_mk-generic.inc
 include ../../../_libs-config.inc
 
 APP_TEST_PATH					:= ../../..

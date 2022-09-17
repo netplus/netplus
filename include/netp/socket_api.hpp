@@ -255,7 +255,7 @@ namespace netp {
 	}
 
 	//caller decide to retry or not
-	inline int send( SOCKET fd, byte_t const* const buf, netp::u32_t len, int flag) {
+	inline int send( SOCKET fd, byte_t const* const buf, netp::u32_t len, int flag = 0) {
 		//for a connected udp session, zero-len is allowed
 		NETP_ASSERT(buf != nullptr);
 __label_send:
@@ -275,8 +275,8 @@ __label_send:
 	//@note: 
 	//Datagram sockets in various domains(e.g., the UNIXand Internet
 	//	domains) permit zero - length datagrams.When such a datagram is
-	//	received, the return value is 0 with no error ec_o set
-	inline int recv(SOCKET fd, byte_t* const buffer_o, netp::u32_t size, int flag ) {
+	//	@return nbytes received, otherwise the error code
+	inline int recv(SOCKET fd, byte_t* const buffer_o, netp::u32_t size, int flag =0) {
 		NETP_ASSERT(buffer_o != nullptr && size>0);
 __label_recv:
 		const int r = ::recv(fd, reinterpret_cast<char*>(buffer_o), (int)(size), flag);
@@ -303,7 +303,8 @@ __label_recv:
 	}
 
 	//@NOTE: udp allow zero-len pkt
-	inline int sendto(SOCKET fd, netp::byte_t const* const buf, netp::u32_t len, NRP<address> const& addr_to, int const& flag) {
+	//	@return nbytes sent, otherwise the error code
+	inline int sendto(SOCKET fd, netp::byte_t const* const buf, netp::u32_t len, NRP<address> const& addr_to, int flag = 0) {
 		NETP_ASSERT(buf != nullptr);
 	_label_sendto:
 		int nbytes;
@@ -332,7 +333,7 @@ __label_recv:
 		return nbytes;
 	}
 
-	inline int recvfrom( SOCKET fd, byte_t* const buff_o, netp::u32_t size, NRP<address>& addr_o, int const& flag) {
+	inline int recvfrom( SOCKET fd, byte_t* const buff_o, netp::u32_t size, NRP<address>& addr_o, int flag = 0) {
 	_label_recvfrom:
 		int nbytes;
 		if (addr_o != nullptr) {

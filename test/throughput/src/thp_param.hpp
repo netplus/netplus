@@ -2,6 +2,12 @@
 #define _THP_PARAM_HPP
 #include <netp.hpp>
 
+enum mode {
+	m_rps = 0,
+	m_tps,
+	m_notset
+};
+
 class thp_param
 {
 public:
@@ -14,16 +20,20 @@ public:
 	long loopbufsize;
 	long thread;
 	long for_max;
+	long mode;
+	long ackdelta;
 
 	thp_param() :
 		client_max(1),
 		packet_number(10000),
 		packet_size(64),
-		rcvwnd(128 * 1024),
-		sndwnd(64 * 1024),
+		rcvwnd(128*1024),
+		sndwnd(64*1024),
 		loopbufsize(128 * 1024),
 		thread(0),
-		for_max(1)
+		for_max(1),
+		mode(m_rps),
+		ackdelta(10000)
 	{}
 };
 
@@ -37,11 +47,13 @@ public:
 		{"buf-for-evtloop", optional_argument, 0, 'b'},
 		{"thread-for-evtloop", optional_argument, 0, 't'},
 		{"for", optional_argument, 0, 'f'},
+		{"mode", optional_argument, 0, 'm'},
+		{"ack-delta", optional_argument, 0, 'a'},
 		{"help", optional_argument, 0, 'h'},
 		{0,0,0,0}
 	};
 
-	const char* optstring = "l:n:c:r:s:b:t:f:h::";
+	const char* optstring = "l:n:c:r:s:b:t:f:m:a:h::";
 
 	int opt;
 	int opt_idx;
@@ -87,9 +99,19 @@ public:
 			p.for_max = std::atol(optarg);
 		}
 		break;
+		case 'm':
+		{
+			p.mode = std::atol(optarg);
+		}
+		break;
+		case 'a':
+		{
+			p.ackdelta = std::atol(optarg);
+		}
+		break;
 		case 'h':
 		{
-			printf("usage:  -c max_clients -l bytes_len -n packet_number\nexample: thp.exe -c 1 -l 64 -n 1000000\n");
+			printf("usage:  -c max_clients -l bytes_len -n packet_number\nexample: thp.exe -c 1 -l 64 -n 1000000 -m 0\n");
 			exit(-1);
 			break;
 		}

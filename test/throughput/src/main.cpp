@@ -36,6 +36,7 @@ std::atomic<long> _atomic_long;
 
 int main(int argc, char** argv) {
 	parse_param(g_param, argc, argv);
+	std::atomic_thread_fence(std::memory_order_release);
 
 	for (int i = 0; i < g_param.for_max; ++i) {
 		netp::app::instance()->init(argc,argv);
@@ -44,60 +45,13 @@ int main(int argc, char** argv) {
 			netp::app::instance()->cfg_loop_count(g_param.thread);
 		}
 		netp::app::instance()->start_loop();
-/*
-		NRP<netp::packet> outp1 = netp::make_ref<netp::packet>();
-		NRP<netp::packet> outp2 = outp1;		
 
-		NRP<netp::packet> outp3 = outp1;
-		NRP<netp::packet> outp4 = outp1;
-
-		std::vector<NRP<netp::packet>> pvec;
-		pvec.emplace_back(outp1);
-		pvec.emplace_back(outp2);
-		pvec.emplace_back(outp3);
-		pvec.emplace_back(outp4);
-
-		outp2 = nullptr;
-		outp3 = nullptr;
-		outp4 = nullptr;
-
-		_atomic_long.load(std::memory_order_relaxed);
-		_atomic_long.load(std::memory_order_acquire);
-
-		_atomic_long.store(7, std::memory_order_relaxed);
-		_atomic_long.store(7, std::memory_order_release);
-		_atomic_long.store(7, std::memory_order_seq_cst);
-
-		std::atomic_thread_fence(std::memory_order_relaxed);
-		std::atomic_thread_fence(std::memory_order_acq_rel);
-		std::atomic_thread_fence(std::memory_order_seq_cst);
-		std::atomic_thread_fence(std::memory_order_acquire);
-
-		std::atomic_signal_fence(std::memory_order_relaxed);
-		std::atomic_signal_fence(std::memory_order_acq_rel);
-		std::atomic_signal_fence(std::memory_order_seq_cst);
-		std::atomic_signal_fence(std::memory_order_acquire);
-
-		_atomic_long.load(std::memory_order_relaxed);
-		_atomic_long.load(std::memory_order_acquire);
-
-		std::atomic_thread_fence(std::memory_order_seq_cst);
-		_atomic_long.store(7, std::memory_order_relaxed);
-
-		_atomic_long.store(7, std::memory_order_release);
-
-		_atomic_long.fetch_add(1, std::memory_order_relaxed);
-		_atomic_long.fetch_add(1, std::memory_order_acq_rel);
-
-
-		printoutp(pvec);
-*/
 		{
 			netp::benchmark bmarker("start");
-			handler_start_listener(g_param);
+			handler_start_listener();
 			bmarker.mark("listen done");
 
-			handler_dial_clients(g_param);
+			handler_dial_clients();
 			bmarker.mark("dial all done");
 
 			netp::app::instance()->wait();
@@ -106,17 +60,17 @@ int main(int argc, char** argv) {
 			bmarker.mark("wait for listener");
 
 			std::chrono::steady_clock::duration cost = bmarker.mark("test done");
-			std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(cost);
-			if (sec.count() == 0) {
-				sec = std::chrono::seconds(1);
+			std::chrono::milliseconds mills = std::chrono::duration_cast<std::chrono::milliseconds>(cost);
+			if (mills.count() == 0) {
+				mills = std::chrono::milliseconds(1);
 			}
 
-			float avgrate = netp::u64_t(g_param.packet_number) * 1.0 / (sec.count());
-			float avgbits = netp::u64_t(g_param.packet_number) * netp::u64_t(g_param.packet_size) * 1.0 / (sec.count() * 1000 * 1000);
-			NETP_INFO("\n---\npacket size: %ld bytes\nnumber: %ld\ncost: %ld s\navgrate: %0.2f/s\navgbits: %0.2fMB/s\n---",
+			double avgrate = netp::u64_t(g_param.packet_number) * 1.0f * 1000 / (mills.count());
+			double avgbits = netp::u64_t(g_param.packet_number) * netp::u64_t(g_param.packet_size) * 1.0f * 1000 / (mills.count()*1000*1000);
+			NETP_INFO("\n---\npacket size: %ld bytes\nnumber: %ld\ncost: %lld ms\navgrate: %0.2f/s\navgbits: %0.2fMB/s\n---",
 				g_param.packet_size,
 				g_param.packet_number,
-				sec.count(),
+				mills.count(),
 				g_param.client_max * avgrate, g_param.client_max * avgbits);
 			NETP_INFO("main exit");
 		}
