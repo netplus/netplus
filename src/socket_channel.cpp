@@ -1,7 +1,6 @@
 #include <netp/core.hpp>
 #include <netp/app.hpp>
 #include <netp/socket_channel.hpp>
-#include <netp/app.hpp>
 
 namespace netp {
 
