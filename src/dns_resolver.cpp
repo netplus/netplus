@@ -55,12 +55,11 @@ namespace netp {
 	}
 
 	void ares_fd_monitor::io_notify_terminating(int, io_ctx*) {
-		//fake a shutdown operation first, let read return error
-		netp::shutdown(fd, SHUT_RD);
-		ares_process_fd(*((ares_channel*)(dnsr.m_ares_channel)), fd, ARES_SOCKET_BAD);
+		dnsr._do_stop(netp::make_ref<netp::promise<int>>());
 	}
 
 	void ares_fd_monitor::io_notify_read(int status, io_ctx*) {
+		NETP_ASSERT(dnsr.m_flag & dns_resolver_flag::f_drf_running);
 		if (status == netp::OK) {
 			ares_process_fd(*((ares_channel*)(dnsr.m_ares_channel)), fd, ARES_SOCKET_BAD);
 		} else {
@@ -69,6 +68,7 @@ namespace netp {
 		}
 	}
 	void ares_fd_monitor::io_notify_write(int status, io_ctx*) {
+		NETP_ASSERT(dnsr.m_flag & dns_resolver_flag::f_drf_running);
 		if (status == netp::OK) {
 			ares_process_fd(*((ares_channel*)(dnsr.m_ares_channel)), ARES_SOCKET_BAD, fd);
 		} else {
@@ -78,15 +78,15 @@ namespace netp {
 	}
 
 	void dns_resolver::__ares_check_timeout() {
-		NETP_ASSERT(m_flag & f_running);
+		NETP_ASSERT(m_flag & f_drf_running);
 
-		if ((m_ares_active_query > 0) && ((m_flag & f_timeout_timer) == 0)) {
-			m_flag |= f_timeout_timer;
+		if ((m_ares_active_query > 0) && ((m_flag & f_drf_timeout_timer) == 0)) {
+			m_flag |= f_drf_timeout_timer;
 			NRP<netp::promise<int>> ltp = netp::make_ref<netp::promise<int>>();
 			ltp->if_done([dnsr=NRP<dns_resolver>(this)](int rt) {
 				NETP_ASSERT( dnsr->L->in_event_loop() );
 				if (rt != netp::OK) {
-					dnsr->m_flag &= ~f_timeout_timer;
+					dnsr->m_flag &= ~f_drf_timeout_timer;
 				}
 			});
 
@@ -181,15 +181,15 @@ namespace netp {
 	void dns_resolver::_do_start(NRP<netp::promise<int>> const& p) {
 		NETP_ASSERT(L->in_event_loop());
 
-		if ( m_flag &( u8_t(dns_resolver_flag::f_launching|dns_resolver_flag::f_running|dns_resolver_flag::f_stop_called)) ) {
+		if ( m_flag &( u8_t(dns_resolver_flag::f_drf_launching|dns_resolver_flag::f_drf_running|dns_resolver_flag::f_drf_stop_called)) ) {
 			p->set(netp::E_DNS_INVALID_STATE);
 			return;
 		}
 
-		m_flag |= dns_resolver_flag::f_launching;
+		m_flag |= dns_resolver_flag::f_drf_launching;
 		int ares_init_rt = ares_library_init(ARES_LIB_INIT_ALL);
 		if (ares_init_rt != ARES_SUCCESS) {
-			m_flag &= ~dns_resolver_flag::f_launching;
+			m_flag &= ~dns_resolver_flag::f_drf_launching;
 			p->set(ares_init_rt);
 			return;
 		}
@@ -205,7 +205,7 @@ namespace netp {
 		
 		ares_init_rt = ares_init_options(((ares_channel*)(m_ares_channel)), &ares_opt, ares_flag);
 		if (ares_init_rt != ARES_SUCCESS) {
-			m_flag &= ~dns_resolver_flag::f_launching;
+			m_flag &= ~dns_resolver_flag::f_drf_launching;
 			p->set(ares_init_rt);
 			return;
 		}
@@ -244,8 +244,8 @@ namespace netp {
 		NETP_ASSERT(m_tm_dnstimeout == nullptr);
 		m_tm_dnstimeout = netp::make_ref<netp::timer>(std::chrono::milliseconds(100), &dns_resolver::cb_dns_timeout, NRP<dns_resolver>(this), std::placeholders::_1);
 
-		m_flag &= ~dns_resolver_flag::f_launching;
-		m_flag |= dns_resolver_flag::f_running;
+		m_flag &= ~dns_resolver_flag::f_drf_launching;
+		m_flag |= dns_resolver_flag::f_drf_running;
 
 		NETP_INFO("[dns_resolver]launched");
 		p->set(netp::OK);
@@ -262,17 +262,20 @@ namespace netp {
 
 	void dns_resolver::_do_stop(NRP<netp::promise<int>> const& p) {
 		NETP_ASSERT(L->in_event_loop());
-		if ((m_flag& dns_resolver_flag::f_running) == 0) {
+		if ((m_flag& dns_resolver_flag::f_drf_running) == 0) {
 			p->set(netp::E_DNS_INVALID_STATE);
 			return;
 		}
-		m_flag &= ~dns_resolver_flag::f_running;
+		m_flag &= ~dns_resolver_flag::f_drf_running;
 		NETP_ASSERT(m_ares_channel != nullptr);
+
+		//cancel -> __ares_socket_close -> fd removed from m_ares_fd_monitor_map
 		ares_cancel(*((ares_channel*)(m_ares_channel)));
 		ares_destroy(*((ares_channel*)(m_ares_channel)));
 
-		__ares_wait();
-
+		NETP_ASSERT(m_ares_fd_monitor_map.size() == 0);
+		NETP_ASSERT(m_ares_active_query == 0);
+	
 		ares_library_cleanup();
 
 		NETP_ASSERT(m_tm_dnstimeout != nullptr);
@@ -284,28 +287,28 @@ namespace netp {
 
 	void dns_resolver::restart() {
 		NETP_ASSERT( L->in_event_loop() );
-		if ((m_flag&dns_resolver_flag::f_restarting)) {
+		if ((m_flag&dns_resolver_flag::f_drf_restarting)) {
 			return;
 		}
 
-		if (m_flag&dns_resolver_flag::f_timeout_barrier) {
-			m_flag |= f_restarting_pending;
+		if (m_flag&dns_resolver_flag::f_drf_timeout_barrier) {
+			m_flag |= f_drf_restarting_pending;
 			return;
 		}
 
-		m_flag |= dns_resolver_flag::f_restarting;
+		m_flag |= dns_resolver_flag::f_drf_restarting;
 		NRP<netp::promise<int>> p_stop = netp::make_ref<netp::promise<int>>();
 		_do_stop(p_stop);
 
 		NRP<netp::promise<int>> p_start = netp::make_ref<netp::promise<int>>();
 		_do_start(p_start);
-		m_flag &= ~dns_resolver_flag::f_restarting;
+		m_flag &= ~dns_resolver_flag::f_drf_restarting;
 	}
 
 	NRP<netp::promise<int>> dns_resolver::stop() {
 		NRP<netp::promise<int>> p = netp::make_ref<netp::promise<int>>();
 		L->execute([dnsr=NRP<dns_resolver>(this),p]() {
-			dnsr->m_flag |= f_stop_called;
+			dnsr->m_flag |= f_drf_stop_called;
 			dnsr->_do_stop(p);
 		});
 		return p;
@@ -313,31 +316,26 @@ namespace netp {
 
 	void dns_resolver::cb_dns_timeout(NRP<netp::timer> const&) {
 		NETP_ASSERT(L->in_event_loop());
-		NETP_ASSERT(m_flag&f_timeout_timer);
-		m_flag &= ~f_timeout_timer;
-		if ( (m_flag& dns_resolver_flag::f_running) == 0  || (m_ares_active_query ==0) ) {
+		NETP_ASSERT(m_flag&f_drf_timeout_timer);
+		m_flag &= ~f_drf_timeout_timer;
+		if ( (m_flag& dns_resolver_flag::f_drf_running) == 0  || (m_ares_active_query ==0) ) {
 			return;
 		}
 
 		//ares_process_fd might result in insert/erase pair from m_ares_fd_monitor_map
 		//ares_process_fd might result in restart
 
-		m_flag |= f_timeout_barrier;
+		m_flag |= f_drf_timeout_barrier;
 		ares_process_fd(*((ares_channel*)m_ares_channel), ARES_SOCKET_BAD, ARES_SOCKET_BAD);
-		m_flag &= ~f_timeout_barrier;
+		m_flag &= ~f_drf_timeout_barrier;
 
-		if (m_flag & f_restarting_pending) {
-			m_flag &= ~f_restarting_pending;
+		if (m_flag & f_drf_restarting_pending) {
+			m_flag &= ~f_drf_restarting_pending;
 			restart();
 			return;
 		}
 
 		__ares_check_timeout();
-	}
-
-	void dns_resolver::__ares_wait() {
-		NETP_ASSERT(m_ares_fd_monitor_map.size() == 0);
-		NETP_ASSERT(m_ares_active_query == 0);
 	}
 
 	SOCKET dns_resolver::__ares_socket_create(int af, int type, int proto) {
@@ -365,8 +363,7 @@ namespace netp {
 	}
 
 	int dns_resolver::__ares_socket_close(SOCKET fd) {
-		NETP_ASSERT(L != nullptr);
-		NETP_ASSERT(L->in_event_loop());
+		NETP_ASSERT(L != nullptr && L->in_event_loop());
 		ares_fd_monitor_map_t::iterator it = m_ares_fd_monitor_map.find(fd);
 		if (it != m_ares_fd_monitor_map.end()) {
 			it->second->io_end();
@@ -497,7 +494,7 @@ namespace netp {
 
 	void dns_resolver::_do_resolve(string_t const& domain, NRP<dns_query_promise> const& p) {
 		NETP_ASSERT(L->in_event_loop());
-		if ( (m_flag& dns_resolver_flag::f_running) == 0) {
+		if ( (m_flag& dns_resolver_flag::f_drf_running) == 0) {
 			p->set(std::make_tuple(netp::E_DNS_INVALID_STATE,std::vector<ipv4_t,netp::allocator<ipv4_t>>()));
 			return;
 		}

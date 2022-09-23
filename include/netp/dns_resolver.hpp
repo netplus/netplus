@@ -57,6 +57,15 @@ namespace netp {
 	//netp::allocator use tls data to store allocator pointer, if we share a dns resolver in between multi-eventloops, the following case should be taken into consideration
 	//1, thread safe alloc/dealloc
 	
+	enum dns_resolver_flag {
+		f_drf_stop_called = 1 << 0,
+		f_drf_launching = 1 << 1,
+		f_drf_running = 1 << 2,
+		f_drf_restarting = 1 << 3,
+		f_drf_restarting_pending = 1 << 4,
+		f_drf_timeout_timer = 1 << 5,
+		f_drf_timeout_barrier = 1 << 6 //pending restart action
+	};
 
 	class event_loop;
 	class dns_resolver :
@@ -66,16 +75,6 @@ namespace netp {
 		friend struct ares_fd_monitor;
 		friend struct async_dns_query;
 		
-		enum dns_resolver_flag {
-			f_stop_called = 1<<0,
-			f_launching = 1<<1,
-			f_running = 1<<2,
-			f_restarting = 1<<3,
-			f_restarting_pending =1<<4,
-			f_timeout_timer = 1<<5,
-			f_timeout_barrier = 1<<6 //pending restart action
-		};
-
 		NRP<event_loop> L;
 
 		void* m_ares_channel;
@@ -90,8 +89,6 @@ namespace netp {
 		ares_fd_monitor_map_t m_ares_fd_monitor_map;
 
 	public:
-		void __ares_wait();
-
 		SOCKET __ares_socket_create(int af, int type, int proto);
 		int __ares_socket_close(SOCKET fd);
 		void __ares_socket_state_cb(SOCKET socket_fd, int readable, int writable);
