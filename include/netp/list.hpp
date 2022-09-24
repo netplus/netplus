@@ -4,58 +4,33 @@
 #include <netp/core.hpp>
 
 namespace netp {
-	/*
-	//disable offset feature in c++ mode
-	struct list_t {
-		list_t* next;
-		list_t *prev;
-	};
-	inline static void list_init(list_t* list) {
-		list->next = list;
-		list->prev = list;
-	}
-	inline static void __list_insert(list_t* prev, list_t* next, list_t* item) {
-		item->next = next;
-		item->prev = prev;
-		next->prev = item;
-		prev->next = item;
-	}
-	inline static void list_prepend(list_t* list, list_t* item) {
-		__list_insert(list, list->next, item);
-	}
-	inline static void list_append(list_t* list, list_t* item) {
-		__list_insert(list->prev, list, item);
-	}
-	inline static void list_delete(list_t* item) {
-		item->prev->next = item->next;
-		item->next->prev = item->prev;
-		item->next = 0;
-		item->prev = 0;
-	}
-	*/
-
+	//disable offset feature in c++ mode with tpl
 	//embed next,prev in your own class to use these api
-	template<class list_t>
+
+	template <class list_t>
 	inline static void list_init(list_t* list) {
 		list->next = list;
 		list->prev = list;
 	}
-	template<class list_t>
+	template <class list_t>
 	inline static void __list_insert(list_t* prev, list_t* next, list_t* item) {
 		item->next = next;
 		item->prev = prev;
 		next->prev = item;
 		prev->next = item;
 	}
-	template<class list_t>
+
+	template <class list_t>
 	inline static void list_prepend(list_t* list, list_t* item) {
+		//insert right after list
 		__list_insert(list, list->next, item);
 	}
-	template<class list_t>
+	template <class list_t>
 	inline static void list_append(list_t* list, list_t* item) {
+		//insert right before list->prev
 		__list_insert(list->prev, list, item);
 	}
-	template<class list_t>
+	template <class list_t>
 	inline static void list_delete(list_t* item) {
 		item->prev->next = item->next;
 		item->next->prev = item->prev;
@@ -81,11 +56,11 @@ namespace netp {
 	//2, append a item to slist->next
 	//3, iterator over from head to tail
 	//4, no prepend|delete operation
-	template<class slist_t>
+	template <class slist_t>
 	inline static void slist_init(slist_t* slist) {
 		slist->next = 0;
 	}
-	template<class slist_t>
+	template <class slist_t>
 	inline static void slist_append(slist_t* slist, slist_t* item) {
 		item->next = 0;
 		slist->next = item;
