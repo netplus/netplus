@@ -793,7 +793,7 @@ protected:
 				NETP_WARN("[socket][%s]cancel outbound, nbytes:%u, errno: %d", ch_info().c_str(), entry.data->len(), ch_errno());
 				//hold a copy before we do pop it from queue
 				NRP<promise<int>> wp = entry.write_promise;
-				m_tx_bytes -= u32_t(entry.data->len());
+				m_tx_bytes -= (entry.data->len()-entry.written);
 				m_tx_entry_q.pop_front();
 				NETP_ASSERT(wp->is_idle());
 				wp->set(ch_errno());
