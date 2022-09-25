@@ -92,8 +92,7 @@ namespace netp { namespace handler {
 	}
 
 	void tls_handler::write_closed(NRP<channel_handler_context> const& ctx) {
-		NETP_ASSERT(m_ctx != nullptr);
-		NETP_ASSERT(m_ctx == ctx);
+		NETP_ASSERT(m_ctx != nullptr && m_ctx == ctx);
 		m_flag &= ~f_ch_close_write_pending;
 		m_flag |= f_ch_write_closed;
 
@@ -123,8 +122,7 @@ namespace netp { namespace handler {
 	}
 
 	void tls_handler::read_closed(NRP<channel_handler_context> const& ctx) {
-		NETP_ASSERT(m_ctx != nullptr);
-		NETP_ASSERT(m_ctx == ctx);
+		NETP_ASSERT(m_ctx != nullptr && m_ctx == ctx);
 		m_flag |= f_ch_read_closed;
 		if (m_flag & f_ch_connected) {
 			m_ctx->fire_read_closed();
@@ -254,9 +252,8 @@ namespace netp { namespace handler {
 	void tls_handler::_try_tls_user_data_flush() {
 
 #ifdef _NETP_DEBUG
-		NETP_ASSERT( (m_flag&f_ch_write_closed) == 0);
+		NETP_ASSERT( (m_flag&(f_ch_write_closed| f_tls_ch_writing)) == 0);
 		NETP_ASSERT( m_tls_outlets_user_data.size() );
-		NETP_ASSERT( (m_flag&f_tls_ch_writing) == 0 );
 		NETP_ASSERT( m_ctx != nullptr );
 #endif
 		m_flag |= f_tls_ch_writing;
@@ -460,9 +457,9 @@ namespace netp { namespace handler {
 	}
 
 	void tls_handler::_tls_record_data_flush_done(int code) {
+		NETP_ASSERT(code != netp::E_CHANNEL_WRITE_BLOCK);
 		NETP_ASSERT(m_tls_outlets_records_data.size());
 		NETP_ASSERT((m_flag & f_ch_writing));
-		NETP_ASSERT(code != netp::E_CHANNEL_WRITE_BLOCK);
 		socket_ch_outlet& outlet = m_tls_outlets_records_data.front();
 		if (outlet.is_userdata) {
 			_tls_user_data_flush_done(code);
