@@ -128,13 +128,14 @@ namespace netp {
 	};
 
 	struct socket_outbound_entry final {
-		NRP<non_atomic_ref_packet> data;
+		u32_t written;
+		NRP<netp::packet> data;
 		NRP<promise<int>> write_promise;
 	};
 	struct socket_outbound_entry_to final {
-		NRP<non_atomic_ref_packet> data;
-		NRP<promise<int>> write_promise;
+		NRP<netp::packet> data;
 		NRP<address> to;
+		NRP<promise<int>> write_promise;
 	};
 
 	//@note: 1kb for delta checker

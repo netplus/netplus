@@ -693,9 +693,9 @@ int socket_base::get_left_snd_queue() const {
 			NETP_ASSERT( is_udp() ? true: (m_tx_bytes) > 0 );
 #endif
 			socket_outbound_entry& entry = m_tx_entry_q.front();
-			const int dlen = int(entry.data->len());
-			int wlen = (dlen);
-			if (m_tx_limit !=0 && (m_tx_budget<u32_t(wlen))) {
+			const u32_t dlen = (entry.data->len());
+			u32_t wlen = (dlen-entry.written);
+			if (m_tx_limit !=0 && (m_tx_budget<(wlen))) {
 				if ( (m_tx_budget == 0) || is_udp()/*udp pkt could not be split into smaller pkt*/ ) {
 #ifdef _NETP_DEBUG
 					NETP_ASSERT(m_chflag&int(channel_flag::F_TX_LIMIT_TIMER));
@@ -706,10 +706,7 @@ int socket_base::get_left_snd_queue() const {
 				wlen = m_tx_budget;
 			}
 
-#ifdef _NETP_DEBUG
-			NETP_ASSERT((wlen > 0) && (u32_t(wlen) <= m_tx_bytes));
-#endif
-			const int nbytes = socket_send_impl( entry.data->head(), u32_t(wlen));
+			const int nbytes = socket_send_impl( (entry.data->head()+entry.written), (wlen));
 			if (NETP_UNLIKELY(nbytes < 0)) {
 				return nbytes;
 			}
@@ -730,15 +727,12 @@ int socket_base::get_left_snd_queue() const {
 				}
 			}
 
-			if ((nbytes == dlen)) {
+			entry.written += nbytes;
+			if ((entry.written == dlen)) {
 				entry.write_promise->set(netp::OK);
 				m_tx_entry_q.pop_front();
 			} else {
 				NETP_ASSERT(!is_udp(), "proto: %u", sock_protocol() );
-				entry.data->skip(nbytes);
-#ifdef _NETP_DEBUG
-				NETP_ASSERT(entry.data->len());
-#endif
 			}
 		}
 		return netp::OK;
@@ -916,7 +910,8 @@ __act_label_close_read_write:
 #endif
 
 		m_tx_entry_q.push_back({
-			netp::make_ref<netp::non_atomic_ref_packet>(outlet->head(), outlet_len,0),
+			0,
+			outlet,
 			intp
 		});
 		m_tx_bytes += outlet_len;
@@ -949,9 +944,9 @@ __act_label_close_read_write:
 #endif
 
 		m_tx_entry_to_q.push_back({
-			netp::make_ref<netp::non_atomic_ref_packet>(outlet->head(), outlet_len,0),
-			intp,
-			to
+			outlet,
+			to,
+			intp
 		});
 		m_tx_bytes += outlet_len;
 
