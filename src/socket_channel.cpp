@@ -262,9 +262,10 @@ int socket_base::get_left_snd_queue() const {
 		NETP_ASSERT( (m_tx_limit>0) && (m_chflag&int(channel_flag::F_TX_LIMIT_TIMER)) );
 
 		m_chflag &= ~int(channel_flag::F_TX_LIMIT_TIMER);
-		if (m_chflag & (int(channel_flag::F_WRITE_SHUTDOWN)|int(channel_flag::F_WRITE_ERROR))) {
+		if (m_chflag & (int(channel_flag::F_WRITE_SHUTDOWN))) {
 			return;
 		}
+		NETP_ASSERT( (m_chflag & int(channel_flag::F_WRITE_ERROR)) == 0);
 		//netp::now<bfr_duration_t, bfr_clock_t>().time_since_epoch().count()
 		const long long usnow = netp::now<netp::microseconds_duration_t, netp::steady_clock_t>().time_since_epoch().count();
 		const long long txlimit_delta = ( (usnow - m_tx_limit_last_tp));
@@ -820,6 +821,8 @@ int socket_base::get_left_snd_queue() const {
 			prt = (netp::E_CHANNEL_WRITE_CLOSED);
 		} else if (m_chflag & (int(channel_flag::F_WRITE_SHUTDOWNING)|int(channel_flag::F_CLOSING)) ) {
 			prt = (netp::E_OP_INPROCESS);
+		} else if (m_chflag & (int(channel_flag::F_READ_ERROR) | int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_FIRE_ACT_EXCEPTION))) {
+			goto __act_label_close_write;
 		} else if (m_chflag&(int(channel_flag::F_CLOSE_PENDING)|int(channel_flag::F_WRITE_SHUTDOWN_PENDING))) {
 			//if we have a write_error, a immediate ch_close_impl would be take out
 			NETP_ASSERT((m_chflag&int(channel_flag::F_WRITE_ERROR)) == 0);
@@ -834,10 +837,10 @@ int socket_base::get_left_snd_queue() const {
 			m_chflag |= int(channel_flag::F_WRITE_SHUTDOWN_PENDING);
 			prt = (netp::E_CHANNEL_WRITE_SHUTDOWNING);
 		} else {
+		__act_label_close_write:
 			NETP_ASSERT(((m_chflag&(int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) )) == (int(channel_flag::F_WRITE_ERROR) | int(channel_flag::F_CONNECTED) | int(channel_flag::F_USE_DEFAULT_WRITE))) ?
 				(m_tx_entry_q.size()||m_tx_entry_to_q.size()):
 				true, "[#%s]flag: %d, errno: %d", ch_info().c_str(), m_chflag, m_cherrno);
-
 			_ch_do_close_write();
 		}
 
