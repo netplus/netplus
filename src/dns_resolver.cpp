@@ -142,14 +142,6 @@ namespace netp {
 		dns_resolver* dnsr = (dns_resolver*)data;
 		dnsr->__ares_socket_state_cb(socket_fd, readable, writable);
 	}
-	/*
-	static int ___ares_socket_create_cb(ares_socket_t socket_fd, int type, void* data) {
-		NETP_ASSERT(data != 0);
-		dns_resolver* dnsr = (dns_resolver*)data;
-		return dnsr->__ares_socket_create_cb(socket_fd, type);
-	}
-	*/
-
 	static ares_socket_t ___ares_socket_create(int af, int type, int proto, void* data) {
 		dns_resolver* dnsr = (dns_resolver*)data;
 		return dnsr->__ares_socket_create(af,type,proto);
@@ -205,6 +197,7 @@ namespace netp {
 		
 		ares_init_rt = ares_init_options(((ares_channel*)(m_ares_channel)), &ares_opt, ares_flag);
 		if (ares_init_rt != ARES_SUCCESS) {
+			ares_library_cleanup();
 			m_flag &= ~dns_resolver_flag::f_drf_launching;
 			p->set(ares_init_rt);
 			return;
@@ -281,7 +274,7 @@ namespace netp {
 		NETP_ASSERT(m_tm_dnstimeout != nullptr);
 		m_tm_dnstimeout = nullptr;
 
-		NETP_INFO("[dns_resolver]stoped");
+		NETP_INFO("[dns_resolver]stoped, stop called: %c",(m_flag&dns_resolver_flag::f_drf_stop_called) ? 'Y':'N' );
 		p->set(netp::OK);
 	}
 
@@ -342,23 +335,24 @@ namespace netp {
 		NETP_ASSERT(L != nullptr && L->in_event_loop());
 
 		SOCKET fd = socket(af, type, proto);
-		NETP_RETURN_V_IF_MATCH(fd, fd == NETP_INVALID_SOCKET);
+		NETP_RETURN_V_IF_MATCH(fd, fd == ARES_SOCKET_BAD);
 		
 		int setnb = netp::set_nonblocking(fd, true);
 		if (setnb != netp::OK) {
 			netp::close(fd);
-			return NETP_INVALID_SOCKET;
+			return ARES_SOCKET_BAD;
 		}
 		
 		NRP<netp::ares_fd_monitor> afm = netp::make_ref<netp::ares_fd_monitor>(*this, fd);
 		io_ctx* ctx = L->io_begin(fd, afm);
 		if (ctx == nullptr) {
 			netp::close(fd);
-			return NETP_INVALID_SOCKET;
+			return ARES_SOCKET_BAD;
 		}
 
 		afm->ctx = ctx;
 		m_ares_fd_monitor_map.insert({ fd, afm });
+		NETP_VERBOSE("[dns_resolver][#%u]__ares_socket_create&insert", fd);
 		return fd;
 	}
 
@@ -372,21 +366,10 @@ namespace netp {
 				L_->io_end(ctx_);
 			});
 			m_ares_fd_monitor_map.erase(fd);
+			NETP_VERBOSE("[dns_resolver][#%u]__ares_socket_close&erase", fd);
 		}
 		return netp::OK;
 	}
-
-	/*
-	int dns_resolver::__ares_socket_create_cb(ares_socket_t socket_fd, int type) {
-		(void)type;
-		//NETP_VERBOSE("[dns_resolver]__ares_socket_create_cb, fd: %d, type: %d", socket_fd, type);
-		NETP_ASSERT(L != nullptr);
-		NETP_ASSERT(L->in_event_loop());
-		NETP_ASSERT((m_flag & dns_resolver_flag::f_running));
-		ares_fd_monitor_map_t::iterator it = m_ares_fd_monitor_map.find(socket_fd);
-		NETP_ASSERT(it != m_ares_fd_monitor_map.end());
-	}
-	*/
 
 	void dns_resolver::__ares_socket_state_cb(SOCKET socket_fd, int readable, int writable) {
 		//NETP_VERBOSE("[dns_resolver]__ares_state_cb, fd: %d, readable: %d, writeable: %d", socket_fd, readable, writable);
