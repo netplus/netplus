@@ -689,9 +689,6 @@
     <ClCompile Include="..\..\3rd\llhttp\llapi.c">
       <Filter>3rd\llhttp</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\3rd\llhttp\llhttp_.c">
-      <Filter>3rd\llhttp</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\3rd\llhttp\llhttp.c">
       <Filter>3rd\llhttp</Filter>
     </ClCompile>
