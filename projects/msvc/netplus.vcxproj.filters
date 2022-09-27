@@ -435,9 +435,6 @@
     <ClInclude Include="..\..\include\netp\security\crc.hpp">
       <Filter>Header Files\netp\security</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\3rd\llhttp\llhttp.h">
-      <Filter>3rd\llhttp</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\netp\http\url_parser.hpp">
       <Filter>Header Files\netp\http</Filter>
     </ClInclude>
@@ -564,6 +561,9 @@
     <ClInclude Include="..\..\include\netp\eth.hpp">
       <Filter>Header Files\netp</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\3rd\llhttp\llhttp.h">
+      <Filter>3rd\llhttp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\address.cpp">
@@ -685,12 +685,6 @@
     </ClCompile>
     <ClCompile Include="..\..\src\scheduler.cpp">
       <Filter>Source Files\src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\3rd\llhttp\llapi.c">
-      <Filter>3rd\llhttp</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\3rd\llhttp\llhttp.c">
-      <Filter>3rd\llhttp</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\http\url_parser.cpp">
       <Filter>Source Files\src\http</Filter>
@@ -883,6 +877,15 @@
     </ClCompile>
     <ClCompile Include="..\..\src\ip.cpp">
       <Filter>Source Files\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\llhttp\llhttp.c">
+      <Filter>3rd\llhttp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\llhttp\_ll_api.c">
+      <Filter>3rd\llhttp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd\llhttp\_ll_http.c">
+      <Filter>3rd\llhttp</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

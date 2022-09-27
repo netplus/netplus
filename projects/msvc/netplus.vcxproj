@@ -260,8 +260,9 @@
     <ClCompile Include="..\..\3rd\c-ares\c-ares-1.18.1\src\lib\inet_ntop.c" />
     <ClCompile Include="..\..\3rd\c-ares\c-ares-1.18.1\src\lib\windows_port.c" />
     <ClCompile Include="..\..\3rd\getopt\getopt.c" />
-    <ClCompile Include="..\..\3rd\llhttp\llapi.c" />
     <ClCompile Include="..\..\3rd\llhttp\llhttp.c" />
+    <ClCompile Include="..\..\3rd\llhttp\_ll_api.c" />
+    <ClCompile Include="..\..\3rd\llhttp\_ll_http.c" />
     <ClCompile Include="..\..\3rd\stack_walker\StackWalker.cpp" />
     <ClCompile Include="..\..\src\address.cpp" />
     <ClCompile Include="..\..\src\app.cpp" />
