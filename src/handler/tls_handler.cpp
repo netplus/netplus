@@ -590,9 +590,7 @@ namespace netp { namespace handler {
 #ifdef _NETP_DEBUG
 		NETP_ASSERT(m_ctx != nullptr);
 #endif
-		if (netp::u32_t(buf_size) > 0) {
-			m_ctx->fire_read(netp::make_ref<netp::packet>(buf, netp::u32_t(buf_size)));
-		}
+		m_ctx->fire_read(netp::make_ref<netp::packet>(buf, netp::u32_t(buf_size)));
 	}
 
 	void tls_handler::tls_log_error(const char* err) {
