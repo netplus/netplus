@@ -13,10 +13,11 @@
 
 #include "../3rd/c-ares/c-ares-1.18.1/include/ares.h"
 
-
 #include <netp/dns_resolver.hpp>
 #include <netp/socket_api.hpp>
 #include <netp/event_loop.hpp>
+
+#define NETP_DELAY_FD_MONITOR
 
 namespace netp {
 
@@ -38,8 +39,8 @@ namespace netp {
 	{}
 
 	void ares_fd_monitor::io_end() {
-		if (flag & f_ares_fd_closed) { return; }
-		flag |= f_ares_fd_closed;
+		//if (flag & f_ares_fd_closed) { return; }
+		//flag |= f_ares_fd_closed;
 
 		if (flag & f_ares_fd_watch_read) {
 			flag &= ~f_ares_fd_watch_read;
@@ -344,6 +345,7 @@ namespace netp {
 			return ARES_SOCKET_BAD;
 		}
 		
+#ifndef NETP_DELAY_FD_MONITOR
 		NRP<netp::ares_fd_monitor> afm = netp::make_ref<netp::ares_fd_monitor>(*this, fd);
 		io_ctx* ctx = L->io_begin(fd, afm);
 		if (ctx == nullptr) {
@@ -354,73 +356,108 @@ namespace netp {
 		afm->ctx = ctx;
 		m_ares_fd_monitor_map.insert({ fd, afm });
 		NETP_VERBOSE("[dns_resolver][#%u]__ares_socket_create&insert", fd);
+#endif
 		return fd;
 	}
 
 	int dns_resolver::__ares_socket_close(SOCKET fd) {
 		NETP_ASSERT(L != nullptr && L->in_event_loop());
+#ifndef NETP_DELAY_FD_MONITOR
 		ares_fd_monitor_map_t::iterator it = m_ares_fd_monitor_map.find(fd);
 		if (it != m_ares_fd_monitor_map.end()) {
 			it->second->io_end();
+			L->io_end(it->second->ctx);
 			netp::close(fd);
-			L->schedule([afm = it->second, L_=L, ctx_ = it->second->ctx]() {
-				L_->io_end(ctx_);
-			});
 			m_ares_fd_monitor_map.erase(fd);
 			NETP_VERBOSE("[dns_resolver][#%u]__ares_socket_close&erase", fd);
 		}
+#else
+		netp::close(fd);
+#endif
 		return netp::OK;
 	}
 
-	void dns_resolver::__ares_socket_state_cb(SOCKET socket_fd, int readable, int writable) {
+
+	void dns_resolver::__ares_socket_state_cb(SOCKET fd, int readable, int writable) {
 		//NETP_VERBOSE("[dns_resolver]__ares_state_cb, fd: %d, readable: %d, writeable: %d", socket_fd, readable, writable);
 
 		//if ((m_flag & dns_resolver_flag::f_running) ==0) { return; }
-		ares_fd_monitor_map_t::iterator it = m_ares_fd_monitor_map.find(socket_fd);
+
+	__find_fd_monitor:
+		ares_fd_monitor_map_t::iterator it = m_ares_fd_monitor_map.find(fd);
 		//BOTH READ|WRITE would trigger erase
+
+#ifndef NETP_DELAY_FD_MONITOR
 		if (it == m_ares_fd_monitor_map.end()) { return; }
-
-		NRP<ares_fd_monitor> m = it->second;
-		if (readable == 1 && (m->flag&f_ares_fd_watch_read) ==0) {
-			int rt = L->io_do(io_action::READ, m->ctx);
-			if (rt != netp::OK) {
-				netp::shutdown(socket_fd, SHUT_RD);
-				ares_process_fd(*((ares_channel*)m_ares_channel), socket_fd, ARES_SOCKET_BAD);
-			} else {
-				m->flag |= f_ares_fd_watch_read;
+		//BOTH READ|WRITE would trigger erase
+#else
+		if (it == m_ares_fd_monitor_map.end() && ((readable + writable) != 0)) {
+			NRP<netp::ares_fd_monitor> afm = netp::make_ref<netp::ares_fd_monitor>(*this, fd);
+			io_ctx* ctx = L->io_begin(fd, afm);
+			if (ctx == nullptr) {
+				netp::shutdown(fd, SHUT_RD);
+				ares_process_fd(*((ares_channel*)m_ares_channel), fd, ARES_SOCKET_BAD);
+				return;
 			}
-		} else if(readable == 0 && (m->flag&f_ares_fd_watch_read) !=0 ){
-			NETP_VERBOSE("[dns_resolver][#%u]END_READ", m->fd);
-			int rt = L->io_do(io_action::END_READ, m->ctx);
-			m->flag &= ~f_ares_fd_watch_read;
+			afm->ctx = ctx;
+			m_ares_fd_monitor_map.insert({ fd, afm });
+			NETP_VERBOSE("[dns_resolver][#%u]__ares_socket_create&insert", fd);
+			goto __find_fd_monitor;
+		}
+		NETP_ASSERT(it != m_ares_fd_monitor_map.end());
+#endif
+
+		if (readable == 1 && (it->second->flag&f_ares_fd_watch_read) ==0) {
+			int rt = L->io_do(io_action::READ, it->second->ctx);
+			if (rt == netp::OK) {
+				it->second->flag |= f_ares_fd_watch_read;
+			} else {
+				netp::shutdown(fd, SHUT_RD);
+				ares_process_fd(*((ares_channel*)m_ares_channel), fd, ARES_SOCKET_BAD);
+			}
+		} else if(readable == 0 && it!=m_ares_fd_monitor_map.end() && (it->second->flag&f_ares_fd_watch_read) !=0 ){
+			NETP_VERBOSE("[dns_resolver][#%u]END_READ", it->second->fd);
+			int rt = L->io_do(io_action::END_READ, it->second->ctx);
+			it->second->flag &= ~f_ares_fd_watch_read;
 			if (rt != netp::OK) {
-				netp::shutdown(socket_fd, SHUT_RD);
-				ares_process_fd(*((ares_channel*)m_ares_channel), socket_fd, ARES_SOCKET_BAD);
+				netp::shutdown(fd, SHUT_RD);
+				ares_process_fd(*((ares_channel*)m_ares_channel), fd, ARES_SOCKET_BAD);
 			}
 		}
 
-		if (writable == 1 && (m->flag&f_ares_fd_watch_write) == 0) {
-			int rt = L->io_do(io_action::WRITE, m->ctx);
-			if (rt != netp::OK) {
+		if (writable == 1 && (it->second->flag&f_ares_fd_watch_write) == 0) {
+			int rt = L->io_do(io_action::WRITE, it->second->ctx);
+			if (rt == netp::OK) {
+				it->second->flag |= f_ares_fd_watch_write;
 				//fake a read error
-				netp::shutdown(socket_fd, SHUT_RD);
-				ares_process_fd(*((ares_channel*)m_ares_channel), socket_fd, ARES_SOCKET_BAD);
 			} else {
-				m->flag |= f_ares_fd_watch_write;
+				netp::shutdown(fd, SHUT_RD);
+				ares_process_fd(*((ares_channel*)m_ares_channel), fd, ARES_SOCKET_BAD);
 			}
-		} else if(writable == 0 && (m->flag&f_ares_fd_watch_write) !=0 ) {
-			NETP_VERBOSE("[dns_resolver][#%u]END_WRITE", m->fd);
-			int rt = L->io_do(io_action::END_WRITE, m->ctx);
-			m->flag &= ~f_ares_fd_watch_write;
+		} else if(writable == 0 && (it->second->flag&f_ares_fd_watch_write) !=0 ) {
+			NETP_VERBOSE("[dns_resolver][#%u]END_WRITE", it->second->fd);
+			int rt = L->io_do(io_action::END_WRITE, it->second->ctx);
+			it->second->flag &= ~f_ares_fd_watch_write;
 			if (rt != netp::OK) {
-				netp::shutdown(socket_fd, SHUT_RD);
-				ares_process_fd(*((ares_channel*)m_ares_channel), socket_fd, ARES_SOCKET_BAD);
+				netp::shutdown(fd, SHUT_RD);
+				ares_process_fd(*((ares_channel*)m_ares_channel), fd, ARES_SOCKET_BAD);
 			}
 		}
 
-		if ( (readable == 0 && writable == 0) && (m->flag&(f_ares_fd_watch_read|f_ares_fd_watch_write)) == 0 ) {
-			__ares_socket_close(socket_fd);
+		//SOCK_STATE_CALLBACK followed by a ares_socket_close
+#ifdef NETP_DELAY_FD_MONITOR
+		if ( (readable+writable) == 0 
+			/*in case SOCK_STATE_CALLBACK(c,s,0,0) arrive without a SOCK_STATE_CALLBACK(c,s,1,0) or SOCK_STATE_CALLBACK(c,s,0,1)*/
+		) {
+			if (it != m_ares_fd_monitor_map.end()) {
+				NETP_ASSERT((it->second->flag & (f_ares_fd_watch_read | f_ares_fd_watch_write)) == 0);
+				it->second->io_end();
+				L->io_end(it->second->ctx);
+				m_ares_fd_monitor_map.erase(it);
+				NETP_VERBOSE("[dns_resolver][#%u]__ares_socket_close&erase", fd);
+			}
 		}
+#endif
 	}
 
 	void dns_resolver::__ares_gethostbyname_cb(void* arg, int status, int timeouts, struct hostent* hostent)

@@ -33,7 +33,7 @@ namespace netp {
 	enum ares_fd_monitor_flag {
 		f_ares_fd_watch_read	= 1 << 0,
 		f_ares_fd_watch_write	= 1 << 1,
-		f_ares_fd_closed		= 1 << 2
+//		f_ares_fd_closed		= 1 << 2
 	};
 
 	struct ares_fd_monitor final :
