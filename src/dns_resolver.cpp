@@ -332,6 +332,7 @@ namespace netp {
 	}
 
 	SOCKET dns_resolver::__ares_socket_create(int af, int type, int proto) {
+		//@note: c-ares::find_src_addr would result in create&close be called frequently, c-ares should make a way to erase these os call
 		NETP_ASSERT(L != nullptr && L->in_event_loop());
 
 		SOCKET fd = socket(af, type, proto);
