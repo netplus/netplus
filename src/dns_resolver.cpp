@@ -366,9 +366,11 @@ namespace netp {
 		ares_fd_monitor_map_t::iterator it = m_ares_fd_monitor_map.find(fd);
 		if (it != m_ares_fd_monitor_map.end()) {
 			it->second->io_end();
-			L->io_end(it->second->ctx);
+			L->schedule([afm = it->second, L_ = L, ctx_ = it->second->ctx]() {
+				L_->io_end(ctx_);
+			});
+			m_ares_fd_monitor_map.erase(it);
 			netp::close(fd);
-			m_ares_fd_monitor_map.erase(fd);
 			NETP_VERBOSE("[dns_resolver][#%u]__ares_socket_close&erase", fd);
 		}
 #else
@@ -452,7 +454,9 @@ namespace netp {
 			if (it != m_ares_fd_monitor_map.end()) {
 				NETP_ASSERT((it->second->flag & (f_ares_fd_watch_read | f_ares_fd_watch_write)) == 0);
 				it->second->io_end();
-				L->io_end(it->second->ctx);
+				L->schedule([afm = it->second, L_ = L, ctx_ = it->second->ctx]() {
+					L_->io_end(ctx_);
+				});
 				m_ares_fd_monitor_map.erase(it);
 				NETP_VERBOSE("[dns_resolver][#%u]__ares_socket_close&erase", fd);
 			}

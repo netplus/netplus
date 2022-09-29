@@ -34,6 +34,7 @@ namespace netp {
 				m_in_q_nbytes += in_->len();
 				m_in_q.emplace_back(std::move(in_));
 			}
+
 		__label_m_in_q:
 			while (m_in_q_nbytes != 0) {
 #ifdef _NETP_DEBUG
@@ -64,7 +65,7 @@ namespace netp {
 					m_in_q_nbytes -= sizeof(hlen_util_size_t);
 					m_state = hlen_util_parse_state::HLEN_UTIL_PARSE_S_READ_CONTENT;
 
-					m_pkt_tmp = netp::make_ref<netp::packet>(m_size);
+					//m_pkt_tmp = netp::make_ref<netp::packet>(m_size);
 					if (in->len() == 0) {
 						m_in_q.pop_front();
 						goto __label_m_in_q;
@@ -76,18 +77,30 @@ namespace netp {
 				{
 				__label_read_content:
 #ifdef _NETP_DEBUG
-					NETP_ASSERT(m_pkt_tmp != nullptr);
+					NETP_ASSERT(m_pkt_tmp == nullptr ? true : m_pkt_tmp->len() );
 #endif
 					if (m_in_q_nbytes < m_size) {
 						return false;
 					}
-					const hlen_util_size_t to_write = (in->len() > m_size ? m_size : hlen_util_size_t(in->len()));
+					const hlen_util_size_t inlen = hlen_util_size_t(in->len());
+					const hlen_util_size_t to_write = (inlen > m_size ? m_size : inlen);
+
+					if (m_pkt_tmp == nullptr) {
+						if ( (inlen<=m_size) && (inlen+in->left_right_capacity()) >= m_size) {
+							//short path to save a memcpy
+							m_pkt_tmp = std::move(in);
+							m_in_q.pop_front();
+							goto __label_skip_nbytes;
+						}
+						m_pkt_tmp = netp::make_ref<netp::packet>(m_size);
+					}
 					m_pkt_tmp->write(in->head(), to_write);
 					in->skip(to_write);
-
 					if (in->len() == 0) {
 						m_in_q.pop_front();
 					}
+
+__label_skip_nbytes:
 					m_in_q_nbytes -= to_write;
 					m_size -= to_write;
 
@@ -103,9 +116,7 @@ namespace netp {
 				break;
 				}
 			}
-#ifdef _NETP_DEBUG
-			NETP_ASSERT(!"impossible label");
-#endif
+			//if in->len == 0, we get here
 			return false;
 		}
 
