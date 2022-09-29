@@ -10,7 +10,7 @@ struct cost_sample {
 	long long end;
 };
 cost_sample g_tmp;
-netp::benchmark g_mk("cost_sample");
+netp::benchmark g_mk("cost_sample", netp::bf_no_mark_output|netp::bf_no_end_output);
 void th_wait() {
 	while (1) {
 		std::unique_lock<std::mutex> ulk(g_mtx);
@@ -25,6 +25,7 @@ void th_notify() {
 		g_tmp.begin = g_mk.mark("notify").count();
 		std::unique_lock<std::mutex> ulk(g_mtx);
 		g_cv.notify_one();
+		netp::this_thread::yield();
 		//netp::this_thread::usleep(netp::random(100,1000));
 	}
 }
