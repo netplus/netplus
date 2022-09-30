@@ -323,9 +323,11 @@ namespace netp {
 #define _netp_memory_calc_SIZE_by_TABLE_SLOT(t,s) (TABLE_BOUND[t] + ((1<<(_netp_memory_calc_F_by_TABLE(t)))) * (((s) + 1)))
 
 #define _netp_memory_calc_size_64step(size) (size>>6)
-#define _netp_memory_calc_size_mod_64step(size) ((size%64))
+#define _netp_memory_calc_size_mod_64step(size) ((size&63))
+//#define _netp_memory_calc_size_mod_64step(size) ((size%64))
 #define _netp_memory_calc_size_4096step(size) ((size-4032)>>12)
-#define _netp_memory_calc_size_mod_4096step(size) (((size-4032)%4096))
+#define _netp_memory_calc_size_mod_4096step(size) (((size-4032)&4095))
+//#define _netp_memory_calc_size_mod_4096step(size) (((size-4032)%4096))
 
 #define _netp_memory_calc_TABLE_full_search(size,t,s) do { \
 	for (u8_t ti = T1; ti < (TABLE::T_COUNT + 1); ++ti) {\
