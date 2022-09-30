@@ -25,7 +25,7 @@ namespace netp {
 			m_in_q_nbytes(0)
 		{}
 
-		//@note: zero-len m_size is supported
+		//@note: no zero-len m_size is supported
 		//@return true for re-try
 		inline bool decode(NRP<netp::packet>&& in_, NRP<netp::packet>& out) {
 			//@NOTE: for a stream based connection, we must handle the following edge case
