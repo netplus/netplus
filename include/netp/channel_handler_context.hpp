@@ -5,6 +5,17 @@
 #include <netp/channel_handler.hpp>
 #include <netp/address.hpp>
 
+//@todo: a new way to optimize handler's virtual function out && add NRP<netp::packet>&& support for fire_read, write
+//1, set channel_handler_context::fire_read(NRP<netp::packet> const& pkt) -> template <class packet_t> channel_handler_context::fire_read(packet_t&& pkt)
+//2, add a type hint for handler's type info (we'll use this info later)
+//3, add template <class packet_t,int api_id> channel_handler_abstract::call(packet_t&& pkt) {
+//		handler_real_t* rt = static_cast<handler_real_t*>(this);
+//		...
+// }
+//4, each channel_handler impl it's own read|write cb by a specilized template function with a given api_id
+// note: it would increase the learn curve greatly
+
+
 #ifdef _NETP_DEBUG
 	#define _NETP_HANDLER_CONTEXT_ASSERT NETP_ASSERT
 #else
