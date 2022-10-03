@@ -141,7 +141,7 @@ namespace netp {
 			static_assert(TIMER_TIME_INFINITE == i64_t(-1), "timer infinite check");
 			netp::timer_duration_t ndelay;
 			m_tb->expire(ndelay);
-			i64_t ndelayns = i64_t(ndelay.count());
+			const i64_t ndelayns = i64_t(ndelay.count());
 			//@note: opt for select, epoll_wait
 			//@note: select, epoll_wait cost too much time to return (ms level)
 			if ( (ndelayns != TIMER_TIME_INFINITE) && (ndelayns <= (i64_t(m_cfg.no_wait_us)*1000LL)) ) {
@@ -152,20 +152,23 @@ namespace netp {
 				return 0;
 			}
 
-			{
-				lock_guard<spin_mutex> lg(m_tq_mutex);
-				if (m_tq_standby.size() != 0) {
-#ifdef NETP_DEBUG_LOOP_TIME
-					m_last_wait = 0;
-#endif
-					return 0;
-				}
+			m_tq_mutex.lock();
+			if (m_tq_standby.empty()) {
+				//the following line must be guard by m_tq_mutex.lock
 				NETP_POLLER_WAIT_ENTER(m_waiting);
-			}
+				m_tq_mutex.unlock();
+				
 #ifdef NETP_DEBUG_LOOP_TIME
-			m_last_wait = ndelayns;
+				m_last_wait = ndelayns;
 #endif
-			return ndelayns;
+				return ndelayns;
+			}
+
+			m_tq_mutex.unlock();
+#ifdef NETP_DEBUG_LOOP_TIME
+			m_last_wait = 0;
+#endif
+			return 0;
 		}
 
 		virtual void init();
@@ -225,6 +228,8 @@ namespace netp {
 		[event_loop]schedule, cost: 47000 ns, interrupted: 1
 		[event_loop]schedule, cost: 100 ns, interrupted: 0
 		*/
+
+		template <class fn_task_t>
 		inline void schedule(fn_task_t&& f) {
 			//NOTE: upate on 2021/04/03
 			//lock_guard of m_tq_mutex also works as a memory barrier for memory accesses across loops in between task caller and task callee
@@ -236,47 +241,27 @@ namespace netp {
 #ifdef _NETP_DUMP_SCHEDULE_COST
 			long long __begin = netp::now<std::chrono::nanoseconds, netp::steady_clock_t>().time_since_epoch().count();
 #endif
-			bool _interrupt_poller = false;
-			{
-				lock_guard<spin_mutex> lg(m_tq_mutex);
-				m_tq_standby.emplace_back(std::move(f));
-				_interrupt_poller=( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_relaxed));
-			}
-			if (_interrupt_poller) {
+			m_tq_mutex.lock();
+			m_tq_standby.emplace_back(std::forward<fn_task_t>(f));
+			if(m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_relaxed)) {
+				m_tq_mutex.unlock();
 				m_poller->interrupt_wait();
+				return;
 			}
+			m_tq_mutex.unlock();
 #ifdef _NETP_DUMP_SCHEDULE_COST
 			long long __end = netp::now<std::chrono::nanoseconds, netp::steady_clock_t>().time_since_epoch().count();
 			printf("[event_loop]schedule, cost: %llu ns, interrupted: %d\n", __end - __begin, _interrupt_poller);
 #endif
 		}
 
-		inline void schedule(fn_task_t const& f) {
-			bool _interrupt_poller = false;
-			{
-				lock_guard<spin_mutex> lg(m_tq_mutex);
-				m_tq_standby.push_back(f);
-				_interrupt_poller=( m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_relaxed));
-			}
-			if (NETP_UNLIKELY(_interrupt_poller)) {
-				m_poller->interrupt_wait();
-			}
-		}
-
+		template <class fn_task_t>
 		inline void execute(fn_task_t&& f) {
 			if (in_event_loop()) {
 				f();
 				return;
 			}
-			schedule(std::move(f));
-		}
-
-		inline void execute(fn_task_t const& f) {
-			if (in_event_loop()) {
-				f();
-				return;
-			}
-			schedule(f);
+			schedule(std::forward<fn_task_t>(f));
 		}
 
 		__NETP_FORCE_INLINE
@@ -290,39 +275,21 @@ namespace netp {
 			return std::this_thread::get_id() == m_tid;
 		}
 
-		void launch(NRP<netp::timer> const& t , NRP<netp::promise<int>> const& lf = nullptr ) {
+		template <class timer_t>
+		void launch(timer_t&& tm , NRP<netp::promise<int>> const& lf = nullptr ) {
 			if(!in_event_loop()) {
 				netp::timer_clock_t::time_point outer_loop_tp = netp::timer_clock_t::now();
-				schedule([L = NRP<event_loop>(this), t, lf, outer_loop_tp]() {
-					netp::timer_clock_t::time_point inner_loop_tp = netp::timer_clock_t::now();
-					timer_duration_t tdur = t->get_delay();
-					tdur = tdur - (inner_loop_tp - outer_loop_tp);
-					if (tdur < timer_duration_t(0)) { tdur = timer_duration_t(0); }
-					t->set_delay(tdur);
-					L->launch(t, lf);
+				schedule([L = NRP<event_loop>(this), _tm=std::move(tm),lf,outer_loop_tp]() {
+					_tm->set_delay(_tm->get_delay()+outer_loop_tp-netp::timer_clock_t::now());
+					L->launch((_tm), lf);
 				});
 				return;
 			}
 			if (NETP_LIKELY(m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATED))) {
-				m_tb->launch(t);
+				m_tb->launch(std::forward<timer_t>(tm));
 				(lf != nullptr)? lf->set(netp::OK):(void)0;
 			} else {
 				(lf != nullptr) ? lf->set(netp::E_IO_EVENT_LOOP_TERMINATED):NETP_THROW("DO NOT LAUNCH AFTER TERMINATED, OR PASS A PROMISE TO OVERRIDE THIS ERRO");
-			}
-		}
-
-		void launch(NRP<netp::timer>&& t, NRP<netp::promise<int>> const& lf = nullptr) {
-			if (!in_event_loop()) {
-				schedule([L = NRP<event_loop>(this), t_=std::move(t) , lf]() {
-					L->launch(t_, lf);
-				});
-				return;
-			}
-			if (NETP_LIKELY(m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATED))) {
-				m_tb->launch(std::move(t));
-				(lf != nullptr) ? lf->set(netp::OK) : (void)0;
-			} else {
-				(lf != nullptr) ? lf->set(netp::E_IO_EVENT_LOOP_TERMINATED) : NETP_THROW("DO NOT LAUNCH AFTER TERMINATED, OR PASS A PROMISE TO OVERRIDE THIS ERRO");
 			}
 		}
 
@@ -401,9 +368,18 @@ namespace netp {
 		NRP<event_loop> next(std::set<NRP<event_loop>> const& exclude_this_set_if_have_more);
 		NRP<event_loop> next();
 
-		void execute(fn_task_t&& f);
-		void schedule(fn_task_t&& f);
-		void launch(NRP<netp::timer> const& t, NRP<netp::promise<int>> const& lf = nullptr);
+		template <class fn_task_t>
+		void execute(fn_task_t&& f) {
+			next()->execute(std::forward<fn_task_t>(f));
+		}
+		template <class fn_task_t>
+		void schedule(fn_task_t&& f) {
+			next()->schedule(std::forward<fn_task_t>(f));
+		}
+		template <class timer_t>
+		void launch(timer_t&& t, NRP<netp::promise<int>> const& lf) {
+			next()->launch(std::forward<timer_t>(t), lf);
+		}
 	};
 }
 #endif

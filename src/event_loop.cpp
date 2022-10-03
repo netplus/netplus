@@ -164,13 +164,14 @@ namespace netp {
 			//if we make_ref a atomic_ref object, then we call L->schedule([o=atomic_ref_instance](){});, the assign of a atomic_ref_instance would trigger memory_order_acq_rel, this operation guard all object member initialization and member valud update before the assign
 			//all member value of that object must be synchronized after this line, cuz we have netp::atomic_incre inside ref object
 			while (NETP_UNLIKELY(u8_t(loop_state::S_EXIT) != m_state.load(std::memory_order_acquire))) {
-				{
-					//again the spin_mutex acts as a memory synchronization fence
-					lock_guard<spin_mutex> lg(m_tq_mutex);
-					if (!m_tq_standby.empty()) {
-						m_tq.swap(m_tq_standby);
-					}
+				
+				//again the spin_mutex acts as a memory synchronization fence
+				m_tq_mutex.lock();
+				if (!m_tq_standby.empty()) {
+					m_tq.swap(m_tq_standby);
 				}
+				m_tq_mutex.unlock();
+
 				const std::size_t ss = m_tq.size();
 				if (ss > 0) {
 					std::size_t i = 0;
@@ -206,6 +207,7 @@ namespace netp {
 			// EDGE check
 			// scenario 1:
 			// 1) do schedule, 2) set L -> null
+
 			std::size_t i = 0;
 			std::size_t vecs = m_tq_standby.size();
 			while (i < vecs) {
@@ -507,15 +509,5 @@ namespace netp {
 				return __tmp;
 			}
 			NETP_THROW("event_loop_group deinit logic issue");
-		}
-
-		void event_loop_group::execute(fn_task_t&& f) {
-			next()->execute(std::forward<fn_task_t>(f));
-		}
-		void event_loop_group::schedule(fn_task_t&& f) {
-			next()->schedule(std::forward<fn_task_t>(f));
-		}
-		void event_loop_group::launch(NRP<netp::timer> const& t, NRP<netp::promise<int>> const& lf) {
-			next()->launch(t,lf);
 		}
 }

@@ -3,12 +3,9 @@
 namespace netp {
 	void timer_broker::expire_all() {
 		while (!m_tq.empty()) {
-			NRP<timer>& tm = m_tq.front();
-			NETP_ASSERT(tm->delay.count() >= 0&&tm->expiration > timer_timepoint_t());
-			m_heap.push(std::move(tm));
+			m_heap.push(std::move(m_tq.front()));
 			m_tq.pop_front();
 		}
-
 		while (!m_heap.empty()) {
 			NRP<timer>& tm = m_heap.front();
 			tm->invoke(true);
@@ -24,16 +21,13 @@ namespace netp {
 #endif
 
 		while (!m_tq.empty()) {
-			NRP<timer>& tm = m_tq.front();
-			NETP_ASSERT(tm->delay.count() >= 0 && tm->expiration > timer_timepoint_t());
-			m_heap.push(std::move(tm));
+			m_heap.push(std::move(m_tq.front()));
 			m_tq.pop_front();
 		}
 		if (swap_to_release) { _timer_queue().swap(m_tq); }
 
 		while (!m_heap.empty()) {
-			NRP<timer>& tm = m_heap.front();
-			ndelay = tm->invoke();
+			ndelay = m_heap.front()->invoke();
 			if (ndelay.count() > 0) {
 				goto _recalc_nexpire;
 			} else {

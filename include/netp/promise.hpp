@@ -52,28 +52,18 @@ namespace netp {
 			//__callees_slot_idx = 0;
 		}
 
-		__NETP_FORCE_INLINE void __check_dy() {
-			if (__callees_idx == (INTERNAL_SLOTS + __callees_dy_max)) {
-				__callees_dy_max += INTERNAL_SLOTS;
-				__callees_dy = (fn_promise_callee_t**)netp::allocator<fn_promise_callee_t>::realloc((fn_promise_callee_t*)__callees_dy, __callees_dy_max*sizeof(fn_promise_callee_t*));
-				NETP_ALLOC_CHECK(__callees_dy, sizeof(fn_promise_callee_t*)*__callees_dy_max);
-			}
-		}
-		__NETP_FORCE_INLINE void bind(fn_promise_callee_t&& callee) {
+		template <class fn_callee_t>
+		__NETP_FORCE_INLINE void bind(fn_callee_t&& fn_pcallee) {
+			fn_promise_callee_t* fnpcallee = netp::allocator<fn_promise_callee_t>::make(std::forward<fn_callee_t>(fn_pcallee));
 			if (NETP_LIKELY(__callees_idx < INTERNAL_SLOTS)) {
-				__callees[__callees_idx++] = netp::allocator<fn_promise_callee_t>::make(std::forward<fn_promise_callee_t>(callee));
+				__callees[__callees_idx++] = fnpcallee;
 			} else {
-				__check_dy();
-				__callees_dy[(__callees_idx++) - INTERNAL_SLOTS] = netp::allocator<fn_promise_callee_t>::make(std::forward<fn_promise_callee_t>(callee));
-			}
-		}
-
-		__NETP_FORCE_INLINE void bind(fn_promise_callee_t const& callee) {
-			if (NETP_LIKELY(__callees_idx < INTERNAL_SLOTS)) {
-				__callees[__callees_idx++] = netp::allocator<fn_promise_callee_t>::make(callee);
-			} else {
-				__check_dy();
-				__callees_dy[(__callees_idx++) - INTERNAL_SLOTS] = netp::allocator<fn_promise_callee_t>::make(callee);
+				if (__callees_idx == (INTERNAL_SLOTS + __callees_dy_max)) {
+					__callees_dy_max += INTERNAL_SLOTS;
+					__callees_dy = (fn_promise_callee_t**)netp::allocator<fn_promise_callee_t>::realloc((fn_promise_callee_t*)__callees_dy, __callees_dy_max * sizeof(fn_promise_callee_t*));
+					NETP_ALLOC_CHECK(__callees_dy, sizeof(fn_promise_callee_t*) * __callees_dy_max);
+				}
+				__callees_dy[(__callees_idx++) - INTERNAL_SLOTS] = fnpcallee;
 			}
 		}
 		
@@ -225,25 +215,6 @@ namespace netp {
 			, class = typename std::enable_if<std::is_convertible<_callable, fn_promise_callee_t>::value>::type>
 		void if_done(_callable&& callee) {
 			if (is_done()) {
-				//callee's sequence does not make sense here, so we could have a fast path
-				//fast path
-				callee(promise_t::m_v);
-			} else {
-				lock_guard<spin_mutex> lg(m_mutex);
-				//slow path: double check
-				if (is_done()) {
-					callee(promise_t::m_v);
-				} else {
-					//if we missed a if_done in this place, we must not missed it in promise::set
-					event_broker_promise_t::bind(std::bind(std::forward<_callable>(callee), std::placeholders::_1));
-				}
-			}
-		}
-
-		template<class _callable
-			, class = typename std::enable_if<std::is_convertible<_callable, fn_promise_callee_t>::value>::type>
-		void if_done(_callable const& callee) {
-			if (is_done()) {
 				//@note: the below line might happen before event_broker_promise_t::invoke(m_v);
 				//@note: users should pay attention on the following note
 				//@note1: callee's sequence does not make sense if multi-callee do not have relation for each other, so we could have a fast path, the current impl prefer to this fast path
@@ -261,13 +232,14 @@ namespace netp {
 					callee(promise_t::m_v);
 				} else {
 					//if we miss a if_done in this place, we must not miss it in promise::set, cuz state store must happen before lock of m_mutex
-					event_broker_promise_t::bind(std::bind(std::forward<_callable>(callee), std::placeholders::_1));
+					event_broker_promise_t::bind(std::bind<void>(std::forward<_callable>(callee), std::placeholders::_1));
 				}
 			}
 		}
 
 		//if promise was destructed during set by accident, we would get a ~mutex(){} assert failed on DEBUG version
-		void set(V const& v) {
+		template <class rV/*rV means returned V*/>
+		void set(rV&& rv) {
 			
 			//only one thread, one try succeed
 			u8_t s = u8_t(promise_state::S_IDLE);
@@ -292,7 +264,7 @@ namespace netp {
 
 			//the spin_lock below sure the assign of v happens before invoke && a std::atomic_thread_fence would be forced by unload of the spin_lock
 			//if the other thread do std::atomic_thread_fence(std::memory_order_acquire) before reading v , it's safe to get the latest v
-			promise_t::m_v = v;
+			promise_t::m_v = std::forward<rV>(rv);
 			//we need a a memory barrier to prevent m_v be reordered 
 			//m_v's assign must happen before state update
 			//any m_v read operation after a state query which result in S_DONE by option (std::memory_order_acquire) shall have the latest set value
@@ -302,20 +274,6 @@ namespace netp {
 			lock_guard<spin_mutex> lg(promise_t::m_mutex);
 			event_broker_promise_t::invoke(m_v);
 			promise_t::m_waiter>0 ?m_cond->notify_all():(void)0;
-		}
-
-		void set(V&& v) {
-			u8_t s = u8_t(promise_state::S_IDLE);
-			if (NETP_UNLIKELY(!promise_t::m_state.compare_exchange_strong(s, u8_t(promise_state::S_UPDATING), std::memory_order_acq_rel, std::memory_order_acquire))) {
-				NETP_THROW("set failed: DO NOT set twice on a same promise");
-			}
-			promise_t::m_v = v;
-			promise_t::m_state.store(u8_t(promise_state::S_DONE), std::memory_order_release);
-
-			NETP_DEBUG_STACK_SIZE();
-			lock_guard<spin_mutex> lg(promise_t::m_mutex);
-			event_broker_promise_t::invoke(m_v);
-			promise_t::m_waiter > 0 ? m_cond->notify_all() : (void)0;
 		}
 	};
 }

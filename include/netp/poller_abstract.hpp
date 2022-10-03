@@ -13,7 +13,7 @@
 //in nano
 //ENTER HAS A lock_gurard to sure the compiler would not reorder it
 #define NETP_POLLER_WAIT_ENTER(W) ((W).store(true,std::memory_order_relaxed))
-#define NETP_POLLER_WAIT_EXIT(wt_in_nano,W) ((u64_t(wt_in_nano)>0)) ? (W).store(false,std::memory_order_release) : (void)0;
+#define NETP_POLLER_WAIT_EXIT(wt_in_nano,W) ((wt_in_nano!=0) ? (W).store(false,std::memory_order_release) : (void)0);
 
 namespace netp {
 
