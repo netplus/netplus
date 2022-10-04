@@ -1,0 +1,47 @@
+msvc 8850h release
+2022-10-04 09:06:58.682 [I][47432][div_cost]k_begin: 36097, k_count: 100000000, k_capacity: 1024
+2022-10-04 09:06:58.922 [I][47432][div][div done]cost: 240452900 ns
+2022-10-04 09:06:58.969 [I][47432][and][and done]cost: 46570000 ns
+2022-10-04 09:06:58.969 [I][47432][main]divavg: 2.404529, andavg: 0.465700
+
+msvc 8850h debug
+2022-10-04 09:22:30.052 [I][42300][div_cost]k_begin: 30971, k_count: 100000000, k_capacity: 1024
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\test\div_cost\src\main.cpp:[16] main
+2022-10-04 09:22:30.355 [I][42300][div][div done]cost: 302277300 ns
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\include\netp\benchmark.hpp:[38] netp::benchmark::mark
+2022-10-04 09:22:30.540 [I][42300][and][and done]cost: 185266700 ns
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\include\netp\benchmark.hpp:[38] netp::benchmark::mark
+2022-10-04 09:22:30.541 [I][42300][main]divavg: 3.022773, andavg: 1.852667
+TRACE: D:\git.bb.fine666.com\dd\libs\netplus\test\div_cost\src\main.cpp:[33] main
+
+gcc/vm 8850h release
+2022-10-03 21:22:52.663 [I][139809598981312][div_cost]k_begin: 70678, k_count: 1000000000, k_capacity: 165535
+2022-10-03 21:22:56.324 [I][139809598981312][div][div done]cost: 3660155953 ns
+2022-10-03 21:22:57.310 [I][139809598981312][and][and done]cost: 985961841 ns
+2022-10-03 21:22:57.310 [I][139809598981312][main]divavg: 3.660156, andavg: 0.985962
+
+gcc/vm 8850h debug
+2022-10-03 21:23:21.417 [I][140568117081280][div_cost]k_begin: 94338, k_count: 1000000000, k_capacity: 165535
+TRACE: ../../../div_cost/src/main.cpp:[16] main
+2022-10-03 21:23:24.891 [I][140568117081280][div][div done]cost: 3473714427 ns
+TRACE: ./../../../../../netplus/include/netp/benchmark.hpp:[38] mark
+2022-10-03 21:23:27.793 [I][140568117081280][and][and done]cost: 2900506156 ns
+TRACE: ./../../../../../netplus/include/netp/benchmark.hpp:[38] mark
+2022-10-03 21:23:27.793 [I][140568117081280][main]divavg: 3.473714, andavg: 2.900506
+
+gcc/kvm 3900x release
+2022-10-03 18:28:00.347 [I][140463295812800][div_cost]k_begin: 72732, k_count: 100000000, k_capacity: 16384
+2022-10-03 18:28:00.890 [I][140463295812800][div][div done]cost: 542331439 ns
+2022-10-03 18:28:00.930 [I][140463295812800][and][and done]cost: 39225978 ns
+2022-10-03 18:28:00.930 [I][140463295812800][main]divavg: 5.423315, andavg: 0.392260
+
+
+gcc/kvm 3900x debug
+2022-10-03 18:28:46.841 [I][140331092239552][div_cost]k_begin: 22506, k_count: 100000000, k_capacity: 16384
+TRACE: ../../../div_cost/src/main.cpp:[16] main
+2022-10-03 18:28:47.369 [I][140331092239552][div][div done]cost: 528002163 ns
+TRACE: ./../../../../../netplus/include/netp/benchmark.hpp:[38] mark
+2022-10-03 18:28:47.527 [I][140331092239552][and][and done]cost: 157686693 ns
+TRACE: ./../../../../../netplus/include/netp/benchmark.hpp:[38] mark
+2022-10-03 18:28:47.528 [I][140331092239552][main]divavg: 5.280022, andavg: 1.576867
+
