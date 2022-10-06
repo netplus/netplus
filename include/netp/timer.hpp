@@ -55,12 +55,10 @@ namespace netp {
 		timer_duration_t delay;
 		timer_timepoint_t expiration;
 		timer_timepoint_t invocation;
-//		NRP<netp::ref_base> m_ctx;
 		u32_t invoke_cnt;
 
 		friend bool operator < (NRP<timer> const& l, NRP<timer> const& r);
 		friend bool operator > (NRP<timer> const& l, NRP<timer> const& r);
-//		friend bool operator == (NRP<timer> const& l, NRP<timer> const& r);
 
 		friend struct timer_less;
 		friend struct timer_greater;
@@ -102,26 +100,21 @@ namespace netp {
 			}
 			return left;
 		}
-
-		__NETP_FORCE_INLINE bool is_expired_invocation() {
-			return invocation >= expiration;
-		}
-		__NETP_FORCE_INLINE u32_t invoke_count() { return invoke_cnt; }
-
 		template <class dur>
         inline void set_delay(dur&& delay_) {
             delay = delay_;
         }
 
 		inline timer_duration_t get_delay() const { return delay; }
-
-		//template <class ctx_t>
-		//inline NRP<ctx_t> get_ctx() {
-		//	return netp::static_pointer_cast<ctx_t>(m_ctx);
-		//}
-		//inline void set_ctx(NRP<netp::ref_base> const& ctx) {
-		//	m_ctx = ctx;
-		//}
+		inline void update_expiration() {
+			expiration = (timer_clock_t::now() + delay);
+		}
+		__NETP_FORCE_INLINE
+			bool is_expired_invocation() {
+			return invocation >= expiration;
+		}
+		__NETP_FORCE_INLINE
+		u32_t invoke_count() { return invoke_cnt; }
 	};
 
 	inline bool operator < (NRP<timer> const& l, NRP<timer> const& r) {
@@ -131,10 +124,6 @@ namespace netp {
 	inline bool operator > (NRP<timer> const& l, NRP<timer> const& r) {
 		return l->expiration > r->expiration;
 	}
-
-	//inline bool operator == (NRP<timer> const& l, NRP<timer> const& r) {
-	//	return l->expiration == r->expiration;
-	//}
 
 	struct timer_less
 	{
@@ -176,8 +165,7 @@ namespace netp {
 		//set a delay<0, the timer would be fired immedately in the next expire frame
 		template <class timer_t>
 		inline void launch(timer_t&& tm) {
-			NETP_ASSERT(tm != nullptr && (tm->delay != timer_duration_t(~0)), "tm->delay: %lld", tm->delay.count());
-			tm->expiration = (timer_clock_t::now() + tm->delay);
+			NETP_ASSERT(tm != nullptr && (tm->delay != timer_duration_t(~0)) && (tm->expiration != timer_timepoint_t() ), "tm->delay: %lld", tm->delay.count());
 			m_tq.emplace_back(std::forward<timer_t>(tm));
 		}
 

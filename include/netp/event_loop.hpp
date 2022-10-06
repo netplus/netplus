@@ -278,14 +278,14 @@ namespace netp {
 		template <class timer_t>
 		void launch(timer_t&& tm , NRP<netp::promise<int>> const& lf = nullptr ) {
 			if(!in_event_loop()) {
-				netp::timer_clock_t::time_point outer_loop_tp = netp::timer_clock_t::now();
-				schedule([L = NRP<event_loop>(this), _tm=std::move(tm),lf,outer_loop_tp]() {
-					_tm->set_delay(_tm->get_delay()+outer_loop_tp-netp::timer_clock_t::now());
+				tm->update_expiration();
+				schedule([L = NRP<event_loop>(this), _tm=std::move(tm),lf]() {
 					L->launch((_tm), lf);
 				});
 				return;
 			}
 			if (NETP_LIKELY(m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATED))) {
+				tm->update_expiration();
 				m_tb->launch(std::forward<timer_t>(tm));
 				(lf != nullptr)? lf->set(netp::OK):(void)0;
 			} else {
