@@ -278,16 +278,14 @@ int socket_base::get_left_snd_queue() const {
 			m_chflag |= int(channel_flag::F_TX_LIMIT_TIMER);
 			m_tx_budget += tokens;
 
-			
-			//NRP<netp::promise<int>> lp = netp::make_ref<netp::promise<int>>();
-			//lp->if_done([ch=NRP<socket_channel>(this)]( int rt) {
-			//	if (rt != netp::OK) {
-			//		ch->m_chflag |= int(channel_flag::F_WRITE_ERROR);
-			//		ch->ch_errno() = rt;
-			//		ch->ch_close_impl(nullptr);
-			//	}
-			//});
-			//@note: if there is a socket_channel in L's ctx list, the L should never enter terminated state
+			NRP<netp::promise<int>> lp = netp::make_ref<netp::promise<int>>();
+			lp->if_done([ch=NRP<socket_channel>(this)]( int rt) {
+				if (rt != netp::OK) {
+					ch->m_chflag |= int(channel_flag::F_WRITE_ERROR);
+					ch->ch_errno() = rt;
+					ch->ch_close_impl(nullptr);
+				}
+			});
 			L->launch(t);
 		}
 
