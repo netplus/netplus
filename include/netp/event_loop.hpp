@@ -287,7 +287,7 @@ namespace netp {
 			if (NETP_LIKELY(m_state.load(std::memory_order_acquire) < u8_t(loop_state::S_TERMINATED))) {
 				tm->update_expiration();
 				m_tb->launch(std::forward<timer_t>(tm));
-				(lf != nullptr)? lf->set(netp::OK):(void)0;
+				(lf != nullptr) ? lf->set(netp::OK):(void)0;
 			} else {
 				(lf != nullptr) ? lf->set(netp::E_IO_EVENT_LOOP_TERMINATED):NETP_THROW("DO NOT LAUNCH AFTER TERMINATED, OR PASS A PROMISE TO OVERRIDE THIS ERRO");
 			}
