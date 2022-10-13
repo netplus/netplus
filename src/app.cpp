@@ -525,6 +525,7 @@ namespace netp {
 		NETP_TRACE_APP("sizeof(std::vector<int>): %u", sizeof(std::vector<int>));
 		NETP_TRACE_APP("sizeof(std::vector<std::function<void(int)>): %u", sizeof(std::vector<std::function<void(int)>>));
 		NETP_TRACE_APP("sizeof(std::vector<std::function<void(int, int)>>): %u", sizeof(std::vector<std::function<void(int, int)>>));
+		NETP_TRACE_APP("sizeof(std::vector<NRP<netp::packet>, netp::allocator<NRP<netp::packet>>>): %u", sizeof(std::vector<NRP<netp::packet>, netp::allocator<NRP<netp::packet>>>));
 		NETP_TRACE_APP("sizeof(netp::promise<int>): %u", sizeof(netp::promise<int>));
 		NETP_TRACE_APP("sizeof(netp::promise<tuple<int,NRP<socket>>>): %u", sizeof(netp::promise<std::tuple<int, NRP<netp::socket_channel>>>));
 		NETP_TRACE_APP("sizeof(netp::event_broker_promise): %u", sizeof(netp::event_broker_promise<int>));
