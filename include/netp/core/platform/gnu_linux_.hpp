@@ -11,6 +11,7 @@
 #include <stdio.h>
 
 #include <netinet/tcp.h>
+#include <netinet/udp.h>
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <netinet/in.h>
