@@ -22,31 +22,32 @@ namespace netp { namespace handler {
 			return m_tlsconfig->client_cert_auth_required;
 		}
 
-        /*
-		std::vector<std::string> allowed_ciphers() const override {
+		//std::vector<std::string> allowed_ciphers() const override {
+
+            //std::vector<std::string> _def_allowed_ciphers_cfg = Botan::TLS::Policy::allowed_ciphers();
+            //return Botan::TLS::Policy::allowed_ciphers();
+            /*
+            *2.19.2
             return {
-                //"AES-256/OCB(12)",
-                //"AES-128/OCB(12)",
-                //"ChaCha20Poly1305",
-                //"AES-256/GCM",
-                "AES-128/GCM",
-                //"AES-256/CCM",
-                //"AES-128/CCM",
-                //"AES-256/CCM(8)",
-                //"AES-128/CCM(8)",
-                //"Camellia-256/GCM",
-                //"Camellia-128/GCM",
-                //"ARIA-256/GCM",
-                //"ARIA-128/GCM",
-                //"AES-256",
-                //"AES-128",
-                //"Camellia-256",
-                //"Camellia-128",
-                //"SEED",
-                //"3DES",
-            };
-		}
-        */
+              //"AES-256/OCB(12)",
+              "ChaCha20Poly1305",
+              "AES-256/GCM",
+              "AES-128/GCM",
+              //"AES-256/CCM",
+              //"AES-128/CCM",
+              //"AES-256/CCM(8)",
+              //"AES-128/CCM(8)",
+              //"Camellia-256/GCM",
+              //"Camellia-128/GCM",
+              //"ARIA-256/GCM",
+              //"ARIA-128/GCM",
+              //"AES-256",
+              //"AES-128",
+              //"3DES",
+              };
+            */
+		//}
+        
 	};
 }}
 
