@@ -101,7 +101,7 @@ namespace netp {
 	}
 
 	void event_loop::deinit() {
-		NETP_VERBOSE("[event_loop][%p]deinit begin", this );
+		NETP_VERBOSE("[event_loop][%p][%u]deinit begin", this, m_cfg.type );
 		NETP_ASSERT(in_event_loop());
 		NETP_ASSERT(m_state.load(std::memory_order_acquire) == u8_t(loop_state::S_EXIT), "event loop deinit state check failed");
 
@@ -132,7 +132,7 @@ namespace netp {
 		m_tb = nullptr;
 
 		m_poller->deinit();
-		NETP_VERBOSE("[event_loop][%p]deinit done", this );
+		NETP_VERBOSE("[event_loop][%p][%u]deinit done", this, m_cfg.type );
 	}
 
 	//@NOTE: promise to execute all task already in tq or tq_standby
@@ -178,8 +178,9 @@ namespace netp {
 					while (i < ss) {
 						m_tq[i++]();
 					}
+#ifdef _NETP_DEBUG
 					NETP_ASSERT(ss == m_tq.size());
-					
+#endif	
 					if (m_tq.capacity()>512) {
 						io_task_q_t().swap(m_tq);
 					} else {
@@ -218,12 +219,12 @@ namespace netp {
 		}
 
 		deinit();
-		NETP_VERBOSE("[event_loop][%p]exiting run", this );
+		NETP_VERBOSE("[event_loop][%p][%u]exiting run", this, m_cfg.type );
 	}
 
 	void event_loop::__do_notify_terminating() {
 		NETP_ASSERT( in_event_loop() );
-		NETP_VERBOSE("[event_loop]__do_notify_terminating begin");
+		NETP_VERBOSE("[event_loop][%p][%u]__do_notify_terminating begin",this, m_cfg.type );
 
 		//dns resolver stop would result in dns socket be removed from io_ctx, thus the loop_ref_count shall decrease by 1
 		//we keep m_dns_resolver instance until there is no event_loop reference outside
@@ -435,7 +436,7 @@ namespace netp {
 		}
 
 		void event_loop_group::start(u32_t count ) {
-			NETP_VERBOSE("[event_loop_group]start event_loop_group: %u, count: %u, ch_buf_read_size: %u", m_cfg.type, count, m_cfg.channel_read_buf_size);
+			NETP_VERBOSE("[event_loop_group][%u]start event_loop_group, count: %u, ch_buf_read_size: %u", m_cfg.type, count, m_cfg.channel_read_buf_size);
 			lock_guard<shared_mutex> lg(m_loop_mtx);
 			m_curr_loop_idx = 0;
 			NETP_ASSERT( m_fn_loop_maker != nullptr );

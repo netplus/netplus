@@ -276,13 +276,13 @@ namespace netp {
 			break;
 			case io_action::NOTIFY_TERMINATING:
 			{
-				NETP_VERBOSE("[poller_interruptable_by_fd]notify terminating...");
+				NETP_VERBOSE("[poller_interruptable_by_fd][%p]notify terminating...", this);
 				io_ctx *_ctx, *_ctx_n;
 				for (_ctx = (m_io_ctx_list.next), _ctx_n = _ctx->next; _ctx != &(m_io_ctx_list); _ctx = _ctx_n, _ctx_n = _ctx->next) {
 					NETP_ASSERT((_ctx->fd > 0) && (_ctx->iom != nullptr));
 					_ctx->iom->io_notify_terminating(E_IO_EVENT_LOOP_NOTIFY_TERMINATING, _ctx);
 				}
-				NETP_VERBOSE("[poller_interruptable_by_fd]notify terminating done");
+				NETP_VERBOSE("[poller_interruptable_by_fd][%p]notify terminating done", this);
 			}
 			break;
 			case io_action::READ_WRITE:

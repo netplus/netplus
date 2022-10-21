@@ -241,7 +241,7 @@ namespace netp {
 		m_flag &= ~dns_resolver_flag::f_drf_launching;
 		m_flag |= dns_resolver_flag::f_drf_running;
 
-		NETP_INFO("[dns_resolver]launched");
+		NETP_INFO("[dns_resolver][%p]launched", this );
 		p->set(netp::OK);
 	}
 
@@ -275,7 +275,7 @@ namespace netp {
 		NETP_ASSERT(m_tm_dnstimeout != nullptr);
 		m_tm_dnstimeout = nullptr;
 
-		NETP_INFO("[dns_resolver]stoped, stop called: %c",(m_flag&dns_resolver_flag::f_drf_stop_called) ? 'Y':'N' );
+		NETP_INFO("[dns_resolver][%p]stoped, stop called: %c", this, (m_flag&dns_resolver_flag::f_drf_stop_called) ? 'Y':'N' );
 		p->set(netp::OK);
 	}
 
@@ -393,7 +393,7 @@ namespace netp {
 		if (it == m_ares_fd_monitor_map.end()) { return; }
 		//BOTH READ|WRITE would trigger erase
 #else
-		if (it == m_ares_fd_monitor_map.end() && ((readable + writable) != 0)) {
+		if (it == m_ares_fd_monitor_map.end() && (readable != 0) || (writable != 0)) {
 			NRP<netp::ares_fd_monitor> afm = netp::make_ref<netp::ares_fd_monitor>(*this, fd);
 			io_ctx* ctx = L->io_begin(fd, afm);
 			if (ctx == nullptr) {
@@ -403,7 +403,7 @@ namespace netp {
 			}
 			afm->ctx = ctx;
 			m_ares_fd_monitor_map.insert({ fd, afm });
-			NETP_VERBOSE("[dns_resolver][#%u]__ares_socket_create&insert", fd);
+			NETP_VERBOSE("[dns_resolver][%p][#%u]__ares_socket_create&insert", this, fd);
 			goto __find_fd_monitor;
 		}
 		NETP_ASSERT(it != m_ares_fd_monitor_map.end());
@@ -418,7 +418,7 @@ namespace netp {
 				ares_process_fd(*((ares_channel*)m_ares_channel), fd, ARES_SOCKET_BAD);
 			}
 		} else if(readable == 0 && it!=m_ares_fd_monitor_map.end() && (it->second->flag&f_ares_fd_watch_read) !=0 ){
-			NETP_VERBOSE("[dns_resolver][#%u]END_READ", it->second->fd);
+			NETP_VERBOSE("[dns_resolver][%p][#%u]END_READ", this, it->second->fd);
 			int rt = L->io_do(io_action::END_READ, it->second->ctx);
 			it->second->flag &= ~f_ares_fd_watch_read;
 			if (rt != netp::OK) {
@@ -437,7 +437,7 @@ namespace netp {
 				ares_process_fd(*((ares_channel*)m_ares_channel), fd, ARES_SOCKET_BAD);
 			}
 		} else if(writable == 0 && (it->second->flag&f_ares_fd_watch_write) !=0 ) {
-			NETP_VERBOSE("[dns_resolver][#%u]END_WRITE", it->second->fd);
+			NETP_VERBOSE("[dns_resolver][%p][#%u]END_WRITE", this, it->second->fd);
 			int rt = L->io_do(io_action::END_WRITE, it->second->ctx);
 			it->second->flag &= ~f_ares_fd_watch_write;
 			if (rt != netp::OK) {
@@ -448,7 +448,7 @@ namespace netp {
 
 		//SOCK_STATE_CALLBACK followed by a ares_socket_close
 #ifdef NETP_DELAY_FD_MONITOR
-		if ( (readable+writable) == 0 
+		if ( (readable == 0) && (writable == 0)
 			/*in case SOCK_STATE_CALLBACK(c,s,0,0) arrive without a SOCK_STATE_CALLBACK(c,s,1,0) or SOCK_STATE_CALLBACK(c,s,0,1)*/
 		) {
 			if (it != m_ares_fd_monitor_map.end()) {
@@ -458,7 +458,7 @@ namespace netp {
 					L_->io_end(ctx_);
 				});
 				m_ares_fd_monitor_map.erase(it);
-				NETP_VERBOSE("[dns_resolver][#%u]__ares_socket_close&erase", fd);
+				NETP_VERBOSE("[dns_resolver][%p][#%u]__ares_socket_close&erase", this, fd);
 			}
 		}
 #endif
@@ -508,7 +508,7 @@ namespace netp {
 			adq->dnsquery_p->set(std::make_tuple( NETP_NEGATIVE(NETP_ABS(netp::E_DNS_CARES_ERRNO_BEGIN)+NETP_ABS(status)), std::vector<netp::ipv4_t, netp::allocator<netp::ipv4_t>>()));
 		}
 		if (status == ARES_ECONNREFUSED) {
-			NETP_WARN("[dns_resolver]resolve status: %d", ARES_ECONNREFUSED);
+			NETP_WARN("[dns_resolver][%p]resolve status: %d", adq->dnsr.get(), ARES_ECONNREFUSED);
 			adq->dnsr->L->schedule([dnsr=adq->dnsr]() {
 				dnsr->restart();
 			});
