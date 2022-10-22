@@ -201,6 +201,7 @@ namespace netp {
 		_MutexT& m_mtx;
 	};
 
+	/*
 	template <class _MutexT>
 	struct shared_upgrade_to_lock_guard
 	{
@@ -214,6 +215,7 @@ namespace netp {
 		}
 		_MutexT& m_mtx;
 	};
+	*/
 
 	template <typename mutex_t>
 	struct scoped_lock {

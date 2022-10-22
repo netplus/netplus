@@ -42,7 +42,7 @@ namespace netp { namespace impl {
 			}
 
 			inline void assert_lock_shared() const
-			{
+			{//lock_shared & lock_upgraded could happen at the same time
 				NETP_ASSERT(!exclusive);
 				NETP_ASSERT(shared_count > 0);
 			}
@@ -72,7 +72,7 @@ namespace netp { namespace impl {
 			inline bool can_lock_shared() const {
 				return !(exclusive || exclusive_waiting_blocked);
 			}
-			inline bool has_more_shared() const {
+			inline bool more_shared() const {
 				return shared_count > 0;
 			}
 			inline bool no_shared() const
@@ -148,10 +148,12 @@ namespace netp { namespace impl {
 			state.unlock_shared();
 			if (state.no_shared()) {
 				if (state.upgrade) {
+					//if we get here , there must have a thread waiting for upgrade_cond
 					//notify upgrade thread
-					// state.upgrade = false;
-					//act as a lock barrier
-					state.exclusive = true;
+					//state.upgrade = false;
+					// 
+					//act as a lock barrier, no more shared, upgraded, or lock shall be acquired
+					state.exclusive = true; 
 					upgrade_cond.notify_one();
 				} else {
 					state.exclusive_waiting_blocked = false;
@@ -164,8 +166,8 @@ namespace netp { namespace impl {
 			netp::lock_guard<spin_mutex> state_lg(state_mutex);
 			state.assert_lock_shared();
 			state.unlock_shared();
-			state.exclusive_waiting_blocked = true;
 			while ( !state.can_lock() ) {
+				state.exclusive_waiting_blocked = true;
 				exclusive_cond.wait(state_mutex);
 			}
 			state.exclusive = true;
@@ -174,8 +176,8 @@ namespace netp { namespace impl {
 		void lock() {
 			netp::lock_guard<spin_mutex> state_lg(state_mutex);
 			//upgrade count on has_more_shared
-			state.exclusive_waiting_blocked = true;
 			while ( !state.can_lock() ) {
+				state.exclusive_waiting_blocked = true;
 				exclusive_cond.wait(state_mutex);
 			}
 			state.exclusive = true;
@@ -255,34 +257,30 @@ namespace netp { namespace impl {
 			state.upgrade = false;
 			state.assert_locked();
 		}
-		/*
-		bool try_unlock_upgrade_and_lock() {
+
+		// lock_upgrade -> lock_shared
+		void unlock_upgrade_and_lock_shared() {
 			netp::lock_guard<spin_mutex> state_lg(state_mutex);
 			state.assert_lock_upgraded();
-			if (
-				!state.exclusive
-				&& !state.exclusive_waiting_blocked
-				&& state.upgrade
-				&& state.shared_count == 1
-				) 
-			{
-				state.shared_count = 0;
-				state.upgrade = false;
-				state.exclusive = true;
-				state.assert_locked();
-				return true;
-			}
-			return false;
+			state.upgrade = false;
+			state.exclusive_waiting_blocked = false;
+			release_waiters();
 		}
-		*/
 
+		void unlock_and_lock_upgrade() {
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			state.assert_locked();
+			state.exclusive = false;
+			state.lock_upgrade();
+			state.exclusive_waiting_blocked = false;
+			release_waiters(); 
+		}
 	};
 }//end of ns impl
 
 namespace _mutex_detail {
 	class shared_mutex
 	{
-
 	public:
 		impl::shared_mutex m_impl;
 		NETP_DECLARE_NONCOPYABLE(shared_mutex)
@@ -303,11 +301,12 @@ namespace _mutex_detail {
 		inline void unlock_shared() {
 			_MUTEX_IMPL_UNLOCK_SHARED(m_impl);
 		}
-		inline void unlock_shared_and_lock() {
-			_MUTEX_DEBUG_CHECK_FOR_UNLOCK_
-				m_impl.unlock_shared_and_lock();
-			_MUTEX_DEBUG_LOCK_
-		}
+
+		//inline void unlock_shared_and_lock() {
+		//	_MUTEX_DEBUG_CHECK_FOR_UNLOCK_
+		//		m_impl.unlock_shared_and_lock();
+		//	_MUTEX_DEBUG_LOCK_
+		//}
 
 		inline void lock() {
 			_MUTEX_IMPL_LOCK(m_impl);
