@@ -393,7 +393,7 @@ namespace netp {
 		if (it == m_ares_fd_monitor_map.end()) { return; }
 		//BOTH READ|WRITE would trigger erase
 #else
-		if (it == m_ares_fd_monitor_map.end() && (readable != 0) || (writable != 0)) {
+		if (it == m_ares_fd_monitor_map.end() && ((readable != 0) || (writable != 0)) ) {
 			NRP<netp::ares_fd_monitor> afm = netp::make_ref<netp::ares_fd_monitor>(*this, fd);
 			io_ctx* ctx = L->io_begin(fd, afm);
 			if (ctx == nullptr) {
