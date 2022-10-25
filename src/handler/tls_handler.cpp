@@ -164,7 +164,7 @@ namespace netp { namespace handler {
 		}
 
 		NETP_ASSERT(ctx == m_ctx);
-		m_tls_outlets_user_data.push({ outlet, chp, 0 });
+		m_tls_outlets_user_data.push({ outlet, chp });
 		if ( (m_flag&f_tls_ch_writing) == 0 ) {
 			_try_tls_user_data_flush();
 		}
@@ -262,6 +262,9 @@ namespace netp { namespace handler {
 		NNASP<Botan::TLS::Channel> tlsch = m_tls_channel;
 		NRP<netp::channel_handler_context> chctx = m_ctx;
 		try {
+#ifdef _NETP_DEBUG
+			NETP_ASSERT(m_tls_records_tmp->len() == 0);
+#endif
 			//send would result in multi tls_emit_data call
 			NETP_ASSERT((m_flag & f_tls_ch_writing_user_data) == 0);
 			m_flag |= f_tls_ch_writing_user_data;
@@ -269,6 +272,13 @@ namespace netp { namespace handler {
 			tlsch->send((uint8_t*)outlet.data->head(), outlet.data->len());
 			m_flag &= ~f_tls_ch_writing_user_data;
 
+#ifdef _NETP_DEBUG
+			NETP_ASSERT(m_tls_records_tmp->len());
+#endif
+			NRP<netp::packet> tmp = netp::make_ref<netp::packet>(NETP_TLS_RECORDS_PKT_TMP_SIZE);
+			tmp.swap(m_tls_records_tmp);
+
+			m_tls_outlets_records_data.push({tmp,true});
 			_try_tls_record_data_flush();
 		} catch (Botan::TLS::TLS_Exception& e) {
 			NETP_ERR("[tls_handler][#%s][try_tls_user_data_flush]std::exception: %d: %s", chctx->ch->ch_info().c_str(), e.error_code(), e.what());
@@ -298,9 +308,9 @@ namespace netp { namespace handler {
 		tls_ch_outlet& outlet = m_tls_outlets_user_data.front();
 		NETP_ASSERT(outlet.write_p != nullptr);
 
-		if (--(outlet.record_count) > 0) {
-			return;
-		}
+		//if (--(outlet.record_count) > 0) {
+		//	return;
+		//}
 
 		outlet.write_p->set(code);
 		m_tls_outlets_user_data.pop();
@@ -530,10 +540,11 @@ namespace netp { namespace handler {
 		NETP_ASSERT(m_ctx != nullptr);
 #endif
 		if ((m_flag&f_tls_ch_writing_user_data)) {
-			NETP_ASSERT( m_tls_outlets_user_data.size() );
-			tls_ch_outlet& front_ = m_tls_outlets_user_data.front();
-			++front_.record_count;
-			m_tls_outlets_records_data.push({ netp::make_ref<netp::packet>(buf, netp::u32_t(length)) , true });
+			m_tls_records_tmp->write(buf,netp::u32_t(length));
+			//NETP_ASSERT( m_tls_outlets_user_data.size() );
+			//tls_ch_outlet& front_ = m_tls_outlets_user_data.front();
+			//++front_.record_count;
+			//m_tls_outlets_records_data.push({ netp::make_ref<netp::packet>(buf, netp::u32_t(length)) , true });
 		} else {
 			m_tls_outlets_records_data.push({ netp::make_ref<netp::packet>(buf, netp::u32_t(length)) , false });
 			_try_tls_record_data_flush();

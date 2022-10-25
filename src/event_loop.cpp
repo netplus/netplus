@@ -176,7 +176,9 @@ namespace netp {
 				if (ss > 0) {
 					std::size_t i = 0;
 					while (i < ss) {
-						m_tq[i++]();
+						m_tq[i]();
+						m_tq[i] = nullptr;//release memory immedidately
+						++i;
 					}
 #ifdef _NETP_DEBUG
 					NETP_ASSERT(ss == m_tq.size());

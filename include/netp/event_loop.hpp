@@ -118,6 +118,8 @@ namespace netp {
 		long long m_last_wait;
 #endif
 
+		//@note: deque,vector, vector with reserved capacity performance test metric as below
+		//https://baptiste-wicht.com/posts/2012/12/cpp-benchmark-vector-list-deque.html
 		spin_mutex m_tq_mutex;
 		io_task_q_t m_tq_standby;
 		io_task_q_t m_tq;

@@ -10,11 +10,12 @@ namespace netp { namespace handler {
 	{}
 
 	void tls_server::connected(NRP<channel_handler_context> const& ctx) {
+		tls_handler::connected(ctx);
+
 		NETP_ASSERT(m_ctx == nullptr);
 		NETP_ASSERT(m_tls_ctx != nullptr);
 		NETP_ASSERT(m_tls_channel == nullptr);
 		m_flag &= ~(f_ch_closed|f_ch_read_closed|f_ch_write_closed);
-		
 		m_ctx = ctx;
 		m_tls_channel = netp::non_atomic_shared::make<Botan::TLS::Server>(*this,
 			*(m_tls_ctx->session_mgr),

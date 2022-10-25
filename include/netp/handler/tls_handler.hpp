@@ -83,6 +83,8 @@ namespace netp { namespace handler {
 		f_ch_close_write_pending =1<<23
 	};
 
+	#define NETP_TLS_RECORDS_PKT_TMP_SIZE ( 0xFFFF+(0xFFFF/Botan::TLS::Size_Limits::MAX_PLAINTEXT_SIZE) * (Botan::TLS::Size_Limits::MAX_CIPHERTEXT_SIZE-Botan::TLS::Size_Limits::MAX_PLAINTEXT_SIZE) )
+
 	class tls_handler :
 		public channel_handler_abstract,
 		public Botan::TLS::Callbacks
@@ -92,7 +94,7 @@ namespace netp { namespace handler {
 		struct tls_ch_outlet {
 			NRP<netp::packet> data;
 			NRP<netp::promise<int>> write_p;
-			int record_count;
+			//int record_count;
 		};
 
 		struct socket_ch_outlet {
@@ -107,6 +109,7 @@ namespace netp { namespace handler {
 		typedef std::queue<tls_ch_outlet, std::deque<tls_ch_outlet, netp::allocator<tls_ch_outlet>>> tls_user_data_queue_t;
 		typedef std::queue<socket_ch_outlet, std::deque<socket_ch_outlet, netp::allocator<socket_ch_outlet>>> tls_record_data_queue_t;
 
+		NRP<netp::packet> m_tls_records_tmp;
 		tls_user_data_queue_t m_tls_outlets_user_data;
 		tls_record_data_queue_t m_tls_outlets_records_data;
 
@@ -123,7 +126,10 @@ namespace netp { namespace handler {
 		tls_handler(NRP<tls_context> const& tlsctx);
 		virtual ~tls_handler();
 
-		void connected(NRP<channel_handler_context> const& ctx) override { (void)ctx; };
+		void connected(NRP<channel_handler_context> const& ctx) override { 
+			(void)ctx; 
+			m_tls_records_tmp = netp::make_ref<netp::packet>(NETP_TLS_RECORDS_PKT_TMP_SIZE);
+		};
 		void closed(NRP<channel_handler_context> const& ctx) override;
 
 		void write_closed(NRP<channel_handler_context> const& ctx)override;
