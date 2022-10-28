@@ -54,6 +54,8 @@ namespace netp {
 #define NETP_MIN(A,B)		NETP_MIN2((A),(B))
 #define NETP_MAX(A,B)		NETP_MAX2((A),(B))
 
+#define NETP_MIN_MAX_RANGE_FILTER(v,min,max) (((v)<(min))?(min):((v)>(max)?(max):(v)))
+
 #define NETP_ABS2(A,B)		(((A)>(B))?((A)-(B)):((B)-(A)))
 #define NETP_ABS(A)			(NETP_ABS2(A,0))
 #define NETP_NEGATIVE(A)	((A<0)?(A):(-(A)))
@@ -102,5 +104,7 @@ namespace netp {
 
 
 #define NETP_ARR_ELEMENTS(_array_) (sizeof(_array_) / sizeof(_array_[0]))
+
+
 
 #endif
