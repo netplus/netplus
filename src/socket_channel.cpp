@@ -80,7 +80,9 @@ namespace netp {
 
 		NETP_ASSERT( m_raddr == nullptr || m_raddr->is_af_unspec() );
 		m_raddr = addr->clone();
-		return socket_connect_impl(m_raddr);
+		int rt = socket_connect_impl(m_raddr);
+		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+		return netp::OK;
 	}
 
 	int socket_channel::listen(int backlog) {
@@ -93,7 +95,8 @@ namespace netp {
 		m_chflag |= int(channel_flag::F_LISTENING);
 		int rt = socket_listen_impl(backlog);
 		NETP_TRACE_SOCKET("[socket][%s]listen rt: %d", ch_info().c_str(), rt);
-		return rt;
+		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
+		return netp::OK;
 	}
 
 	int socket_channel::set_snd_buffer_size(u32_t size) {
@@ -373,7 +376,7 @@ int socket_base::get_left_snd_queue() const {
 				return;
 			}
 
-			rt = netp_socket_get_last_errno();
+			//rt = netp_socket_get_last_errno();
 			if (netp::E_EINPROGRESS==rt) {
 				//note: F_CONNECTING would be cleared in the following case
 				//1, dial failed
