@@ -19,6 +19,7 @@
 #define PACK_INCREMENT_SIZE_RIGHT ((1024*4)-64)
 #define PACK_INCREMENT_SIZE_LEFT (64)
 
+
 namespace netp {
 
 	//[ head,tail )
@@ -137,7 +138,7 @@ namespace netp {
 		}
 
 		//would result in memmove if left space is not enough
-		template <class T, class endian = netp::bytes_helper::big_endian>
+		template <class T, class endian = NETP_DEF_ENDIAN>
 		inline void write_left(T t) {
 			NETP_ASSERT( m_read_idx >= sizeof(T) );
 			m_read_idx -= sizeof(T);
@@ -146,7 +147,7 @@ namespace netp {
 			(void)wnbytes;
 		}
 
-		template <class T, class endian = netp::bytes_helper::big_endian>
+		template <class T, class endian = NETP_DEF_ENDIAN>
 		inline void write(T t) {
 			NETP_ASSERT( left_right_capacity() >= sizeof(T) ) ;
 			m_write_idx += buf_size_width_t(endian::write_impl(t, (m_buffer + m_write_idx)));
@@ -168,7 +169,7 @@ namespace netp {
 			fill(0, len);
 		}
 
-		template <class T, class endian = netp::bytes_helper::big_endian>
+		template <class T, class endian = NETP_DEF_ENDIAN>
 		inline T read() {
 #ifdef _NETP_DEBUG
 			NETP_ASSERT(sizeof(T) <= len());
@@ -190,7 +191,7 @@ namespace netp {
 			incre_read_idx(len_);
 		}
 
-		template <class T, class endian = netp::bytes_helper::big_endian>
+		template <class T, class endian = NETP_DEF_ENDIAN>
 		inline T peek() const {
 #ifdef _NETP_DEBUG
 			NETP_ASSERT(sizeof(T) <= len());
@@ -285,7 +286,7 @@ namespace netp {
 		}
 
 		//would result in memmove if left space is not enough
-		template <class T, class endian=netp::bytes_helper::big_endian>
+		template <class T, class endian = NETP_DEF_ENDIAN>
 		inline void write_left(T t) {
 			while ( NETP_UNLIKELY(sizeof(T) > (cap_fix_packet_t::left_left_capacity())) ) {
 				_extend_leftbuffer_capacity__(PACK_INCREMENT_SIZE_LEFT);
@@ -299,7 +300,7 @@ namespace netp {
 			(void)wnbytes;
 		}
 
-		template <class T, class endian=netp::bytes_helper::big_endian>
+		template <class T, class endian = NETP_DEF_ENDIAN>
 		inline void write(T t) {
 			while ( NETP_UNLIKELY(sizeof(T) > (cap_fix_packet_t::left_right_capacity())) ) {
 				_extend_rightbuffer_capacity__(PACK_INCREMENT_SIZE_RIGHT);

@@ -71,7 +71,7 @@ namespace netp {
 			return false ;
 		}
 
-		template <class T, class endian=netp::bytes_helper::big_endian>
+		template <class T, class endian= NETP_DEF_ENDIAN>
 		inline T read() {
 			NETP_ASSERT( m_buffer != nullptr );
 #ifdef _NETP_DEBUG
@@ -88,7 +88,7 @@ namespace netp {
 			return endian::read_impl( tmp, netp::bytes_helper::type<T>() );
 		}
 
-		template <class T,class endian=netp::bytes_helper::big_endian>
+		template <class T,class endian= NETP_DEF_ENDIAN>
 		inline bool try_read(T& t) {
 			if( count() < sizeof(T) ) {
 				return false;
