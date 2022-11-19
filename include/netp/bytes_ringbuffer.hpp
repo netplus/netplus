@@ -85,7 +85,7 @@ namespace netp {
 			NETP_ASSERT( rnbytes == sizeof(T) );
 			(void)rnbytes;
 
-			return endian::read_impl( tmp, netp::bytes_helper::type<T>() );
+			return netp::bytes_helper::read<T,netp::byte_t*, endian>(tmp);
 		}
 
 		template <class T,class endian= NETP_DEF_ENDIAN>

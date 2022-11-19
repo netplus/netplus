@@ -131,7 +131,7 @@ namespace netp {
 			NETP_RETURN_V_IF_MATCH(recvrt, recvrt<0);
 
 			u32_t read_idx = 0;
-			u8_t ver_IHL = netp::bytes_helper::read_u8(recv_buffer + read_idx);
+			u8_t ver_IHL = netp::bytes_helper::read<u8_t, netp::byte_t*, netp::bytes_helper::big_endian>(recv_buffer + read_idx);
 			read_idx++;
 
 			u32_t IPHeaderLen = (ver_IHL & 0x0f) * 4;
@@ -140,21 +140,21 @@ namespace netp {
 
 			ICMP_Echo echo_reply;
 
-			echo_reply.type = netp::bytes_helper::read_u8(recv_buffer+ ICMPHeader_idx);
+			echo_reply.type = netp::bytes_helper::read<u8_t, netp::byte_t*, netp::bytes_helper::big_endian>(recv_buffer+ ICMPHeader_idx);
 			ICMPHeader_idx++;
-			echo_reply.code = netp::bytes_helper::read_u8(recv_buffer + ICMPHeader_idx);
+			echo_reply.code = netp::bytes_helper::read<u8_t, netp::byte_t*, netp::bytes_helper::big_endian>(recv_buffer + ICMPHeader_idx);
 			ICMPHeader_idx++;
 
-			echo_reply.checksum = netp::bytes_helper::read_u16(recv_buffer + ICMPHeader_idx);
+			echo_reply.checksum = netp::bytes_helper::read<u16_t, netp::byte_t*, netp::bytes_helper::big_endian>(recv_buffer + ICMPHeader_idx);
 			ICMPHeader_idx += 2;
 
-			echo_reply.id = netp::bytes_helper::read_u16(recv_buffer + ICMPHeader_idx);
+			echo_reply.id = netp::bytes_helper::read<u16_t, netp::byte_t*, netp::bytes_helper::big_endian>(recv_buffer + ICMPHeader_idx);
 			ICMPHeader_idx += 2;
 
-			echo_reply.seq = netp::bytes_helper::read_u16(recv_buffer + ICMPHeader_idx);
+			echo_reply.seq = netp::bytes_helper::read<u16_t, netp::byte_t*, netp::bytes_helper::big_endian>(recv_buffer + ICMPHeader_idx);
 			ICMPHeader_idx += 2;
 
-			echo_reply.ts = netp::bytes_helper::read_u64(recv_buffer + ICMPHeader_idx);
+			echo_reply.ts = netp::bytes_helper::read<u64_t, netp::byte_t*, netp::bytes_helper::big_endian>(recv_buffer + ICMPHeader_idx);
 			ICMPHeader_idx += sizeof(netp::u64_t);
 
 			if (echo_reply.id == echo.id	&&
@@ -165,7 +165,7 @@ namespace netp {
 				reply.seq	= echo.seq;
 				reply.RTT	= (netp::u32_t)(now - echo.ts);
 				reply.bytes = sizeof(echo.ts);
-				reply.TTL = netp::bytes_helper::read_u8(recv_buffer+8);
+				reply.TTL = netp::bytes_helper::read<u8_t, netp::byte_t*, netp::bytes_helper::big_endian>(recv_buffer+8);
 			}
 
 			return netp::OK;
@@ -194,12 +194,12 @@ namespace netp {
 			size_t	_length = length;
 
 			while (_length > 1) {
-				checksum += netp::bytes_helper::read_u16(data + (length - _length));
+				checksum += netp::bytes_helper::read<u16_t, netp::byte_t*, netp::bytes_helper::big_endian>(data + (length - _length));
 				_length -= sizeof(u16_t);
 			}
 
 			if (_length) {
-				checksum += netp::bytes_helper::read_u8(data+(length - _length));
+				checksum += netp::bytes_helper::read<u8_t, netp::byte_t*, netp::bytes_helper::big_endian>(data+(length - _length));
 			}
 
 			checksum = (checksum >> 16) + (checksum & 0xffff);

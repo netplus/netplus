@@ -142,7 +142,7 @@ namespace netp {
 		inline void write_left(T t) {
 			NETP_ASSERT( m_read_idx >= sizeof(T) );
 			m_read_idx -= sizeof(T);
-			buf_size_width_t wnbytes = buf_size_width_t(endian::write_impl(t, (m_buffer + m_read_idx)));
+			buf_size_width_t wnbytes = buf_size_width_t(netp::bytes_helper::write<T,netp::byte_t*, endian>((m_buffer + m_read_idx),t));
 			NETP_ASSERT(wnbytes == sizeof(T));
 			(void)wnbytes;
 		}
@@ -150,7 +150,7 @@ namespace netp {
 		template <class T, class endian = NETP_DEF_ENDIAN>
 		inline void write(T t) {
 			NETP_ASSERT( left_right_capacity() >= sizeof(T) ) ;
-			m_write_idx += buf_size_width_t(endian::write_impl(t, (m_buffer + m_write_idx)));
+			m_write_idx += buf_size_width_t(netp::bytes_helper::write<T,netp::byte_t*,endian>((m_buffer + m_write_idx),t));
 		}
 
 		inline void write(void const* const buf, buf_size_width_t len) {
@@ -174,7 +174,7 @@ namespace netp {
 #ifdef _NETP_DEBUG
 			NETP_ASSERT(sizeof(T) <= len());
 #endif
-			const T t = endian::read_impl(m_buffer + m_read_idx, netp::bytes_helper::type<T>());
+			const T t = netp::bytes_helper::read<T, netp::byte_t*, endian>(m_buffer + m_read_idx);
 			m_read_idx += sizeof(T);
 			return t;
 		}
@@ -196,7 +196,7 @@ namespace netp {
 #ifdef _NETP_DEBUG
 			NETP_ASSERT(sizeof(T) <= len());
 #endif
-			return endian::read_impl(m_buffer + m_read_idx, netp::bytes_helper::type<T>());
+			return netp::bytes_helper::read<T,netp::byte_t*, endian>(m_buffer + m_read_idx);
 		}
 
 		buf_size_width_t peek(byte_t* const dst, buf_size_width_t len_) const {
@@ -293,7 +293,7 @@ namespace netp {
 			}
 
 			cap_fix_packet_t::m_read_idx -= sizeof(T);
-			_buf_width_t wnbytes = endian::write_impl(t, (cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_read_idx) );
+			_buf_width_t wnbytes = netp::bytes_helper::write<T, netp::byte_t*, endian>((cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_read_idx),t );
 #ifdef _NETP_DEBUG
 			NETP_ASSERT( wnbytes == sizeof(T) );
 #endif
@@ -306,7 +306,7 @@ namespace netp {
 				_extend_rightbuffer_capacity__(PACK_INCREMENT_SIZE_RIGHT);
 			}
 
-			cap_fix_packet_t::m_write_idx += endian::write_impl(t, (cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_write_idx) );
+			cap_fix_packet_t::m_write_idx += netp::bytes_helper::write<T, netp::byte_t*, endian>((cap_fix_packet_t::m_buffer + cap_fix_packet_t::m_write_idx), t );
 		}
 
 		inline void write( void const* const buf, _buf_width_t len ) {
