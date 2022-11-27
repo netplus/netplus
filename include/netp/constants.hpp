@@ -476,9 +476,10 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_OP_INVALID_ARG							= -20021;
 	const int E_PIPE_CLOSED								= -20022;
 	const int E_INVALID_HANDLE							= -20023;
+	const int E_NESTED_INVOKING_REACH_LIMIT = -20024;
 
 	const int E_EVENT_BROKER_BINDED_ALREADY = -21001;
-	const int E_EVENT_BROKER_NO_LISTENER			= -21002;
+	const int E_EVENT_BROKER_NO_CALLEE			= -21002;
 
 	const int E_XXTEA_INVALID_DATA			= -22001;
 	const int E_XXTEA_DECRYPT_FAILED		= -22002;

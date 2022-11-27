@@ -116,11 +116,11 @@ namespace netp {
 		//I do not like virtual here
 		void __insert_into_evt_map(int evt_id, evt_node_list* evt_node) {
 			event_map_t::iterator&& it = m_handlers.find(evt_id);
-			NETP_ASSERT( it == m_handlers.end() || it->second->cnt == 0);
+			NETP_ASSERT( it == m_handlers.end() || NETP_LIST_IS_EMPTY(it->second) );
 
 			//make a header first, then insert h into the tail
 			evt_node_list* evt_hl = evt_node_allocate_head();//head
-			evt_hl->cnt = 1;
+			evt_hl->ref_cnt = 1;
 
 			netp::list_init(evt_hl);
 			netp::list_append(evt_hl->prev, evt_node);

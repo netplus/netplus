@@ -66,9 +66,9 @@ struct benchmark {
 
 enum invoke_type {
 	t_invoke,
+	t_invoke_without_nest_limit,
 	t_dynamic,
-	t_static,
-	t_virtual_read_callee_address_invoke
+	t_static
 };
 
 template<typename invoke_hint, typename... _Args>
@@ -80,6 +80,11 @@ void invoke_test(NRP<user_event_trigger> const&ut, int t, _Args&&... args) {
 	}
 	break;
 #ifdef __NETP_DEBUG_BROKER_INVOKER_
+	case t_invoke_without_nest_limit:
+	{
+		ut->invoke_without_nest_limit<invoke_hint>(std::forward<_Args>(args)...);
+	}
+	break;
 	case t_dynamic:
 	{
 		ut->dynamic_invoke<invoke_hint>(std::forward<_Args>(args)...);
@@ -88,11 +93,6 @@ void invoke_test(NRP<user_event_trigger> const&ut, int t, _Args&&... args) {
 	case t_static:
 	{
 		ut->static_invoke<invoke_hint>(std::forward<_Args>(args)...);
-	}
-	break;
-	case t_virtual_read_callee_address_invoke:
-	{
-		ut->virtual_read_callee_address_invoke<invoke_hint>(std::forward<_Args>(args)...);
 	}
 	break;
 #endif
@@ -111,18 +111,29 @@ void test_case(int t) {
 	int bind_1_count = 0;
 	int bind_2_count = 0;
 
+	//lambda check
+	//auto autolambda = [](int arg) -> void {};
+	//static_assert(std::is_same<decltype(autolambda), event_handler_int_t>::value, "autolambda check");
+	event_handler_int_t hint_lambda = [user_et, user_evh](int arg) -> void {};
+	static_assert(std::is_same<decltype(hint_lambda), event_handler_int_t>::value, "hint_lambda check");
+
+	//user_et->bind(1, autolambda);
+	//invoke_test<decltype(autolambda)>(user_et, t, 1, 1);
+	//invoke_test<event_handler_int_t>(user_et, t, 1, 1);
+
+	//generic check
 	event_handler_int_t h_frombind = std::bind(&user_event_handler::foo_int, user_evh, std::placeholders::_1);
 	user_et->bind<event_handler_int_t>(1, h_frombind);
 	++bind_1_count;
 
 	user_et->bind<event_handler_int_t>(1, &user_event_handler::foo_int, user_evh, std::placeholders::_1);
 	++bind_1_count;
-	invoke_test<event_handler_int_t>(user_et, t, 1, 13);
-	expected_callcount = (expected_callcount + bind_1_count);
+	invoke_test<event_handler_int_t>(user_et, t, 1, 1);
+	expected_callcount += bind_1_count;
 	NETP_ASSERT(user_evh->call_count == (expected_callcount));
 
-	invoke_test<event_handler_int_t>(user_et, t, 1, 13);
-	expected_callcount = (expected_callcount + bind_1_count);
+	invoke_test<event_handler_int_t>(user_et, t, 1, 1);
+	expected_callcount += bind_1_count;
 	NETP_ASSERT(user_evh->call_count == (expected_callcount));
 
 	event_handler_int_t h_frombind_2 = std::bind(&fooo_do_nothing, std::placeholders::_1);
@@ -142,7 +153,7 @@ void test_case(int t) {
 	++bind_1_count;
 
 	invoke_test<event_handler_int_t>(user_et, t, 1, 1);
-	expected_callcount = (expected_callcount + bind_1_count);
+	expected_callcount += bind_1_count;
 	NETP_ASSERT(user_evh->call_count == (expected_callcount));
 
 	//failed with lvalue pass to rvalue reference --DO NOT NEED TO SUPPORT
@@ -153,7 +164,7 @@ void test_case(int t) {
 	++bind_1_count;
 
 	invoke_test<event_handler_int_t>(user_et, t, 1,123);
-	expected_callcount = (expected_callcount + bind_1_count);
+	expected_callcount += bind_1_count;
 	NETP_ASSERT(user_evh->call_count == (expected_callcount));
 
 	user_et->bind<event_handler_int_t>(1, [&user_evh](int a) {
@@ -162,7 +173,7 @@ void test_case(int t) {
 	++bind_1_count;
 
 	invoke_test<event_handler_int_t>(user_et, t, 1,123);
-	expected_callcount = (expected_callcount + bind_1_count);
+	expected_callcount += bind_1_count;
 	NETP_ASSERT(user_evh->call_count == (expected_callcount));
 
 	event_handler_int_int_t lambda2 = [&user_evh](int a, int b) -> void {
@@ -173,12 +184,92 @@ void test_case(int t) {
 	++bind_2_count;
 	invoke_test<event_handler_int_int_t>(user_et, t, 2,2,2);
 
-	expected_callcount = (expected_callcount + bind_2_count);
+	expected_callcount += bind_2_count;
 	NETP_ASSERT(user_evh->call_count == (expected_callcount));
 
 	invoke_test<event_handler_int_int_t>(user_et, t, 2, 2,2);
-	expected_callcount = (expected_callcount + bind_2_count);
+	expected_callcount += bind_2_count;
 	NETP_ASSERT(user_evh->call_count == (expected_callcount));
+
+	//unbind check
+	user_et->unbind(1);
+	user_et->unbind(2);
+	invoke_test<event_handler_int_t>(user_et, t, 1, 0);
+	invoke_test<event_handler_int_int_t>(user_et, t, 2, 0,0);
+	NETP_ASSERT(expected_callcount == user_evh->call_count);
+
+	//reset all
+	user_evh->call_count = 0;
+	expected_callcount = 0;
+	invoke_test<event_handler_int_t>(user_et, t, 1, 0);
+	invoke_test<event_handler_int_int_t>(user_et, t, 2, 0, 0);
+	NETP_ASSERT(expected_callcount == user_evh->call_count);
+
+	//nested call check
+	//case1: bind_b nested in a invoking of bind_a
+	user_et->bind<event_handler_int_t>(1, [t, user_evh, user_et, &expected_callcount](int a) -> void {
+		user_et->bind<event_handler_int_int_t>(2, [user_evh](int a, int b) {
+			user_evh->foo_int_int(a, b);
+		});
+		invoke_test<event_handler_int_int_t>(user_et,t, 2, 2, 2);
+		expected_callcount += 1;
+		NETP_ASSERT(expected_callcount == user_evh->call_count);		
+		user_evh->foo_int(a);
+		expected_callcount += 1;
+	});
+	invoke_test<event_handler_int_t>(user_et,t, 1, 1);
+	NETP_ASSERT(expected_callcount == user_evh->call_count);
+	invoke_test<event_handler_int_int_t>(user_et, t, 2, 2, 2);
+	expected_callcount += 1;
+	NETP_ASSERT(expected_callcount == user_evh->call_count);
+	user_et->unbind(1);
+	user_et->unbind(2);
+	user_evh->call_count = 0;
+	expected_callcount = 0;
+
+	//case2: bind_a nested in a invoking of bind_a
+	user_et->bind<event_handler_int_t>(1, [t, user_evh, user_et, &expected_callcount](int a) -> void {
+		user_et->bind<event_handler_int_t>(1, [user_evh](int a) {
+			user_evh->foo_int(a);
+		});
+		user_evh->foo_int(a);
+	});
+	int bind_cnt = 1;
+	invoke_test<event_handler_int_t>(user_et, t, 1, 1);
+	expected_callcount += (bind_cnt);
+	NETP_ASSERT(expected_callcount == user_evh->call_count);
+	++bind_cnt;
+
+	invoke_test<event_handler_int_t>(user_et, t, 1, 1);
+	expected_callcount += (bind_cnt);
+	NETP_ASSERT(expected_callcount == user_evh->call_count);
+	++bind_cnt;
+
+	user_et->unbind(1);
+	user_evh->call_count = 0;
+	expected_callcount = 0;
+
+	/*
+	//case3: invoking_a nested in a invoking_a, THROW
+	user_et->bind<event_handler_int_t>(1, [t, user_evh, user_et, &expected_callcount](int a) -> void {
+		invoke_test<event_handler_int_t>(user_et, t, 1, 1);
+		user_evh->foo_int(a);
+	});
+	try {
+		invoke_test<event_handler_int_t>(user_et, t, 1, 1);
+	} catch (netp::nested_invoke_limit_exception& e) {
+		user_et->unbind(1);
+		user_evh->call_count = 0;
+		expected_callcount = 0;
+	}
+	catch (...) {
+		NETP_THROW("invoking_a nested in a invoking_a check failed");
+	}
+	*/
+
+	invoke_test<event_handler_int_t>(user_et, t, 1, 1);
+	NETP_ASSERT(expected_callcount == user_evh->call_count);
+
 }
 
 
@@ -348,12 +439,12 @@ int main(int argc, char** argv) {
 #endif
 
 #ifdef __NETP_DEBUG_BROKER_INVOKER_
-	test(t_dynamic, loop, "t_dynamic");
-	test(t_static, loop, "t_static");
-	test(t_virtual_read_callee_address_invoke, loop, "t_callee_address");
+	test_invoker(t_dynamic, loop, "t_dynamic");
+	test_invoker(t_static, loop, "t_static");
 #endif
 
 	test_invoker(t_invoke, loop, "t_invoke");
+	test_invoker(t_invoke_without_nest_limit, loop, "t_invoke_without_nest_limit");
 
 #if NETP_ISWIN
 	system("pause");

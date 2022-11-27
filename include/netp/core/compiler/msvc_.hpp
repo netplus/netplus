@@ -24,8 +24,6 @@ MSVC++ 5.0  _MSC_VER == 1100
 #define __NETP_NO_INLINE	__declspec(noinline)
 #define __NETP_ALIGN(n) __declspec(align(n)) 
 
-
-
 #if defined(_MSC_VER) && (_MSC_VER < 1600)
 	typedef unsigned char uint8_t;
 	typedef unsigned int uint32_t;
