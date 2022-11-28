@@ -397,6 +397,9 @@ namespace netp {
 		}
 
 #ifdef __NETP_DEBUG_BROKER_INVOKER_
+		//@note: 
+		//1, invoke_without_nest_limit's cost almost the same as invoke
+		//2, dynamic_cast > static_cast (not much)
 		template<class _callable_conv_to, class... _Args>
 		void invoke_without_nest_limit(int evt_id, _Args&&... _args) _NETP_NOEXCEPT {
 			typename event_map_t::iterator&& it = m_handlers.find(evt_id);
