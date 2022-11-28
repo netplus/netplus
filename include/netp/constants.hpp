@@ -476,7 +476,8 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_OP_INVALID_ARG							= -20021;
 	const int E_PIPE_CLOSED								= -20022;
 	const int E_INVALID_HANDLE							= -20023;
-	const int E_NESTED_INVOKING_REACH_LIMIT = -20024;
+	const int E_EVENT_BROKER_INVOKE_NEST_LEVEL_LIMIT = -20024;
+	const int E_EVENT_BROKER_BIND_MULTI_CALLEE = -20025;
 
 	const int E_EVENT_BROKER_BINDED_ALREADY = -21001;
 	const int E_EVENT_BROKER_NO_CALLEE			= -21002;

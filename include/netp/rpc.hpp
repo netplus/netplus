@@ -109,23 +109,24 @@ namespace netp {
 	typedef netp::promise<std::tuple<int, NRP<rpc>>> rpc_dial_promise;
 	typedef netp::channel_listen_promise rpc_listen_promise;
 
+	/*
 	class rpc_event_broker_any : 
-		protected event_broker_any 
+		protected netp::__event_broker_any<false>
 	{
 	protected:
 		//I do not like virtual here
-		void __insert_into_evt_map(int evt_id, evt_node_list* evt_node) {
-			event_map_t::iterator&& it = m_handlers.find(evt_id);
-			NETP_ASSERT( it == m_handlers.end() || NETP_LIST_IS_EMPTY(it->second) );
+		//void __insert_into_evt_map(int evt_id, evt_node_list* evt_node) {
+		//	event_map_t::iterator&& it = m_handlers.find(evt_id);
+		//	NETP_ASSERT( it == m_handlers.end() || NETP_LIST_IS_EMPTY(it->second) );
 
 			//make a header first, then insert h into the tail
-			evt_node_list* evt_hl = evt_node_allocate_head();//head
-			evt_hl->ref_cnt = 1;
+		//	evt_node_list* evt_hl = evt_node_allocate_head();//head
+		//	evt_hl->ref_cnt = 1;
 
-			netp::list_init(evt_hl);
-			netp::list_append(evt_hl->prev, evt_node);
-			m_handlers.insert({ evt_id, evt_hl });
-		}
+		//	netp::list_init(evt_hl);
+		//	netp::list_append(evt_hl->prev, evt_node);
+		//	m_handlers.insert({ evt_id, evt_hl });
+		//}
 	public:
 		template<class _callable_conv_to, class _callable
 			, class = typename std::enable_if<std::is_convertible<_callable, _callable_conv_to>::value>::type>
@@ -145,7 +146,8 @@ namespace netp {
 			return evt_node->id;
 		}
 	};
-
+	*/
+	using rpc_event_broker_any = netp::__event_broker_any<false>;
 	class rpc final:
 		public netp::channel_handler_abstract,
 		private rpc_event_broker_any

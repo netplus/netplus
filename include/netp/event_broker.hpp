@@ -9,20 +9,29 @@
 namespace netp {
 	extern std::atomic<i32_t> s_event_handler_id;
 
-	struct callee_exception :
+	//struct callee_exception :
+	//	public netp::exception
+	//{
+	//	callee_exception(int code) :
+	//		exception(code, "callee_exception", __FILE__, __LINE__, __FUNCTION__)
+	//	{
+	//	}
+	//};
+
+	struct event_broker_invoke_nest_level_limit_exception :
 		public netp::exception
 	{
-		callee_exception(int code) :
-			exception(code, "callee_exception", __FILE__, __LINE__, __FUNCTION__)
+		event_broker_invoke_nest_level_limit_exception() :
+			exception(netp::E_EVENT_BROKER_INVOKE_NEST_LEVEL_LIMIT, "event_broker_invoke_nest_level_limit_exception", __FILE__, __LINE__, __FUNCTION__)
 		{
 		}
 	};
 
-	struct nested_invoke_limit_exception :
+	struct event_broker_bind_multi_callee_exception :
 		public netp::exception
 	{
-		nested_invoke_limit_exception() :
-			exception(netp::E_NESTED_INVOKING_REACH_LIMIT, "callee_exception", __FILE__, __LINE__, __FUNCTION__)
+		event_broker_bind_multi_callee_exception():
+			exception(netp::E_EVENT_BROKER_BIND_MULTI_CALLEE, "event_broker_bind_multi_callee_exception", __FILE__, __LINE__, __FUNCTION__)
 		{
 		}
 	};
@@ -72,7 +81,9 @@ namespace netp {
 	template <class _callable>
 	class event_handler_any : public evt_node_list
 	{
-		friend class event_broker_any;
+		template<bool>
+		friend class __event_broker_any;
+
 		typedef event_handler_any<_callable> _this_type_t;
 		typedef typename std::decay<_callable>::type __callee_type;
 		
@@ -147,9 +158,14 @@ namespace netp {
 	#define NETP_NESTED_INVOKING_LEVEL_LIMIT 0x1f
 
 	typedef std::unordered_map<int, evt_node_list*, id_hash, id_equal, netp::allocator<std::pair<const int, evt_node_list*>>> event_map_t;
-	class event_broker_any
+	template <bool allow_multi_callee_for_same_evt_id>
+	class __event_broker_any
 	{
-		//note: no thread safe
+		typedef __event_broker_any<allow_multi_callee_for_same_evt_id> __event_broker_any_this_t;
+		//note: non-thread-safe for the following operation
+		//1, bind
+		//2, invoke
+		//all related memory access should be synchronized properly for multi-thread context
 	protected:
 		event_map_t m_handlers;
 		void __insert_into_evt_map(int evt_id, evt_node_list* evt_node) {
@@ -158,15 +174,18 @@ namespace netp {
 			//(3) the flag in_invoking would be cleared once invoking done
 			evt_node->ref_cnt = 1;
 			std::pair<event_map_t::iterator, bool> inserted = m_handlers.insert({evt_id, nullptr});
-			if( inserted.second == false ) {
+			if( inserted.second == false) {
+				if (!allow_multi_callee_for_same_evt_id) {
+					throw netp::event_broker_bind_multi_callee_exception();
+				}
 				//already has a entry
 				evt_node_list* evt_hl = inserted.first->second;
-				if(evt_hl->invoking_nest_level>0) {
+				if (evt_hl->invoking_nest_level > 0) {
 					evt_node->flag |= evt_node_flag::f_insert_pending;
 					//flag invoker that we have pending insert
 					evt_hl->flag |= evt_node_flag::f_insert_pending;
 				}
-				netp::list_append(evt_hl->prev, evt_node );
+				netp::list_append(evt_hl->prev, evt_node);
 			} else {
 				//make a header first, then insert h into the tail
 				evt_node_list* evt_hl = evt_node_allocate_head();//head
@@ -179,11 +198,11 @@ namespace netp {
 		}
 
 	public:
-		event_broker_any() :
+		__event_broker_any() :
 			m_handlers()
 		{}
 
-		virtual ~event_broker_any() {
+		virtual ~__event_broker_any() {
 			//dealloc list header
 			event_map_t::iterator&& it = m_handlers.begin();
 			while (it != m_handlers.end()) {
@@ -255,13 +274,12 @@ namespace netp {
 		//@WARN:
 		//a lambda is not a std::function, a lambda is just unnamed callable object
 		//if we bind a lambda without specifiec template _callable type, and do invoke<_callable> then, WE GOT CRASH
-
 		template<class _callable>
 		inline event_handle_id_t bind(int evt_id, _callable&& callee ) {
 			static_assert(std::is_class<std::remove_reference<_callable>>::value, "_callable must be lambda or std::function type");
 			evt_node_list* evt_node = evt_node_allocate<typename std::decay<_callable>::type,_callable>(std::forward<_callable>(callee));
 			evt_node->id |= (event_handle_id_t(evt_id)<<32);
-			__insert_into_evt_map(evt_id, evt_node);
+			__event_broker_any_this_t::__insert_into_evt_map(evt_id, evt_node);
 			return evt_node->id;
 		}
 
@@ -271,7 +289,7 @@ namespace netp {
 			evt_node_list* evt_node = evt_node_allocate<typename std::decay<_callable>::type, _callable>(std::forward<_callable>(callee));
 			evt_node->id |= (event_handle_id_t(evt_id)<<32);
 			evt_node->flag |= evt_node_flag::f_oneshot;
-			__insert_into_evt_map(evt_id, evt_node);
+			__event_broker_any_this_t::__insert_into_evt_map(evt_id, evt_node);
 			return evt_node->id;
 		}
 
@@ -281,7 +299,7 @@ namespace netp {
 			static_assert(std::is_class<std::remove_reference<_callable>>::value, "_callable must be lambda or std::function type");
 			evt_node_list* evt_node = evt_node_allocate<_callable_conv_to,_callable>(std::forward<_callable>(evt_callee));
 			evt_node->id |= (event_handle_id_t(evt_id)<<32);
-			__insert_into_evt_map(evt_id, evt_node);
+			__event_broker_any_this_t::__insert_into_evt_map(evt_id, evt_node);
 			return evt_node->id;
 		}
 
@@ -292,7 +310,7 @@ namespace netp {
 			evt_node_list* evt_node = evt_node_allocate<_callable_conv_to, _callable>(std::forward<_callable>(evt_callee));
 			evt_node->id |= (event_handle_id_t(evt_id) << 32);
 			evt_node->flag |= evt_node_flag::f_oneshot;
-			__insert_into_evt_map(evt_id, evt_node);
+			__event_broker_any_this_t::__insert_into_evt_map(evt_id, evt_node);
 			return evt_node->id;
 		}
 
@@ -309,7 +327,7 @@ namespace netp {
 			evt_node_list* evt_node = evt_node_allocate<_callable_conv_to>(std::bind(std::forward<_Fx>(_func), std::forward<_Args>(_args)...));
 			evt_node->id |= (event_handle_id_t(evt_id) << 32);
 			evt_node->flag |= evt_node_flag::f_oneshot;
-			__insert_into_evt_map(evt_id, evt_node);
+			__event_broker_any_this_t::__insert_into_evt_map(evt_id, evt_node);
 			return evt_node->id;
 		}
 
@@ -353,7 +371,7 @@ namespace netp {
 				//THIS KIND OF EXCEPTION SHOULD ALWAYS BE TREATED AS UNRECOVERED ERROR
 				//IN THIS CASE, THE PROGRAMMER HAVE TO RE-ORGANIZE THE BUSYNESS LOGIC RELATED TO THIS EVT_ID				
 				//ANALOGY TO stackoverflow/go PANIC
-				throw netp::nested_invoke_limit_exception();
+				throw netp::event_broker_invoke_nest_level_limit_exception();
 			}
 
 			//@NOTE: stop compiler optimization (++ --) == 0
@@ -510,5 +528,7 @@ namespace netp {
 		}
 #endif
 	};
+
+	using event_broker_any = __event_broker_any<true>;
 }
 #endif

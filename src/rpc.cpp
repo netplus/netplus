@@ -377,9 +377,6 @@ namespace netp {
 				});
 				invoke<fn_rpc_call_t>(in->code, NRP<netp::rpc>(this), in->data, f );
 				return;
-			} catch (netp::callee_exception& e) {
-				r->code = e.code();
-				NETP_ERR("[rpc]call in, netp::callee_exception: [%d]%s\n%s(%d) %s\n%s",e.code(), e.what(), e.file(), e.line(), e.function(), e.callstack());
 			} catch (netp::exception& e) {
 				r->code = e.code();
 				NETP_ERR("[rpc]call in, netp::exception: [%d]%s\n%s(%d) %s\n%s", e.code(), e.what(), e.file(), e.line(), e.function(), e.callstack());

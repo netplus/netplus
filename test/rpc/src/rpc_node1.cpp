@@ -2,6 +2,14 @@
 #include <netp.hpp>
 #include "shared.hpp"
 
+/*
+	server: listen on tcp://127.0.0.1:21001
+		bindcall(api_ping, [](){});
+	client:
+		dial to tcp://127.0.0.1:21001
+		call(api_ping, ...)
+*/
+
 int main(int argc, char** argv) {
 	netp::app::instance()->init(argc, argv);
 	netp::app::instance()->start_loop();

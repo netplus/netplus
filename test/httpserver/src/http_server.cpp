@@ -164,10 +164,9 @@ int main(int argc, char** argv) {
 		//tlsconfig->privkey = std::string("./tls/cert_for_server/dd.proxy/server_node_key.pem");
 		//tlsconfig->ca_path = std::string("./tls/ca/dd.proxy/");
 
-		NRP<netp::handler::tls_context> tlsctx = netp::handler::tls_context_with_tlsconfig(tlsconfig);
-		NRP<netp::handler::tls_server> _tls_server = netp::make_ref<netp::handler::tls_server>(tlsctx);
-
-		ch->pipeline()->add_last(_tls_server);
+		//NRP<netp::handler::tls_context> tlsctx = netp::handler::tls_context_with_tlsconfig(tlsconfig);
+		//NRP<netp::handler::tls_server> _tls_server = netp::make_ref<netp::handler::tls_server>(tlsctx);
+		//ch->pipeline()->add_last(_tls_server);
 
 		NRP<netp::handler::http> h = netp::make_ref<netp::handler::http>();
 		h->bind<netp::handler::http::fn_http_message_header_t >(netp::handler::http::http_event::E_MESSAGE_HEADER, &http_server::on_message_header, http_server_, std::placeholders::_1, std::placeholders::_2);

@@ -257,7 +257,7 @@ void test_case(int t) {
 	});
 	try {
 		invoke_test<event_handler_int_t>(user_et, t, 1, 1);
-	} catch (netp::nested_invoke_limit_exception& e) {
+	} catch (netp::event_broker_invoke_nest_level_limit_exception& e) {
 		user_et->unbind(1);
 		user_evh->call_count = 0;
 		expected_callcount = 0;
@@ -441,10 +441,10 @@ int main(int argc, char** argv) {
 #ifdef __NETP_DEBUG_BROKER_INVOKER_
 	test_invoker(t_dynamic, loop, "t_dynamic");
 	test_invoker(t_static, loop, "t_static");
+	test_invoker(t_invoke_without_nest_limit, loop, "t_invoke_without_nest_limit");
 #endif
 
 	test_invoker(t_invoke, loop, "t_invoke");
-	test_invoker(t_invoke_without_nest_limit, loop, "t_invoke_without_nest_limit");
 
 #if NETP_ISWIN
 	system("pause");
