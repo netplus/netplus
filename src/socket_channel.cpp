@@ -802,7 +802,7 @@ int socket_base::get_left_snd_queue() const {
 		NETP_TRACE_SOCKET("[socket][%s]ch_close_read_impl, _ch_do_close_read, errno: %d, flag: %d", ch_info().c_str(), ch_errno(), m_chflag);
 		int prt = netp::OK;
 		if ((m_chflag & int(channel_flag::F_READ_SHUTDOWN)) != 0) {
-			prt = (netp::E_CHANNEL_WRITE_CLOSED);
+			prt = (netp::E_CHANNEL_READ_CLOSED);
 		} else if (m_chflag & (int(channel_flag::F_READ_SHUTDOWNING) | int(channel_flag::F_CLOSING))) {
 			prt = (netp::E_OP_INPROCESS);
 		} else {
