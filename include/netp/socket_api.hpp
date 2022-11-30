@@ -248,7 +248,6 @@ namespace netp {
 	//caller decide to retry or not
 	inline int send( SOCKET fd, byte_t const* const buf, netp::u32_t len, int flag = 0) {
 		//for a connected udp session, zero-len is allowed
-		NETP_ASSERT(buf != nullptr);
 __label_send:
 		const int r = ::send(fd, reinterpret_cast<const char*>(buf), (int)(len), flag);
 		if (NETP_UNLIKELY(r == -1)) {
