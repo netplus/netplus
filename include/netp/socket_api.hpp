@@ -9,20 +9,11 @@
 	#define WINAPI __stdcall 
 #endif
 
-//#if defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID)
-//	#define IS_ERRNO_EQUAL_WOULDBLOCK(_errno) ((_errno==netp::E_EAGAIN)||(_errno==netp::E_EWOULDBLOCK))
-//#else
-//	#define IS_ERRNO_EQUAL_WOULDBLOCK(_errno) (_errno==netp::E_EWOULDBLOCK)
-//#endif
 
-#if defined(_NETP_GNU_LINUX) || defined(_NETP_ANDROID)
-	#define _NETP_REFIX_EWOULDBLOCK(ec) if(ec == netp::E_EAGAIN) {ec=netp::E_EWOULDBLOCK;}
-#else
-	#define _NETP_REFIX_EWOULDBLOCK(ec) 
-#endif
+
 
 namespace netp {
-	
+
 #ifdef _NETP_WIN
 	inline netp::u32_t __recvonemsg(SOCKET fd, byte_t* const buff_o, netp::u32_t const bsize, NRP<address>& raddr, ipv4_t& lipv4, int& ec_o, int flag) {
 		const static LPFN_WSARECVMSG __fn_wsa_recvmsg = (LPFN_WSARECVMSG)netp::os::load_api_ex_address(netp::os::winsock_api_ex::API_RECVMSG);
@@ -277,7 +268,6 @@ __label_send:
 	//	domains) permit zero - length datagrams.When such a datagram is
 	//	@return nbytes received, otherwise the error code
 	inline int recv(SOCKET fd, byte_t* const buffer_o, netp::u32_t size, int flag =0) {
-		NETP_ASSERT(buffer_o != nullptr && size>0);
 __label_recv:
 		const int r = ::recv(fd, reinterpret_cast<char*>(buffer_o), (int)(size), flag);
 		if (NETP_UNLIKELY(r == -1)) {
@@ -305,7 +295,6 @@ __label_recv:
 	//@NOTE: udp allow zero-len pkt
 	//	@return nbytes sent, otherwise the error code
 	inline int sendto(SOCKET fd, netp::byte_t const* const buf, netp::u32_t len, NRP<address> const& addr_to, int flag = 0) {
-		NETP_ASSERT(buf != nullptr);
 	_label_sendto:
 		int nbytes;
 		if (addr_to != nullptr) {

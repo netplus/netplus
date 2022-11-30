@@ -46,7 +46,7 @@ namespace netp {
 			do {
 				_any_->setport(netp::port_t(netp::random(__NETP_UDP_PORT_MIN, __NETP_UDP_PORT_MAX)));
 				rt = bind(_any_);
-				if (rt == netp::E_EADDRINUSE || rt == netp::E_EACCESS) {
+				if (rt == netp::E_EADDRINUSE || rt == netp::E_EACCES) {
 					netp::this_thread::yield();
 					continue;
 				}
