@@ -6,11 +6,12 @@
 #include <netp/singleton.hpp>
 #include <netp/smart_ptr.hpp>
 #include <netp/logger/logger_abstract.hpp>
+#include <netp/singleton.hpp>
 
 namespace netp {
 
 	class logger_broker:
-		public netp::non_atomic_ref_base
+		public netp::singleton<logger_broker>
 	{
 	public:
 		logger_broker();

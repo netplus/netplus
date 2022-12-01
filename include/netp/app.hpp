@@ -14,7 +14,7 @@ namespace netp {
 
 	//typedef std::function<void()> fn_app_hook_t;
 #if defined(_NETP_DEBUG) || 1
-	#define	NETP_TRACE_APP(...)				(m_logger_broker->write( netp::logger::LOG_MASK_INFO, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__ ))
+	#define	NETP_TRACE_APP(...)				(netp::logger_broker::instance()->write( netp::logger::LOG_MASK_INFO, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__ ))
 #else
 	#define	NETP_TRACE_APP(...)
 #endif
@@ -39,7 +39,6 @@ namespace netp {
 	private:
 
 		NRP<event_loop_group> m_def_loop_group;
-		NRP<logger_broker> m_logger_broker;
 
 		netp::mutex m_mutex;
 		netp::condition m_cond;
@@ -156,11 +155,11 @@ namespace netp {
 
 		__NETP_FORCE_INLINE
 		NRP<netp::event_loop_group> const& def_loop_group() const { return m_def_loop_group; }
-		__NETP_FORCE_INLINE
-		NRP<netp::logger_broker> const& logger() const { return m_logger_broker; }
+		//__NETP_FORCE_INLINE
+		//NRP<netp::logger_broker> const& logger() const { return m_logger_broker; }
 	};
 
-#define NETP_LOGGER_BROKER	( netp::app::instance()->logger() )
+#define NETP_LOGGER_BROKER	( netp::logger_broker::instance())
 
 #define	NETP_VERBOSE(...)		(NETP_LOGGER_BROKER->write( netp::logger::LOG_MASK_VERBOSE, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__ ))
 #define	NETP_INFO(...)				(NETP_LOGGER_BROKER->write( netp::logger::LOG_MASK_INFO, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__ ))

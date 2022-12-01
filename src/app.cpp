@@ -343,7 +343,7 @@ namespace netp {
 
 		NRP<logger::file_logger> filelogger = netp::make_ref<netp::logger::file_logger>(netp::string_t(m_logfilepathname.c_str()));
 		filelogger->set_mask_by_level(NETP_FILE_LOGGER_LEVEL);
-		m_logger_broker->add(filelogger);
+		netp::logger_broker::instance()->add(filelogger);
 
 #ifdef NETP_DEBUG_ARCH_INFO
 		_dump_arch_info();
@@ -389,14 +389,13 @@ namespace netp {
 	}
 
 	void app::_log_init() {
-		NETP_ASSERT( m_logger_broker == nullptr ) ;
-		m_logger_broker = netp::make_ref<logger_broker>();
-		m_logger_broker->init();
+		//NETP_ASSERT( m_logger_broker == nullptr ) ;
+		netp::logger_broker::instance()->init();
 
 #ifdef NETP_ENABLE_CONSOLE_LOGGER
 		NRP<logger::console_logger> clg = netp::make_ref <logger::console_logger>();
 		clg->set_mask_by_level(NETP_CONSOLE_LOGGER_LEVEL);
-		m_logger_broker->add(clg);
+		netp::logger_broker::instance()->add(clg);
 #endif
 
 #ifdef NETP_ENABLE_ANDROID_LOG
@@ -408,8 +407,7 @@ namespace netp {
 	}
 
 	void app::_log_deinit() {
-		m_logger_broker->deinit();
-		m_logger_broker = nullptr;
+		netp::logger_broker::instance()->destroy_instance();
 	}
 
 #ifdef NETP_DEBUG_ARCH_INFO

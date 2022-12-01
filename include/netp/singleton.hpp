@@ -7,6 +7,10 @@
 
 namespace netp {
 
+	//@note:
+	//the impl promise thread-safe for instance creation
+	//but non-thread-safe for destroy and creation case
+	//the programmer should be sure that there is no place to run xx::instance right after xx::destroy_instance()
 	template <class T>
 	class singleton {
 	public:
@@ -28,10 +32,11 @@ namespace netp {
 					ins = ::new T();
 					s_instance.store(ins, std::memory_order_release);
 
-					//in case of debuging purpose
-					if (!s_exit_registered.load(std::memory_order_acquire)) {
+					//preventing dup-register from the following case
+					//1, for debug purpose, manually call destroy_instance, then call instance() again
+					bool expected = false;
+					if (s_exit_registered.compare_exchange_strong(expected, true, std::memory_order_acq_rel, std::memory_order_acquire)) {
 						singleton<T>::schedule_for_destroy(singleton<T>::destroy_instance);
-						s_exit_registered.store(true,std::memory_order_release);
 					}
 				//} catch (...) {
 					//issue might be
@@ -45,12 +50,11 @@ namespace netp {
 		static void destroy_instance() {
 			T* ins = s_instance.load(std::memory_order_acquire);
 			if (nullptr != ins) {
-				static std::mutex __s_instance_for_destroy_mutex;
-				std::lock_guard<std::mutex> lg(__s_instance_for_destroy_mutex);
-				ins = s_instance.load(std::memory_order_acquire);
-				if (ins != nullptr) {
+				//static std::mutex __s_instance_for_destroy_mutex;
+				//std::lock_guard<std::mutex> lg(__s_instance_for_destroy_mutex);				
+				T* expected = ins;
+				if (s_instance.compare_exchange_strong(expected, nullptr, std::memory_order_acq_rel, std::memory_order_acquire)) {
 					::delete ins;
-					s_instance.store(nullptr, std::memory_order_release);
 				}
 			}
 		}
