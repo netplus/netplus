@@ -78,9 +78,10 @@ namespace netp {
 	};
 
 	class rpc;
-	struct rpc_req_message final :
-		netp::non_atomic_ref_base
+	struct list_req_message final
 	{
+		list_req_message *prev, *next;
+
 		rpc_req_message_state state;
 		NRP<netp::rpc_message> m;
 		NRP<netp::rpc_call_promise> callp;
@@ -109,52 +110,21 @@ namespace netp {
 	typedef netp::promise<std::tuple<int, NRP<rpc>>> rpc_dial_promise;
 	typedef netp::channel_listen_promise rpc_listen_promise;
 
-	/*
-	class rpc_event_broker_any : 
-		protected netp::__event_broker_any<false>
-	{
-	protected:
-		//I do not like virtual here
-		//void __insert_into_evt_map(int evt_id, evt_node_list* evt_node) {
-		//	event_map_t::iterator&& it = m_handlers.find(evt_id);
-		//	NETP_ASSERT( it == m_handlers.end() || NETP_LIST_IS_EMPTY(it->second) );
+	#define NETP_RPC_INFLIGHT_MAX 128
+	#define NETP_RPC_INFLIGHT_SLOT(reqId) ((reqId)&127)
+	
+	//struct list_message {
+	//	list_message *prev, *next;
+	//	NRP<netp::rpc_req_message> reqm;
+	//};
 
-			//make a header first, then insert h into the tail
-		//	evt_node_list* evt_hl = evt_node_allocate_head();//head
-		//	evt_hl->ref_cnt = 1;
-
-		//	netp::list_init(evt_hl);
-		//	netp::list_append(evt_hl->prev, evt_node);
-		//	m_handlers.insert({ evt_id, evt_hl });
-		//}
-	public:
-		template<class _callable_conv_to, class _callable
-			, class = typename std::enable_if<std::is_convertible<_callable, _callable_conv_to>::value>::type>
-			inline i64_t bind(int evt_id, _callable&& evt_callee) {
-			static_assert(std::is_class<std::remove_reference<_callable>>::value, "_callable must be lambda or std::function type");
-			evt_node_list* evt_node = evt_node_allocate<_callable_conv_to, _callable>(std::forward<_callable>(evt_callee));
-			evt_node->id |= (i64_t(evt_id) << 32);
-			__insert_into_evt_map(evt_id, evt_node);
-			return evt_node->id;
-		}
-
-		template<class _callable_conv_to, class _Fx, class... _Args>
-		inline i64_t bind(int evt_id, _Fx&& _func, _Args&&... _args) {
-			evt_node_list* evt_node = evt_node_allocate<_callable_conv_to>(std::bind(std::forward<_Fx>(_func), std::forward<_Args>(_args)...));
-			evt_node->id |= (i64_t(evt_id) << 32);
-			__insert_into_evt_map(evt_id, evt_node);
-			return evt_node->id;
-		}
-	};
-	*/
 	using rpc_event_broker_any = netp::__event_broker_any<false>;
 	class rpc final:
 		public netp::channel_handler_abstract,
 		private rpc_event_broker_any
 	{
 		typedef std::deque<NRP<netp::rpc_message>, netp::allocator<NRP<netp::rpc_message>>> rpc_message_reply_queue_t;
-		typedef std::list<NRP<netp::rpc_req_message>, netp::allocator<NRP<netp::rpc_req_message>>> rpc_message_req_list_t;
-		typedef std::deque<NRP<netp::rpc_req_message>, netp::allocator<NRP<netp::rpc_req_message>>> rpc_message_req_queue_t;
+		//typedef std::deque<NRP<netp::rpc_req_message>, netp::allocator<NRP<netp::rpc_req_message>>> rpc_message_req_queue_t;
 
 	private:
 		NRP<netp::event_loop> m_loop;
@@ -167,14 +137,15 @@ namespace netp {
 
 		rpc_message_reply_queue_t m_reply_q;
 
-		rpc_message_req_list_t m_wait_respond_list;
-		rpc_message_req_list_t m_write_list;
+		u32_t m_list_to_write_count;
+		u32_t m_list_wait_for_response_count;
 
-		netp::u32_t m_queue_size;
+		list_req_message m_list_to_write;
+		list_req_message m_list_wait_for_response[NETP_RPC_INFLIGHT_MAX];
 
 		void _do_reply(NRP<netp::rpc_message> const& reply);
 		void _do_reply_done(int code);
-		void _do_write_req_done(int code);
+		void _do_write_req_done(list_req_message* lrm, int code);
 
 		void _do_flush();
 
@@ -195,7 +166,7 @@ namespace netp {
 		void read(NRP<netp::channel_handler_context> const& ctx, NRP<netp::packet> const &income);
 
 	public:
-		rpc(NRP<netp::event_loop> const& L);
+		rpc(NRP<netp::event_loop> const& L );
 		~rpc();
 
 		NRP<netp::event_loop> const& event_loop() const { return m_loop; }
@@ -222,17 +193,6 @@ namespace netp {
 
 		void on_push(fn_on_push_t const& fn);
 		void operator >> (fn_on_push_t const& fn) ;
-
-		NRP<netp::promise<int>> set_queue_size( netp::u32_t s ) {
-			NETP_ASSERT(m_loop != nullptr);
-			NRP<netp::promise<int>> rf = netp::make_ref<netp::promise<int>>();
-			m_loop->execute([rpc_=NRP<rpc>(this), s,rf](){
-				rpc_->m_queue_size = s;
-				rf->set(netp::OK);
-			});
-
-			return rf;
-		}
 
 		template <class dur = std::chrono::seconds>
 		void call(NRP<netp::rpc_call_promise> const& callp, int id, NRP<netp::packet> const& data, dur const& timeout = __NETP_RPC_DEFAULT_TIMEOUT) {
