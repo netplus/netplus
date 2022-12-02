@@ -55,12 +55,19 @@ namespace netp { namespace handler {
 	tls_handler::tls_handler(NRP<tls_context> const& tlsctx) :
 		channel_handler_abstract(CH_ACTIVITY_CONNECTED | CH_ACTIVITY_CLOSED | CH_ACTIVITY_READ_CLOSED | CH_ACTIVITY_WRITE_CLOSED | CH_INBOUND_READ | CH_OUTBOUND_WRITE | CH_OUTBOUND_CLOSE | CH_OUTBOUND_CLOSE_WRITE),
 		m_flag(f_ch_closed | f_ch_write_closed | f_ch_read_closed),
+		m_ch_snd_buf_size(128*1024),
 		m_tls_channel(nullptr),
 		m_ctx(nullptr),
 		m_tls_ctx(tlsctx)
 	{}
 
 	tls_handler::~tls_handler() {}
+
+	void tls_handler::connected(NRP<channel_handler_context> const& ctx) {
+		(void)ctx;
+		m_ch_snd_buf_size = ctx->ch->ch_get_write_buffer_size()->get();
+		m_tls_records_tmp = netp::make_ref<netp::packet>(m_ch_snd_buf_size);
+	}
 
 	void tls_handler::closed(NRP<channel_handler_context> const& ctx) {
 
@@ -275,7 +282,7 @@ namespace netp { namespace handler {
 #ifdef _NETP_DEBUG
 			NETP_ASSERT(m_tls_records_tmp->len());
 #endif
-			NRP<netp::packet> tmp = netp::make_ref<netp::packet>(NETP_TLS_RECORDS_PKT_TMP_SIZE);
+			NRP<netp::packet> tmp = netp::make_ref<netp::packet>(m_ch_snd_buf_size);
 			tmp.swap(m_tls_records_tmp);
 
 			m_tls_outlets_records_data.push({tmp,true});
@@ -540,11 +547,7 @@ namespace netp { namespace handler {
 		NETP_ASSERT(m_ctx != nullptr);
 #endif
 		if ((m_flag&f_tls_ch_writing_user_data)) {
-			m_tls_records_tmp->write(buf,netp::u32_t(length));
-			//NETP_ASSERT( m_tls_outlets_user_data.size() );
-			//tls_ch_outlet& front_ = m_tls_outlets_user_data.front();
-			//++front_.record_count;
-			//m_tls_outlets_records_data.push({ netp::make_ref<netp::packet>(buf, netp::u32_t(length)) , true });
+			m_tls_records_tmp->write(buf, netp::u32_t(length));
 		} else {
 			m_tls_outlets_records_data.push({ netp::make_ref<netp::packet>(buf, netp::u32_t(length)) , false });
 			_try_tls_record_data_flush();
