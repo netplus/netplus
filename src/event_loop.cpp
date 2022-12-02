@@ -300,10 +300,10 @@ namespace netp {
 	}
 
 	event_loop::event_loop(NRP<netp::event_loop_group> const& g, event_loop_cfg const& cfg, NRP<poller_abstract> const& poller):
-		m_group(g),
 		m_waiting(false),
 		m_state(u8_t(loop_state::S_IDLE)),
 		m_poller(poller),
+		m_group(g),
 		m_io_ctx_count(0),
 		m_io_ctx_count_before_running(0), 
 		m_internal_ref_count(0),
