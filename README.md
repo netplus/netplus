@@ -41,7 +41,9 @@ netp::rpc::listen("tcp://0.0.0.0:10088",[](NRP<netp::rpc> const& r){
        NETP_INFO("[rpc]a request in, request pkt len: %u", in->len() );
        NRP<netp::packet> reply = netp::make_ref<netp::packet>();
        reply->write("this is a reply from the call to api_id");
-       rcp->set(std::make_tuple(netp::OK, ));
+       
+       //call return with netp::OK, and a message in reply pkt
+       rcp->set(std::make_tuple(netp::OK, reply));
    });
 },...);
 
