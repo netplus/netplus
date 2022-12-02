@@ -24,7 +24,7 @@
 
 namespace netp {
 
-	NRP<event_loop> default_event_loop_maker(event_loop_cfg const& cfg) {
+	NRP<event_loop> default_event_loop_maker(NRP<event_loop_group> const& g, event_loop_cfg const& cfg) {
 		NRP<poller_abstract> poller;
 		switch (cfg.type) {
 #if defined(NETP_HAS_POLLER_EPOLL)
@@ -69,7 +69,7 @@ namespace netp {
 		}
 
 		NETP_ASSERT(poller != nullptr);
-		return netp::make_ref<event_loop>(cfg, poller);
+		return netp::make_ref<event_loop>(g, cfg, poller);
 	}
 
 	void event_loop::init() {
@@ -299,7 +299,8 @@ namespace netp {
 		NETP_INFO("[event_loop][%p][%u]__terminate end", this, m_cfg.type ) ;
 	}
 
-	event_loop::event_loop(event_loop_cfg const& cfg, NRP<poller_abstract> const& poller):
+	event_loop::event_loop(NRP<netp::event_loop_group> const& g, event_loop_cfg const& cfg, NRP<poller_abstract> const& poller):
+		m_group(g),
 		m_waiting(false),
 		m_state(u8_t(loop_state::S_IDLE)),
 		m_poller(poller),
@@ -317,6 +318,10 @@ namespace netp {
 		NETP_ASSERT(m_tb == nullptr);
 		NETP_ASSERT(m_th == nullptr);
 		NETP_VERBOSE("[event_loop::~event_loop][%u]", m_cfg.type);
+	}
+
+	NRP<event_loop_group> event_loop::group() const {
+		return m_group;
 	}
 
 	event_loop_group::event_loop_group( event_loop_cfg const& cfg, fn_event_loop_maker_t const& L_maker):
@@ -381,7 +386,7 @@ namespace netp {
 				NETP_VERBOSE("[event_loop][%u]launch bye begin", m_cfg.type);
 				event_loop_cfg __cfg = m_cfg;
 				__cfg.flag &= ~(f_th_thread_affinity | f_th_priority_above_normal | f_th_priority_time_critical);
-				m_bye_event_loop = m_fn_loop_maker(__cfg);
+				m_bye_event_loop = m_fn_loop_maker(NRP<event_loop_group>(this), __cfg);
 				int rt = m_bye_event_loop->__launch();
 				NETP_ASSERT(rt == netp::OK);
 				m_bye_ref_count = m_bye_event_loop.ref_count();
@@ -432,7 +437,9 @@ namespace netp {
 					//NETP_INFO("l.ref_count: %ld, ref_count: %ld", m_bye_event_loop.ref_count(), m_bye_ref_count.load(std::memory_order_acquire) );
 					netp::this_thread::no_interrupt_sleep(1);
 				}
+
 				m_bye_event_loop->__terminate();
+				m_bye_event_loop = nullptr;
 				NETP_VERBOSE("[event_loop][%u]wait bye end", m_cfg.type );
 			}
 		}
@@ -447,7 +454,7 @@ namespace netp {
 				if (m_cfg.flag&f_th_thread_affinity) {
 					++m_cfg.thread_affinity;
 				}
-				NRP<event_loop> o = m_fn_loop_maker(__cfg);
+				NRP<event_loop> o = m_fn_loop_maker(NRP<netp::event_loop_group>(this),__cfg);
 				int rt = o->__launch();
 				NETP_ASSERT(rt == netp::OK);
 				o->store_internal_ref_count(o.ref_count());

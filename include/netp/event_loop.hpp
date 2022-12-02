@@ -72,8 +72,9 @@ namespace netp {
 	};
 
 	class event_loop;
-	typedef std::function<NRP<event_loop>(event_loop_cfg const& cfg) > fn_event_loop_maker_t;
-	extern NRP<event_loop> default_event_loop_maker(event_loop_cfg const& cfg);
+	class event_loop_group;
+	typedef std::function<NRP<event_loop>(NRP<netp::event_loop_group> const& g, event_loop_cfg const& cfg) > fn_event_loop_maker_t;
+	extern NRP<event_loop> default_event_loop_maker(NRP<netp::event_loop_group> const& g, event_loop_cfg const& cfg);
 
 	enum class loop_state {
 		S_IDLE,
@@ -90,6 +91,7 @@ namespace netp {
 	class dns_resolver;
 	class timer_broker;
 	class thread;
+	class event_loop_group;
 	class event_loop :
 		public ref_base
 	{
@@ -109,6 +111,7 @@ namespace netp {
 		NRP<dns_resolver> m_dns_resolver;
 		NRP<netp::packet> m_channel_rcv_buf;
 		NRP<netp::thread> m_th;
+		NRP<netp::event_loop_group> m_group;
 
 		int m_io_ctx_count;
 		int m_io_ctx_count_before_running;
@@ -185,7 +188,7 @@ namespace netp {
 		void __terminate();
 
 	public:
-		event_loop(event_loop_cfg const& cfg, NRP<poller_abstract> const& poller);
+		event_loop(NRP<netp::event_loop_group> const& g, event_loop_cfg const& cfg, NRP<poller_abstract> const& poller);
 		~event_loop();
 
 		__NETP_FORCE_INLINE
@@ -209,6 +212,8 @@ namespace netp {
 			NETP_ASSERT(m_cfg.flag & f_enable_dns_resolver);
 			return m_dns_resolver->resolve(domain);
 		}
+
+		NRP<event_loop_group> group() const;
 
 //#define _NETP_DUMP_SCHEDULE_COST
 		/*win10 output
@@ -333,7 +338,7 @@ namespace netp {
 	class app;
 	typedef std::vector<NRP<event_loop>, netp::allocator<NRP<event_loop>>> event_loop_vector_t;
 	class event_loop_group:
-		public non_atomic_ref_base
+		public ref_base
 	{
 		friend class netp::app;
 		enum class bye_event_loop_state {
