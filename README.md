@@ -20,6 +20,34 @@ Netplus borrows lots of concepts from Netty, and tries to implement these concep
     2) Linux on x86/x64/arm
     3) IOS/MAC on x86/arm
     4) Android on x86/arm
+    
+    
+# First impression
+
+```CPP
+
+//listen on 0.0.0.0:80 port for a http service, 
+netp::listen_on("tcp://0.0.0.0:80", [](NRP<netp::channel> const& ch) {
+    ch->pipeline()->add_last(netp::make_ref<netp::handler::http>());
+    ...
+}
+
+//fast request for a http request
+NRP<netp::http::request_promise> rp = netp::http::get("https://x.com/");
+
+//listen on 10088 for a rpc service
+netp::rpc::listen("tcp://0.0.0.0:10088",[](NRP<netp::rpc> const& r){
+   r->bindcall( api_id, []( NRP<netp::rpc> const& r, NRP<netp::packet> cosnt& in, NRP<netp::rpc_call_promise> const& rcp ) {
+       NETP_INFO("[rpc]a request in, request pkt len: %u", in->len() );
+       NRP<netp::packet> reply = netp::make_ref<netp::packet>();
+       reply->write("this is a reply from the call to api_id");
+       
+       //call return with netp::OK, and a message in reply pkt
+       rcp->set(std::make_tuple(netp::OK, reply));
+   });
+},...);
+
+```
 
 # Learn more from the following urls:
 
