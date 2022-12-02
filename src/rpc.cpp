@@ -85,39 +85,32 @@ namespace netp {
 		}
 	}
 
-	void rpc::_do_write_req_done(int rt) {
+	void rpc::_do_write_req_done(list_req_message* lrm, int rt) {
 		NETP_ASSERT(m_loop->in_event_loop());
 
 		if(m_wstate == rpc_write_state::S_WRITE_CLOSED) {return;}
+		NETP_ASSERT(lrm->state == rpc_req_message_state::S_WRITING);
 
-		NETP_ASSERT(m_write_list.size() );
-		NRP<rpc_req_message> _req = m_write_list.front();
+		TRACE_RPC("[rpc]write ok, write rt: %d, type: %d, id: %d, data len: %u", rt, _req->m->type, _req->m->id, _req->m->data == nullptr ? 0 : _req->m->data->len());
+		if (lrm->m->type == rpc_message_type::T_REQ) {
+			lrm->state = rpc_req_message_state::S_WAIT_RESPOND;
+		} else {
+			lrm->state = rpc_req_message_state::S_WRITE_DONE;
+			NETP_ASSERT(lrm->m->type == rpc_message_type::T_DATA);
+			lrm->pushp->set(rt);
+			netp::allocator<list_req_message>::trash(lrm);
+		}
+
 		if (rt == netp::OK) {
-			TRACE_RPC("[rpc]write ok, write rt: %d, type: %d, id: %d, data len: %u", rt, _req->m->type, _req->m->id, _req->m->data == nullptr ? 0 : _req->m->data->len());
-			NETP_ASSERT(_req->state == rpc_req_message_state::S_WRITING);
-
-			m_write_list.pop_front();
-			if (m_write_list.empty()) {
-				rpc_message_req_list_t().swap(m_write_list);
-			}
-
-			if (_req->m->type == rpc_message_type::T_REQ) {
-				_req->state = rpc_req_message_state::S_WAIT_RESPOND;
-				m_wait_respond_list.push_back(_req);
-			} else {
-				_req->state = rpc_req_message_state::S_WRITE_DONE;
-				NETP_ASSERT(_req->m->type == rpc_message_type::T_DATA);
-				_req->pushp->set(netp::OK);
-			}
 			m_wstate = rpc_write_state::S_WRITE_IDLE;
 			_do_flush();
 		} else {
 			NETP_ASSERT(m_ctx != nullptr);
 			NETP_ASSERT(rt != netp::E_CHANNEL_WRITE_BLOCK);
-			_req->state = rpc_req_message_state::S_WAIT_WRITE;
-			NETP_ERR("[rpc]write req failed, write rt: %d, id: %d, data len: %u", rt, _req->m->id, _req->m->data == nullptr ? 0 : _req->m->data->len() );
+			NETP_ERR("[rpc]write req failed, write rt: %d, id: %d, data len: %u", rt, lrm->m->id, lrm->m->data == nullptr ? 0 : lrm->m->data->len());
 			m_ctx->close();
-		} 
+		}
+
 	}
 
 	void rpc::_do_flush() {
@@ -143,26 +136,27 @@ namespace netp {
 			return;
 		}
 
-		while (!m_write_list.empty()) {
-			NRP<rpc_req_message>& _req = m_write_list.front();
+		while (!NETP_LIST_IS_EMPTY(&m_list_to_write)) {
+			//the first one
+			list_req_message* lrm = m_list_to_write.next;
+			NETP_ASSERT(lrm->state == rpc_req_message_state::S_WAIT_WRITE);
+			netp::list_delete(lrm);
+			--m_list_to_write_count;
 
-			//if ( (_req->m->type == rpc_message_type::T_REQ && _req->callp->is_cancelled())
-			//	|| (_req->m->type == rpc_message_type::T_DATA && _req->pushp->is_cancelled())
-			//	) {
-			//	m_write_list.pop_front();
-			//	continue;
-			//}
+			lrm->state = rpc_req_message_state::S_WRITING;
+			if (lrm->m->type == rpc_message_type::T_REQ) {
+				netp::list_append(&m_list_wait_for_response[NETP_RPC_INFLIGHT_SLOT(lrm->m->id)], lrm);
+				++m_list_wait_for_response_count;
+			}
 
-			NETP_ASSERT(_req->state == rpc_req_message_state::S_WAIT_WRITE);
-			_req->state = rpc_req_message_state::S_WRITING;
-			m_wstate = rpc_write_state::S_WRITING;
 			NRP<netp::packet> outp;
-			_req->m->encode(outp);
+			lrm->m->encode(outp);
 			NRP<netp::promise<int>> wp = netp::make_ref<netp::promise<int>>();
-			wp->if_done([R = NRP<netp::rpc>(this)](int const& rt) {
-				R->_do_write_req_done(rt);
+			wp->if_done([R = NRP<netp::rpc>(this),lrm](int const& rt) {
+				R->_do_write_req_done(lrm, rt);
 			});
-			m_ctx->write(wp,outp);
+			m_wstate = rpc_write_state::S_WRITING;
+			m_ctx->write(wp, outp);
 			return;
 		}
 	}
@@ -178,49 +172,41 @@ namespace netp {
 	void rpc::_do_timer_timeout() {
 		NETP_ASSERT(m_loop->in_event_loop());
 
-		rpc_message_req_list_t::iterator&& it = m_wait_respond_list.begin();
 		const timer_timepoint_t now = timer_clock_t::now();
-		while (it != m_wait_respond_list.end()) {
-			NRP<rpc_req_message> _req = *it;
-			if (now > _req->tp_timeout) {
-				it = m_wait_respond_list.erase(it);
-				NETP_ASSERT(_req->m != nullptr);
-				NETP_ASSERT(_req->m->type == rpc_message_type::T_REQ);
-				NETP_ASSERT(_req->state == rpc_req_message_state::S_WAIT_RESPOND);
+		list_req_message *cur, *nxt;
+		for (int i = 0; i < sizeof(m_list_wait_for_response) / sizeof(m_list_wait_for_response[i]); ++i) {
+			NETP_LIST_SAFE_FOR(cur, nxt, &m_list_wait_for_response[i]) {
+				if (now > cur->tp_timeout) {
+					NETP_ASSERT(cur->m != nullptr);
+					NETP_ASSERT(cur->m->type == rpc_message_type::T_REQ);
+					NETP_ASSERT(cur->state == rpc_req_message_state::S_WAIT_RESPOND);
 
-				_req->state = rpc_req_message_state::S_TIMEOUT;
-				_req->callp->set( std::make_tuple(netp::E_RPC_CALL_TIMEOUT,nullptr));
-				NETP_WARN("[rpc]req timeout, id: %d, api code: %d, data len: %u", _req->m->id, _req->m->code, _req->m->data == nullptr ? 0 : _req->m->data->len());
+					cur->state = rpc_req_message_state::S_TIMEOUT;
+					cur->callp->set(std::make_tuple(netp::E_RPC_CALL_TIMEOUT, nullptr));
+					NETP_WARN("[rpc]req timeout, id: %d, api code: %d, data len: %u", cur->m->id, cur->m->code, cur->m->data == nullptr ? 0 : cur->m->data->len());
+
+					netp::list_delete(cur);
+					--m_list_wait_for_response_count;
+					netp::allocator<list_req_message>::trash(cur);
+				}
 			}
-			else { ++it; }
 		}
 
-		rpc_message_req_list_t::iterator&& it_to_write = m_write_list.begin();
-		while (it_to_write != m_write_list.end()) {
-			NRP<rpc_req_message> _req = *it_to_write;
-			if (now > _req->tp_timeout) {
-				if (_req->state == rpc_req_message_state::S_WRITING) {
-					++it_to_write;
-					continue;
+		NETP_LIST_SAFE_FOR(cur, nxt, &m_list_to_write) {
+			if (now > cur->tp_timeout) {
+				NETP_ASSERT( cur->state == rpc_req_message_state::S_WAIT_WRITE);
+				cur->state = rpc_req_message_state::S_TIMEOUT;
+				if (cur->m->type == rpc_message_type::T_REQ) {
+					cur->callp->set(std::make_tuple(netp::E_RPC_WRITE_TIMEOUT,nullptr));
+				} else {
+					NETP_ASSERT(cur->m->type == rpc_message_type::T_DATA);
+					cur->pushp->set(netp::E_RPC_WRITE_TIMEOUT);
 				}
-
-				if (_req->state == rpc_req_message_state::S_WAIT_WRITE) {
-					it_to_write = m_write_list.erase(it_to_write);
-					_req->state = rpc_req_message_state::S_TIMEOUT;
-					if (_req->m->type == rpc_message_type::T_REQ) {
-						_req->callp->set(std::make_tuple(netp::E_RPC_WRITE_TIMEOUT,nullptr));
-					} else {
-						NETP_ASSERT(_req->m->type == rpc_message_type::T_DATA);
-						_req->pushp->set(netp::E_RPC_WRITE_TIMEOUT);
-
-					}
-					NETP_WARN("[rpc]write timeout, id: %d, data len: %u", _req->m->id, _req->m->data == nullptr ? 0 : _req->m->data->len());
-					continue;
-				}
-
-				NETP_THROW("[rpc]internal rpc req message state error");
+				NETP_WARN("[rpc]write timeout, id: %d, data len: %u", cur->m->id, cur->m->data == nullptr ? 0 : cur->m->data->len() );
+				netp::list_delete(cur);
+				--m_list_to_write_count;
+				netp::allocator<list_req_message>::trash(cur);
 			}
-			else { ++it_to_write; }
 		}
 	}
 
@@ -239,18 +225,21 @@ namespace netp {
 			return;
 		}
 
-		if (m_write_list.size() >= m_queue_size) {
+		if ((m_list_to_write_count + m_list_wait_for_response_count) >= NETP_RPC_INFLIGHT_MAX) {
 			callp->set(std::make_tuple(netp::E_CHANNEL_WRITE_BLOCK, nullptr));
 			return;
 		}
 
 		NRP<netp::rpc_message> m = netp::make_ref<netp::rpc_message>(netp::rpc_message_type::T_REQ, api_id, data);
-		NRP<netp::rpc_req_message> req_r = netp::make_ref<netp::rpc_req_message>();
-		req_r->state = netp::rpc_req_message_state::S_WAIT_WRITE;
-		req_r->m = m;
-		req_r->callp = callp;
-		req_r->tp_timeout = timer_clock_t::now() + timeout;
-		m_write_list.push_back(req_r);
+		list_req_message* lrm = netp::allocator<list_req_message>::make();
+		lrm->state = netp::rpc_req_message_state::S_WAIT_WRITE;
+		lrm->m = m;
+		lrm->callp = callp;
+		lrm->tp_timeout = (timer_clock_t::now() + timeout);
+
+		netp::list_append(&m_list_to_write, lrm);
+		++m_list_to_write_count;
+		
 		_do_flush();
 	}
 
@@ -262,19 +251,21 @@ namespace netp {
 			return;
 		}
 
-		if (m_write_list.size() >= m_queue_size) {
+		if ((m_list_to_write_count + m_list_wait_for_response_count) >= NETP_RPC_INFLIGHT_MAX) {
 			pushp->set(netp::E_CHANNEL_WRITE_BLOCK);
 			return;
 		}
+
 		NETP_ASSERT(data->len());
 		NRP<netp::rpc_message> m = netp::make_ref<netp::rpc_message>(netp::rpc_message_type::T_DATA, 0, data);
-		NRP<netp::rpc_req_message> req_r = netp::make_ref<netp::rpc_req_message>();
-		req_r->state = netp::rpc_req_message_state::S_WAIT_WRITE;
-		req_r->m = m;
-		req_r->pushp = pushp;
-		req_r->tp_timeout = timer_clock_t::now() + timeout;
-		m_write_list.push_back(req_r);
-
+		list_req_message* lrm = netp::allocator<list_req_message>::make();
+		lrm->state = netp::rpc_req_message_state::S_WAIT_WRITE;
+		lrm->m = m;
+		lrm->pushp = pushp;
+		lrm->tp_timeout = (timer_clock_t::now() + timeout);
+		netp::list_append(&m_list_to_write, lrm);
+		++m_list_to_write_count;
+		
 		_do_flush();
 	}
 
@@ -306,21 +297,26 @@ namespace netp {
 			m_reply_q.pop_front();
 		}
 
-		while (m_write_list.size()) {
-			NRP<netp::rpc_req_message>& req = m_write_list.front();
-			if (req->m->type == rpc_message_type::T_REQ) {
-				req->callp->set(std::make_tuple(netp::E_RPC_CALL_CANCEL,nullptr));
+		list_req_message *cur, *nxt;
+		NETP_LIST_SAFE_FOR(cur, nxt, &m_list_to_write) {
+			if (cur->m->type == rpc_message_type::T_REQ) {
+				cur->callp->set(std::make_tuple(netp::E_RPC_CALL_CANCEL, nullptr));
 			} else {
-				NETP_ASSERT(req->m->type == rpc_message_type::T_DATA);
-				req->pushp->set(netp::E_RPC_CALL_CANCEL);
+				NETP_ASSERT(cur->m->type == rpc_message_type::T_DATA);
+				cur->pushp->set(netp::E_RPC_CALL_CANCEL);
 			}
-			m_write_list.pop_front();
+			--m_list_to_write_count;
+			netp::list_delete(cur);
+			netp::allocator<list_req_message>::trash(cur);
 		}
 
-		while (m_wait_respond_list.size()) {
-			NRP<netp::rpc_req_message>& req = m_wait_respond_list.front();
-			req->callp->set(std::make_tuple(netp::E_RPC_CALL_TIMEOUT,nullptr));
-			m_wait_respond_list.pop_front();
+		for (int i = 0; i < sizeof(m_list_wait_for_response) / sizeof(m_list_wait_for_response[0]); ++i) {
+			NETP_LIST_SAFE_FOR(cur, nxt, &m_list_wait_for_response[i]) {
+				cur->callp->set(std::make_tuple(netp::E_RPC_CALL_TIMEOUT, nullptr));
+				--m_list_wait_for_response_count;
+				netp::list_delete(cur);
+				netp::allocator<list_req_message>::trash(cur);
+			}
 		}
 
 		m_fn_on_push = nullptr;
@@ -392,22 +388,25 @@ namespace netp {
 		break;
 		case rpc_message_type::T_RESP:
 		{
-			rpc_message_req_list_t::iterator&& it = std::find_if(m_wait_respond_list.begin(), m_wait_respond_list.end(), [in](NRP<rpc_req_message> const& calling_m) {
-				return in->id == calling_m->m->id;
-			});
-
-			if (it == m_wait_respond_list.end()) {
+			list_req_message* lrm_slot = &m_list_wait_for_response[NETP_RPC_INFLIGHT_SLOT(in->id)];
+			list_req_message* lrm_waiting_reply = 0;
+			NETP_LIST_FOR(lrm_waiting_reply, lrm_slot) {
+				if (lrm_waiting_reply->m->id == in->id) {
+					break;
+				}
+			}
+			if (lrm_waiting_reply == 0 ) {
 				NETP_INFO("[rpc]unknown resp in, id: %u, api code: %d, data len: %u", in->id, in->code, in->data == nullptr ? 0 : in->data->len());
 				return;
 			}
-			NRP<rpc_req_message> calling_m = *it;
-			m_wait_respond_list.erase(it);
+			netp::list_delete(lrm_waiting_reply);
+			--m_list_wait_for_response_count;
 
-			NETP_ASSERT(calling_m->state == rpc_req_message_state::S_WAIT_RESPOND);
+			NETP_ASSERT(lrm_waiting_reply->state == rpc_req_message_state::S_WAIT_RESPOND);
 			TRACE_RPC("[rpc]reply in, id: %u, call rt: %d, data len: %u", in->id, in->code, in->data == nullptr ? 0 : in->data->len());
-			calling_m->state = rpc_req_message_state::S_RESPOND;
+			lrm_waiting_reply->state = rpc_req_message_state::S_RESPOND;
 			try {
-				calling_m->callp->set(std::make_tuple(in->code, in->data));
+				lrm_waiting_reply->callp->set(std::make_tuple(in->code, in->data));
 			} catch (netp::exception& e) {
 				NETP_ERR("[rpc]on_reply, netp::exception: [%d]%s\n%s(%d) %s\n%s",e.code(), e.what(), e.file(), e.line(), e.function(), e.callstack());
 			} catch (std::exception& e) {
@@ -415,6 +414,8 @@ namespace netp {
 			} catch (...) {
 				NETP_INFO("[rpc]reply in, id: %u, call rt: %d, data len: %u, unknown exception", in->id, in->code, in->data == nullptr ? 0 : in->data->len());
 			}
+
+			netp::allocator<list_req_message>::trash(lrm_waiting_reply);
 		}
 		break;
 		case rpc_message_type::T_DATA:
@@ -444,17 +445,23 @@ namespace netp {
 		}
 	}
 
-	rpc::rpc(NRP<netp::event_loop> const& L):
-		channel_handler_abstract(netp::CH_ACTIVITY|netp::CH_INBOUND_READ),
+	rpc::rpc(NRP<netp::event_loop> const& L) :
+		channel_handler_abstract(netp::CH_ACTIVITY | netp::CH_INBOUND_READ),
 		m_loop(L),
 		m_wstate(rpc_write_state::S_WRITE_CLOSED),
 		m_fn_on_push(nullptr),
-		m_queue_size(NETP_RPC_QUEUE_SIZE)
+		m_list_to_write_count(0),
+		m_list_wait_for_response_count(0)
 	{
+		netp::list_init(&m_list_to_write);
+		for (int i = 0; i < sizeof(m_list_wait_for_response) / sizeof(m_list_wait_for_response[0]); ++i) {
+			netp::list_init(&m_list_wait_for_response[i]);
+		}
 	}
 
 	rpc::~rpc()
 	{
+		NETP_ASSERT(m_list_to_write_count == 0 && m_list_wait_for_response_count == 0);
 	}
 
 	void rpc::on_push(fn_on_push_t const& fn) {
@@ -485,12 +492,11 @@ namespace netp {
 			ch->pipeline()->add_last(h_hlen);
 
 			NRP<netp::rpc> rpc = netp::make_ref<netp::rpc>(ch->L);
-			ch->pipeline()->add_last(rpc);
-
 			if (fn_notify_err != nullptr) {
 				rpc->bind<fn_rpc_activity_notify_error_t>(E_RPC_ERROR, fn_notify_err);
 			}
 			rpc->bind<fn_rpc_activity_notify_t>(E_RPC_CONNECTED,fn_notify_connected);
+			ch->pipeline()->add_last(rpc);
 		};
 	}
 
