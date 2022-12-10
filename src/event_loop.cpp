@@ -77,6 +77,10 @@ namespace netp {
 		m_channel_rcv_buf = netp::make_ref<netp::packet>(m_cfg.channel_read_buf_size);
 		m_tid = std::this_thread::get_id();
 		m_tb = netp::make_ref<timer_broker>();
+
+		m_tq = &m_tqs[0];
+		m_tq_standby = &m_tqs[1];
+
 		m_poller->init();
 
 		if (m_cfg.flag & f_enable_dns_resolver) {
@@ -124,10 +128,10 @@ namespace netp {
 
 		{
 			lock_guard<spin_mutex> lg(m_tq_mutex);
-			NETP_ASSERT(m_tq_standby.empty());
+			NETP_ASSERT(m_tq_standby->empty());
 		}
 
-		NETP_ASSERT(m_tq.empty());
+		NETP_ASSERT(m_tq->empty());
 		NETP_ASSERT(m_tb->size() == 0);
 		m_tb = nullptr;
 
@@ -167,26 +171,26 @@ namespace netp {
 				
 				//again the spin_mutex acts as a memory synchronization fence
 				m_tq_mutex.lock();
-				if (!m_tq_standby.empty()) {
-					m_tq.swap(m_tq_standby);
+				if (!m_tq_standby->empty()) {
+					std::swap(m_tq_standby, m_tq);
 				}
 				m_tq_mutex.unlock();
 
-				const std::size_t ss = m_tq.size();
+				const std::size_t ss = m_tq->size();
 				if (ss > 0) {
 					std::size_t i = 0;
 					while (i < ss) {
-						m_tq[i]();
-						m_tq[i] = nullptr;//release memory immedidately
+						(*m_tq)[i]();
+						(*m_tq)[i] = nullptr;//release memory immedidately
 						++i;
 					}
 #ifdef _NETP_DEBUG
-					NETP_ASSERT(ss == m_tq.size());
+					NETP_ASSERT(ss == m_tq->size());
 #endif	
-					if (m_tq.capacity()>512) {
-						io_task_q_t().swap(m_tq);
+					if (m_tq->capacity()>512) {
+						io_task_q_t().swap(*m_tq);
 					} else {
-						m_tq.clear();
+						m_tq->clear();
 					}
 				}
 				//@_calc_wait_dur_in_nano must happen before poll..
@@ -212,11 +216,11 @@ namespace netp {
 			// 1) do schedule, 2) set L -> null
 
 			std::size_t i = 0;
-			std::size_t vecs = m_tq_standby.size();
+			std::size_t vecs = m_tq_standby->size();
 			while (i < vecs) {
-				m_tq_standby[i++]();
+				(*m_tq_standby)[i++]();
 			}
-			m_tq_standby.clear();
+			m_tq_standby->clear();
 			m_tb->expire_all();
 		}
 
