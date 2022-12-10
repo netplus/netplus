@@ -124,8 +124,9 @@ namespace netp {
 		//@note: deque,vector, vector with reserved capacity performance test metric as below
 		//https://baptiste-wicht.com/posts/2012/12/cpp-benchmark-vector-list-deque.html
 		spin_mutex m_tq_mutex;
-		io_task_q_t m_tq_standby;
-		io_task_q_t m_tq;
+		io_task_q_t* m_tq_standby;
+		io_task_q_t* m_tq;
+		io_task_q_t m_tqs[2];
 
 		//timer_timepoint_t m_wait_until;
 		event_loop_cfg m_cfg;
@@ -158,7 +159,7 @@ namespace netp {
 			}
 
 			m_tq_mutex.lock();
-			if (m_tq_standby.empty()) {
+			if (m_tq_standby->empty()) {
 				//the following line must be guard by m_tq_mutex.lock
 				NETP_POLLER_WAIT_ENTER(m_waiting);
 				m_tq_mutex.unlock();
@@ -249,8 +250,8 @@ namespace netp {
 			long long __begin = netp::now<std::chrono::nanoseconds, netp::steady_clock_t>().time_since_epoch().count();
 #endif
 			m_tq_mutex.lock();
-			m_tq_standby.emplace_back(std::forward<fn_task_t>(f));
-			if(m_tq_standby.size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_relaxed)) {
+			m_tq_standby->emplace_back(std::forward<fn_task_t>(f));
+			if(m_tq_standby->size() == 1 && !in_event_loop() && m_waiting.load(std::memory_order_relaxed)) {
 				m_tq_mutex.unlock();
 				m_poller->interrupt_wait();
 				return;
