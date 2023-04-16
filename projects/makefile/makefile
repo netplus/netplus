@@ -24,7 +24,7 @@ LIB_O_FILES		:= $(addprefix $(LIB_BUILD_DIR)/,$(LIB_O_FILES))
 CC_INC 			:= $(LIB_INCLUDE_DIR) $(CC_INC)
 
 
-LIB_3RD_C_ARES_VERSION	:= c-ares-1.18.1
+LIB_3RD_C_ARES_VERSION	:= c-ares-1.19.0
 LIB_3RD_FILES_DIR		:= $(LIB_3RD_DIR)/llhttp $(LIB_3RD_DIR)/c-ares/$(LIB_3RD_C_ARES_VERSION)/src/lib
 
 

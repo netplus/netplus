@@ -5,13 +5,13 @@
 #ifdef  __cplusplus
 	extern "C" {
 #endif
-	#include "../3rd/c-ares/c-ares-1.18.1/src/lib/ares_writev.h"
-	#include "../3rd/c-ares/c-ares-1.18.1/src/lib/ares_private.h"
+	#include "../3rd/c-ares/c-ares-1.19.0/src/lib/ares_writev.h"
+	#include "../3rd/c-ares/c-ares-1.19.0/src/lib/ares_private.h"
 #ifdef  __cplusplus
 	}
 #endif 
 
-#include "../3rd/c-ares/c-ares-1.18.1/include/ares.h"
+#include "../3rd/c-ares/c-ares-1.19.0/include/ares.h"
 
 #include <netp/dns_resolver.hpp>
 #include <netp/socket_api.hpp>
