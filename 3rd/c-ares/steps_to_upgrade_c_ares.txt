@@ -2,3 +2,6 @@
 2, unzip tar
 3, cd root && ./configure
 4, revert ./include/ares_build.h
+5, add src/include to netplus.vcprj
+6, update netplus.vcprj
+7, 
