@@ -86,7 +86,11 @@ namespace netp {
 		F_TIMER_2 = 1 << 25,
 
 		F_USE_DEFAULT_READ=1<<26,
-		F_USE_DEFAULT_WRITE = 1<<27
+		F_USE_DEFAULT_WRITE = 1<<27,
+
+		//the ch_flag is locked, flag add|remove should be disabled during this stage
+		//we use this 
+		F_LOCK = 1<<28
 	};
 
 	struct channel_buf_cfg {
@@ -338,12 +342,12 @@ public: \
 		virtual netp::string_t ch_info() const = 0;
 		virtual void ch_set_tx_limit(u32_t) {};
 
-		virtual NRP<promise<int>> ch_set_read_buffer_size(u32_t size) = 0;
-		virtual NRP<promise<int>> ch_get_read_buffer_size() = 0;
+		virtual int ch_set_read_buffer_size(u32_t size) = 0;
+		virtual int ch_get_read_buffer_size() = 0;
 
-		virtual NRP<promise<int>> ch_set_write_buffer_size(u32_t size) = 0;
-		virtual NRP<promise<int>> ch_get_write_buffer_size() = 0;
-		virtual NRP<promise<int>> ch_set_nodelay() = 0;
+		virtual int ch_set_write_buffer_size(u32_t size) = 0;
+		virtual int ch_get_write_buffer_size() = 0;
+		virtual int ch_set_nodelay() = 0;
 
 		virtual void ch_write_impl(NRP<promise<int>> const& intp,NRP<packet> const& outlet) = 0;
 		virtual void ch_write_to_impl(NRP<promise<int>> const& intp, NRP<packet> const& outlet, NRP<netp::address> const& to) {

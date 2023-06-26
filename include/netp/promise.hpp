@@ -179,6 +179,19 @@ namespace netp {
 			}
 		}
 
+
+		/*
+		*  This function is implemented here only for NECESSARY
+		* 
+		* please do not call this function directly in any thread
+		* if you do it, please make sure the following things might nerver happen
+			a: the promised value should be signaled from the same thread
+			b: thread 1 wait on a promised value which might be signaled from thread 2, and thread 2 might be waiting a promised value from thread1
+				this is a very common case in a event loop based architecture
+
+				the solution is to use schedule always
+		*/
+
 		__NETP_FORCE_INLINE
 		const V& get() {
 			wait();
