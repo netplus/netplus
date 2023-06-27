@@ -65,7 +65,7 @@ namespace netp { namespace handler {
 
 	void tls_handler::connected(NRP<channel_handler_context> const& ctx) {
 		(void)ctx;
-		m_ch_snd_buf_size = ctx->ch->ch_get_write_buffer_size()->get();
+		m_ch_snd_buf_size = ctx->ch->ch_get_write_buffer_size();
 		m_tls_records_tmp = netp::make_ref<netp::packet>(m_ch_snd_buf_size);
 	}
 

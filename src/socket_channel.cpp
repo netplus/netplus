@@ -100,7 +100,6 @@ namespace netp {
 	}
 
 	int socket_channel::set_snd_buffer_size(u32_t size) {
-		NETP_ASSERT(m_fd > 0);
 		bool force_reload_buf_size = false;
 		if (size == 0) {//0 for default
 			force_reload_buf_size = (m_snd_buf_size == 0);
@@ -131,7 +130,6 @@ _label_reload:
 	}
 
 	int socket_channel::get_snd_buffer_size() const {
-		NETP_ASSERT(m_fd > 0);
 		int size=0;
 		socklen_t opt_length = sizeof(u32_t);
 		int rt = socket_getsockopt_impl(SOL_SOCKET, SO_SNDBUF, (char*)&size, &opt_length);
@@ -160,7 +158,6 @@ int socket_base::get_left_snd_queue() const {
 	*/
 
 	int socket_channel::set_rcv_buffer_size(u32_t size) {
-		NETP_ASSERT(m_fd != NETP_INVALID_SOCKET);
 		bool force_reload_buf_size = false;
 		if (size == 0) {//0 for default
 			force_reload_buf_size = (m_rcv_buf_size == 0);
@@ -190,8 +187,8 @@ int socket_base::get_left_snd_queue() const {
 		}
 	}
 
+	//result in E_BADFD if this function called from non-self-event-loop, cuz m_fd might not be synchronized yet
 	int socket_channel::get_rcv_buffer_size() const {
-		NETP_ASSERT(m_fd > 0);
 		int size=0;
 		socklen_t opt_length = sizeof(size);
 		int rt = socket_getsockopt_impl(SOL_SOCKET, SO_RCVBUF, (char*)&size, &opt_length);
@@ -221,7 +218,6 @@ int socket_base::get_left_snd_queue() const {
 	*/
 
 	int socket_channel::get_linger(bool& on_off, int& linger_t) const {
-		NETP_ASSERT(m_fd > 0);
 		struct linger soLinger;
 		socklen_t opt_length = sizeof(soLinger);
 		int rt = socket_getsockopt_impl(SOL_SOCKET, SO_LINGER, (char*)&soLinger, &opt_length);
@@ -234,7 +230,6 @@ int socket_base::get_left_snd_queue() const {
 
 	int socket_channel::set_linger(bool on_off, int linger_t /* in seconds */) {
 		struct linger soLinger;
-		NETP_ASSERT(m_fd > 0);
 		soLinger.l_onoff = on_off;
 		soLinger.l_linger = (linger_t & 0xFFFF);
 		int rt = socket_setsockopt_impl(SOL_SOCKET, SO_LINGER, (char*)&soLinger, sizeof(soLinger));
@@ -253,7 +248,6 @@ int socket_base::get_left_snd_queue() const {
 	}
 
 	int socket_channel::cfg_tos(u8_t tos) {
-		NETP_ASSERT(m_fd > 0);
 		u8_t _tos = (IPTOS_TOS(tos) | 0xe0);
 		int rt = socket_setsockopt_impl(IPPROTO_IP, IP_TOS, (char*)&_tos, sizeof(_tos));
 		NETP_RETURN_V_IF_MATCH(netp_socket_get_last_errno(), rt == NETP_SOCKET_ERROR);
