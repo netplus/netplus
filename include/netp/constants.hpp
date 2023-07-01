@@ -451,6 +451,7 @@ const int  E_ERANGE = -34;         /* Result too large */
 	const int E_EADDRINUSE = E_WSAEADDRINUSE;
 	const int E_EINVAL = E_WSAEINVAL;
 	const int E_ENOTCONN = E_WSAENOTCONN;
+	const int E_EADDRNOTAVAIL = E_WSAEADDRNOTAVAIL;
 #endif
 
 #if defined(EAGAIN) && defined(EWOULDBLOCK) && (EAGAIN != EWOULDBLOCK) && !defined(WSAEWOULDBLOCK)/*exclude win*/

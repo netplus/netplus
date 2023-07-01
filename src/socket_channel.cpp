@@ -339,8 +339,6 @@ int socket_base::get_left_snd_queue() const {
 			return;
 		}
 
-		NETP_ASSERT(rt == netp::OK);
-
 		NRP<socket_cfg> _lcfg = listener_cfg->clone();
 		_lcfg->family = m_family;
 		_lcfg->type = m_type;
