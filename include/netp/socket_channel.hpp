@@ -166,6 +166,7 @@ namespace netp {
 
 		u32_t m_rcv_buf_size;
 		u32_t m_snd_buf_size;
+
 		u32_t m_tx_limit; //in byte
 		u32_t m_tx_budget;
 		u32_t m_tx_bytes;
@@ -693,6 +694,8 @@ protected:
 		//@deprecated
 //		int get_left_snd_queue() const;
 
+		//recommend to be called in channel's loop thread
+		//set is just a hint, it might be failed or result in value not the same as the given size
 		int set_rcv_buffer_size(u32_t size);
 		int get_rcv_buffer_size() const;
 
@@ -1016,44 +1019,31 @@ protected:
 			ch_io_end_write();
 		}
 
-		NRP<promise<int>> ch_set_read_buffer_size(u32_t size) override {
-			NRP<promise<int>> chp = make_ref<promise<int>>();
-			L->execute([S = NRP<socket_channel>(this), size, chp]() {
-				chp->set(S->set_rcv_buffer_size(size));
-			});
-			return chp;
+		int ch_set_read_buffer_size(u32_t size) override {
+			return set_rcv_buffer_size(size);
 		}
 
-		NRP<promise<int>> ch_get_read_buffer_size() override {
-			NRP<promise<int>> chp = make_ref<promise<int>>();
-			L->execute([S = NRP<socket_channel>(this), chp]() {
-				chp->set(S->m_rcv_buf_size);
-			});
-			return chp;
+		int ch_get_read_buffer_size() override {
+			if (m_rcv_buf_size == 0) {
+				_cfg_load_rcv_buf_size();
+			}
+			return m_rcv_buf_size;
 		}
 
-		NRP<promise<int>> ch_set_write_buffer_size(u32_t size) override {
-			NRP<promise<int>> chp = make_ref<promise<int>>();
-			L->execute([S = NRP<socket_channel>(this), size, chp]() {
-				chp->set(S->set_snd_buffer_size(size));
-			});
-			return chp;
+		int ch_set_write_buffer_size(u32_t size) override {
+				return set_snd_buffer_size(size);
 		}
 
-		NRP<promise<int>> ch_get_write_buffer_size() override {
-			NRP<promise<int>> chp = make_ref<promise<int>>();
-			L->execute([S = NRP<socket_channel>(this), chp]() {
-				chp->set(S->m_snd_buf_size);
-			});
-			return chp;
+		int ch_get_write_buffer_size() override {
+			if (m_snd_buf_size == 0) {
+				_cfg_load_snd_buf_size();
+			}
+			return m_snd_buf_size;
 		}
 
-		NRP<promise<int>> ch_set_nodelay() override {
-			NRP<promise<int>> chp = make_ref<promise<int>>();
-			L->execute([s = NRP<socket_channel>(this), chp]() {
-				chp->set(s->cfg_nodelay(true));
-			});
-			return chp;
+		//recommend to be called in event loop
+		int ch_set_nodelay() override {
+			return cfg_nodelay(true);
 		}
 
 		__NETP_FORCE_INLINE channel_id_t ch_id() const override { return m_fd; }
