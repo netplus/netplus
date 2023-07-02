@@ -86,11 +86,7 @@ namespace netp {
 		F_TIMER_2 = 1 << 25,
 
 		F_USE_DEFAULT_READ=1<<26,
-		F_USE_DEFAULT_WRITE = 1<<27,
-
-		//the ch_flag is locked, flag add|remove should be disabled during this stage
-		//we use this 
-		F_LOCK = 1<<28
+		F_USE_DEFAULT_WRITE = 1<<27
 	};
 
 	struct channel_buf_cfg {
