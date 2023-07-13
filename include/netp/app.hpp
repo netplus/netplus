@@ -40,6 +40,9 @@ namespace netp {
 
 		NRP<event_loop_group> m_def_loop_group;
 
+		//absolute path of the execution app
+		std::string m_app_name;
+		std::string m_app_path;
 		netp::mutex m_mutex;
 		netp::condition m_cond;
 
@@ -100,6 +103,9 @@ namespace netp {
 		void cfg_add_dns(std::string const& dns_ns);
 		void cfg_log_filepathname(std::string const& logfilepathname_);
 		void dns_hosts(std::vector<netp::string_t, netp::allocator<netp::string_t>>&) const ;
+
+		std::string app_name() const;
+		std::string app_path() const;
 
 		void init(int argc, char** argv);
 		
