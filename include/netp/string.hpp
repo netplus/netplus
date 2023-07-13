@@ -308,13 +308,27 @@ namespace netp {
 	inline char const* strstr( char const* const dst, char const* const check ) {
 		return std::strstr(dst,check);
 	}
+	inline char* strrchr(char* const dst, int ch) {
+		return std::strrchr(dst, ch);
+	}
+	inline char const* strrchr(char const* const dst, int ch) {
+		return std::strrchr(dst, ch);
+	}
 
-	inline wchar_t* strstr(wchar_t const* const dst, wchar_t const* const check) {
+	inline wchar_t* strstr(wchar_t* const dst, wchar_t const* const check) {
 		return std::wcsstr( const_cast<wchar_t*>(dst), check);
 	}
-	inline wchar_t const* strstr(wchar_t* const dst, wchar_t const* const check) {
+
+	inline wchar_t const* strstr(wchar_t const* const dst, wchar_t const* const check) {
 		return std::wcsstr( dst, check);
 	}
+
+	inline wchar_t* strrchr(wchar_t* str, wchar_t ch) {
+		return std::wcsrchr(str,ch);
+	}
+	inline const wchar_t* strrchr(const wchar_t* str, wchar_t ch) {
+		return std::wcsrchr(str,ch);
+	}	 
 
 	//return the first occurence of the string's appear postion
 	//not the bytes position , but the char|wchar_t 's sequence order number
@@ -349,7 +363,7 @@ namespace netp {
 	}
 
 	inline wchar_t* strdup(const wchar_t* nwptr_src ) {
-		wchar_t* nwptr_dst = (wchar_t*) malloc(sizeof(wchar_t)*(netp::strlen(nwptr_src)+1));
+		wchar_t* nwptr_dst = (wchar_t*) std::malloc(sizeof(wchar_t)*(netp::strlen(nwptr_src)+1));
 		return netp::strcpy(nwptr_dst, nwptr_src);
 	}
 
@@ -360,7 +374,7 @@ namespace netp {
 
 	template<typename T>
 	inline void strdupfree(T* ptr) {
-		free(ptr);
+		std::free(ptr);
 	}
 
 	inline void strtoupper(char* const buffer, netp::size_t size, char const* const src) {

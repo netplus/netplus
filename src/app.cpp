@@ -5,6 +5,7 @@
 #include <signal.h>
 
 #include <netp/CPUID.hpp>
+#include <netp/helper.hpp>
 #include <netp/socket.hpp>
 #include <netp/logger/console_logger.hpp>
 #include <netp/logger/file_logger.hpp>
@@ -324,20 +325,31 @@ namespace netp {
 		_app_thread_deinit();
 	}
 
+	std::string app::app_name() const {
+		return m_app_name;
+	}
+
+	std::string app::app_path() const {
+		return m_app_path;
+	}
+
 	void app::init( int argc, char** argv ) {
 		app_state __s_idle = app_state::s_idle;
 		if (!m_app_state.compare_exchange_strong(__s_idle, app_state::s_init_begin, std::memory_order_acq_rel, std::memory_order_acquire)) {
 			return;
 		}
 
+		m_app_name = netp::filename(std::string(*argv));
+		m_app_path = netp::absolute_parent_path(std::string(*argv)) ;
 		_parse_cfg(argc, argv);
 
 		if (m_logfilepathname.length() == 0) {
 			std::string data = netp::curr_local_data_str();
 			std::string data_;
 			netp::replace(data, std::string("-"), std::string("_"), data_);
-			cfg_log_filepathname(std::string(argv[0]) + std::string(".") + data_ + ".log");
+			cfg_log_filepathname(std::string("./") + m_app_name + "." + data_ + ".log");
 		}
+		m_logfilepathname = netp::to_absolute_path(m_logfilepathname);
 
 		_init();
 
@@ -760,7 +772,7 @@ namespace netp {
 
 #ifdef _NETP_DEBUG
 		test_generic_check();
-//		benchmark_hash();
+		netp::run_test<helper_test_unit>();
 #endif
 
 		return true;

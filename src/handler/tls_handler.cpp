@@ -125,6 +125,9 @@ namespace netp { namespace handler {
 
 		if (m_flag&f_ch_connected) {
 			m_ctx->fire_write_closed();
+		}		
+		else {
+			m_ctx->close_read();
 		}
 	}
 
@@ -133,6 +136,9 @@ namespace netp { namespace handler {
 		m_flag |= f_ch_read_closed;
 		if (m_flag & f_ch_connected) {
 			m_ctx->fire_read_closed();
+		}
+		else {
+			m_ctx->close_write();
 		}
 	}
 
