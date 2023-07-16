@@ -561,7 +561,7 @@
     <ClInclude Include="..\..\3rd\c-ares\c-ares-1.19.0\src\lib\setup_once.h">
       <Filter>3rd\c-ares\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\netp\core\version.hpp">
+    <ClInclude Include="..\..\include\netp\core\build.hpp">
       <Filter>Header Files\netp\core</Filter>
     </ClInclude>
   </ItemGroup>

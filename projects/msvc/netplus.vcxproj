@@ -83,6 +83,7 @@
     <ClInclude Include="..\..\include\netp\condition.hpp" />
     <ClInclude Include="..\..\include\netp\constants.hpp" />
     <ClInclude Include="..\..\include\netp\core.hpp" />
+    <ClInclude Include="..\..\include\netp\core\build.hpp" />
     <ClInclude Include="..\..\include\netp\core\compiler.hpp" />
     <ClInclude Include="..\..\include\netp\core\compiler\gcc_.hpp" />
     <ClInclude Include="..\..\include\netp\core\compiler\gcc_armv7a_.hpp" />
@@ -110,7 +111,6 @@
     <ClInclude Include="..\..\include\netp\core\platform\win_arm_.hpp" />
     <ClInclude Include="..\..\include\netp\core\platform\win_x64_.hpp" />
     <ClInclude Include="..\..\include\netp\core\platform\win_x86_.hpp" />
-    <ClInclude Include="..\..\include\netp\core\version.hpp" />
     <ClInclude Include="..\..\include\netp\CPUID.hpp" />
     <ClInclude Include="..\..\include\netp\dns_resolver.hpp" />
     <ClInclude Include="..\..\include\netp\eth.hpp" />
