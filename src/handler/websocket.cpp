@@ -175,7 +175,7 @@ __label_S_UPGRADE_REQ_MESSAGE_DONE:
 				reply->H->add_header_line(_H_Connection, "Upgrade");
 				reply->H->add_header_line(_H_SEC_WEBSOCKET_ACCEPT, string_t(xx, nbytes));
 				reply->H->add_header_line(_H_SEC_WEBSOCKET_VERSION, "13");
-				reply->H->add_header_line(_H_WEBSOCKET_SERVER, __NETP_VER_STR);
+				reply->H->add_header_line(_H_WEBSOCKET_SERVER, __NETP_VERSION_STRING);
 
 				NRP<packet> outp;
 				reply->encode(outp);

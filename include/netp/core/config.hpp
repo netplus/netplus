@@ -1,14 +1,11 @@
 #ifndef _NETP_CORE_CONFIG_H_
 #define _NETP_CORE_CONFIG_H_
 
-#ifndef __NETP_VER
-	#define __NETP_VER 100
-	#define __NETP_VER_STR "netplus v1.0.0"
-#endif
 
 #include <netp/core/compiler.hpp>
 #include <netp/core/platform.hpp>
 #include <netp/core/macros.hpp>
+#include <netp/core/build.hpp>
 
 //split SYSLOG message into piece that less than 1024
 #ifndef NETP_SPLIT_SYSLOG
