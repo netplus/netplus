@@ -35,9 +35,9 @@ namespace netp {
 		return A.u32 != B.u32;
 	}
 
-#define __l2_arp_ipv4_payload_len (28)
-	typedef union __l2_arp_ipv4_payload dd_arp_ipv4_payload;
-	union __l2_arp_ipv4_payload {
+#define __netp_l2_arp_ipv4_payload_len (28)
+	typedef union __netp_l2_arp_ipv4_payload arp_ipv4_payload;
+	union __netp_l2_arp_ipv4_payload {
 		struct __arp_ipv4_payload__ {
 			u16_t hardware_type;
 			u16_t protocol_type;
@@ -49,25 +49,25 @@ namespace netp {
 			MAC target_mac;
 			ipv4_u32_t target_ip;
 		} data;
-		u8_t payload[__l2_arp_ipv4_payload_len];
+		u8_t payload[__netp_l2_arp_ipv4_payload_len];
 	};
 
-#define __l2_arp_ipv4_frame_len (__l2_eth_header_len + __l2_arp_ipv4_payload_len)
+#define __netp_l2_arp_ipv4_frame_len (__netp_l2_eth_header_len + __netp_l2_arp_ipv4_payload_len)
 
-	typedef union __l2_arp_ipv4_frame dd_arp_ipv4_frame;
-	union __l2_arp_ipv4_frame {
-		struct __l2_arp_ipv4_frame__ {
+	typedef union __netp_l2_arp_ipv4_frame arp_ipv4_frame;
+	union __netp_l2_arp_ipv4_frame {
+		struct __netp_l2_arp_ipv4_frame__ {
 			eth_header eth_h;
-			dd_arp_ipv4_payload v4_payload;
+			arp_ipv4_payload v4_payload;
 		} arp_frame;
-		u8_t payload[__l2_arp_ipv4_frame_len];
+		u8_t payload[__netp_l2_arp_ipv4_frame_len];
 	};
 
-#define __l2_ipv4_header_len 20
+#define __netp_l2_ipv4_header_len 20
 
-	typedef union __l2_ipv4_header dd_ipv4_header;
+	typedef union __netp_l2_ipv4_header ipv4_header;
 
-	union __l2_ipv4_header {
+	union __netp_l2_ipv4_header {
 		struct __ipv4_header__ {
 #ifdef __L2_LITTLE_ENDIAN
 			u8_t ihl : 4;
@@ -87,13 +87,13 @@ namespace netp {
 			ipv4_u32_t src;
 			ipv4_u32_t dst;
 		} H;
-		u8_t payload[__l2_ipv4_header_len];
+		u8_t payload[__netp_l2_ipv4_header_len];
 	};
 
-#define __l2_ipv4_tcp_header_len 20
-	typedef union __l2_ipv4_tcp_header ipv4_tcp_header;
+#define __netp_l2_ipv4_tcp_header_len 20
+	typedef union __netp_l2_ipv4_tcp_header ipv4_tcp_header;
 
-	union __l2_ipv4_tcp_header {
+	union __netp_l2_ipv4_tcp_header {
 		struct __ipv4_tcp_header__ {
 			port_t src;
 			port_t dst;
@@ -126,16 +126,16 @@ namespace netp {
 			u16_t sum;
 			u16_t urgent_pointer;
 		} H;
-		u8_t payload[__l2_ipv4_tcp_header_len];
+		u8_t payload[__netp_l2_ipv4_tcp_header_len];
 	};
 
-#define __l2_ipv4_tcp_header_option_len 12
-	typedef u8_t ipv4_tcp_header_option[__l2_ipv4_tcp_header_option_len];
+#define __netp_l2_ipv4_tcp_header_option_len 12
+	typedef u8_t ipv4_tcp_header_option[__netp_l2_ipv4_tcp_header_option_len];
 
 	//tcp,udp share the same phdr
-#define __l2_ipv4_pseudo_header_len 12
-	typedef union __l2_ipv4_pheader ipv4_pheader;
-	union __l2_ipv4_pheader {
+#define __netp_l2_ipv4_pseudo_header_len 12
+	typedef union __netp_l2_ipv4_pheader ipv4_pheader;
+	union __netp_l2_ipv4_pheader {
 		struct __ipv4_pheader__ {
 			ipv4_u32_t src;
 			ipv4_u32_t dst;
@@ -143,12 +143,12 @@ namespace netp {
 			u8_t protocol;
 			u16_t dlen;
 		} PH;
-		u8_t payload[__l2_ipv4_pseudo_header_len];
+		u8_t payload[__netp_l2_ipv4_pseudo_header_len];
 	};
 
-#define __l2_ipv4_tcp_header_with_tcp_option_len (__l2_ipv4_tcp_header_len+__l2_ipv4_tcp_header_option_len)
-#define __l2_ipv4_pseudo_header_tcp_header_len	(__l2_ipv4_pseudo_header_len+__l2_ipv4_tcp_header_len)
-#define __l2_ipv4_pseudo_header_tcp_header_with_tcp_option_len	(__l2_ipv4_pseudo_header_len+__l2_ipv4_tcp_header_with_tcp_option_len)
+#define __netp_l2_ipv4_tcp_header_with_tcp_option_len (__netp_l2_ipv4_tcp_header_len+__netp_l2_ipv4_tcp_header_option_len)
+#define __netp_l2_ipv4_pseudo_header_tcp_header_len	(__netp_l2_ipv4_pseudo_header_len+__netp_l2_ipv4_tcp_header_len)
+#define __netp_l2_ipv4_pseudo_header_tcp_header_with_tcp_option_len	(__netp_l2_ipv4_pseudo_header_len+__netp_l2_ipv4_tcp_header_with_tcp_option_len)
 
 	typedef union __ipv4_pheader_tcp_header ipv4_pheader_tcp_header;
 	union __ipv4_pheader_tcp_header {
@@ -157,58 +157,58 @@ namespace netp {
 			ipv4_tcp_header tcp_h;
 			ipv4_tcp_header_option tcp_option;
 		}ptcp;
-		u8_t payload[__l2_ipv4_pseudo_header_tcp_header_with_tcp_option_len];
+		u8_t payload[__netp_l2_ipv4_pseudo_header_tcp_header_with_tcp_option_len];
 	};
 
 	//static_assert(sizeof(ipv4_pheader_tcp_header) == __tap_ipv4_pseudo_header_tcp_header_with_tcp_option_len, "wrong ipv4_pheader_tcp_header size");
 	//static_assert(sizeof(ipv4_header) == __tap_ipv4_header_len, "sizeof(ip_header) != 20");
 	//static_assert(sizeof(ipv4_tcp_header) == __tap_ipv4_tcp_header_len, "sizeof(tcp_header) != 20");
 
-#define __l2_ipv4_iptcp_header_len (__l2_ipv4_header_len+__l2_ipv4_tcp_header_len)
-#define __l2_ipv4_iptcp_header_len_with_tcp_option (__l2_ipv4_iptcp_header_len+__l2_ipv4_tcp_header_option_len)
-	typedef union __l2_ipv4_iptcp_header ipv4_iptcp_header;
-	union __l2_ipv4_iptcp_header {
+#define __netp_l2_ipv4_iptcp_header_len (__netp_l2_ipv4_header_len+__netp_l2_ipv4_tcp_header_len)
+#define __netp_l2_ipv4_iptcp_header_len_with_tcp_option (__netp_l2_ipv4_iptcp_header_len+__netp_l2_ipv4_tcp_header_option_len)
+	typedef union __netp_l2_ipv4_iptcp_header ipv4_iptcp_header;
+	union __netp_l2_ipv4_iptcp_header {
 		struct __ipv4_iptcp_header__ {
-			dd_ipv4_header ip_h;
+			__netp_l2_ipv4_header ip_h;
 			ipv4_tcp_header tcp_h;
 			ipv4_tcp_header_option tcp_option;
 		} iptcp;
-		u8_t payload[__l2_ipv4_iptcp_header_len_with_tcp_option];
+		u8_t payload[__netp_l2_ipv4_iptcp_header_len_with_tcp_option];
 	};
 	//static_assert(sizeof(ipv4_iptcp_header) == __tap_ipv4_iptcp_header_len_with_tcp_option, "sizeof(iptcp_header) != 52");
 
-#define __l2_ipv4_udp_header_len 8
-	typedef union __l2_ipv4_udp_header ipv4_udp_header;
-	union __l2_ipv4_udp_header {
+#define __netp_l2_ipv4_udp_header_len 8
+	typedef union __netp_l2_ipv4_udp_header ipv4_udp_header;
+	union __netp_l2_ipv4_udp_header {
 		struct __ipv4_udp_header__ {
 			port_t src;
 			port_t dst;
 			port_t len;
 			port_t sum;
 		}H;
-		u8_t payload[__l2_ipv4_udp_header_len];
+		u8_t payload[__netp_l2_ipv4_udp_header_len];
 	};
 
-#define __l2_ipv4_pseudo_header_udp_header_len	(__l2_ipv4_pseudo_header_len+__l2_ipv4_udp_header_len)
-	typedef union __l2_ipv4_pheader_udp_header ipv4_pheader_udp_header;
-	union __l2_ipv4_pheader_udp_header {
+#define __netp_l2_ipv4_pseudo_header_udp_header_len	(__netp_l2_ipv4_pseudo_header_len+__netp_l2_ipv4_udp_header_len)
+	typedef union __netp_l2_ipv4_pheader_udp_header ipv4_pheader_udp_header;
+	union __netp_l2_ipv4_pheader_udp_header {
 		struct __ipv4_pheader_udp_header__ {
 			ipv4_pheader P;
 			ipv4_udp_header udp;
 		} pudp;
-		u8_t payload[__l2_ipv4_pseudo_header_udp_header_len];
+		u8_t payload[__netp_l2_ipv4_pseudo_header_udp_header_len];
 	};
 
-	//static_assert(sizeof(ipv4_pheader_udp_header) == __l2_ipv4_pseudo_header_udp_header_len, "wrong ipv4_pheader_udp_header size");
-#define __l2_ipv4_ipudp_header_len (__l2_ipv4_header_len+__l2_ipv4_udp_header_len)
-	typedef union __l2_ipv4_ipudp_header ipv4_ipudp_header;
+	//static_assert(sizeof(ipv4_pheader_udp_header) == __netp_l2_ipv4_pseudo_header_udp_header_len, "wrong ipv4_pheader_udp_header size");
+#define __netp_l2_ipv4_ipudp_header_len (__netp_l2_ipv4_header_len+__netp_l2_ipv4_udp_header_len)
+	typedef union __netp_l2_ipv4_ipudp_header ipv4_ipudp_header;
 
-	union __l2_ipv4_ipudp_header {
+	union __netp_l2_ipv4_ipudp_header {
 		struct __ipv4_ipudp_header__ {
-			dd_ipv4_header ip_h;
+			__netp_l2_ipv4_header ip_h;
 			ipv4_udp_header udp_h;
 		}ipudp;
-		u8_t payload[__l2_ipv4_ipudp_header_len];
+		u8_t payload[__netp_l2_ipv4_ipudp_header_len];
 	};
 
 #pragma pack(pop)

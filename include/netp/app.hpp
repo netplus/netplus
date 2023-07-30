@@ -173,8 +173,8 @@ namespace netp {
 #define	NETP_ERR(...)				(NETP_LOGGER_BROKER->write( netp::logger::LOG_MASK_ERR, __FILE__, __LINE__, __FUNCTION__,__VA_ARGS__ ))
 
 #ifndef _NETP_DEBUG
-#undef NETP_VERBOSE
-#define NETP_VERBOSE(...)
+	#undef NETP_VERBOSE
+	#define NETP_VERBOSE(...)
 #endif
 
 	class app_test_unit :
