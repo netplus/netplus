@@ -9,7 +9,7 @@ namespace netp {
 		info += "name: " + adapter_.name + "\n";
 		info += "description: " + adapter_.description + "\n";
 		info += "friendly name: " + adapter_.friendlyname + "\n";
-		info += "mac: " + m6tostring(adapter_.mac) + "\n";
+		info += "mac: " + mactostring(adapter_.mac) + "\n";
 		info += string_t("is up: ") + string_t((adapter_.status_up ? "yes" : "no")) + "\n";
 
 		info += "unicast: \n";

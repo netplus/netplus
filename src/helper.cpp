@@ -283,14 +283,14 @@ namespace netp {
 	bool helper_test_unit::run()
 	{
 #ifdef _NETP_GNU_LINUX
-		char* path[] = { 
+		const char* path[] = { 
 			"/home/copy/file.log",
 			"/home/copy/./file.log",
 			"/home/copy//file.log",
 			"/home/copy/../../file.log",
 			"/home/copy/../..//file.log",
 		};
-		char* realpath[] = {
+		const char* realpath[] = {
 			"/home/copy/file.log",
 			"/home/copy/file.log",
 			"/home/copy/file.log",

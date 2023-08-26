@@ -5,6 +5,14 @@
 #include <netp/core/compiler.hpp>
 #include <netp/core/platform.hpp>
 
+#define NETP_UNION_TWO_(left,right) left##right
+#define NETP_UNION_TWO(left,right) NETP_UNION_TWO_(left,right)
+#define NETP_UNION_WITH_SEPARATOR(left,right,separator) NETP_UNION_TWO(NETP_UNION_TWO(left,separator),right)
+#define NETP_VERSION(major,minor,release_number,separator) NETP_UNION_WITH_SEPARATOR(NETP_UNION_WITH_SEPARATOR(major,minor,separator),release_number,separator)
+#define NETP_VERSION_STRING_STRINGIFY(version) NETP_STRINGIFY(version)
+#define NETP_VERSION_STRING(version) NETP_VERSION_STRING_STRINGIFY(version)
+
+
 #ifndef IPTOS_TOS_MASK
 	#define IPTOS_TOS_MASK		0x1E
 #endif

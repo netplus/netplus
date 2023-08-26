@@ -87,7 +87,7 @@ namespace netp { namespace http {
 		netp::http::parse_url(m->url.c_str(), m->url.length(), m->urlfields);
 
 		if (!m->H->have("user-agent")) {
-			m->H->add_header_line("User-Agent", __NETP_VER_STR);
+			m->H->add_header_line("User-Agent", __NETP_VERSION_STRING);
 		}
 
 		NRP<netp::packet> outp;

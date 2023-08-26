@@ -3,6 +3,7 @@
 
 #include <netp/core.hpp>
 #include <netp/string.hpp>
+#include <netp/packet.hpp>
 
 namespace netp {
 
@@ -146,7 +147,7 @@ namespace netp {
 
 #pragma pack(push,1)
 	typedef union {
-		struct __l2_mac__ {
+		struct __netp_l2_mac__ {
 			u8_t b1;
 			u8_t b2;
 			u8_t b3;
@@ -157,25 +158,33 @@ namespace netp {
 		u8_t payload[6];
 	} MAC;
 
-#define __l2_eth_header_len 14
+#define __netp_l2_eth_header_len 14
 	typedef union {
 		struct __eth_header__ {
 			MAC dst;
 			MAC src;
 			u16_t type;
 		}H;
-		u8_t payload[__l2_eth_header_len];
+		u8_t payload[__netp_l2_eth_header_len];
 	} eth_header;
 
-#define __arp_hardware_type_offset_from_eth_header__ (__l2_eth_header_len)
-#define __arp_protocol_type_offset_from_eth_header__ (__l2_eth_header_len+sizeof(dd_u16))
+#define __arp_hardware_type_offset_from_eth_header__ (__netp_l2_eth_header_len)
+#define __arp_protocol_type_offset_from_eth_header__ (__netp_l2_eth_header_len+sizeof(netp::u16_t))
 
-#define __arp_hardware_type(eth_header) (NETP_NTOHS( *((u16_t*) (eth_header->payload+__arp_hardware_type_offset_from_eth_header__))) )
-#define __arp_protocol_type(eth_header) (NETP_NTOHS( *((u16_t*) (eth_header->payload+__arp_protocol_type_offset_from_eth_header__))) )
+#define __arp_hardware_type(_eth_header_) (NETP_NTOHS( *((netp::u16_t*) ((_eth_header_)->payload+__arp_hardware_type_offset_from_eth_header__))) )
+#define __arp_protocol_type(_eth_header_) (NETP_NTOHS( *((netp::u16_t*) ((_eth_header_)->payload+__arp_protocol_type_offset_from_eth_header__))) )
 
 #pragma pack(pop)
 
-	inline string_t m6tostring(MAC const& m6_) {
+	inline void eth_add_header(NRP<netp::packet> const& data, netp::MAC const& src, netp::MAC const& dst, netp::ether_type type) {
+        eth_header _ethhdr;
+        _ethhdr.H.dst.B6 = dst.B6;
+        _ethhdr.H.src.B6 = src.B6;
+        _ethhdr.H.type = NETP_HTONS(netp::u16_t(type));
+        data->write_left( _ethhdr.payload, __netp_l2_eth_header_len );
+	}
+
+	inline string_t mactostring(MAC const& m6_) {
 		char tmp[18] = { 0 };
 		snprintf(tmp, 18, "%.2x-%.2x-%.2x-%.2x-%.2x-%.2x", m6_.B6.b1, m6_.B6.b2, m6_.B6.b3, m6_.B6.b4, m6_.B6.b5, m6_.B6.b6);
 		return string_t(tmp, 17);
@@ -185,6 +194,28 @@ namespace netp {
 	}
 	inline bool operator!=(MAC const& left, MAC const& right) {
 		return std::memcmp((char*)left.payload, (char*)right.payload, 6) != 0;
+	}
+
+	inline netp::u16_t c16sum(netp::byte_t* dataptr, netp::u16_t len)
+	{
+		netp::u32_t sum = 0;
+		netp::byte_t* curdataptr = dataptr;
+		while (len > 1) {
+			sum += (*curdataptr) << 8;
+			sum += (*(curdataptr + 1));
+			curdataptr += 2;
+			len -= 2;
+		}
+
+		if (len > 0) {
+			sum += (*curdataptr) << 8;
+		}
+
+		while ((sum & 0xffff0000UL) != 0) {
+			sum = (sum >> 16) + (sum & 0x0000ffffUL);
+		}
+
+		return ~netp::u16_t(sum);
 	}
 }
 
