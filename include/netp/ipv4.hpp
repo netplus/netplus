@@ -13,10 +13,9 @@ namespace netp {
 	//@comment
 	//192.168.1.1
 	//little endian, b1 == 1, big endian b1 == 192
-	typedef u32_t ipv4_u32_t;
 	typedef union __ipv4_bits ipv4_t;
 	union __ipv4_bits {
-		ipv4_u32_t u32;
+		u32_t u32;
 		struct _bit {
 			u8_t b1;
 			u8_t b2;
@@ -45,9 +44,9 @@ namespace netp {
 			u8_t protocol_size;
 			u16_t opcode;
 			MAC sender_mac;
-			ipv4_u32_t sender_ip;
+			ipv4_t sender_ip;
 			MAC target_mac;
-			ipv4_u32_t target_ip;
+			ipv4_t target_ip;
 		} data;
 		u8_t payload[__netp_l2_arp_ipv4_payload_len];
 	};
@@ -69,6 +68,11 @@ namespace netp {
 
 	union __netp_l2_ipv4_header {
 		struct __ipv4_header__ {
+		/*
+            Internet Header Length is the length of the internet header in 32
+            bit words, and thus points to the beginning of the data.  Note that
+            the minimum value for a correct header is 5.
+        */
 #ifdef __L2_LITTLE_ENDIAN
 			u8_t ihl : 4;
 			u8_t ver : 4;
@@ -78,14 +82,23 @@ namespace netp {
 #endif
 
 			u8_t tos;
+
+			/*
+			Total Length is the length of the datagram, measured in octets,including internet header and data
+			*/
 			u16_t total_len;
 			u16_t id;
 			u16_t flags_fragment_offset;
 			u8_t ttl;
+
+			/*
+				1) refer to: https://datatracker.ietf.org/doc/html/rfc790
+				2) #include <linux/in.h>
+			*/
 			u8_t protocol;
 			u16_t sum;
-			ipv4_u32_t src;
-			ipv4_u32_t dst;
+			ipv4_t src;
+			ipv4_t dst;
 		} H;
 		u8_t payload[__netp_l2_ipv4_header_len];
 	};
@@ -137,8 +150,8 @@ namespace netp {
 	typedef union __netp_l2_ipv4_pheader ipv4_pheader;
 	union __netp_l2_ipv4_pheader {
 		struct __ipv4_pheader__ {
-			ipv4_u32_t src;
-			ipv4_u32_t dst;
+			ipv4_t src;
+			ipv4_t dst;
 			u8_t zero;
 			u8_t protocol;
 			u16_t dlen;
