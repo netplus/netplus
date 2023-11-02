@@ -285,5 +285,9 @@ namespace netp {
 		time_of_day(tv, nullptr);
 		return to_local_datatime_str(tv);
 	}
+
+	template <class T>
+    struct hash: std::hash<T>
+    {};
 }
 #endif

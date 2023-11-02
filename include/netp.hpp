@@ -5,7 +5,7 @@
 
 #include <netp/core.hpp>
 #include <netp/CPUID.hpp>
-#include <netp/funcs.hpp>
+#include <netp/utils.hpp>
 
 #include <netp/smart_ptr.hpp>
 #include <netp/singleton.hpp>

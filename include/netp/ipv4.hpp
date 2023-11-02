@@ -34,6 +34,14 @@ namespace netp {
 		return A.u32 != B.u32;
 	}
 
+	template <>
+    struct hash<netp::ipv4_t> {
+        inline size_t operator()(const netp::ipv4_t& v4) const {
+            return v4.u32;
+        }
+    };
+
+
 #define __netp_l2_arp_ipv4_payload_len (28)
 	typedef union __netp_l2_arp_ipv4_payload arp_ipv4_payload;
 	union __netp_l2_arp_ipv4_payload {
