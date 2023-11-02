@@ -10,14 +10,27 @@ namespace netp {
 const ipv4_t IP_LOOPBACK = { 2130706433U };
 
 #pragma pack(push,1)
-	typedef union __ip_bits ip_t;
-	union __ip_bits {
+	typedef union __ip_byte ip_byte_t;
+	using ip_t = ip_byte_t;
+	union __ip_byte {
 		ipv4_t v4;
 		ipv6_t v6;
 		netp::u8_t byte[16];
 	};
+	typedef union __ipv4_byte ipv4_byte_t;
+	union __ipv4_byte {
+		ipv4_t v4;
+		netp::u8_t byte[4];
+	};
+	typedef union __ipv6_byte ipv6_byte_t;
+	union __ipv6_byte {
+		ipv6_t v6;
+		netp::u8_t byte[16];
+	};
 #pragma pack(pop)
-	static_assert(sizeof(ip_t) == 16, "ip_bits size check");
+	static_assert(sizeof(ip_byte_t) == 16, "ip_bits_t size check");
+	static_assert(sizeof(ipv4_byte_t) == 4, "ipv4_bits_t size check");
+	static_assert(sizeof(ipv6_byte_t) == 16, "ipv6_bits_t size check");
 
 	__NETP_FORCE_INLINE
 	bool operator== (ip_t const& A, ip_t const& B) {

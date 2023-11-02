@@ -50,7 +50,7 @@ $(APP_TARGET): $(APP_ALL_O_FILES)
 	fi
 	
 	@echo "---"
-	@echo \*\* assembling $@...
+	@echo \*\* assembling $@ ...
 	@echo $(CXX) $(LINK_MISC) $^ -o $@ $(LINK_LIBS)
 	@$(CXX) -rdynamic $(LINK_MISC) $^ -o $@ $(LINK_LIBS) 
 	@echo "---"

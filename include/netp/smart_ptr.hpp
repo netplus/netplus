@@ -4,7 +4,7 @@
 #include <netp/core/compiler.hpp>
 #include <netp/exception.hpp>
 #include <netp/memory.hpp>
-#include <netp/funcs.hpp>
+#include <netp/utils.hpp>
 
 namespace netp {
 

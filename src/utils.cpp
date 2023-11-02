@@ -1,5 +1,5 @@
 #include <netp/string.hpp>
-#include <netp/funcs.hpp>
+#include <netp/utils.hpp>
 #include <netp/exception.hpp>
 #include <netp/logger_broker.hpp>
 
