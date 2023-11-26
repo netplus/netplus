@@ -45,12 +45,12 @@ __ctx_iterate_begin: \
 #define VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_0(NAME,HANDLER_FLAG) \
 	inline void fire_##NAME() const { \
 		_NETP_HANDLER_CONTEXT_ASSERT(L->in_event_loop()); \
-		NRP<channel_handler_context>_ctx = N; \
+		NRP<channel_handler_context> _ctx = N; \
 		VOID_INVOKE(NAME,HANDLER_FLAG); \
 	} \
 	inline void invoke_##NAME() { \
 		_NETP_HANDLER_CONTEXT_ASSERT(L->in_event_loop()); \
-		NRP<channel_handler_context>_ctx = NRP<channel_handler_context>(this); \
+		NRP<channel_handler_context> _ctx = NRP<channel_handler_context>(this); \
 		VOID_INVOKE(NAME,HANDLER_FLAG); \
 	}
 
@@ -61,12 +61,12 @@ __ctx_iterate_begin: \
 #define VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_INT_1(NAME,HANDLER_FLAG) \
 	inline void fire_##NAME( int i ) const { \
 		_NETP_HANDLER_CONTEXT_ASSERT(L->in_event_loop()); \
-		NRP<channel_handler_context>_ctx = N; \
+		NRP<channel_handler_context> _ctx = N; \
 		VOID_INVOKE_INT_1(NAME,HANDLER_FLAG); \
 	} \
 	inline void invoke_##NAME(int i) { \
 		_NETP_HANDLER_CONTEXT_ASSERT(L->in_event_loop()); \
-		NRP<channel_handler_context>_ctx = NRP<channel_handler_context>(this); \
+		NRP<channel_handler_context> _ctx = NRP<channel_handler_context>(this); \
 		VOID_INVOKE_INT_1(NAME,HANDLER_FLAG); \
 	} \
 
@@ -78,12 +78,12 @@ __ctx_iterate_begin: \
 #define VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_PACKET_1(NAME,HANDLER_FLAG) \
 	inline void fire_##NAME( NRP<packet> const& pkt ) const { \
 		_NETP_HANDLER_CONTEXT_ASSERT(L->in_event_loop()); \
-		NRP<channel_handler_context>_ctx = N; \
+		NRP<channel_handler_context> _ctx = N; \
 		VOID_INVOKE_PACKET(NAME,HANDLER_FLAG); \
 	} \
 	inline void invoke_##NAME( NRP<packet> const& pkt ) { \
 		_NETP_HANDLER_CONTEXT_ASSERT(L->in_event_loop()); \
-		NRP<channel_handler_context>_ctx = NRP<channel_handler_context>(this); \
+		NRP<channel_handler_context> _ctx = NRP<channel_handler_context>(this); \
 		VOID_INVOKE_PACKET(NAME,HANDLER_FLAG); \
 	} \
 
@@ -94,18 +94,18 @@ __ctx_iterate_begin: \
 #define VOID_FIRE_HANDLER_CONTEXT_IMPL_H_TO_T_PACKET_ADDR(NAME,HANDLER_FLAG) \
 	inline void fire_##NAME( NRP<packet> const& pkt, NRP<address> const& addr ) const { \
 		_NETP_HANDLER_CONTEXT_ASSERT(L->in_event_loop()); \
-		NRP<channel_handler_context>_ctx = N; \
+		NRP<channel_handler_context> _ctx = N; \
 		VOID_INVOKE_PACKET_ADDR(NAME,HANDLER_FLAG); \
 	} \
 	inline void invoke_##NAME( NRP<packet> const& pkt, NRP<address> const& addr ) { \
 		_NETP_HANDLER_CONTEXT_ASSERT(L->in_event_loop()); \
-		NRP<channel_handler_context>_ctx = NRP<channel_handler_context>(this); \
+		NRP<channel_handler_context> _ctx = NRP<channel_handler_context>(this); \
 		VOID_INVOKE_PACKET_ADDR(NAME,HANDLER_FLAG); \
 	} \
 
 //--T_TO_H--BEGIN
 #define CH_PROMISE_INVOKE_PREV_PACKET_CH_PROMISE(NAME,HANDLER_FLAG) \
-	NRP<channel_handler_context>_ctx = P; \
+	NRP<channel_handler_context> _ctx = P; \
 	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,P) \
 	_ctx->H->NAME(intp,_ctx,pkt); \
 
@@ -120,9 +120,14 @@ private:\
 	} \
 public:\
 	inline void NAME(NRP<promise<int>> const& intp, NRP<packet> const& pkt) { \
-		L->execute([ctx=NRP<channel_handler_context>(this),intp, pkt]() { \
-			ctx->__##NAME(intp,pkt); \
-		}); \
+		if(L->in_event_loop()) { \
+				/*a copy on ctx,intp, pkt might be saved*/ \
+			__##NAME(intp, pkt); \
+		} else {\
+			L->schedule([ctx=NRP<channel_handler_context>(this),intp, pkt]() { \
+				ctx->__##NAME(intp,pkt); \
+			}); \
+		}\
 	} \
 	inline NRP<promise<int>> NAME(NRP<packet> const& pkt) { \
 		NRP<promise<int>> intp = netp::make_ref<promise<int>>();\
@@ -131,7 +136,7 @@ public:\
 	} \
 
 #define CH_PROMISE_INVOKE_PREV_PACKET_ADDR_CH_PROMISE(NAME,HANDLER_FLAG) \
-	NRP<channel_handler_context>_ctx = P; \
+	NRP<channel_handler_context> _ctx = P; \
 	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,P) \
 	_ctx->H->NAME(intp,_ctx,pkt,to); \
 
@@ -146,9 +151,13 @@ private:\
 	} \
 public:\
 	inline void NAME(NRP<promise<int>> const& intp, NRP<packet> const& pkt, NRP<address> const& to) { \
-		L->execute([ctx=NRP<channel_handler_context>(this),intp, pkt, to]() { \
-			ctx->__##NAME(intp,pkt,to); \
-		}); \
+		if(L->in_event_loop()) { \
+			__##NAME(intp,pkt,to); \
+		} else { \
+			L->schedule([ctx=NRP<channel_handler_context>(this),intp, pkt, to]() { \
+				ctx->__##NAME(intp,pkt,to); \
+			}); \
+		}\
 	} \
 	inline NRP<promise<int>> NAME(NRP<packet> const& pkt, NRP<address> const& to) { \
 		NRP<promise<int>> intp = netp::make_ref<promise<int>>();\
@@ -157,7 +166,7 @@ public:\
 	} \
 
 #define CH_PROMISE_INVOKE_PREV_CH_PROMISE(NAME,HANDLER_FLAG) \
-	NRP<channel_handler_context>_ctx = P; \
+	NRP<channel_handler_context> _ctx = P; \
 	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,P) \
 	_ctx->H->NAME(intp,_ctx); \
 
@@ -172,9 +181,13 @@ private:\
 	} \
 public:\
 	inline void NAME(NRP<promise<int>> const& intp) { \
-		L->execute([ctx=NRP<channel_handler_context>(this), intp]() { \
-			ctx->__##NAME(intp); \
-		}); \
+		if(L->in_event_loop()) 	{ \
+			__##NAME(intp); \
+		} else {\
+			L->schedule([ctx = NRP<channel_handler_context>(this), intp]() { \
+				ctx->__##NAME(intp); \
+			}); \
+		}\
 	} \
 	inline NRP<promise<int>> NAME() { \
 		NRP<promise<int>> f = netp::make_ref<promise<int>>();\
@@ -183,7 +196,7 @@ public:\
 	} \
 
 #define CH_PROMISE_INVOKE_PREV(NAME,HANDLER_FLAG) \
-	NRP<channel_handler_context>_ctx = P; \
+	NRP<channel_handler_context> _ctx = P; \
 	CHANNEL_HANDLER_CONTEXT_ITERATE_CTX(HANDLER_FLAG,P) \
 	_ctx->H->NAME(_ctx); \
 

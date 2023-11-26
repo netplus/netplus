@@ -45,7 +45,7 @@ namespace netp { namespace impl {
 
 		struct interrupt_exception : public netp::exception {
 			interrupt_exception() :
-				exception(netp::E_THREAD_INTERRUPT, "thread interrupted", __FILE__, __LINE__, __FUNCTION__)
+				exception(netp::E_THREAD_INTERRUPT, __FILE__, __LINE__, __FUNCTION__,"thread interrupted")
 			{
 			}
 		};

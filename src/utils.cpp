@@ -1,5 +1,5 @@
 #include <netp/string.hpp>
-#include <netp/funcs.hpp>
+#include <netp/utils.hpp>
 #include <netp/exception.hpp>
 #include <netp/logger_broker.hpp>
 
@@ -89,11 +89,18 @@ namespace netp {
 		va_list argp;
 		va_start(argp, function);
 		char* fmt = va_arg(argp, char*);
+
+		/*
+			for the return value, refer to:
+			The functions snprintf() and vsnprintf() do not write more than size bytes (including the terminating null byte ('\0')).
+			If the output was truncated due to this limit then the return value is the number of characters (excluding the terminating null byte) which would have been written to the final string if enough space had been available. Thus, a return value of size or more means that the output was truncated. (See also below under NOTES.)
+			If an output error is encountered, a negative value is returned.
+		*/
 		int i = vsnprintf(_info, _ASSERT_INFO_MAX_LEN, fmt, argp);
 		va_end(argp);
 
-		if ((i < 0) || i > _ASSERT_INFO_MAX_LEN) {
-			throw netp::exception(netp::E_ASSERT_FAILED, "assert: call vsnprintf failed", file, line, function);
+		if ((i < 0)) {
+			throw netp::exception(netp::E_ASSERT_FAILED, file, line, function, "assert: call vsnprintf failed");
 		}
 
 		if (i == 0) {
@@ -105,8 +112,8 @@ namespace netp {
 			check, _info, file, line, function);
 
 		if ((c < 0) || c > (_ASSERT_MSG_TOTAL_LEN - i)) {
-			throw netp::exception(netp::E_ASSERT_FAILED, "assert: format failed", file, line, function);
+			throw netp::exception(netp::E_ASSERT_FAILED, file, line, function, "assert: format failed");
 		}
-		throw netp::exception(netp::E_ASSERT_FAILED, _message, file, line, function);
+		throw netp::exception(netp::E_ASSERT_FAILED, file, line, function, _message);
 	}
 }

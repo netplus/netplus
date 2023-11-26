@@ -405,6 +405,12 @@ int socket_base::get_left_snd_queue() const {
 		return socket_accept_impl(raddr, laddr);
 	}
 
+	/*
+	 * dial_f->if_done() always happens before fire_connected
+	 * fire_error might happens before fire_connected if we have multiple handlers in the pipe
+	 *		handler1 -> fire_connected -> handshake failed -> fire_error -> read handler2
+	 *		handler1 -> fire_connected -> handshake ok -> fire_connected -> reach handler2
+	 */
 	void socket_channel::__do_io_dial_done(fn_channel_initializer_t const& fn_initializer, NRP<promise<int>> const& dialp_, int status, io_ctx*) {
 		NETP_ASSERT(L->in_event_loop());
 		NRP<promise<int>> dialp = dialp_;

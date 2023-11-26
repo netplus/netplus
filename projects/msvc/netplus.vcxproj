@@ -272,7 +272,6 @@
     <ClCompile Include="..\..\src\CPUID.cpp" />
     <ClCompile Include="..\..\src\dns_resolver.cpp" />
     <ClCompile Include="..\..\src\exception.cpp" />
-    <ClCompile Include="..\..\src\funcs.cpp" />
     <ClCompile Include="..\..\src\handler\hlen.cpp" />
     <ClCompile Include="..\..\src\handler\http.cpp" />
     <ClCompile Include="..\..\src\handler\tls_client.cpp" />
@@ -307,6 +306,7 @@
     <ClCompile Include="..\..\src\thread.cpp" />
     <ClCompile Include="..\..\src\thread_impl\mutex.cpp" />
     <ClCompile Include="..\..\src\timer.cpp" />
+    <ClCompile Include="..\..\src\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\3rd\c-ares\c-ares-1.19.0\src\lib\ares_config.h.cmake" />
