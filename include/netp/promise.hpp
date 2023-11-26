@@ -12,10 +12,10 @@
 namespace netp {
 
 	class promise_exception:
-		public exception
+		public netp::exception
 	{
 		promise_exception( int const& code, std::string const& reason ) :
-			exception(code, reason.c_str(), __FILE__, __LINE__, __FUNCTION__)
+			exception(code, __FILE__, __LINE__, __FUNCTION__, reason.c_str())
 		{
 		}
 	};

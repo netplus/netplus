@@ -590,9 +590,6 @@
     <ClCompile Include="..\..\src\exception.cpp">
       <Filter>Source Files\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\funcs.cpp">
-      <Filter>Source Files\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\event_loop.cpp">
       <Filter>Source Files\src</Filter>
     </ClCompile>
@@ -886,6 +883,9 @@
     </ClCompile>
     <ClCompile Include="..\..\3rd\c-ares\c-ares-1.19.0\src\lib\windows_port.c">
       <Filter>3rd\c-ares\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\utils.cpp">
+      <Filter>Source Files\src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -13,7 +13,7 @@ namespace netp {
 		public netp::exception
 	{
 		weak_ptr_lock_faild():
-			exception(netp::E_MEMORY_ACCESS_ERROR,"weak_ptr_lock_failed", __FILE__, __LINE__,__FUNCTION__)
+			exception(netp::E_MEMORY_ACCESS_ERROR, __FILE__, __LINE__,__FUNCTION__,"weak_ptr_lock_failed")
 		{
 		}
 	};
@@ -22,7 +22,7 @@ namespace netp {
 		public netp::exception
 	{
 		sp_counter_impl_malloc_failed():
-			exception(netp::E_MEMORY_ALLOC_FAILED, "sp_counter_impl_malloc_failed", __FILE__, __LINE__,__FUNCTION__)
+			exception(netp::E_MEMORY_ALLOC_FAILED, __FILE__, __LINE__,__FUNCTION__, "sp_counter_impl_malloc_failed")
 		{}
 	};
 	

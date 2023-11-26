@@ -22,7 +22,7 @@ namespace netp {
 		public netp::exception
 	{
 		event_broker_invoke_nest_level_limit_exception() :
-			exception(netp::E_EVENT_BROKER_INVOKE_NEST_LEVEL_LIMIT, "event_broker_invoke_nest_level_limit_exception", __FILE__, __LINE__, __FUNCTION__)
+			exception(netp::E_EVENT_BROKER_INVOKE_NEST_LEVEL_LIMIT, __FILE__, __LINE__, __FUNCTION__, "event_broker_invoke_nest_level_limit_exception")
 		{
 		}
 	};
@@ -31,7 +31,7 @@ namespace netp {
 		public netp::exception
 	{
 		event_broker_bind_multi_callee_exception():
-			exception(netp::E_EVENT_BROKER_BIND_MULTI_CALLEE, "event_broker_bind_multi_callee_exception", __FILE__, __LINE__, __FUNCTION__)
+			exception(netp::E_EVENT_BROKER_BIND_MULTI_CALLEE, __FILE__, __LINE__, __FUNCTION__, "event_broker_bind_multi_callee_exception")
 		{
 		}
 	};

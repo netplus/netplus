@@ -8,14 +8,14 @@
 	#define _NETP_HAS_EXECINFO_H
 #endif
 
-#define NETP_EXCEPTION_MESSAGE_LENGTH_LIMIT 1024
+#define NETP_EXCEPTION_MESSAGE_LENGTH_LIMIT 4096
 #define NETP_EXCEPTION_FILE_LENGTH_LIMIT 512
 #define NETP_EXCEPTION_FUNC_LENGTH_LIMIT 512
 
 namespace netp {
 
 	extern void stack_trace( char* stack_buffer, u32_t s );
-
+	
 	class exception;
 	void __NETP_EXCEPTION_INIT__(netp::exception* e, int code_, char const* const sz_message_, char const* const sz_file_, int line_, char const* const sz_func_, char* stack_info_);
 
@@ -36,7 +36,7 @@ namespace netp {
 
 		friend void __NETP_EXCEPTION_INIT__(netp::exception* e, int code_, char const* const sz_message_, char const* const sz_file_, int line_, char const* sz_func_, char* stack_info_);
 	public:
-		explicit exception(int code, char const* const sz_message_, char const* const sz_file_ , int const& line_ , char const* const sz_func_ );
+		explicit exception(int code, char const* const sz_file_ , int const& line_ , char const* const sz_func_ , ...);
 		virtual ~exception();
 
 		exception(exception const& other);
@@ -62,11 +62,12 @@ namespace netp {
 			return _callstack;
 		}
 	};
+
 }
 
-#define NETP_THROW2(code,msg) throw netp::exception(code,msg,__FILE__, __LINE__,__FUNCTION__ );
-#define NETP_THROW(msg) NETP_THROW2(netp::E_NETP_THROW,msg)
-#define NETP_TODO(msg) NETP_THROW2(netp::E_TODO, "TODO:" #msg)
+#define NETP_THROW2(code,...) throw netp::exception(code,__FILE__, __LINE__,__FUNCTION__,__VA_ARGS__)
+#define NETP_THROW(...) NETP_THROW2(netp::E_NETP_THROW,__VA_ARGS__)
+#define NETP_TODO(...) NETP_THROW2(netp::E_TODO,__VA_ARGS__)
 
 #define NETP_CONDITION_CHECK(statement) \
 	do { \

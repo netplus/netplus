@@ -10,7 +10,7 @@ namespace netp {
 	class bad_cast: public netp::exception {
 		public:
 			bad_cast():
-				exception(netp::E_BAD_CAST, "bad cast", __FILE__, __LINE__, __FUNCTION__)
+				exception(netp::E_BAD_CAST, __FILE__, __LINE__, __FUNCTION__, "bad cast" )
 			{}
 	};
 

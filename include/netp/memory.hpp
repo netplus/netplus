@@ -641,7 +641,7 @@ namespace netp {
 		public netp::exception
 	{
 		memory_alloc_failed(netp::size_t const& size, const char* const file, const int line, const char* const func) :
-			exception(netp_last_errno(), "", file, line, func)
+			exception(netp_last_errno(), file, line, func, "")
 		{
 			::memset(_message, 0, NETP_EXCEPTION_MESSAGE_LENGTH_LIMIT);
 			int rt = snprintf(_message, NETP_EXCEPTION_MESSAGE_LENGTH_LIMIT, "memory alloc failed, alloc size: %zu", size);
