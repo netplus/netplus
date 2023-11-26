@@ -661,7 +661,7 @@ namespace netp {
 	}
 
 	static
-	void test_v4_mask_by_cidr() {
+	void test_v4_mask_by_prefix() {
 		netp::ipv4_t iplist[33];
 		int j = 0;
 		netp::ipv4_t v4;
@@ -679,12 +679,12 @@ namespace netp {
 
 		for (netp::u8_t i = 0; i < (sizeof(iplist) / sizeof(iplist[0])); ++i) {
 			NETP_ASSERT(i <= 32);
-			NETP_ASSERT(netp::v4_mask_by_cidr(&v4mask, i) == (iplist[i]));
+			NETP_ASSERT(netp::v4_mask_by_prefix(&v4mask, i) == (iplist[i]));
 		}
 	}
 
 	static 
-	void test_v6_mask_by_cidr()
+	void test_v6_mask_by_prefix()
 	{
 		netp::ipv6_t iplist[129];
 		int j = 0;
@@ -720,7 +720,7 @@ namespace netp {
 
 		for (netp::u8_t i = 0; i < (sizeof(iplist) / sizeof(iplist[0])); ++i) {
 			NETP_ASSERT(i <= 128);
-			NETP_ASSERT(netp::v6_mask_by_cidr(&v6mask, i) == (iplist[i]));
+			NETP_ASSERT(netp::v6_mask_by_prefix(&v6mask, i) == (iplist[i]));
 		}
 	}
 
@@ -737,8 +737,8 @@ namespace netp {
 			NETP_ASSERT(is_internal(v4));
 		}
 
-		test_v4_mask_by_cidr();
-		test_v6_mask_by_cidr();
+		test_v4_mask_by_prefix();
+		test_v6_mask_by_prefix();
 	}
 
 	void app_test_unit::benchmark_hash() {
