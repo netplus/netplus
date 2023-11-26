@@ -70,27 +70,27 @@ namespace netp {
 
 	//https://en.cppreference.com/w/c/language/operator_arithmetic
 	//192.168.0.x/24 -> 192.168.0.0
-	netp::ipv4_t v4_mask_by_cidr(const netp::ipv4_t* const v4, netp::u8_t cidr) {
-		if (cidr == 0) {//x<<32 on ul is UB
+	netp::ipv4_t v4_mask_by_prefix(const netp::ipv4_t* const v4, netp::u8_t prefix) {
+		if (prefix == 0) {//x<<32 on ul is UB
 			return netp::ipv4_t{ 0 };
-		} else if (cidr <= 32) {
-			return { (v4->u32 & (netp::u32_t)(((0xfffffffful) << (32 - cidr)))) };
+		} else if (prefix <= 32) {
+			return { (v4->u32 & (netp::u32_t)(((0xfffffffful) << (32 - prefix)))) };
 		} else {
 			return (*v4);
 		}
 	}
 	
-	netp::ipv6_t v6_mask_by_cidr(const netp::ipv6_t* const v6_, netp::u8_t cidr) {
+	netp::ipv6_t v6_mask_by_prefix(const netp::ipv6_t* const v6_, netp::u8_t prefix) {
 		netp::ipv6_t v6;
-		if (cidr == 0) {//x<<64 is UB
+		if (prefix == 0) {//x<<64 is UB
 			v6.u64.A = 0;
 			v6.u64.B = 0;
-		} else if (cidr <= 64) {
-			v6.u64.A = (v6_->u64.A & (0xffffffffffffffffull << (64 - cidr)));
+		} else if (prefix <= 64) {
+			v6.u64.A = (v6_->u64.A & (0xffffffffffffffffull << (64 - prefix)));
 			v6.u64.B = 0;
-		} else if (cidr <= 128) {
+		} else if (prefix <= 128) {
 			v6.u64.A = v6_->u64.A;
-			v6.u64.B = (v6_->u64.B & (0xffffffffffffffffull << (128 - cidr)));
+			v6.u64.B = (v6_->u64.B & (0xffffffffffffffffull << (128 - prefix)));
 		} else {
 			v6 = (*v6_);
 		}
@@ -98,7 +98,7 @@ namespace netp {
 	}
 
 	//ip/cidr: 192.168.0.0/16, 1234:0000:2d00:0000:0000:123:73:26b1/64
-	int ip_from_cidr_string(const char* cidr_string, netp::ip_t* const ipbits/*stored in network endian*/, netp::u8_t* cidr, bool isv6) {
+	int ip_from_cidr_string(const char* cidr_string, netp::ip_t* const ipbits/*stored in network endian*/, netp::u8_t* prefix, bool isv6) {
 		std::vector<netp::string_t, netp::allocator<netp::string_t>> cidrstr_;
 		netp::split<netp::string_t>(netp::string_t(cidr_string, netp::strlen(cidr_string)), netp::string_t("/"), cidrstr_);
 		if (cidrstr_.size() != 2) {
@@ -106,10 +106,10 @@ namespace netp {
 		}
 		if (isv6) {
 			(ipbits->v6) = netp::v6stringtonip(cidrstr_[0].c_str());
-			(*cidr) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
+			(*prefix) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
 		} else {
 			(ipbits->v4) = netp::dotiptonip(cidrstr_[0].c_str());
-			(*cidr) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
+			(*prefix) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
 		}
 		return netp::OK;
 	}
