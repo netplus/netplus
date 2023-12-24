@@ -9,6 +9,11 @@ namespace netp {
 
 const ipv4_t IP_LOOPBACK = { 2130706433U };
 
+enum ip_version {
+	v4 = 4,
+	v6 = 6
+};
+
 #pragma pack(push,1)
 	typedef union __ip_byte ip_byte_t;
 	using ip_t = ip_byte_t;
@@ -40,6 +45,12 @@ const ipv4_t IP_LOOPBACK = { 2130706433U };
 	bool operator!= (ip_t const& A, ip_t const& B) {
 		return std::memcmp(A.byte, B.byte, 16) != 0;
 	}
+
+	extern string_t niptostring(ip_version vx, ip_t const& ip);
+	extern string_t iptostring(ip_version vx, ip_t const& ip);
+
+	extern ip_t stringtonip(ip_version vx, const char* string);
+	extern ip_t stringtoip(ip_version vx, const char* string);
 
 	extern ipv4_t dotiptonip(const char* dotip);
 	extern ipv4_t dotiptoip(const char* dotip);
@@ -167,7 +178,8 @@ const ipv4_t IP_LOOPBACK = { 2130706433U };
 
 	extern netp::ipv4_t v4_mask_by_prefix(const netp::ipv4_t* const v4, netp::u8_t prefix);
 	extern netp::ipv6_t v6_mask_by_prefix(const netp::ipv6_t* const v6, netp::u8_t prefix);
-	extern int ip_from_cidr_string(const char* cidrstr, netp::ip_t* const ipbits/*stored in network endian*/, netp::u8_t* prefix, bool isv6);
+	extern int ip_from_cidr_string(netp::ip_version vx, const char* cidrstr, netp::ip_t* const ip/*stored in host endian*/, netp::u8_t* prefix );
+	extern int nip_from_cidr_string(netp::ip_version vx, const char* cidrstr, netp::ip_t* const ip/*stored in network endian*/, netp::u8_t* prefix );
 }
 
 #endif
