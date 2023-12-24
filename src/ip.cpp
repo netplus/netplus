@@ -2,6 +2,61 @@
 #include <netp/ip.hpp>
 
 namespace netp {
+
+	string_t niptostring(ip_version vx, ip_t const& ip)
+	{
+		if(ip_version::v4 == vx)
+		{
+			return nipv4todotip(ip.v4);
+		}
+		else if(ip_version::v6 == vx)
+		{
+			return nipv6tov6string(ip.v6);
+		}
+		return "";
+	}
+
+	string_t iptostring(ip_version vx, ip_t const& ip) 
+	{
+		if(ip_version::v4 == vx)
+		{
+			return ipv4todotip(ip.v4);
+		}
+		else if(ip_version::v6 == vx)
+		{
+			return ipv6tov6string(ip.v6);
+		}
+		
+		return "";
+	}
+
+	ip_t stringtonip(ip_version vx, const char* string)
+	{
+		ip_t _ip = {0};
+		if( ip_version::v4 == vx )
+		{
+			_ip.v4 = dotiptonip(string);
+		}
+		else if(ip_version::v6 == vx)
+		{
+			_ip.v6 = v6stringtonip(string);
+		}
+		return _ip;
+	}
+	ip_t stringtoip(ip_version vx, const char* string)
+	{
+		ip_t _ip = {0};
+		if( ip_version::v4 == vx )
+		{
+			_ip.v4 = dotiptoip(string);
+		}
+		else if(ip_version::v6 == vx)
+		{
+			_ip.v6 = v6stringtoip(string);
+		}
+		return _ip;
+	}
+
 	ipv4_t dotiptonip(const char* ipaddr) {
 		NETP_ASSERT(strlen(ipaddr) > 0);
 		struct in_addr in4;
@@ -98,19 +153,28 @@ namespace netp {
 	}
 
 	//ip/cidr: 192.168.0.0/16, 1234:0000:2d00:0000:0000:123:73:26b1/64
-	int ip_from_cidr_string(const char* cidr_string, netp::ip_t* const ipbits/*stored in network endian*/, netp::u8_t* prefix, bool isv6) {
+	int ip_from_cidr_string(netp::ip_version vx,const char* cidr_string, netp::ip_t* const ipbits/*stored in host endian*/, netp::u8_t* prefix) {
 		std::vector<netp::string_t, netp::allocator<netp::string_t>> cidrstr_;
 		netp::split<netp::string_t>(netp::string_t(cidr_string, netp::strlen(cidr_string)), netp::string_t("/"), cidrstr_);
 		if (cidrstr_.size() != 2) {
 			return netp::E_OP_INVALID_ARG;
 		}
-		if (isv6) {
-			(ipbits->v6) = netp::v6stringtonip(cidrstr_[0].c_str());
-			(*prefix) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
-		} else {
-			(ipbits->v4) = netp::dotiptonip(cidrstr_[0].c_str());
-			(*prefix) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
+
+		*ipbits = stringtoip(vx, cidrstr_[0].c_str());
+		(*prefix) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
+		return netp::OK;
+	}
+
+	//ip/cidr: 192.168.0.0/16, 1234:0000:2d00:0000:0000:123:73:26b1/64
+	int nip_from_cidr_string(netp::ip_version vx, const char* cidr_string, netp::ip_t* const ipbits/*stored in network endian*/, netp::u8_t* prefix) {
+		std::vector<netp::string_t, netp::allocator<netp::string_t>> cidrstr_;
+		netp::split<netp::string_t>(netp::string_t(cidr_string, netp::strlen(cidr_string)), netp::string_t("/"), cidrstr_);
+		if (cidrstr_.size() != 2) {
+			return netp::E_OP_INVALID_ARG;
 		}
+
+		*ipbits = stringtonip(vx, cidrstr_[0].c_str());
+		(*prefix) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
 		return netp::OK;
 	}
 }
