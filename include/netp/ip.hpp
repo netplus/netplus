@@ -52,6 +52,9 @@ enum ip_version {
 	extern ip_t stringtonip(ip_version vx, const char* string);
 	extern ip_t stringtoip(ip_version vx, const char* string);
 
+	extern ip_t iptonip(ip_version vx, ip_t const& ip);
+	extern ip_t niptoip(ip_version vx, ip_t const& ip);
+
 	extern ipv4_t dotiptonip(const char* dotip);
 	extern ipv4_t dotiptoip(const char* dotip);
 

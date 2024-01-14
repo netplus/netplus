@@ -57,6 +57,34 @@ namespace netp {
 		return _ip;
 	}
 
+	ip_t iptonip(ip_version vx, ip_t const& ip)
+	{
+		ip_t _ip = {0};
+		if(ip_version::v4 == vx)
+		{
+			_ip.v4 = ipv4tonipv4(ip.v4);
+		}
+		else if(ip_version::v6 == vx)
+		{
+			_ip.v6 = ipv6tonipv6(ip.v6);
+		}
+		return _ip;
+	}
+
+	ip_t niptoip(ip_version vx, ip_t const& ip)
+	{
+		ip_t _ip = {0};
+		if(ip_version::v4 == vx)
+		{
+			_ip.v4 = nipv4toipv4(ip.v4);
+		}
+		else if(ip_version::v6 == vx)
+		{
+			_ip.v6 = nipv6toipv6(ip.v6);
+		}
+		return _ip;
+	}
+
 	ipv4_t dotiptonip(const char* ipaddr) {
 		NETP_ASSERT(strlen(ipaddr) > 0);
 		struct in_addr in4;
