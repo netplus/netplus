@@ -272,7 +272,6 @@
     <ClCompile Include="..\..\src\CPUID.cpp" />
     <ClCompile Include="..\..\src\dns_resolver.cpp" />
     <ClCompile Include="..\..\src\exception.cpp" />
-    <ClCompile Include="..\..\src\handler\hlen.cpp" />
     <ClCompile Include="..\..\src\handler\http.cpp" />
     <ClCompile Include="..\..\src\handler\tls_client.cpp" />
     <ClCompile Include="..\..\src\handler\tls_handler.cpp" />

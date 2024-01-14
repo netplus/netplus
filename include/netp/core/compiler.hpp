@@ -138,18 +138,26 @@
 
 namespace netp {
 	typedef signed char				i8_t;
-	typedef short							i16_t;
-	typedef int								i32_t;
-	typedef long long					i64_t;
+	typedef short					i16_t;
+	typedef int						i32_t;
+	typedef long long				i64_t;
 	typedef unsigned char			u8_t;
 	typedef unsigned short			u16_t;
-	typedef unsigned int				u32_t;
-	typedef unsigned long long	u64_t;
+	typedef unsigned int			u32_t;
+	typedef unsigned long long		u64_t;
 	typedef unsigned char			byte_t;
-	typedef long							long_t;
+	typedef long					long_t;
 	typedef unsigned long			ulong_t;
 
 	#define NETP_SIZEOF_ULONG (sizeof(ulong_t))
+
+	#ifdef _NETP_AMW64
+		typedef long int			intptr_t;
+		typedef unsigned long int	uintptr_t;
+	#else
+		typedef int					intptr_t;
+		typedef unsigned int		uintptr_t;
+	#endif
 }
 
 #endif
