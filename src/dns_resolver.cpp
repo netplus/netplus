@@ -125,6 +125,7 @@ namespace netp {
 	void dns_resolver::_do_add_name_server() {
 		NETP_ASSERT(L->in_event_loop());
 		std::for_each(m_ns.begin(), m_ns.end(), [&](netp::string_t const& serv) {
+			(void) serv;
 			NETP_VERBOSE("[dns_resolver]add dns serv: %s", serv.c_str());
 		});
 	}

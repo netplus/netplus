@@ -1232,6 +1232,7 @@ template<class _Ty COMMA LIST(_CLASS_TYPE)> \
 //#define NETP_REF_PTR netp::ref_ptr
 #define NRP netp::ref_ptr
 
+
 namespace std {
 	//---atomic override
 	//std::atomic_thread_fence

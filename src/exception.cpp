@@ -210,7 +210,7 @@ namespace netp {
 		_callstack(0)
 	{
 		/*@TODO: optimize memory usage for message slot*/
-		char _message[NETP_EXCEPTION_MESSAGE_LENGTH_LIMIT] = { 0 };
+		char __message[NETP_EXCEPTION_MESSAGE_LENGTH_LIMIT] = { 0 };
 		va_list argp;
 		va_start(argp, sz_func_);
 		/*
@@ -219,12 +219,12 @@ namespace netp {
 			If the output was truncated due to this limit then the return value is the number of characters (excluding the terminating null byte) which would have been written to the final string if enough space had been available. Thus, a return value of size or more means that the output was truncated. (See also below under NOTES.)
 			If an output error is encountered, a negative value is returned.
 		*/
-		int i = vsnprintf(_message, NETP_EXCEPTION_MESSAGE_LENGTH_LIMIT, va_arg(argp, char*), argp);
+		int i = vsnprintf(__message, NETP_EXCEPTION_MESSAGE_LENGTH_LIMIT, va_arg(argp, char*), argp);
 		va_end(argp);
 
-		_callstack = (char*) std::malloc( sizeof(char)*NETP_EXCEPTION_STACK_INFO_SIZE_MAX);
+		_callstack = (char*) std::malloc( sizeof(char)*NETP_EXCEPTION_STACK_INFO_SIZE_MAX );
 		stack_trace(_callstack, NETP_EXCEPTION_STACK_INFO_SIZE_MAX);
-		__NETP_EXCEPTION_INIT__(this, code_, _message, sz_file_, line_, sz_func_, _callstack);
+		__NETP_EXCEPTION_INIT__(this, code_, __message, sz_file_, line_, sz_func_, _callstack);
 	}
 
 	exception::~exception() {

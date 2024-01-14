@@ -617,9 +617,6 @@
     <ClCompile Include="..\..\3rd\stack_walker\StackWalker.cpp">
       <Filter>3rd\stack_walker</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\handler\hlen.cpp">
-      <Filter>Source Files\src\handler</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\handler\http.cpp">
       <Filter>Source Files\src\handler</Filter>
     </ClCompile>
