@@ -32,13 +32,14 @@ namespace netp {
 			// 1) len across two packets
 			if (in_ && in_->len()) {
 				m_in_q_nbytes += in_->len();
+				//NETP_VERBOSE("[util_hlen] in_->len(): %d, m_in_qu_nbytes: %d, m_in_q.size(): %d", in_->len(), m_in_q_nbytes , (m_in_q.size()+1) );
 				m_in_q.emplace_back(std::move(in_));
 			}
 
 		__label_m_in_q:
 			while (m_in_q_nbytes != 0) {
 #ifdef _NETP_DEBUG
-				NETP_ASSERT(m_in_q.size());
+				NETP_ASSERT(m_in_q.size(),"m_in_q_nbytes: %u", m_in_q_nbytes);
 #endif
 				NRP<netp::packet>& in = m_in_q.front();
 				switch (m_state) {
@@ -82,8 +83,9 @@ namespace netp {
 					if (m_in_q_nbytes < m_size) {
 						return false;
 					}
-					const hlen_util_size_t inlen = hlen_util_size_t(in->len());
-					const hlen_util_size_t to_write = (inlen > m_size ? m_size : inlen);
+
+					const netp::u32_t inlen = in->len();
+					const netp::u32_t to_write = (inlen > m_size ? m_size : inlen);
 
 					if (m_pkt_tmp == nullptr) {
 						if ( (inlen<=m_size) && (inlen+in->left_right_capacity()) >= m_size) {
@@ -121,7 +123,7 @@ __label_skip_nbytes:
 		}
 
 		__NETP_FORCE_INLINE
-			void encode(NRP<netp::packet> const& pkt) {
+		void encode(NRP<netp::packet> const& pkt) {
 #ifdef _NETP_DEBUG
 			NETP_ASSERT(pkt->len() <= hlen_util_size_t(-1));
 #endif
