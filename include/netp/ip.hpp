@@ -180,7 +180,11 @@ enum ip_version {
 	}
 
 	extern void v4_mask_by_prefix( netp::ipv4_t* const v4, netp::u8_t prefix);
+	extern void v4_mask_by_prefix( netp::ipv4_t* const v4, netp::u8_t prefix, int* host);
+
 	extern void v6_mask_by_prefix( netp::ipv6_t* const v6, netp::u8_t prefix);
+	extern void v6_mask_by_prefix( netp::ipv6_t* const v6, netp::u8_t prefix, int* host);
+
 	extern int ip_from_cidr_string(netp::ip_version vx, const char* cidrstr, netp::ip_t* const ip/*stored in host endian*/, netp::u8_t* prefix );
 	extern int nip_from_cidr_string(netp::ip_version vx, const char* cidrstr, netp::ip_t* const ip/*stored in network endian*/, netp::u8_t* prefix );
 }

@@ -216,7 +216,7 @@ namespace netp {
 			if (param.length() == 0) {
 				return -1;
 			}
-			for (int i = 0; i < (sizeof(long_options) / sizeof(long_options[0])); ++i) {
+			for (size_t i = 0; i < (sizeof(long_options) / sizeof(long_options[0])); ++i) {
 				if (long_options[i].name == 0) { continue; }
 				if (netp::strcmp(param.c_str(), long_options[i].name) == 0) {
 					mode_fetch_val = long_options[i].val;

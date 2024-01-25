@@ -153,7 +153,7 @@ namespace netp {
 
 	//https://en.cppreference.com/w/c/language/operator_arithmetic
 	//192.168.0.x/24 -> 192.168.0.0
-	void v4_mask_by_prefix( netp::ipv4_t* const v4 /*in network endian*/, netp::u8_t prefix) {
+	void v4_mask_by_prefix( netp::ipv4_t* const v4 /*in host endian*/, netp::u8_t prefix) {
 		if (prefix == 0) {//x<<32 on ul is UB
 			v4->u32 = 0;
 		} else if (prefix <= 32) {
@@ -163,8 +163,16 @@ namespace netp {
 			(void) (*v4);
 		}
 	}
-	
-	void v6_mask_by_prefix( netp::ipv6_t* const v6_ /*in network endian*/, netp::u8_t prefix) {
+
+	void v4_mask_by_prefix( netp::ipv4_t* const v4 /*in host endian*/, netp::u8_t prefix, int* host) {
+		if( host != 0)
+		{
+			*host = (v4->u32 & (netp::u32_t)(((0xfffffffful) >> (32-prefix))));
+		}
+		v4_mask_by_prefix(v4,prefix);
+	}
+
+	void v6_mask_by_prefix( netp::ipv6_t* const v6_ /*in host endian*/, netp::u8_t prefix) {
 		if (prefix == 0) {//x<<64 is UB
 			v6_->u64.A = 0;
 			v6_->u64.B = 0;
@@ -177,6 +185,16 @@ namespace netp {
 			/*do nothing*/
 			(void) (*v6_);
 		}
+	}
+
+	
+	void v6_mask_by_prefix( netp::ipv6_t* const v6_ /*in host endian*/, netp::u8_t prefix, int* host) {
+		if(host != 0)
+		{
+			/*not supported for now*/
+			*host = 0;
+		}
+		v6_mask_by_prefix(v6_, prefix);
 	}
 
 	//ip/cidr: 192.168.0.0/16, 1234:0000:2d00:0000:0000:123:73:26b1/64
