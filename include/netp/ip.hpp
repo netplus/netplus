@@ -179,8 +179,8 @@ enum ip_version {
 		return __is_internal_or_shared(v4_);
 	}
 
-	extern netp::ipv4_t v4_mask_by_prefix(const netp::ipv4_t* const v4, netp::u8_t prefix);
-	extern netp::ipv6_t v6_mask_by_prefix(const netp::ipv6_t* const v6, netp::u8_t prefix);
+	extern void v4_mask_by_prefix( netp::ipv4_t* const v4, netp::u8_t prefix);
+	extern void v6_mask_by_prefix( netp::ipv6_t* const v6, netp::u8_t prefix);
 	extern int ip_from_cidr_string(netp::ip_version vx, const char* cidrstr, netp::ip_t* const ip/*stored in host endian*/, netp::u8_t* prefix );
 	extern int nip_from_cidr_string(netp::ip_version vx, const char* cidrstr, netp::ip_t* const ip/*stored in network endian*/, netp::u8_t* prefix );
 }
