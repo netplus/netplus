@@ -5,6 +5,11 @@ namespace netp {
 
 	int parse_socket_url(const char* url, size_t len, socket_url_parse_info& info) {
 		std::vector<string_t> _arr;
+		if(url == 0 || netp::strlen(url) == 0 )
+		{
+			return netp::E_SOCKET_INVALID_ADDRESS;
+		}
+		
 		netp::split<string_t>(string_t(url, len), ":", _arr);
 		if (_arr.size() != 3) {
 			return netp::E_SOCKET_INVALID_ADDRESS;

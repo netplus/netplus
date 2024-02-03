@@ -212,7 +212,7 @@ namespace netp {
 					NETP_EVT_BROKER_ASSERT((cur->flag & (evt_node_flag::f_insert_pending)) == 0);
 					NETP_EVT_BROKER_ASSERT(evt_hl->ref_cnt == 1 );
 					netp::list_delete(cur);
-					evt_node_deallocate(cur);
+					evt_node_deallocate(cur);  
 				}
 
 				NETP_EVT_BROKER_ASSERT( evt_hl->ref_cnt == 1 );

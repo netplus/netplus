@@ -164,10 +164,10 @@ namespace netp {
 		}
 	}
 
-	void v4_mask_by_prefix( netp::ipv4_t* const v4 /*in host endian*/, netp::u8_t prefix, int* host) {
+	void v4_mask_by_prefix( netp::ipv4_t* const v4 /*in host endian*/, netp::u8_t prefix, netp::u32_t* host) {
 		if( host != 0)
 		{
-			*host = (v4->u32 & (netp::u32_t)(((0xfffffffful) >> (32-prefix))));
+			*host = (v4->u32 & (netp::u32_t)(((0xfffffffful) >> (prefix))));
 		}
 		v4_mask_by_prefix(v4,prefix);
 	}
@@ -188,7 +188,7 @@ namespace netp {
 	}
 
 	
-	void v6_mask_by_prefix( netp::ipv6_t* const v6_ /*in host endian*/, netp::u8_t prefix, int* host) {
+	void v6_mask_by_prefix( netp::ipv6_t* const v6_ /*in host endian*/, netp::u8_t prefix, netp::u32_t* host) {
 		if(host != 0)
 		{
 			/*not supported for now*/
@@ -197,29 +197,82 @@ namespace netp {
 		v6_mask_by_prefix(v6_, prefix);
 	}
 
-	//ip/cidr: 192.168.0.0/16, 1234:0000:2d00:0000:0000:123:73:26b1/64
-	int ip_from_cidr_string(netp::ip_version vx,const char* cidr_string, netp::ip_t* const ipbits/*stored in host endian*/, netp::u8_t* prefix) {
+	int v4_from_cidr_string(const char* cidrstr, netp::ipv4_t* const v4/*stored in host endian*/, netp::u8_t* prefix)
+	{
 		std::vector<netp::string_t, netp::allocator<netp::string_t>> cidrstr_;
-		netp::split<netp::string_t>(netp::string_t(cidr_string, netp::strlen(cidr_string)), netp::string_t("/"), cidrstr_);
+		netp::split<netp::string_t>(netp::string_t(cidrstr, netp::strlen(cidrstr)), netp::string_t("/"), cidrstr_);
 		if (cidrstr_.size() != 2) {
 			return netp::E_OP_INVALID_ARG;
 		}
 
-		*ipbits = stringtoip(vx, cidrstr_[0].c_str());
+		*v4 = dotiptoip(cidrstr_[0].c_str());
+		(*prefix) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
+		return netp::OK;
+	}
+
+	int nv4_from_cidr_string(const char* cidrstr, netp::ipv4_t* const v4/*stored in network endian*/, netp::u8_t* prefix)
+	{
+		std::vector<netp::string_t, netp::allocator<netp::string_t>> cidrstr_;
+		netp::split<netp::string_t>(netp::string_t(cidrstr, netp::strlen(cidrstr)), netp::string_t("/"), cidrstr_);
+		if (cidrstr_.size() != 2) {
+			return netp::E_OP_INVALID_ARG;
+		}
+
+		*v4 = dotiptonip(cidrstr_[0].c_str());
+		(*prefix) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
+		return netp::OK;
+	}
+
+	int v6_from_cidr_string(const char* cidrstr, netp::ipv6_t* const v6/*stored in host endian*/, netp::u8_t* prefix)
+	{
+		std::vector<netp::string_t, netp::allocator<netp::string_t>> cidrstr_;
+		netp::split<netp::string_t>(netp::string_t(cidrstr, netp::strlen(cidrstr)), netp::string_t("/"), cidrstr_);
+		if (cidrstr_.size() != 2) {
+			return netp::E_OP_INVALID_ARG;
+		}
+
+		*v6 = v6stringtoip(cidrstr_[0].c_str());
+		(*prefix) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
+		return netp::OK;
+	}
+	int nv6_from_cidr_string(const char* cidrstr, netp::ipv6_t* const v6/*stored in network endian*/, netp::u8_t* prefix)
+	{
+		std::vector<netp::string_t, netp::allocator<netp::string_t>> cidrstr_;
+		netp::split<netp::string_t>(netp::string_t(cidrstr, netp::strlen(cidrstr)), netp::string_t("/"), cidrstr_);
+		if (cidrstr_.size() != 2) {
+			return netp::E_OP_INVALID_ARG;
+		}
+
+		*v6 = v6stringtonip(cidrstr_[0].c_str());
 		(*prefix) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
 		return netp::OK;
 	}
 
 	//ip/cidr: 192.168.0.0/16, 1234:0000:2d00:0000:0000:123:73:26b1/64
-	int nip_from_cidr_string(netp::ip_version vx, const char* cidr_string, netp::ip_t* const ipbits/*stored in network endian*/, netp::u8_t* prefix) {
-		std::vector<netp::string_t, netp::allocator<netp::string_t>> cidrstr_;
-		netp::split<netp::string_t>(netp::string_t(cidr_string, netp::strlen(cidr_string)), netp::string_t("/"), cidrstr_);
-		if (cidrstr_.size() != 2) {
-			return netp::E_OP_INVALID_ARG;
+	int ip_from_cidr_string(netp::ip_version vx,const char* cidr_string, netp::ip_t* const ipbits/*stored in host endian*/, netp::u8_t* prefix) {
+		int rt;
+		if(ip_version::v4 == vx)
+		{
+			rt = v4_from_cidr_string(cidr_string, &ipbits->v4, prefix);
 		}
+		else if(ip_version::v6 == vx)
+		{
+			rt = v6_from_cidr_string(cidr_string, &ipbits->v6, prefix);
+		}
+		return rt;
+	}
 
-		*ipbits = stringtonip(vx, cidrstr_[0].c_str());
-		(*prefix) = netp::u8_t(netp::to_u32(cidrstr_[1].c_str()));
-		return netp::OK;
+	//ip/cidr: 192.168.0.0/16, 1234:0000:2d00:0000:0000:123:73:26b1/64
+	int nip_from_cidr_string(netp::ip_version vx, const char* cidr_string, netp::ip_t* const ipbits/*stored in network endian*/, netp::u8_t* prefix) {
+		int rt;
+		if(ip_version::v4 == vx)
+		{
+			rt = nv4_from_cidr_string(cidr_string, &ipbits->v4, prefix);
+		}
+		else if(ip_version::v6 == vx)
+		{
+			rt = nv6_from_cidr_string(cidr_string, &ipbits->v6, prefix);
+		}
+		return rt;
 	}
 }

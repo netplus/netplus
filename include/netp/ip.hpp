@@ -174,16 +174,25 @@ enum ip_version {
 		return is_loopback_or_rfc1918(v4_);
 	}
 
+	inline bool is_ip_all_zero(netp::ipv4_t v4) { return v4.u32 == 0 ;}
+	inline bool is_ip_all_zero(netp::ipv6_t v6) { return v6.u64.A == 0 && v6.u64.B == 0 ;}
+
 	__NETP_FORCE_INLINE
 	bool is_internal_or_shared(ipv4_t v4_) {
 		return __is_internal_or_shared(v4_);
 	}
 
 	extern void v4_mask_by_prefix( netp::ipv4_t* const v4, netp::u8_t prefix);
-	extern void v4_mask_by_prefix( netp::ipv4_t* const v4, netp::u8_t prefix, int* host);
+	extern void v4_mask_by_prefix( netp::ipv4_t* const v4, netp::u8_t prefix, netp::u32_t* host);
 
 	extern void v6_mask_by_prefix( netp::ipv6_t* const v6, netp::u8_t prefix);
-	extern void v6_mask_by_prefix( netp::ipv6_t* const v6, netp::u8_t prefix, int* host);
+	extern void v6_mask_by_prefix( netp::ipv6_t* const v6, netp::u8_t prefix, netp::u32_t* host);
+
+	extern int v4_from_cidr_string(const char* cidrstr, netp::ipv4_t* const ip/*stored in host endian*/, netp::u8_t* prefix);
+	extern int nv4_from_cidr_string(const char* cidrstr, netp::ipv4_t* const ip/*stored in network endian*/, netp::u8_t* prefix);
+
+	extern int v6_from_cidr_string(const char* cidrstr, netp::ipv6_t* const ip/*stored in host endian*/, netp::u8_t* prefix);
+	extern int nv6_from_cidr_string(const char* cidrstr, netp::ipv6_t* const ip/*stored in network endian*/, netp::u8_t* prefix);
 
 	extern int ip_from_cidr_string(netp::ip_version vx, const char* cidrstr, netp::ip_t* const ip/*stored in host endian*/, netp::u8_t* prefix );
 	extern int nip_from_cidr_string(netp::ip_version vx, const char* cidrstr, netp::ip_t* const ip/*stored in network endian*/, netp::u8_t* prefix );
