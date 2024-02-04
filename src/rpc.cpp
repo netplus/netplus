@@ -174,7 +174,7 @@ namespace netp {
 
 		const timer_timepoint_t now = timer_clock_t::now();
 		list_req_message *cur, *nxt;
-		for (int i = 0; i < sizeof(m_list_wait_for_response) / sizeof(m_list_wait_for_response[i]); ++i) {
+		for (size_t i = 0; i < sizeof(m_list_wait_for_response) / sizeof(m_list_wait_for_response[i]); ++i) {
 			NETP_LIST_SAFE_FOR(cur, nxt, &m_list_wait_for_response[i]) {
 				if (now > cur->tp_timeout) {
 					NETP_ASSERT(cur->m != nullptr);
@@ -310,7 +310,7 @@ namespace netp {
 			netp::allocator<list_req_message>::trash(cur);
 		}
 
-		for (int i = 0; i < sizeof(m_list_wait_for_response) / sizeof(m_list_wait_for_response[0]); ++i) {
+		for (size_t i = 0; i < sizeof(m_list_wait_for_response) / sizeof(m_list_wait_for_response[0]); ++i) {
 			NETP_LIST_SAFE_FOR(cur, nxt, &m_list_wait_for_response[i]) {
 				cur->callp->set(std::make_tuple(netp::E_RPC_CALL_TIMEOUT, nullptr));
 				--m_list_wait_for_response_count;
@@ -454,7 +454,7 @@ namespace netp {
 		m_list_wait_for_response_count(0)
 	{
 		netp::list_init(&m_list_to_write);
-		for (int i = 0; i < sizeof(m_list_wait_for_response) / sizeof(m_list_wait_for_response[0]); ++i) {
+		for (size_t i = 0; i < sizeof(m_list_wait_for_response) / sizeof(m_list_wait_for_response[0]); ++i) {
 			netp::list_init(&m_list_wait_for_response[i]);
 		}
 	}
