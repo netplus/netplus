@@ -83,9 +83,9 @@ namespace netp {
 	const int  E_EMLINK = -31;           /* Too many links */
 	const int  E_EPIPE = -32;           /* Broken pipe */
 
-/* math software */
-const int  E_EDOM = -33;         /* Numerical argument out of domain */
-const int  E_ERANGE = -34;         /* Result too large */
+	/* math software */
+	const int  E_EDOM = -33;         /* Numerical argument out of domain */
+	const int  E_ERANGE = -34;         /* Result too large */
 
 	/* non-blocking and interrupt i/o */
 	const int  E_EAGAIN = -35;         /* Resource temporarily unavailable */
