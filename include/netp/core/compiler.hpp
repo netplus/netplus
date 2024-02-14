@@ -94,13 +94,14 @@
 #define _NETP_NOEXCEPT		noexcept
 #define _NETP_CONSTEXPR	constexpr
 
-#define _compiler_generic_header1(_generic_) <netp/core/compiler/_generic_##_.hpp>
-#define _compiler_generic_header2(_generic_) _compiler_generic_header1(_generic_)
-#include _compiler_generic_header2(_NETP_COMPILER_STR)
+#define __netp_x_file2(__path__,__generic__) <__path__/__generic__##_.hpp>
+#define _netp_x_file2(__path__,__generic__) __netp_x_file2(__path__,__generic__)
+#include _netp_x_file2(netp/core/compiler,_NETP_COMPILER_STR)
 
-#define _compiler_arch_header1(_generic_,_arch_) <netp/core/compiler/_generic_##_##_arch_##_.hpp>
-#define _compiler_arch_header2(_generic_,_arch_) _compiler_arch_header1(_generic_,_arch_)
-#include _compiler_arch_header2(_NETP_COMPILER_STR,_NETP_ARCH_STR)
+#define __netp_x_file3(__path__,__generic__,__arch__) <__path__/__generic__##_##__arch__##_.hpp>
+#define _netp_x_file3(__path__,__generic__,__arch__) __netp_x_file3(__path__,__generic__,__arch__)
+#include _netp_x_file3(netp/core/compiler,_NETP_COMPILER_STR,_NETP_ARCH_STR)
+
 
 #ifdef __NETP_IS_LITTLE_ENDIAN
 	#define NETP_HTONS(x) htons(x)

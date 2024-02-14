@@ -1,5 +1,5 @@
-#ifndef  _NETP_CORE_COMPILER_COMPILER_GNUGCC_HPP_
-#define _NETP_CORE_COMPILER_COMPILER_GNUGCC_HPP_
+#ifndef _NETP_CORE_COMPILER_GNUGCC_HPP_
+#define _NETP_CORE_COMPILER_GNUGCC_HPP_
 
 
 //https://sourceforge.net/p/predef/wiki/Endianness/
@@ -63,7 +63,6 @@ namespace netp {
 	typedef int SOCKET;
 }
 
-
 #if __GNUC__ <= 4 && __GNUC_MINOR__ <= 8
 namespace std {
     union max_align_t {
@@ -78,6 +77,4 @@ namespace std {
 }
 #endif//endof __GNUC__
 
-
 #endif
-

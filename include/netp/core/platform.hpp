@@ -28,12 +28,10 @@
 	#error "unknown platform"
 #endif
 
-#define __platform_generic_header(__generic__)		<netp/core/platform/__generic__##_.hpp>
-#define _platform_generic_header(__generic__)		__platform_generic_header(__generic__)
-#include _platform_generic_header( _NETP_PLATFORM_STR)
 
-#define __platform_arch_header(__generic__,__arch__) <netp/core/platform/__generic__##_##__arch__##_.hpp>
-#define _platform_arch_header(__generic__,__arch__) __platform_arch_header(__generic__,__arch__)
-#include _platform_arch_header(_NETP_PLATFORM_STR,_NETP_ARCH_STR)
+
+#include _netp_x_file2(netp/core/platform,_NETP_PLATFORM_STR)
+#include _netp_x_file3(netp/core/platform,_NETP_PLATFORM_STR,_NETP_ARCH_STR)
+
 
 #endif
