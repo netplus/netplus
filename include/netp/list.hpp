@@ -4,7 +4,8 @@
 #include <netp/core.hpp>
 
 namespace netp {
-	//disable offset feature in c++ mode with tpl
+	//the target object might not be a POD|standard_layout TYPE, refer to https://en.cppreference.com/w/cpp/types/offsetof
+	//disable offsetof feature in c++ mode with tpl
 	//embed next,prev in your own class to use these api
 
 	template <class list_t>
