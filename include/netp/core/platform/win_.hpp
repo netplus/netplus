@@ -1,5 +1,5 @@
-#ifndef _CORE_PLATFORM_NETP_PLATFORM_WIN_HPP_
-#define _CORE_PLATFORM_NETP_PLATFORM_WIN_HPP_
+#ifndef _NETP_CORE_PLATFORM_WIN_HPP_
+#define _NETP_CORE_PLATFORM_WIN_HPP_
 
 //note
 //we can set this value very high to enable maxmium fd check for each select op

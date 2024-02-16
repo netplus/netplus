@@ -221,6 +221,10 @@ namespace netp {
 		inline NRP<fix_packet_t> clone() const {
 			return netp::make_ref<fix_packet_t>(head(), len());
 		}
+
+		inline bool equal_to(fix_packet_t const& other) {
+			return (*this == other);
+		}
 	};
 
 	template<class _ref_base, class _buf_width_t, u32_t DEF_LEFT_CAPACITY, u32_t DEF_RIGHT_CAPACITY, u32_t AGN>
@@ -329,16 +333,16 @@ namespace netp {
 			expandable_packet_t::fill(0, len);
 		}
 
-		bool operator ==(expandable_packet_t const& other) const {
-			if (cap_fix_packet_t::len() != other.len()) {
-				return false;
-			}
-			return std::memcmp(cap_fix_packet_t::head(), other.head(), cap_fix_packet_t::len()) == 0;
-		}
+		// bool operator ==(expandable_packet_t const& other) const {
+		// 	if (cap_fix_packet_t::len() != other.len()) {
+		// 		return false;
+		// 	}
+		// 	return std::memcmp(cap_fix_packet_t::head(), other.head(), cap_fix_packet_t::len()) == 0;
+		// }
 
-		inline bool operator != (expandable_packet_t const& other) const {
-			return !(*this == other);
-		}
+		// inline bool operator != (expandable_packet_t const& other) const {
+		// 	return !(*this == other);
+		// }
 
 		inline NRP<expandable_packet_t> clone() const {
 			return netp::make_ref<expandable_packet_t>(cap_fix_packet_t::head(), cap_fix_packet_t::len());

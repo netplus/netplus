@@ -216,7 +216,7 @@ namespace netp {
 			if (param.length() == 0) {
 				return -1;
 			}
-			for (int i = 0; i < (sizeof(long_options) / sizeof(long_options[0])); ++i) {
+			for (size_t i = 0; i < (sizeof(long_options) / sizeof(long_options[0])); ++i) {
 				if (long_options[i].name == 0) { continue; }
 				if (netp::strcmp(param.c_str(), long_options[i].name) == 0) {
 					mode_fetch_val = long_options[i].val;
@@ -674,12 +674,14 @@ namespace netp {
 		v4.u32 = 0xfffffffful;
 		iplist[j++] = v4;
 
-		netp::ipv4_t v4mask;
-		v4mask.bits = { 255,255,255,255 };
+		netp::ipv4_t _v4mask;
+		_v4mask.bits = { 255,255,255,255 };
 
 		for (netp::u8_t i = 0; i < (sizeof(iplist) / sizeof(iplist[0])); ++i) {
 			NETP_ASSERT(i <= 32);
-			NETP_ASSERT(netp::v4_mask_by_prefix(&v4mask, i) == (iplist[i]));
+			netp::ipv4_t v4mask= _v4mask;
+			netp::v4_mask_by_prefix(&v4mask, i);
+			NETP_ASSERT(v4mask == (iplist[i]));
 		}
 	}
 
@@ -715,12 +717,14 @@ namespace netp {
 		v6.u64.B = 0xffffffffffffffffull;
 		iplist[j++] = v6;
 
-		netp::ipv6_t v6mask;
-		v6mask.bits = { 0xffff,0xffff,0xffff,0xffff, 0xffff,0xffff,0xffff,0xffff };
+		netp::ipv6_t _v6mask;
+		_v6mask.bits = { 0xffff,0xffff,0xffff,0xffff, 0xffff,0xffff,0xffff,0xffff };
 
 		for (netp::u8_t i = 0; i < (sizeof(iplist) / sizeof(iplist[0])); ++i) {
 			NETP_ASSERT(i <= 128);
-			NETP_ASSERT(netp::v6_mask_by_prefix(&v6mask, i) == (iplist[i]));
+			netp::ipv6_t v6mask = _v6mask;
+			netp::v6_mask_by_prefix(&v6mask, i);
+			NETP_ASSERT(v6mask == (iplist[i]));
 		}
 	}
 

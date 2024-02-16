@@ -78,7 +78,7 @@ namespace netp {
 				{
 				__label_read_content:
 #ifdef _NETP_DEBUG
-					NETP_ASSERT(m_pkt_tmp == nullptr ? true : m_pkt_tmp->len() );
+					NETP_ASSERT(m_pkt_tmp == nullptr ? true : m_pkt_tmp->len(), "m_pkt_tmp: %c, m_pkt_tmp->len(): %d", m_pkt_tmp != nullptr ? 'Y':'N',  m_pkt_tmp != nullptr ? m_pkt_tmp->len(): -1 );
 #endif
 					if (m_in_q_nbytes < m_size) {
 						return false;

@@ -1,5 +1,5 @@
-#ifndef  _NETP_CORE_COMPILER_COMPILER_MSVC_HPP_
-#define _NETP_CORE_COMPILER_COMPILER_MSVC_HPP_
+#ifndef _NETP_CORE_COMPILER_MSVC_HPP_
+#define _NETP_CORE_COMPILER_MSVC_HPP_
 
 /*
 MSVC++ 14.0 _MSC_VER == 1900 (Visual Studio 2015)
@@ -79,8 +79,8 @@ refer to https://docs.microsoft.com/en-us/cpp/build/reference/arch-x64?view=vs-2
 
 namespace netp {
 	typedef ::SSIZE_T			ssize_t;
-	typedef ::size_t				size_t;
-	typedef ::size_t				SOCKET;
+	typedef ::size_t			size_t;
+	typedef ::size_t			SOCKET;
 }
 
 #endif

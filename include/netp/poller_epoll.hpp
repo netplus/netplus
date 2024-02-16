@@ -127,7 +127,7 @@ namespace netp {
 			int nEvents = epoll_wait(m_epfd, epEvents, NETP_EPOLL_PER_HANDLE_SIZE, wait_in_mill);
 			NETP_POLLER_WAIT_EXIT(wait_in_nano, W);
 			if (-1 == nEvents) {
-				NETP_ERR("[EPOLL][##%u]epoll wait event failed!, errno: %d", m_epfd, netp_socket_get_last_errno());
+				NETP_VERBOSE("[EPOLL][##%u]epoll wait event failed!, errno: %d", m_epfd, netp_socket_get_last_errno());
 				return;
 			}
 

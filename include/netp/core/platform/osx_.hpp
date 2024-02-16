@@ -1,5 +1,5 @@
-#ifndef _CORE_PLATFORM_NETP_PLATFORM_OSX_HPP_
-#define _CORE_PLATFORM_NETP_PLATFORM_OSX_HPP_
+#ifndef _NETP_CORE_PLATFORM_OSX_HPP_
+#define _NETP_CORE_PLATFORM_OSX_HPP_
 
 //for MacOS
 #include <sys/time.h>

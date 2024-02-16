@@ -1,6 +1,5 @@
-#pragma once
-#ifndef _CORE_PLATFORM_NETP_PLATFORM_GNU_LINUX_HPP_
-#define _CORE_PLATFORM_NETP_PLATFORM_GNU_LINUX_HPP_
+#ifndef _NETP_CORE_PLATFORM_GNU_LINUX_HPP_
+#define _NETP_CORE_PLATFORM_GNU_LINUX_HPP_
 
 //@note: DO NOT INCLUDE linux/*.h from user space app directlyl, IIF YOU KNOW WHAT YOU ARE DOING
 // if there is a missing MACRO in netinet/x.h FILE, but it do exists in linux/x.h for the target host kernel, we could define that MACRO by mannual

@@ -298,7 +298,7 @@ namespace netp {
 			"/file.log",
 		};
 
-		for (int i = 0; i < sizeof(path) / sizeof(path[0]); ++i)
+		for (size_t i = 0; i < sizeof(path) / sizeof(path[0]); ++i)
 		{
 			char* real = netp::realpath( path[i], NULL );
 			NETP_ASSERT(netp::strcmp(realpath[i], real) == 0, "path: %s, expected: %s, get: %s", path[i], realpath[i], real );
