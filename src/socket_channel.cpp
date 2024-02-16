@@ -711,7 +711,7 @@ int socket_base::get_left_snd_queue() const {
 				return nbytes;
 			}
 
-			if ( is_udp() && (nbytes != dlen) ) {
+			if ( is_udp() && (nbytes != int(dlen)) /*it's safe to cast dlen to int, cuz maxmium udp packet is 0xffff*/ ) {
 				//ignore the last write && retry
 				continue;
 			}
