@@ -16,6 +16,7 @@ namespace netp {
 	typedef union __ipv4_bits ipv4_t;
 	union __ipv4_bits {
 		u32_t u32;
+		struct in_addr inaddr;
 		struct _bit {
 			u8_t b1;
 			u8_t b2;

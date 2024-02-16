@@ -161,8 +161,6 @@ namespace netp {
 
 		__NETP_FORCE_INLINE
 		NRP<netp::event_loop_group> const& def_loop_group() const { return m_def_loop_group; }
-		//__NETP_FORCE_INLINE
-		//NRP<netp::logger_broker> const& logger() const { return m_logger_broker; }
 	};
 
 #define NETP_LOGGER_BROKER	( netp::logger_broker::instance())

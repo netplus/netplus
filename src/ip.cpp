@@ -86,13 +86,10 @@ namespace netp {
 	}
 
 	ipv4_t dotiptonip(const char* ipaddr) {
-		NETP_ASSERT(strlen(ipaddr) > 0);
-		struct in_addr in4;
-		int ret = ::inet_pton(AF_INET, ipaddr, &in4);
-		if (ret == 1) {
-			return { in4.s_addr };
-		}
-		return { 0 };
+		NETP_ASSERT(ipaddr && netp::strlen(ipaddr) > 0);
+		ipv4_t v4 = {0};
+		::inet_pton(AF_INET, ipaddr, &v4.inaddr);
+		return v4;
 	}
 
 	ipv4_t dotiptoip(const char* ipaddr) {
@@ -118,10 +115,8 @@ namespace netp {
 	}
 
 	string_t nipv4todotip(ipv4_t const& nip) {
-		in_addr in4;
-		in4.s_addr = nip.u32;
 		char addr[16] = { 0 };
-		const char* addr_cstr = ::inet_ntop(AF_INET, &in4, addr, 16);
+		const char* addr_cstr = ::inet_ntop(AF_INET, &nip.inaddr, addr, 16);
 		if (NETP_LIKELY(addr_cstr != nullptr)) {
 			return string_t(addr);
 		}
