@@ -2,6 +2,7 @@
 #define _NETP_HPP_
 
 #include "../3rd/nlohmann/include/nlohmann/json.hpp"
+#include "../3rd/CLI11/CLI11.hpp"
 
 #include <netp/core.hpp>
 #include <netp/CPUID.hpp>
