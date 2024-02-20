@@ -4,6 +4,24 @@
 
 namespace netp {
 
+	char** duplicate_argv(int argc, char* const argv[]) {
+		char** new_argv = new char*[argc + 1]; // +1 for the null terminator
+		for (int i = 0; i < argc; ++i) {
+			new_argv[i] = new char[strlen(argv[i]) + 1];
+			strcpy(new_argv[i], argv[i]);
+		}
+		new_argv[argc] = nullptr; // Null terminate the array
+		return new_argv;
+	}
+
+	// Function to free duplicated argv
+	void free_duplicated_argv(int argc, char** argv) {
+		for (int i = 0; i < argc; ++i) {
+			delete[] argv[i];
+		}
+		delete[] argv;
+	}
+
 	NRP<netp::packet> file_get_content(netp::string_t const& filepath) {
 		std::FILE* fp = std::fopen(filepath.c_str(), "rb");
 		if (fp == 0) {

@@ -265,7 +265,8 @@ __label_send:
 	//@note: 
 	//Datagram sockets in various domains(e.g., the UNIXand Internet
 	//	domains) permit zero - length datagrams.When such a datagram is
-	//	@return nbytes received, otherwise the error code
+	//@return nbytes received, otherwise the error code
+	//@prototype of posix use ssize_t for the len parameter, but windows use int
 	inline int recv(SOCKET fd, byte_t* const buffer_o, netp::u32_t size, int flag =0) {
 __label_recv:
 		const int r = ::recv(fd, reinterpret_cast<char*>(buffer_o), (int)(size), flag);
@@ -292,7 +293,8 @@ __label_recv:
 	}
 
 	//@NOTE: udp allow zero-len pkt
-	//	@return nbytes sent, otherwise the error code
+	//@return nbytes sent, otherwise the error code
+	//@prototype of posix use ssize_t for the len parameter, but windows use int
 	inline int sendto(SOCKET fd, netp::byte_t const* const buf, netp::u32_t len, NRP<address> const& addr_to, int flag = 0) {
 	_label_sendto:
 		int nbytes;

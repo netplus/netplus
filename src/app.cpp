@@ -228,19 +228,22 @@ namespace netp {
 			}
 		}
 
+		char** _argv = duplicate_argv(argc,argv);
+
 		int rt = mode == mode_fetch ? -1 : netp::OK;
 		::optind = 1;
 		const char* optstring = "H:h::";
 		int opt;
 		int opt_idx;
-		while ((opt = getopt_long(argc, argv, optstring, long_options, &opt_idx)) != -1) {
+		while ((opt = getopt_long(argc, _argv, optstring, long_options, &opt_idx)) != -1) {
 
 			if (mode == mode_fetch) {
 				if (opt != mode_fetch_val) {
 					continue;
 				}
 				value = std::string(optarg);
-				return netp::OK;
+				rt = netp::OK;
+				goto _label_exit;
 			}
 
 			switch (opt) {
@@ -282,6 +285,8 @@ namespace netp {
 			}
 		}
 
+_label_exit:
+		netp::free_duplicated_argv(argc,_argv);
 		std::atomic_thread_fence(std::memory_order_release);
 		return rt;
 	}

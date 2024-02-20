@@ -16,6 +16,9 @@ namespace netp {
 	extern std::string to_absolute_path(std::string const& relative, std::string const& parent_path = current_directory() );
 
 
+	extern char** duplicate_argv(int argc, char* const argv[]) ;
+	extern void free_duplicated_argv(int argc, char** argv) ;
+
 	struct helper_test_unit :
 		public netp::test_unit
 	{
