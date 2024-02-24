@@ -1,3 +1,5 @@
+#include <iostream>
+#include <fstream>
 
 #include <netp/core.hpp>
 #include <netp/helper.hpp>
@@ -182,6 +184,11 @@ namespace netp {
 		std::string return_buf(absolute_path_normalized, netp::strlen(absolute_path_normalized));
 		return return_buf;
 #endif
+	}
+
+	bool file_exists(std::string const& file_path) {
+		std::ifstream file(file_path);
+		return file.good();
 	}
 
 	std::string current_directory() 

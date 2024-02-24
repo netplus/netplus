@@ -211,7 +211,7 @@ namespace netp {
 			{0,0,0,0}
 		};
 
-		int mode_fetch_val = -1;
+		int mode_fetch_option_idx = -1;
 		if (mode == mode_fetch) {
 			if (param.length() == 0) {
 				return -1;
@@ -219,11 +219,11 @@ namespace netp {
 			for (size_t i = 0; i < (sizeof(long_options) / sizeof(long_options[0])); ++i) {
 				if (long_options[i].name == 0) { continue; }
 				if (netp::strcmp(param.c_str(), long_options[i].name) == 0) {
-					mode_fetch_val = long_options[i].val;
+					mode_fetch_option_idx = long_options[i].val;
 					break;
 				}
 			}
-			if (mode_fetch_val == -1) {
+			if (mode_fetch_option_idx == -1) {
 				return -1;
 			}
 		}
@@ -238,18 +238,32 @@ namespace netp {
 		while ((opt = getopt_long(argc, _argv, optstring, long_options, &opt_idx)) != -1) {
 
 			if (mode == mode_fetch) {
-				if (opt != mode_fetch_val) {
+				if (opt != mode_fetch_option_idx) {
 					continue;
 				}
-				value = std::string(optarg);
-				rt = netp::OK;
+				if( optarg == 0)
+				{
+					value = std::string("");
+				}
+				else
+				{
+					value = std::string(optarg);
+					rt = netp::OK;
+				}
 				goto _label_exit;
 			}
 
 			switch (opt) {
 			case 1:
 			{
-				_init_from_cfg_json(optarg);
+				if(optarg == 0)
+				{
+					NETP_WARN("[netp]netp-cfg not given");
+				}
+				else
+				{
+					_init_from_cfg_json(optarg);
+				}
 			}
 			break;
 			case 2:
@@ -304,7 +318,16 @@ _label_exit:
 		std::string bfr_cfg_json_value = std::string();
 		int rt = _parse_cfg_fetch(argc, argv, bfr_cfg_json, bfr_cfg_json_value);
 		if (rt == -1 || bfr_cfg_json_value.length() == 0 || (_init_from_cfg_json(bfr_cfg_json_value.c_str()) == -1)) {
-			_init_from_cfg_json( netp::to_absolute_path("./netp.cfg.json", current_directory()).c_str() );
+			if( netp::file_exists( netp::to_absolute_path("./netp.cfg.json", app::instance()->app_path() ) ))
+			{
+				/*app path first*/
+				_init_from_cfg_json( netp::to_absolute_path("./netp.cfg.json", app::instance()->app_path()).c_str() );
+			}
+			else if( netp::file_exists( netp::to_absolute_path("./netp.cfg.json", current_directory()) ) )
+			{
+				/*cwd path second*/
+				_init_from_cfg_json( netp::to_absolute_path("./netp.cfg.json", current_directory()).c_str() );
+			}
 		}
 		__parse_cfg(mode_do, argc, argv, empty_string, empty_string);
 	}
