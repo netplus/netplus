@@ -254,6 +254,11 @@ int socket_base::get_left_snd_queue() const {
 		return netp::OK;
 	}
 
+	int socket_channel::setsockopt(int level, int option_name, void const* value, socklen_t const& option_len)
+	{
+		return socket_setsockopt_impl(level,option_name,value,option_len);
+	}
+
 	void socket_channel::_tmcb_tx_limit(NRP<timer> const& t) {
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT( (m_tx_limit>0) && (m_chflag&int(channel_flag::F_TX_LIMIT_TIMER)) );
