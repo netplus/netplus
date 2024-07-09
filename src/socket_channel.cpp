@@ -373,6 +373,17 @@ int socket_base::get_left_snd_queue() const {
 				return;
 			}
 
+			/*
+			 * @NOTE
+			 * @refer to 
+			 * https://elixir.bootlin.com/linux/v5.19.17/source/net/ipv4/af_inet.c#L677
+			 * https://elixir.bootlin.com/linux/v5.19.17/source/net/ipv4/af_inet.c#L688
+			 * 
+			 * for a blocking socket fd, it might return EINTR, but for nonblocking fd, it would not 
+			 * all socket channel is nonblocking
+			*/
+			NETP_ASSERT( so->is_nonblocking() );
+
 			//rt = netp_socket_get_last_errno();
 			if (netp::E_EINPROGRESS==rt) {
 				//note: F_CONNECTING would be cleared in the following case
