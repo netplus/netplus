@@ -147,18 +147,22 @@ namespace netp { namespace impl {
 
 			state.unlock_shared();
 			if (state.no_shared()) {
-				if (state.upgrade) {
-					//if we get here , there must have a thread waiting for upgrade_cond
-					//notify upgrade thread
-					//state.upgrade = false;
-					// 
-					//act as a lock barrier, no more shared, upgraded, or lock shall be acquired
-					state.exclusive = true; 
-					upgrade_cond.notify_one();
-				} else {
-					state.exclusive_waiting_blocked = false;
-					release_waiters();
+				if (state.upgrade)
+				{
+					// As there is a thread doing a unlock_upgrade_and_lock that is waiting for state.no_shared()
+					// avoid other threads to lock, lock_upgrade or lock_shared, so only this thread is notified.
+					state.upgrade=false; /**/
+					state.exclusive=true;
+					//lk.unlock();
+					upgrade_cond.notify_one(); /* unlock_upgrade_and_lock case */
 				}
+				else
+				{
+					/*as no shared now, we have a chance to win, if failed, exclusive_waiting_blocked would be set to true*/
+					state.exclusive_waiting_blocked=false;
+					//lk.unlock();
+				}
+				release_waiters();
 			}
 		}
 
