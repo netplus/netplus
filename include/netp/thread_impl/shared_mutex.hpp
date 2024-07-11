@@ -6,7 +6,9 @@
 #include <netp/thread_impl/mutex_basic.hpp>
 
 namespace netp { namespace impl {
-		
+
+	/* v1 borrowed from boost*/
+#ifdef NETP_THREAD_IMPL_USE_V1
 	class shared_mutex final
 	{
 		NETP_DECLARE_NONCOPYABLE(shared_mutex)
@@ -132,7 +134,6 @@ namespace netp { namespace impl {
 			}
 			state.lock_shared();
 		}
-
 		bool try_lock_shared() {
 			netp::lock_guard<spin_mutex> state_lg(state_mutex);
 			if (!state.can_lock_shared()) {
@@ -166,17 +167,6 @@ namespace netp { namespace impl {
 			}
 		}
 
-		void unlock_shared_and_lock() {
-			netp::lock_guard<spin_mutex> state_lg(state_mutex);
-			state.assert_lock_shared();
-			state.unlock_shared();
-			while ( !state.can_lock() ) {
-				state.exclusive_waiting_blocked = true;
-				exclusive_cond.wait(state_mutex);
-			}
-			state.exclusive = true;
-		}
-
 		void lock() {
 			netp::lock_guard<spin_mutex> state_lg(state_mutex);
 			//upgrade count on has_more_shared
@@ -186,7 +176,6 @@ namespace netp { namespace impl {
 			}
 			state.exclusive = true;
 		}
-
 		bool try_lock() {
 			netp::lock_guard<spin_mutex> state_lg(state_mutex);
 			if (!state.can_lock()) {
@@ -195,23 +184,12 @@ namespace netp { namespace impl {
 			state.exclusive = true;
 			return true;
 		}
-
 		void unlock() {
 			netp::lock_guard<spin_mutex> state_lg(state_mutex);
 			state.assert_locked();
 			state.exclusive = false;
 			state.exclusive_waiting_blocked = false;
 			state.assert_free();
-			release_waiters();
-		}
-
-		// Shared <-> Exclusive
-		void unlock_and_lock_shared() {
-			netp::lock_guard<spin_mutex> state_lg(state_mutex);
-			state.assert_locked();
-			state.exclusive = false;
-			state.lock_shared();
-			state.exclusive_waiting_blocked = false;
 			release_waiters();
 		}
 
@@ -222,7 +200,6 @@ namespace netp { namespace impl {
 			}
 			state.lock_upgrade();
 		}
-
 		bool try_lock_upgrade() {
 			netp::lock_guard<spin_mutex> state_lg(state_mutex);
 			if (!state.can_lock_upgrade()) {
@@ -233,7 +210,6 @@ namespace netp { namespace impl {
 			state.assert_lock_upgraded();
 			return true;
 		}
-
 		void unlock_upgrade() {
 			netp::lock_guard<spin_mutex> state_lg(state_mutex);
 			state.unlock_upgrade();
@@ -245,6 +221,22 @@ namespace netp { namespace impl {
 			}
 		}
 
+		void unlock_and_lock_shared() {
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			state.assert_locked();
+			state.exclusive = false;
+			state.lock_shared();
+			state.exclusive_waiting_blocked = false;
+			release_waiters();
+		}
+		// lock_upgrade -> lock_shared
+		void unlock_upgrade_and_lock_shared() {
+			netp::lock_guard<spin_mutex> state_lg(state_mutex);
+			state.assert_lock_upgraded();
+			state.upgrade = false;
+			state.exclusive_waiting_blocked = false;
+			release_waiters();
+		}
 		// Upgrade <-> Exclusive
 		void unlock_upgrade_and_lock() {
 			netp::lock_guard<spin_mutex> state_lg(state_mutex);
@@ -256,21 +248,10 @@ namespace netp { namespace impl {
 			while (!state.no_shared() ) {
 				upgrade_cond.wait(state_mutex);
 			}
-			NETP_ASSERT( state.upgrade == true );
-			state.exclusive = true;
 			state.upgrade = false;
+			state.exclusive = true;
 			state.assert_locked();
 		}
-
-		// lock_upgrade -> lock_shared
-		void unlock_upgrade_and_lock_shared() {
-			netp::lock_guard<spin_mutex> state_lg(state_mutex);
-			state.assert_lock_upgraded();
-			state.upgrade = false;
-			state.exclusive_waiting_blocked = false;
-			release_waiters();
-		}
-
 		void unlock_and_lock_upgrade() {
 			netp::lock_guard<spin_mutex> state_lg(state_mutex);
 			state.assert_locked();
@@ -280,7 +261,55 @@ namespace netp { namespace impl {
 			release_waiters(); 
 		}
 	};
+	#endif // NETP_THREAD_IMPL_USE_V1
+
+	class shared_mutex
+	{
+		std::mutex              mut_;
+		std::condition_variable gate1_;
+		std::condition_variable gate2_;
+		unsigned                state_;
+
+		static const unsigned write_entered_ = 1U << (sizeof(unsigned)*8 - 1);
+		static const unsigned upgradable_entered_ = write_entered_ >> 1;
+		static const unsigned n_readers_ = ~(write_entered_ | upgradable_entered_);
+
+		NETP_DECLARE_NONCOPYABLE(shared_mutex)
+
+	public:
+		shared_mutex();
+		~shared_mutex();
+
+		// Exclusive ownership
+		void lock();
+		bool try_lock();
+		void unlock();
+
+		// Shared ownership
+
+		void lock_shared();
+		bool try_lock_shared();
+		void unlock_shared();
+
+		// Upgrade ownership
+		void lock_upgrade();
+		bool try_lock_upgrade();
+		void unlock_upgrade();
+
+		// Shared <-> Exclusive
+	//    bool try_unlock_shared_and_lock();
+	//    bool try_unlock_upgrade_and_lock();
+
+		void unlock_and_lock_shared();
+		void unlock_upgrade_and_lock_shared();
+
+		// Upgrade <-> Exclusive
+		void unlock_upgrade_and_lock();
+		void unlock_and_lock_upgrade();
+	};
+
 }//end of ns impl
+
 
 namespace _mutex_detail {
 	class shared_mutex
@@ -306,12 +335,6 @@ namespace _mutex_detail {
 			_MUTEX_IMPL_UNLOCK_SHARED(m_impl);
 		}
 
-		//inline void unlock_shared_and_lock() {
-		//	_MUTEX_DEBUG_CHECK_FOR_UNLOCK_
-		//		m_impl.unlock_shared_and_lock();
-		//	_MUTEX_DEBUG_LOCK_
-		//}
-
 		inline void lock() {
 			_MUTEX_IMPL_LOCK(m_impl);
 		}
@@ -335,7 +358,7 @@ namespace _mutex_detail {
 
 		inline void lock_upgrade() {
 			_MUTEX_DEBUG_CHECK_FOR_LOCK_
-				m_impl.lock_upgrade();
+			m_impl.lock_upgrade();
 			_MUTEX_DEBUG_LOCK_
 		}
 		inline bool try_lock_upgrade() {
@@ -343,17 +366,17 @@ namespace _mutex_detail {
 		}
 		inline void unlock_upgrade() {
 			_MUTEX_DEBUG_CHECK_FOR_UNLOCK_
-				m_impl.unlock_upgrade();
+			m_impl.unlock_upgrade();
 			_MUTEX_DEBUG_UNLOCK_
 		}
 		inline void unlock_upgrade_and_lock() {
 			_MUTEX_DEBUG_CHECK_FOR_UNLOCK_
-				m_impl.unlock_upgrade_and_lock();
+			m_impl.unlock_upgrade_and_lock();
 		}
 
 		inline void unlock_and_lock_shared() {
 			_MUTEX_DEBUG_CHECK_FOR_UNLOCK_
-				m_impl.unlock_and_lock_shared();
+			m_impl.unlock_and_lock_shared();
 			_MUTEX_DEBUG_LOCK_
 		}
 
