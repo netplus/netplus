@@ -11,10 +11,16 @@ namespace netp {
 
 	extern std::string filename(std::string const& filepathname);
 	extern std::string absolute_parent_path(std::string const& filepathname);
+
+	extern bool file_exists(std::string const& file_path) ;
+
 	extern std::string current_directory();
 	/* relative could be path or filepath */
 	extern std::string to_absolute_path(std::string const& relative, std::string const& parent_path = current_directory() );
 
+
+	extern char** duplicate_argv(int argc, char* const argv[]) ;
+	extern void free_duplicated_argv(int argc, char** argv) ;
 
 	struct helper_test_unit :
 		public netp::test_unit

@@ -92,21 +92,21 @@ namespace netp {
         char brand[0x40];
         memset(brand, 0, sizeof(brand));
 
-        for (int i = 0x80000000; i <= nExIds_; ++i)
+        for (int i = 0x80000000L; i <= nExIds_; ++i)
         {
             __cpuidex(cpui.data(), i, 0);
             extdata_.push_back(cpui);
         }
 
         // load bitset with flags for function 0x80000001
-        if (nExIds_ >= 0x80000001)
+        if (nExIds_ >= 0x80000001L)
         {
             f_81_ECX_ = extdata_[1][2];
             f_81_EDX_ = extdata_[1][3];
         }
 
         // Interpret CPU brand string if reported
-        if (nExIds_ >= 0x80000004)
+        if (nExIds_ >= 0x80000004L)
         {
             memcpy(brand, extdata_[2].data(), sizeof(cpui));
             memcpy(brand + 16, extdata_[3].data(), sizeof(cpui));

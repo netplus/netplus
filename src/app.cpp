@@ -211,7 +211,7 @@ namespace netp {
 			{0,0,0,0}
 		};
 
-		int mode_fetch_val = -1;
+		int mode_fetch_option_idx = -1;
 		if (mode == mode_fetch) {
 			if (param.length() == 0) {
 				return -1;
@@ -219,34 +219,51 @@ namespace netp {
 			for (size_t i = 0; i < (sizeof(long_options) / sizeof(long_options[0])); ++i) {
 				if (long_options[i].name == 0) { continue; }
 				if (netp::strcmp(param.c_str(), long_options[i].name) == 0) {
-					mode_fetch_val = long_options[i].val;
+					mode_fetch_option_idx = long_options[i].val;
 					break;
 				}
 			}
-			if (mode_fetch_val == -1) {
+			if (mode_fetch_option_idx == -1) {
 				return -1;
 			}
 		}
+
+		char** _argv = duplicate_argv(argc,argv);
 
 		int rt = mode == mode_fetch ? -1 : netp::OK;
 		::optind = 1;
 		const char* optstring = "H:h::";
 		int opt;
 		int opt_idx;
-		while ((opt = getopt_long(argc, argv, optstring, long_options, &opt_idx)) != -1) {
+		while ((opt = getopt_long(argc, _argv, optstring, long_options, &opt_idx)) != -1) {
 
 			if (mode == mode_fetch) {
-				if (opt != mode_fetch_val) {
+				if (opt != mode_fetch_option_idx) {
 					continue;
 				}
-				value = std::string(optarg);
-				return netp::OK;
+				if( optarg == 0)
+				{
+					value = std::string("");
+				}
+				else
+				{
+					value = std::string(optarg);
+					rt = netp::OK;
+				}
+				goto _label_exit;
 			}
 
 			switch (opt) {
 			case 1:
 			{
-				_init_from_cfg_json(optarg);
+				if(optarg == 0)
+				{
+					NETP_WARN("[netp]netp-cfg not given");
+				}
+				else
+				{
+					_init_from_cfg_json(optarg);
+				}
 			}
 			break;
 			case 2:
@@ -282,6 +299,8 @@ namespace netp {
 			}
 		}
 
+_label_exit:
+		netp::free_duplicated_argv(argc,_argv);
 		std::atomic_thread_fence(std::memory_order_release);
 		return rt;
 	}
@@ -299,7 +318,16 @@ namespace netp {
 		std::string bfr_cfg_json_value = std::string();
 		int rt = _parse_cfg_fetch(argc, argv, bfr_cfg_json, bfr_cfg_json_value);
 		if (rt == -1 || bfr_cfg_json_value.length() == 0 || (_init_from_cfg_json(bfr_cfg_json_value.c_str()) == -1)) {
-			_init_from_cfg_json( netp::to_absolute_path("./netp.cfg.json", current_directory()).c_str() );
+			if( netp::file_exists( netp::to_absolute_path("./netp.cfg.json", app::instance()->app_path() ) ))
+			{
+				/*app path first*/
+				_init_from_cfg_json( netp::to_absolute_path("./netp.cfg.json", app::instance()->app_path()).c_str() );
+			}
+			else if( netp::file_exists( netp::to_absolute_path("./netp.cfg.json", current_directory()) ) )
+			{
+				/*cwd path second*/
+				_init_from_cfg_json( netp::to_absolute_path("./netp.cfg.json", current_directory()).c_str() );
+			}
 		}
 		__parse_cfg(mode_do, argc, argv, empty_string, empty_string);
 	}
@@ -585,7 +613,7 @@ namespace netp {
 #endif
 
 		NETP_ASSERT(m_def_loop_group == nullptr);
-		event_loop_cfg cfg(NETP_DEFAULT_POLLER_TYPE, u8_t(f_enable_dns_resolver), m_channel_read_buf_size);
+		netp::event_loop_cfg cfg(NETP_DEFAULT_POLLER_TYPE, u8_t(f_enable_dns_resolver), m_channel_read_buf_size);
 		dns_hosts(cfg.dns_hosts);
 		m_def_loop_group = netp::make_ref<netp::event_loop_group>(cfg, default_event_loop_maker);
 		NETP_TRACE_APP("net init end");

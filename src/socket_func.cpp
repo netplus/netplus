@@ -89,6 +89,15 @@ namespace netp {
 			return std::make_tuple(rt, nullptr);
 		}
 
+		if(cfg->mark>0)
+		{
+			rt = __socketch->setsockopt(SOL_SOCKET, SO_MARK, &cfg->mark, sizeof(cfg->mark) );
+			if(rt != 0 )
+			{
+				NETP_WARN("[socket]mark failed: %d, mark: %d", __socketch->ch_id(), cfg->mark );
+			}
+		}
+
 		NETP_ASSERT(__socketch->ch_errno() == netp::OK);
 		return std::make_tuple(netp::OK, __socketch);
 	}

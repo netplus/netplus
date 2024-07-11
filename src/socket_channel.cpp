@@ -254,6 +254,11 @@ int socket_base::get_left_snd_queue() const {
 		return netp::OK;
 	}
 
+	int socket_channel::setsockopt(int level, int option_name, void const* value, socklen_t const& option_len)
+	{
+		return socket_setsockopt_impl(level,option_name,value,option_len);
+	}
+
 	void socket_channel::_tmcb_tx_limit(NRP<timer> const& t) {
 		NETP_ASSERT(L->in_event_loop());
 		NETP_ASSERT( (m_tx_limit>0) && (m_chflag&int(channel_flag::F_TX_LIMIT_TIMER)) );
@@ -367,6 +372,17 @@ int socket_base::get_left_snd_queue() const {
 				so->__do_io_dial_done(fn_initializer, dialp, netp::OK, so->m_io_ctx);
 				return;
 			}
+
+			/*
+			 * @NOTE
+			 * @refer to 
+			 * https://elixir.bootlin.com/linux/v5.19.17/source/net/ipv4/af_inet.c#L677
+			 * https://elixir.bootlin.com/linux/v5.19.17/source/net/ipv4/af_inet.c#L688
+			 * 
+			 * for a blocking socket fd, it might return EINTR, but for nonblocking fd, it would not 
+			 * all socket channel is nonblocking
+			*/
+			NETP_ASSERT( so->is_nonblocking() );
 
 			//rt = netp_socket_get_last_errno();
 			if (netp::E_EINPROGRESS==rt) {
@@ -711,7 +727,7 @@ int socket_base::get_left_snd_queue() const {
 				return nbytes;
 			}
 
-			if ( is_udp() && (nbytes != dlen)) {
+			if ( is_udp() && (nbytes != int(dlen)) /*it's safe to cast dlen to int, cuz maxmium udp packet is 0xffff*/ ) {
 				//ignore the last write && retry
 				continue;
 			}

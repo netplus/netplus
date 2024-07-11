@@ -255,7 +255,7 @@ _VARIADIC_EXPAND_0X(_THREAD_CONS, , , , )
 					int k = 0;
 					while (is_launching()) netp::this_thread::yield(++k);
 				} else if (s == TR_RUNNING) {
-					if (m_state.compare_exchange_weak(s, TR_EXITING, std::memory_order_acq_rel, std::memory_order_release)) {
+					if (m_state.compare_exchange_weak(s, TR_EXITING, std::memory_order_acq_rel, std::memory_order_acquire)) {
 						_interrupt_thread();
 						goto __exit_thread_run;
 					}

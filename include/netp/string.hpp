@@ -79,9 +79,15 @@ inline errno_t mbstowcs_s(
 namespace netp {
 	typedef std::basic_string<char, std::char_traits<char>, netp::allocator<char> >	string_t;
 	typedef std::basic_string<wchar_t, std::char_traits<wchar_t>, netp::allocator<wchar_t> >	wstring_t;
+
 	template<typename T>
 	inline string_t to_string(T const& t) {
 		return string_t(std::to_string(t).c_str());
+	}
+
+	template<>
+	inline string_t to_string(std::string const& t) {
+		return string_t(t.c_str(),t.length());
 	}
 
 #if defined(_NETP_WIN) && _MSC_VER <= 1700

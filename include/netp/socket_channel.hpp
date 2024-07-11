@@ -89,6 +89,7 @@ namespace netp {
 		channel_buf_cfg sock_buf;
 		u32_t tx_limit; //in Byte (1kb == 1024Byte), 0 means no limit
 		u32_t wsabuf_size;
+		u32_t mark;
 
 		fn_socket_channel_maker_t ch_maker;
 		socket_cfg(NRP<event_loop> const& L = nullptr) :
@@ -104,6 +105,7 @@ namespace netp {
 			sock_buf({ 0 }),
 			tx_limit(0),
 			wsabuf_size(64*1024),
+			mark(0),
 			ch_maker(nullptr)
 		{}
 
@@ -121,6 +123,7 @@ namespace netp {
 			_cfg->sock_buf = sock_buf;
 			_cfg->tx_limit = tx_limit;
 			_cfg->wsabuf_size = wsabuf_size;
+			_cfg->mark = mark;
 			_cfg->ch_maker = ch_maker;
 
 			return _cfg;
@@ -713,6 +716,8 @@ protected:
 
 		int get_tos(u8_t& tos) const;
 		int cfg_tos(u8_t tos);
+
+		int setsockopt(int level, int option_name, void const* value, socklen_t const& option_len);
 
 		int ch_init(u16_t opt, keep_alive_vals const& kvals, channel_buf_cfg const& cbc) {
 			NETP_ASSERT(L->in_event_loop());
